@@ -1,0 +1,4891 @@
+{
+  "repository": "Fission-AI/OpenSpec",
+  "commit": "bae58cf61479986431bb798acbe5a688a591c18c",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".actrc",
+      "blob": "5c08277ae7007bdb96b2774b2cb7f598d5698640"
+    },
+    {
+      "path": ".agents/skills/draft-openspec-docs/SKILL.md",
+      "blob": "dcd28cbc7fc153e95a00b84f8607ae728e67c50c"
+    },
+    {
+      "path": ".agents/skills/release-openspec/SKILL.md",
+      "blob": "99d4f5df592ea4ca436f0e1ecbf8a21bdc2e486f"
+    },
+    {
+      "path": ".agents/skills/release-openspec/agents/openai.yaml",
+      "blob": "ba447ba7696741c3f1df2815750dbd9ac1f86ea3"
+    },
+    {
+      "path": ".agents/skills/release-openspec/references/release-notes.md",
+      "blob": "9a3a6b6f0165d6e1058082cdeb05b2404a468eb9"
+    },
+    {
+      "path": ".agents/skills/verify-openspec-docs/SKILL.md",
+      "blob": "66b81d3b562403044dc02e183ae6b23c4ed4379d"
+    },
+    {
+      "path": ".agents/skills/write-openspec-docs/SKILL.md",
+      "blob": "a0290b7cb2081e45a2c2d7fefc635664df8e7e5b"
+    },
+    {
+      "path": ".agents/skills/write-openspec-docs/full-process.md",
+      "blob": "ded76e4086dc7714eb95fa7b3a9ff22ddec44ec9"
+    },
+    {
+      "path": ".agents/skills/write-openspec-docs/writing.md",
+      "blob": "cd85a9aaee5f613e4f2d10553be3c917bbf29320"
+    },
+    {
+      "path": ".changeset/README.md",
+      "blob": "dffd5644e3ceecac012ef2fb129c1320f955906c"
+    },
+    {
+      "path": ".changeset/config.json",
+      "blob": "50cbb513218c466e01c3a04bb37cb794aefb7f33"
+    },
+    {
+      "path": ".coderabbit.yaml",
+      "blob": "38237f23d2277a72954d1241249eaee2bcefc079"
+    },
+    {
+      "path": ".devcontainer/README.md",
+      "blob": "989fa527f14391cd589ef113c6878c5c8de96326"
+    },
+    {
+      "path": ".devcontainer/devcontainer.json",
+      "blob": "7800a445d4e601227618be127ca3537a52a06d8a"
+    },
+    {
+      "path": ".gitattributes",
+      "blob": "ecb028b68a72a8c55bd8e0d8b9f568672c8d1609"
+    },
+    {
+      "path": ".github/CODEOWNERS",
+      "blob": "a17e6d9fa0865d28dc2a99faf5c933db5b2384b7"
+    },
+    {
+      "path": ".github/dependabot.yml",
+      "blob": "3ffee2ab1295cfb7f8e115cbc825ff6a208fea08"
+    },
+    {
+      "path": ".github/workflows/README.md",
+      "blob": "9befe1c4aa92aaa47eef1e0a973768a4cc76e6c7"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "blob": "f33c26015585ecdbe7e7b45611fc7cea93d75588"
+    },
+    {
+      "path": ".github/workflows/release-prepare.yml",
+      "blob": "6958b0da30464fe3f606035aa5beb193488a5d30"
+    },
+    {
+      "path": ".github/workflows/security.yml",
+      "blob": "83dde5728cc301c7a562f2faf02386eb82836719"
+    },
+    {
+      "path": ".gitignore",
+      "blob": "1fb5c4a26a2b32706a07df7df1cca828ba3cd048"
+    },
+    {
+      "path": "AGENTS.md",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "blob": "b44ebeea2548b30aecc01843cfe0670aef419bbb"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "blob": "e4eecd5ea69fb0cc160173735335ca93994a0eec"
+    },
+    {
+      "path": "LICENSE",
+      "blob": "84c125ae7b8ee08dc5b6e06358ebb6134f45a4c4"
+    },
+    {
+      "path": "MAINTAINERS.md",
+      "blob": "8a520215e2ef9a7d03da8ab4628cba7f9ff2823a"
+    },
+    {
+      "path": "README.md",
+      "blob": "c8b71a475d7aaadd8953d68040609d81914cf319"
+    },
+    {
+      "path": "README_OLD.md",
+      "blob": "e0f7f39a82c9f99878b77687bcfd83c0c09af7d9"
+    },
+    {
+      "path": "SECURITY.md",
+      "blob": "e0dc5e08da25bd70e8efc2941efa693604211ce3"
+    },
+    {
+      "path": "assets/openspec_bg.png",
+      "blob": "423c2d35a9007c0c2488569e389a8289957bec58"
+    },
+    {
+      "path": "assets/openspec_dashboard.png",
+      "blob": "7cc1a3ed51974164423f82d83ed09b34ef867fd4"
+    },
+    {
+      "path": "assets/openspec_pixel_dark.svg",
+      "blob": "799c2761fac5e16a9701b215645456ddf761faeb"
+    },
+    {
+      "path": "assets/openspec_pixel_light.svg",
+      "blob": "3b89a5ffcea131e4db80df5433ed1aaff31973e9"
+    },
+    {
+      "path": "bin/openspec.js",
+      "blob": "1d6477c19b0e15ded86ee4ece677e38208a161e4"
+    },
+    {
+      "path": "build.js",
+      "blob": "fc9aecf94a69d6d9099975304c522c47e4649f9b"
+    },
+    {
+      "path": "docs-lab/Notes.md",
+      "blob": "f4217fbf522ab0745fe007540c4d5ca129696f3d"
+    },
+    {
+      "path": "docs-lab/README.md",
+      "blob": "0b9dd85af77817998be74abf4e8abec03dc22e4b"
+    },
+    {
+      "path": "docs-lab/customize/overview.md",
+      "blob": "203000ac136154c60c0a23e6b160106c1e7239cb"
+    },
+    {
+      "path": "docs-lab/customize/profiles.md",
+      "blob": "45406bbe7805f128bd5f7bdbc5c08f5e653a0349"
+    },
+    {
+      "path": "docs-lab/customize/project-config.md",
+      "blob": "2cccd7e74020d5b040585ac4fa78f7ca903e9179"
+    },
+    {
+      "path": "docs-lab/customize/schemas.md",
+      "blob": "9d692884b9753bb992277f677e8eb4f4bc07e5b8"
+    },
+    {
+      "path": "docs-lab/customize/skills.md",
+      "blob": "6a54510c970fdcb3a309be50ffb097ea8a26b424"
+    },
+    {
+      "path": "docs-lab/guides/apply.md",
+      "blob": "dacb1027d183df7a238c1bfcc49bec7ada37e162"
+    },
+    {
+      "path": "docs-lab/guides/change-course.md",
+      "blob": "f12a8d87333be67e05988b744f7edbf1692daf65"
+    },
+    {
+      "path": "docs-lab/guides/concepts.md",
+      "blob": "f203e5da31506326921b37ca2c397e58cdb5498c"
+    },
+    {
+      "path": "docs-lab/guides/examples.md",
+      "blob": "6e5745eb45d5465ecb85e149f52170e115f5c846"
+    },
+    {
+      "path": "docs-lab/guides/existing-codebases.md",
+      "blob": "e589c553867c519e1fc33b10f8902b704932aa17"
+    },
+    {
+      "path": "docs-lab/guides/explore.md",
+      "blob": "230d2c0b8d4fda2ca3e0eb080c9acb0f85e55a72"
+    },
+    {
+      "path": "docs-lab/guides/review-the-plan.md",
+      "blob": "c6c0354a05d7916540c01ffbf2a089c553b7ecb6"
+    },
+    {
+      "path": "docs-lab/guides/teams.md",
+      "blob": "1285ddfea36a4a3c586581e23082ecd0ce02c1b4"
+    },
+    {
+      "path": "docs-lab/help/faq.md",
+      "blob": "064e018c601ab383e1ac48960ea96b388d784a63"
+    },
+    {
+      "path": "docs-lab/help/legacy/migration.md",
+      "blob": "889fb760a5eb53fa27182826cdba7a669da4164c"
+    },
+    {
+      "path": "docs-lab/help/troubleshooting.md",
+      "blob": "d4962852f7fe993d081cea3b0c7cda5f0d0190ee"
+    },
+    {
+      "path": "docs-lab/message-map.md",
+      "blob": "b7fb74f6ddd1e9fdbd915832a0f5049c81671861"
+    },
+    {
+      "path": "docs-lab/multi-repo/stores.md",
+      "blob": "d1344ff53fb60e8c710dbc3aecceeb685fee3b37"
+    },
+    {
+      "path": "docs-lab/multi-repo/worksets.md",
+      "blob": "c0886f106ba41b1023ef5ec9000280553612c1e9"
+    },
+    {
+      "path": "docs-lab/reference/architecture/design-decisions.md",
+      "blob": "78bf92551eb95c20e6c7da0007e3ef1a1a6ed6ab"
+    },
+    {
+      "path": "docs-lab/reference/architecture/index.md",
+      "blob": "e16604713922d06601e1e0864acc0e767cef118e"
+    },
+    {
+      "path": "docs-lab/reference/architecture/workflow-runs.md",
+      "blob": "6b29921cdbec3cbf2e6b1824c88b919e79074a6c"
+    },
+    {
+      "path": "docs-lab/reference/cli.md",
+      "blob": "b09393675ecbb9efde517f988bcc1333b095c6d4"
+    },
+    {
+      "path": "docs-lab/reference/configuration/change-metadata.md",
+      "blob": "2c56c5c16363d5645dec584a0640753b38b77758"
+    },
+    {
+      "path": "docs-lab/reference/configuration/config-json.md",
+      "blob": "464b0c1416f2f2436128c98e8aec9c22c4c1aadf"
+    },
+    {
+      "path": "docs-lab/reference/configuration/config-yaml.md",
+      "blob": "315053f3f644a33ae1f3af9d2a2002e094eafb65"
+    },
+    {
+      "path": "docs-lab/reference/configuration/environment-variables.md",
+      "blob": "dc1c608ef8778987566f6cc627c28d74359b288f"
+    },
+    {
+      "path": "docs-lab/reference/configuration/index.md",
+      "blob": "e196b9b87a4daf5734b267a5a04752365a3c6855"
+    },
+    {
+      "path": "docs-lab/reference/configuration/stores.md",
+      "blob": "1d843f51f5e3c94a95c94efb33d27d4f909d694d"
+    },
+    {
+      "path": "docs-lab/reference/glossary.md",
+      "blob": "a4c1c74be4859f7f5368cb37fc551df374bc098c"
+    },
+    {
+      "path": "docs-lab/reference/schemas/index.md",
+      "blob": "7e93fd2bfee11ff7290fae3afe5e6dffedf3eed9"
+    },
+    {
+      "path": "docs-lab/reference/schemas/schema-yaml.md",
+      "blob": "d8f47cd2ca1cad1138624c3e77faf22de1ef058a"
+    },
+    {
+      "path": "docs-lab/reference/schemas/spec-driven/index.md",
+      "blob": "cf613bbf7525cb884a0046fac84b386fdd85201b"
+    },
+    {
+      "path": "docs-lab/reference/skills.md",
+      "blob": "cc833427d07925ffd582ba5353c9c7969afaa1f5"
+    },
+    {
+      "path": "docs-lab/reference/supported-tools.md",
+      "blob": "bdaf8936ce03e5e77f3327d76b6987b1739e736c"
+    },
+    {
+      "path": "docs-lab/sources.md",
+      "blob": "f915a8ac86f4f8ee7308a47dc1c76f39a1529a6d"
+    },
+    {
+      "path": "docs-lab/start/installation.md",
+      "blob": "7bd4e87808e2fd7fda898237a0b94e1bc27765f7"
+    },
+    {
+      "path": "docs-lab/start/overview.md",
+      "blob": "9456031c1f772926454ba4d32077d50942a6ed83"
+    },
+    {
+      "path": "docs-lab/start/quickstart.md",
+      "blob": "1c5a42fff11881d242b2256b467f9afe3404e59b"
+    },
+    {
+      "path": "docs-lab/start/setup.md",
+      "blob": "60db884a00c0f2fa870c4ba0c108c2f6b918c9c0"
+    },
+    {
+      "path": "docs/README.md",
+      "blob": "feab8287fd5ae412998c5e9c915fca3cff3706cf"
+    },
+    {
+      "path": "docs/agent-contract.md",
+      "blob": "efd08f59f668ec5efa0bba4139764319c83afc9b"
+    },
+    {
+      "path": "docs/cli.md",
+      "blob": "e74bc60f2d458977315ad5bc28464f8e28294895"
+    },
+    {
+      "path": "docs/commands.md",
+      "blob": "c7611faf8eba7ff84f3834119e0148b8de5f83b7"
+    },
+    {
+      "path": "docs/community.md",
+      "blob": "58de2933db06eab50ed02d498dc2e74e3e3c1e17"
+    },
+    {
+      "path": "docs/concepts.md",
+      "blob": "10106c5b7828a6f26d475ffd2afe4535da3cd73c"
+    },
+    {
+      "path": "docs/customization.md",
+      "blob": "b1143b927662204ba7d2d42c13270b0043d16575"
+    },
+    {
+      "path": "docs/editing-changes.md",
+      "blob": "e2fc830bdf81a0f4bc1cbf7bf5b7232a5db8245c"
+    },
+    {
+      "path": "docs/examples.md",
+      "blob": "f49dabbd9409bf8dd1aaebacece8fec5c2464fa2"
+    },
+    {
+      "path": "docs/existing-projects.md",
+      "blob": "8e879d440792b3ef1a5e90076600490c56710929"
+    },
+    {
+      "path": "docs/explore.md",
+      "blob": "ef69c4c2201e50b2668d562ff8b129c1c56759ea"
+    },
+    {
+      "path": "docs/faq.md",
+      "blob": "b77cf9e92966125659102540c9b5303c39a37c27"
+    },
+    {
+      "path": "docs/getting-started.md",
+      "blob": "373efa186d0eb76f46fa600ea4a7a1d2934b5145"
+    },
+    {
+      "path": "docs/glossary.md",
+      "blob": "0c459fa06e6ab8c373103816f9b425197fc83246"
+    },
+    {
+      "path": "docs/how-commands-work.md",
+      "blob": "17d92e7ee9464d99a2fb6e18540be482b10c2230"
+    },
+    {
+      "path": "docs/installation.md",
+      "blob": "a42f026dc9300dcc4e5f133fdd060fc914cf655e"
+    },
+    {
+      "path": "docs/migration-guide.md",
+      "blob": "020f1b8c014af77c9e114d0b8fcc224a7c94542f"
+    },
+    {
+      "path": "docs/multi-language.md",
+      "blob": "f1f1258de10b48ef04e6a81f3e616ec6bbceefd8"
+    },
+    {
+      "path": "docs/opsx.md",
+      "blob": "c1b2dba37fb4a4fb3532e41800e89081228e3aaf"
+    },
+    {
+      "path": "docs/overview.md",
+      "blob": "6cda79036b4d1da99cb85fcb1277900c363562b4"
+    },
+    {
+      "path": "docs/reviewing-changes.md",
+      "blob": "c99f6bca3702c6189c14ebbef87ebb9906647a4e"
+    },
+    {
+      "path": "docs/stores-beta/user-guide.md",
+      "blob": "e34a8af16a151d31d7ce4f8899cd41a8d8855a43"
+    },
+    {
+      "path": "docs/supported-tools.md",
+      "blob": "9c7c15440dbaffcb3b74931c98ce8a6022ccca05"
+    },
+    {
+      "path": "docs/team-workflow.md",
+      "blob": "76c83817b8be9662274c61e5545edee609c7720b"
+    },
+    {
+      "path": "docs/troubleshooting.md",
+      "blob": "f35ada883a1bd7049cdad44e48f0da832142ac32"
+    },
+    {
+      "path": "docs/workflows.md",
+      "blob": "cbdc5d230b754b58b5f2cc5ba9f01389c18dbfda"
+    },
+    {
+      "path": "docs/writing-specs.md",
+      "blob": "1e9883a7c52cb38e0d062d5507802599aa70332d"
+    },
+    {
+      "path": "eslint.config.js",
+      "blob": "b5437a91f16a235d54bdf430f17844be15fd8113"
+    },
+    {
+      "path": "flake.lock",
+      "blob": "45e7b5aa99e47ed19e232abaa9f90e1fe33540ab"
+    },
+    {
+      "path": "flake.nix",
+      "blob": "1fda290b0de7934ae98f873f7906197440d2701b"
+    },
+    {
+      "path": "install.md",
+      "blob": "a37c0fe402fc74f0a425402a9e3801ffbe1476f9"
+    },
+    {
+      "path": "openspec-parallel-merge-plan.md",
+      "blob": "736ce506fd1db10e6487703f91bedb6e24695ede"
+    },
+    {
+      "path": "openspec/changes/IMPLEMENTATION_ORDER.md",
+      "blob": "6b5069e0b9cd96f96b29ac708d24b18abbde35fe"
+    },
+    {
+      "path": "openspec/changes/add-change-stacking-awareness/.openspec.yaml",
+      "blob": "910badd9832ff94cc37a6999c221ddc872ca9757"
+    },
+    {
+      "path": "openspec/changes/add-change-stacking-awareness/proposal.md",
+      "blob": "19a9adf97ad98e8e4fa7e2e455a8d1c57fba0102"
+    },
+    {
+      "path": "openspec/changes/add-change-stacking-awareness/specs/change-creation/spec.md",
+      "blob": "4136daad7f977f0ad82ed020518985b3d0bc1854"
+    },
+    {
+      "path": "openspec/changes/add-change-stacking-awareness/specs/change-stacking-workflow/spec.md",
+      "blob": "689584ac498b148f4e5b0f02d117f3a504f4a9ef"
+    },
+    {
+      "path": "openspec/changes/add-change-stacking-awareness/specs/cli-change/spec.md",
+      "blob": "bfc5885a03dcf57d48bafc2bb78cf32db8e7db46"
+    },
+    {
+      "path": "openspec/changes/add-change-stacking-awareness/specs/openspec-conventions/spec.md",
+      "blob": "becbe2e1a218594656f65ad1420a762eea67e64b"
+    },
+    {
+      "path": "openspec/changes/add-change-stacking-awareness/tasks.md",
+      "blob": "2273377ca979f996599aadd43f89881c141f4501"
+    },
+    {
+      "path": "openspec/changes/add-devin-desktop-support/.openspec.yaml",
+      "blob": "f617bd1867aad09d87790a713a42f5b3e8f9dd57"
+    },
+    {
+      "path": "openspec/changes/add-devin-desktop-support/proposal.md",
+      "blob": "e94310af23c6d2d50b16599af6f41a300a6d670b"
+    },
+    {
+      "path": "openspec/changes/add-devin-desktop-support/specs/ai-tool-paths/spec.md",
+      "blob": "9829f485333ffa334277c7ffd6872fee61796822"
+    },
+    {
+      "path": "openspec/changes/add-devin-desktop-support/specs/cli-init/spec.md",
+      "blob": "2b23f76af0f52c67b52fc581e8174cc5fdbd8acb"
+    },
+    {
+      "path": "openspec/changes/add-devin-desktop-support/specs/cli-update/spec.md",
+      "blob": "d8227b28e2af5beca4421ba2023a987bfeceb7cd"
+    },
+    {
+      "path": "openspec/changes/add-devin-desktop-support/specs/command-generation/spec.md",
+      "blob": "07ba141abae2abded0350481e77fb3fc71061e0d"
+    },
+    {
+      "path": "openspec/changes/add-devin-desktop-support/tasks.md",
+      "blob": "c80e2e3280febb61dfb88c6a077b87e8898c506b"
+    },
+    {
+      "path": "openspec/changes/add-global-install-scope/.openspec.yaml",
+      "blob": "910badd9832ff94cc37a6999c221ddc872ca9757"
+    },
+    {
+      "path": "openspec/changes/add-global-install-scope/design.md",
+      "blob": "09a5e504926933d7404c7227a7948b0ff4002075"
+    },
+    {
+      "path": "openspec/changes/add-global-install-scope/proposal.md",
+      "blob": "c860f1b91e748b64faa47841038e7378b02d8c4a"
+    },
+    {
+      "path": "openspec/changes/add-global-install-scope/specs/ai-tool-paths/spec.md",
+      "blob": "cc03dc031145ef52f61af8eee23dd32fbb84cba3"
+    },
+    {
+      "path": "openspec/changes/add-global-install-scope/specs/cli-config/spec.md",
+      "blob": "1fbf99e7ccab554675fb002fe65c02afce3282de"
+    },
+    {
+      "path": "openspec/changes/add-global-install-scope/specs/cli-init/spec.md",
+      "blob": "c6ee878b5a3642e8f318942d5af54322da64233c"
+    },
+    {
+      "path": "openspec/changes/add-global-install-scope/specs/cli-update/spec.md",
+      "blob": "4b346f56efca0ac452acb7860b05d3fe5a95628d"
+    },
+    {
+      "path": "openspec/changes/add-global-install-scope/specs/command-generation/spec.md",
+      "blob": "1ae0bad311b93581552ea07bd7992c95d1ede60a"
+    },
+    {
+      "path": "openspec/changes/add-global-install-scope/specs/global-config/spec.md",
+      "blob": "799b33dd9c774ca12e94f68f3c731415eefea06f"
+    },
+    {
+      "path": "openspec/changes/add-global-install-scope/specs/installation-scope/spec.md",
+      "blob": "852b438bb6a135c2909ffb7daae146660ca8eaf0"
+    },
+    {
+      "path": "openspec/changes/add-global-install-scope/tasks.md",
+      "blob": "b3b536ba77368b72c74c0c6640d112f4efe098f0"
+    },
+    {
+      "path": "openspec/changes/add-init-agents-target/.openspec.yaml",
+      "blob": "f205fc727fe999c9cd13744267a8f18d7201b632"
+    },
+    {
+      "path": "openspec/changes/add-init-agents-target/proposal.md",
+      "blob": "44d6fb57e6570e36fd2d2060387933b273b38b8f"
+    },
+    {
+      "path": "openspec/changes/add-init-agents-target/specs/ai-tool-paths/spec.md",
+      "blob": "53c86cbc115b162cb9e04e82be3652327cd4be4e"
+    },
+    {
+      "path": "openspec/changes/add-init-agents-target/specs/cli-init/spec.md",
+      "blob": "d053495c9b1ed7ec59c38f5c22e431bc2fa9ab11"
+    },
+    {
+      "path": "openspec/changes/add-init-agents-target/tasks.md",
+      "blob": "ad27c7436315c41126712d1252d84410525bf8cf"
+    },
+    {
+      "path": "openspec/changes/add-qa-smoke-harness/.openspec.yaml",
+      "blob": "d0ec88b2913a6252a86d0299e3019fe4732f72e0"
+    },
+    {
+      "path": "openspec/changes/add-qa-smoke-harness/proposal.md",
+      "blob": "a280eb41aa09c2a696f3c8852efe0835cd6113b9"
+    },
+    {
+      "path": "openspec/changes/add-qa-smoke-harness/specs/developer-qa-workflow/spec.md",
+      "blob": "30ee529d50196c0a3f17ef2acd2cf274e83a3fb7"
+    },
+    {
+      "path": "openspec/changes/add-skill-cli-auto-approval/proposal.md",
+      "blob": "5b00f40eade0e5dfbdc1e435f68edee6d8a065e4"
+    },
+    {
+      "path": "openspec/changes/add-skill-cli-auto-approval/specs/cli-init/spec.md",
+      "blob": "750194870eae180adc185ffe0cca8f7b9d1e47cd"
+    },
+    {
+      "path": "openspec/changes/add-skill-cli-auto-approval/specs/command-generation/spec.md",
+      "blob": "d593b38fa33a9865839bd236f4b384385705890f"
+    },
+    {
+      "path": "openspec/changes/add-skill-cli-auto-approval/tasks.md",
+      "blob": "8650e3c50aa8c1e172364c83b8af3559a519a0bb"
+    },
+    {
+      "path": "openspec/changes/add-status-next-step/.openspec.yaml",
+      "blob": "1d9aeef992c1b5f42711704a7a1a20db51635c90"
+    },
+    {
+      "path": "openspec/changes/add-status-next-step/proposal.md",
+      "blob": "3b07aa2173ab6c7295d8630cb96011b3b90a53ed"
+    },
+    {
+      "path": "openspec/changes/add-status-next-step/specs/cli-artifact-workflow/spec.md",
+      "blob": "27447ef6cdbd3e3c97f8ac1af61e9495e07f2e70"
+    },
+    {
+      "path": "openspec/changes/add-status-next-step/tasks.md",
+      "blob": "507b923cad865f2486e6acb82c09084a763ba53a"
+    },
+    {
+      "path": "openspec/changes/add-tool-command-surface-capabilities/.openspec.yaml",
+      "blob": "d299748398be74e29b27608acd0e9c3e994e8854"
+    },
+    {
+      "path": "openspec/changes/add-tool-command-surface-capabilities/proposal.md",
+      "blob": "33f76050677437c1fb21558d99f63eeae677ffc7"
+    },
+    {
+      "path": "openspec/changes/add-tool-command-surface-capabilities/specs/cli-init/spec.md",
+      "blob": "00543808a8542643607dd3232624bc9d411daa9f"
+    },
+    {
+      "path": "openspec/changes/add-tool-command-surface-capabilities/specs/cli-update/spec.md",
+      "blob": "c8d9a8d2557f1dc1104459dd7c54a7186ef338ea"
+    },
+    {
+      "path": "openspec/changes/add-tool-command-surface-capabilities/tasks.md",
+      "blob": "6a6b0b1b9f256885684a4e19725ce3a1384eea83"
+    },
+    {
+      "path": "openspec/changes/add-update-workflow/.openspec.yaml",
+      "blob": "34f9314d22075dd7db8ce96d74e7500dd1d8de8e"
+    },
+    {
+      "path": "openspec/changes/add-update-workflow/design.md",
+      "blob": "3dd6ca53a3d29557309fe6ae468965715ea54930"
+    },
+    {
+      "path": "openspec/changes/add-update-workflow/proposal.md",
+      "blob": "4bfc506bf852827f3580b5db9b2f9ac8afdd329b"
+    },
+    {
+      "path": "openspec/changes/add-update-workflow/specs/opsx-update-skill/spec.md",
+      "blob": "6dc4a4b7048d796a1787c52e9513ff3870bc59df"
+    },
+    {
+      "path": "openspec/changes/add-update-workflow/tasks.md",
+      "blob": "c56308f0c78af59b1b32d0eb09482ff4b59e63fc"
+    },
+    {
+      "path": "openspec/changes/add-validation-findings-report/.openspec.yaml",
+      "blob": "d160e09cf5e88ce54164ccf9b7f2b16b4ce78d65"
+    },
+    {
+      "path": "openspec/changes/add-validation-findings-report/design.md",
+      "blob": "65466ed97c04ea4f42d1b489579e86c6084b9f15"
+    },
+    {
+      "path": "openspec/changes/add-validation-findings-report/proposal.md",
+      "blob": "7369cef9c7a98d687225da93a8c2aeb3aa22f240"
+    },
+    {
+      "path": "openspec/changes/add-validation-findings-report/specs/cli-validate/spec.md",
+      "blob": "e52e9e9b0d1634b8817bd6d308d2aa2f13e5d252"
+    },
+    {
+      "path": "openspec/changes/add-validation-findings-report/tasks.md",
+      "blob": "646f10b34fdc0d87d82d59215304e7000f4b1090"
+    },
+    {
+      "path": "openspec/changes/archive/2025-01-11-add-update-command/design.md",
+      "blob": "5affafe32ccf362b4592acac29dbcd11a9e5889e"
+    },
+    {
+      "path": "openspec/changes/archive/2025-01-11-add-update-command/proposal.md",
+      "blob": "acbe02df9c2b472b9fd81e231d6451ebe7130cde"
+    },
+    {
+      "path": "openspec/changes/archive/2025-01-11-add-update-command/specs/cli-update/spec.md",
+      "blob": "725884c56c3717550d579e0a0f61b539ae5149a3"
+    },
+    {
+      "path": "openspec/changes/archive/2025-01-11-add-update-command/tasks.md",
+      "blob": "c539e03e22a51c67a38ceffa8d1e48fdefc1628f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-01-13-add-list-command/proposal.md",
+      "blob": "127bd003428ecfdd05888ba99b2f00662ab6e121"
+    },
+    {
+      "path": "openspec/changes/archive/2025-01-13-add-list-command/specs/cli-list/spec.md",
+      "blob": "99559251869bd4a99e5cac0ad6c9cf0227aa36fa"
+    },
+    {
+      "path": "openspec/changes/archive/2025-01-13-add-list-command/tasks.md",
+      "blob": "90809a5874542bc62969f20cca45878d995b17ff"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-05-initialize-typescript-project/design.md",
+      "blob": "b81a92d0f6f7aa40249d3444daa2d3321c60170d"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-05-initialize-typescript-project/proposal.md",
+      "blob": "5e58dc327c953caf011d533ed0c0b372ff4f0ca4"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-05-initialize-typescript-project/tasks.md",
+      "blob": "7b68896cd3bb62b3058ea9cfad234d8b0ce9aa98"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-06-add-init-command/design.md",
+      "blob": "bd848c07b8e6c514294d3ac7fbc8253b01c3de9a"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-06-add-init-command/proposal.md",
+      "blob": "b3230b310872d69d660489248851c3e3139bdaa9"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-06-add-init-command/specs/cli-init/spec.md",
+      "blob": "76614317e8ed1f0646655705848e59942f35bef0"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-06-add-init-command/tasks.md",
+      "blob": "ce0ed3143873e2fcd7fdad73a7bff6b9a6309b02"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-06-adopt-future-state-storage/proposal.md",
+      "blob": "f73848a477442830f203b853689c82f69c3155e5"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-06-adopt-future-state-storage/specs/openspec-conventions/spec.md",
+      "blob": "246e203e2c2d3f0466539e8dcb8e80374beb6a6a"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-06-adopt-future-state-storage/tasks.md",
+      "blob": "2d084d48e4b8d98c384f4aadfacdfbb8d39e88d3"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-11-add-complexity-guidelines/proposal.md",
+      "blob": "a49ef1a38b8b87951e64430bf577bd14272e4e01"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-11-add-complexity-guidelines/specs/openspec-docs/README.md",
+      "blob": "333efd282bab97ae0a95b2b387f440623b74da85"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-11-add-complexity-guidelines/tasks.md",
+      "blob": "1764e326e7af81f189c45a4126bb568c4140d80e"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-13-add-archive-command/proposal.md",
+      "blob": "234e91fcd81fab269c93a471ad3cf46033a6fd82"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-13-add-archive-command/specs/cli-archive/spec.md",
+      "blob": "99990e3c22c1d84cbe9456216f5ba3b9a4bb6832"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-13-add-archive-command/tasks.md",
+      "blob": "80adfb4897b85aec0ec84cea87c8afeab43b4587"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-13-add-diff-command/proposal.md",
+      "blob": "3d0601b2a1b8741ab23a64793148917762166b22"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-13-add-diff-command/specs/cli-diff/spec.md",
+      "blob": "6294e508490a724d91c4730f86639f9bd441f9e2"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-13-add-diff-command/tasks.md",
+      "blob": "45cb2b0735fe00f7c62f338e48077ac26460b6d1"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-change-commands/design.md",
+      "blob": "881214bbba70c0fe7b18ba9d46c655130ee7cb78"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-change-commands/proposal.md",
+      "blob": "dd4d548744d58149a07322c475568d70b2cfd7fa"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-change-commands/specs/cli-change/spec.md",
+      "blob": "0fd5f37396fa7df0929d6ffbe667ea577364ace2"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-change-commands/specs/cli-list/spec.md",
+      "blob": "fbafdfc5b553b94de54f27c8331a3aeec027dad5"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-change-commands/tasks.md",
+      "blob": "bcac466a8afde5c55ff23fdc777e078e4e9f6cd5"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-interactive-show-command/proposal.md",
+      "blob": "995234661094b47ac72e7500fbe7ce3d70d552c1"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-interactive-show-command/specs/cli-change/spec.md",
+      "blob": "4ca2b461d8f22d50f4b69c5cd1a02d985e65587a"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-interactive-show-command/specs/cli-show/spec.md",
+      "blob": "a129fb6c9d03cb650b246ebd7b5d92459b269c59"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-interactive-show-command/specs/cli-spec/spec.md",
+      "blob": "7d453451e6790b7829a9abe00f5e8917041317d5"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-interactive-show-command/tasks.md",
+      "blob": "4fc8ac4c0bbbf546b086076edab6329195a7c253"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-skip-specs-archive-option/proposal.md",
+      "blob": "8febffd7fd597589425e797a39b5fc2427d2e3c8"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-skip-specs-archive-option/specs/cli-archive/spec.md",
+      "blob": "f5ee41de90a22322f5cb9853817e795e592922e1"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-skip-specs-archive-option/tasks.md",
+      "blob": "4cf3f0bdb87d3f819b8791e41afe35734c00985c"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-spec-commands/design.md",
+      "blob": "193a579efb24001a8d36594a9c32e97f65ff3287"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-spec-commands/proposal.md",
+      "blob": "ec1b4ce5f18ec0ae9308e1dc9e21d56d91ed21c7"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-spec-commands/specs/cli-spec/spec.md",
+      "blob": "357a243ce65ab4edc5faa5427abec638f0faab11"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-spec-commands/tasks.md",
+      "blob": "8fd4a9b9c26b5246414dcb9b47ae959562c7a52c"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-zod-validation/design.md",
+      "blob": "f40189fef01375bdcc7e248a4949d7f216b68deb"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-zod-validation/proposal.md",
+      "blob": "4a9ac749f1a82cb5c306aa166ccb5ee64436d357"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-zod-validation/specs/cli-archive/spec.md",
+      "blob": "4ee7266274db6c5638281597704237b6c3106bd5"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-zod-validation/specs/cli-diff/spec.md",
+      "blob": "9c3998abff3af9a20543c5cbb568d76b41b45a4e"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-add-zod-validation/tasks.md",
+      "blob": "9e28eeb166626baf0599568db5cd0829b4d2c41f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-adopt-delta-based-changes/proposal.md",
+      "blob": "98bbcceb00a3897cba0287709af9b18a9f04daf1"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-adopt-delta-based-changes/specs/cli-archive/spec.md",
+      "blob": "5d3d83d594dbab41864e20659564dc77c153b970"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-adopt-delta-based-changes/specs/cli-diff/spec.md",
+      "blob": "bf950562f6647731190d02086e47d2d34ec724ee"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-adopt-delta-based-changes/specs/openspec-conventions/spec.md",
+      "blob": "b6ac9868e1703be7c08786ac9d6228dfbca6797a"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-adopt-delta-based-changes/tasks.md",
+      "blob": "de228fd0458cf0b8ff2f2ed92e73c67d60d270e7"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-adopt-verb-noun-cli-structure/design.md",
+      "blob": "f106b6d5edb768394ce3e91eb0765a7fcd2ca676"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-adopt-verb-noun-cli-structure/proposal.md",
+      "blob": "104f84ffb15fd73383a42bf88219c4588e7b0e9f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-adopt-verb-noun-cli-structure/specs/cli-list/spec.md",
+      "blob": "53f3ae78320ce6073442133aca0f553282df4200"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-adopt-verb-noun-cli-structure/specs/openspec-conventions/spec.md",
+      "blob": "6133558cf6715446c25dddd12143389b2c75974e"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-adopt-verb-noun-cli-structure/tasks.md",
+      "blob": "fe131dc00db613b7d14f9d62a0b503773ef4b9e1"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-bulk-validation-interactive-selection/proposal.md",
+      "blob": "a91043ca6eac7019a2f3566e6c8506a2c9f6bc9d"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-bulk-validation-interactive-selection/specs/cli-change/spec.md",
+      "blob": "1d334145aa1da8e42f567140bb81801b8957e2a1"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-bulk-validation-interactive-selection/specs/cli-spec/spec.md",
+      "blob": "fb0bb922141d59a33bd35d7e5455b657472dcaab"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-bulk-validation-interactive-selection/specs/cli-validate/spec.md",
+      "blob": "3fb0b07477a0d0ebda6f03faa5355839091f5cd1"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-bulk-validation-interactive-selection/tasks.md",
+      "blob": "5e5b5afaed8abdd4c0855539ec01d475949b10cc"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-fix-update-tool-selection/proposal.md",
+      "blob": "0b3d891cfc4191ce4f9f8851c4a9348476fd71d8"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-fix-update-tool-selection/specs/cli-update/spec.md",
+      "blob": "31684f4aa067a0ac7a8e98ae6f1261e09ab56d1f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-fix-update-tool-selection/tasks.md",
+      "blob": "8e6cd01b569f980894e78d98e80c4c1965b52b64"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-improve-validate-error-messages/proposal.md",
+      "blob": "c2d44fc30c14430af5e5ac2de09ba412802691df"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-improve-validate-error-messages/specs/cli-validate/spec.md",
+      "blob": "7660b607db0dd07fc905d2956342da67dc8eb831"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-improve-validate-error-messages/tasks.md",
+      "blob": "89e537c7f4bf999c1524f9b8cc8bdd1e1bbabe4e"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-structured-spec-format/proposal.md",
+      "blob": "95c580e4daee61b67e9b17abac562c1720d07d0b"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-structured-spec-format/specs/openspec-conventions/spec.md",
+      "blob": "fe087be7ecb80928631f7bce21e77ff6dabf0865"
+    },
+    {
+      "path": "openspec/changes/archive/2025-08-19-structured-spec-format/tasks.md",
+      "blob": "02c2f4ec87a181ee9b6c37edc4baa64d0038978c"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-12-add-view-dashboard-command/proposal.md",
+      "blob": "ca5cccb566f934babbc8cb34b4fedc546461c9a1"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-12-add-view-dashboard-command/specs/cli-view/spec.md",
+      "blob": "deadeb20e9b2dbfba8525175ec50c7f4ec4e438f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-12-add-view-dashboard-command/tasks.md",
+      "blob": "e41c02c830ad8bb341bc3e70a77e8842b09b0785"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-add-agents-md-config/proposal.md",
+      "blob": "a54bc433e6100ae03b63ffc99f02430ebab747b2"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-add-agents-md-config/specs/cli-init/spec.md",
+      "blob": "fdb4417e3c9ed8b6ea751414f30a054e978a74f7"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-add-agents-md-config/specs/cli-update/spec.md",
+      "blob": "be9d5ff850bd6accfa5695bce828718aa1182a82"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-add-agents-md-config/tasks.md",
+      "blob": "55400e84965e271354bf795e07e7d58f2bc3363b"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-add-multi-agent-init/proposal.md",
+      "blob": "58a25e5387b24bbedf0238470426d2b8c6b36433"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-add-multi-agent-init/specs/cli-init/spec.md",
+      "blob": "4c14df1ce1e4a95636b19d80316d6ab703a4bc63"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-add-multi-agent-init/tasks.md",
+      "blob": "aaa4d016d6d1b3301aa37fa46cc129b307af8667"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-add-slash-command-support/proposal.md",
+      "blob": "f11413a145051e88b8ec2bd9b429a1fec7234493"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-add-slash-command-support/specs/cli-init/spec.md",
+      "blob": "02fbdeee5a0ce3d55191d7fa5ade96492177d40a"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-add-slash-command-support/specs/cli-update/spec.md",
+      "blob": "b92ce01eb41e9af07d89f135365e0ee34a486f04"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-add-slash-command-support/tasks.md",
+      "blob": "8bd00dc17c3d89ae998d90e4cbee91b5e41df3e2"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-improve-cli-e2e-plan/proposal.md",
+      "blob": "418a661c1eb15495d4c283105d4d77b0a8821154"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-improve-cli-e2e-plan/tasks.md",
+      "blob": "4a4ec43196071a124f9ae3b9e6c11968f8e440ff"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-improve-deterministic-tests/proposal.md",
+      "blob": "f497a9d1db0386ec73ea96b4aa12de7901ba6e2d"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-improve-deterministic-tests/tasks.md",
+      "blob": "f4803189bc065bff8a72d3eee8bbde7c86a84d7d"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-improve-init-onboarding/proposal.md",
+      "blob": "bbea65b4a1f4689bad09457ae5557643067f73b3"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-improve-init-onboarding/specs/cli-init/spec.md",
+      "blob": "def65978201635d5cd936cf7087f28ed5c1b7341"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-improve-init-onboarding/tasks.md",
+      "blob": "e4d3eaf13ef2d78ba67f06df3b8ce7dfc22a3814"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-remove-diff-command/proposal.md",
+      "blob": "27cfaf59f6fe2c6226bae898798bdf992b3080ad"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-remove-diff-command/tasks.md",
+      "blob": "c6e078ac9362e7f28e2dba659c705e672dbefb54"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-sort-active-changes-by-progress/proposal.md",
+      "blob": "7dbfb21524895b1233f4429d65d6a05726663c17"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-sort-active-changes-by-progress/specs/cli-view/spec.md",
+      "blob": "758798798d385b26ddee0cd622dbc62ce1fc5ddd"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-sort-active-changes-by-progress/tasks.md",
+      "blob": "1ac9c24e96a58a5625ddddd3e83bb253ff25557f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-update-agent-file-name/proposal.md",
+      "blob": "365d6553658e14940fdadb17fbb646a2a8591429"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-update-agent-file-name/specs/cli-init/spec.md",
+      "blob": "e3ad473a43201afca878d47770e07e8bfcbe858f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-update-agent-file-name/specs/cli-update/spec.md",
+      "blob": "32f7e28408cb5765e7f5efe1b9e62bb48a1ad9fe"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-update-agent-file-name/specs/openspec-conventions/spec.md",
+      "blob": "9844b70d0b7fc6827533cfa6ffb2f78e8107b701"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-update-agent-file-name/tasks.md",
+      "blob": "f6a16d6397ccfc8f901d98e636d10b4d8fe7cb1f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-update-agent-instructions/design.md",
+      "blob": "3293b10d42aa8c612699f0154829497d52f43755"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-update-agent-instructions/proposal.md",
+      "blob": "0ac9e58bef01c8d80fb36e2e55c9896cd87b0459"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-update-agent-instructions/tasks.md",
+      "blob": "2afd4e72fe42aec2771fefd97d5214ce12297c95"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-update-markdown-parser-crlf/proposal.md",
+      "blob": "751673e9d4340c83856d96845fdffb5db4b44094"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-update-markdown-parser-crlf/specs/cli-validate/spec.md",
+      "blob": "55d70865dae2d175b484be20ab9f3c53284427ef"
+    },
+    {
+      "path": "openspec/changes/archive/2025-09-29-update-markdown-parser-crlf/tasks.md",
+      "blob": "1c56226117d8ba5b0c64d447988f2005ed94d76d"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-codex-slash-command-support/proposal.md",
+      "blob": "8e2a1169b6fd27f0ab2a9c11301f4e73cebc4d42"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-codex-slash-command-support/specs/cli-init/spec.md",
+      "blob": "58b6c11ae93ca3fc8237074cf98584bc1753b694"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-codex-slash-command-support/specs/cli-update/spec.md",
+      "blob": "70ae8deabf87b9de3ac1b4e80478d2d7693bf18e"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-codex-slash-command-support/tasks.md",
+      "blob": "d59c1450b82a14ac8483d0422227b529edbf156d"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-github-copilot-prompts/proposal.md",
+      "blob": "02322a731eb80f4387009990671ab514b8fe8419"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-github-copilot-prompts/specs/cli-init/spec.md",
+      "blob": "57b10ee8efd11f8ab0a2639a96d7b56f5f5bfbf7"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-github-copilot-prompts/specs/cli-update/spec.md",
+      "blob": "fac612a7f6415100568626f3b6fd67fbaa20fef2"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-github-copilot-prompts/tasks.md",
+      "blob": "553bc3746af6fce4683731e8e3d5bcb93af6ca43"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-kilocode-workflows/proposal.md",
+      "blob": "05703cdf438a5077bb86ab11ab5836428bf768b4"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-kilocode-workflows/specs/cli-init/spec.md",
+      "blob": "e1304c2f887b3e2a105aacd390378c6b65155d68"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-kilocode-workflows/specs/cli-update/spec.md",
+      "blob": "5c3d16956f3c472fe78e66a7059e1e89869c5bcc"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-kilocode-workflows/tasks.md",
+      "blob": "47e6add58e6846200e745a8be44e10747fc9756f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-non-interactive-init-options/proposal.md",
+      "blob": "7ed7da92f9272cd4b5486e8c1ea1d87091ee714e"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-non-interactive-init-options/specs/cli-init/spec.md",
+      "blob": "7e381983672268de814f7cba0ed686407bd1e5cd"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-non-interactive-init-options/tasks.md",
+      "blob": "8867fd403626643e497988c4a6a4a25033213d1e"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-windsurf-workflows/proposal.md",
+      "blob": "412782ff8cb371fb8967c2707f109e9de06b6a19"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-windsurf-workflows/specs/cli-init/spec.md",
+      "blob": "ed25d05328a79abae22dd60523e8ce49aba2ed31"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-windsurf-workflows/specs/cli-update/spec.md",
+      "blob": "19cf90fa2e373994eedc418996f162dac73585eb"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-add-windsurf-workflows/tasks.md",
+      "blob": "5ff8a7e8474e07e10091f7209bad8761cdf24368"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-enhance-validation-error-messages/proposal.md",
+      "blob": "aa954efc3fc7a3ca6bacc00723c2107a62679b08"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-enhance-validation-error-messages/specs/cli-validate/spec.md",
+      "blob": "4d55ecd82c164b8152b0dee0f9f363941e9acf6d"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-enhance-validation-error-messages/tasks.md",
+      "blob": "d8aec3ad9370c281e65f6b02be990b8ac9401a3b"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-improve-agent-instruction-usability/proposal.md",
+      "blob": "bbd17c2a1e8a1977d5d0e461424ee3d713bdbf54"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-improve-agent-instruction-usability/specs/docs-agent-instructions/spec.md",
+      "blob": "c2465fca7db97fa3030b6f9e4f2b2228f68c2613"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-improve-agent-instruction-usability/tasks.md",
+      "blob": "18011c82941c34142a2251b890f44849ec3440d9"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-slim-root-agents-file/proposal.md",
+      "blob": "6b6fd44875cd70d19fbdffd2786df2e78cf282b1"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-slim-root-agents-file/tasks.md",
+      "blob": "331eb9b90bd9cad7110b95bb81496b1f17396e3e"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-update-cli-init-enter-selection/proposal.md",
+      "blob": "c16c0214c0ed8e82dea9dc91a13e7527d9562925"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-update-cli-init-enter-selection/specs/cli-init/spec.md",
+      "blob": "330f367c070184ff34fe0bf0f6f8fcf404286619"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-update-cli-init-enter-selection/tasks.md",
+      "blob": "973c44194d9159565543806f2a7c67cf0d4a54f5"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-update-cli-init-root-agents/proposal.md",
+      "blob": "e1faf7d1fed57df134c38420e894d98ec7c554b7"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-update-cli-init-root-agents/specs/cli-init/spec.md",
+      "blob": "c01e4ce7d7e2f5151d93a4f57856ae6a0806fdad"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-update-cli-init-root-agents/specs/cli-update/spec.md",
+      "blob": "6384ea9e9168f83619d12fe9fe59a41339923ecc"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-update-cli-init-root-agents/tasks.md",
+      "blob": "7d0c77e81646b55e41823a8239780432125b1f69"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-update-release-automation/proposal.md",
+      "blob": "1bd94bf6521bc0ea3e114f80a5a4559f69f7a430"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-14-update-release-automation/tasks.md",
+      "blob": "e217bbc3c513842b7167fdde4a984414ed6d5961"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-archive-command-arguments/proposal.md",
+      "blob": "a6f368617e23d17bea175d92e049706b8c9738e2"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-archive-command-arguments/specs/cli-update/spec.md",
+      "blob": "f164153b08c7e48b450c4602f270ed8d1f6a91b6"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-archive-command-arguments/tasks.md",
+      "blob": "0a4d3096188c7f0631d9f5f788b62ffd42d95e10"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-cline-support/proposal.md",
+      "blob": "b2fdd5aa772f4f42e1c46c88bffd9413e561ddcb"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-cline-support/specs/cli-init/spec.md",
+      "blob": "c33382fc5f4a8f0b0c712aeec4a22d237b68a36c"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-cline-support/tasks.md",
+      "blob": "6e7bfe97eb7e5e38320bca4f09f4d1e4fd728106"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-crush-support/proposal.md",
+      "blob": "e4936527ad1dba7ac6d7d9e07b8046a2485023e9"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-crush-support/specs/cli-init/spec.md",
+      "blob": "f5caf355d5418c11b4f9dc7c855e176654c868ba"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-crush-support/tasks.md",
+      "blob": "cd25fb70ce25dd8f3c7c6d4cbbbb3ea0da7682a2"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-factory-slash-commands/proposal.md",
+      "blob": "2d09c1fc4d1aa080e52b8bee705ce6f0d8f9b6af"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-factory-slash-commands/specs/cli-init/spec.md",
+      "blob": "628797b3212846524630c3279fc262ed68211fde"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-factory-slash-commands/specs/cli-update/spec.md",
+      "blob": "bfa2885169d2979eaf815fd7488711ec63268e90"
+    },
+    {
+      "path": "openspec/changes/archive/2025-10-22-add-factory-slash-commands/tasks.md",
+      "blob": "886bb11a99eca30bf8a655ba59dd3051b74b4d8b"
+    },
+    {
+      "path": "openspec/changes/archive/2025-11-06-add-shell-completions/design.md",
+      "blob": "4dac3e5dc5ae4628ab68dbd6b5be53c24dac57cf"
+    },
+    {
+      "path": "openspec/changes/archive/2025-11-06-add-shell-completions/proposal.md",
+      "blob": "198b0bd77607ae76276cec10d45391a6e2ec277e"
+    },
+    {
+      "path": "openspec/changes/archive/2025-11-06-add-shell-completions/specs/cli-completion/spec.md",
+      "blob": "a531899232862ec704afc94261f75b5f6545d9ae"
+    },
+    {
+      "path": "openspec/changes/archive/2025-11-06-add-shell-completions/tasks.md",
+      "blob": "84589567a2141a0d87b1676da1a64993a20cc702"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-20-add-global-config-dir/design.md",
+      "blob": "3f6ec5be2608d479f78d5d6d2b7fc487f8259058"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-20-add-global-config-dir/proposal.md",
+      "blob": "35cc14b564e2d28d4e6415064f10d5b25579d522"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-20-add-global-config-dir/specs/global-config/spec.md",
+      "blob": "87e0106d19a89561c823ea8630faa85d5a988c8f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-20-add-global-config-dir/tasks.md",
+      "blob": "240d5e88ad90f6d66d48657912a3f7fb1ab042fa"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-21-add-config-command/design.md",
+      "blob": "8d0703f7fd1a0d76699368dd049b182ba60e8f10"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-21-add-config-command/proposal.md",
+      "blob": "5a8056f34f95ed48ecdf87568603bbc308d301e9"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-21-add-config-command/specs/cli-config/spec.md",
+      "blob": "a856ecf5cd3abeddaed42284d8244ea21e6f0be2"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-21-add-config-command/tasks.md",
+      "blob": "572e70e364d20ebe041ea64ca3c88f28acc1f160"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-23-extend-shell-completions/proposal.md",
+      "blob": "dc0f3031d0aa8429ef7b8282c5c2920ad2d29cd1"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-23-extend-shell-completions/specs/cli-completion/spec.md",
+      "blob": "029e23470bba12c96fd40b843d7d250e6ea303f7"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-23-extend-shell-completions/tasks.md",
+      "blob": "7fd5873d24894a3ca9c31929aee7ef11fa5bd5e8"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-24-add-artifact-graph-core/design.md",
+      "blob": "0c1d49a00f157fe5dca087bdf39907dcd744f062"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-24-add-artifact-graph-core/proposal.md",
+      "blob": "393d3311547e0d6272ca59bf6c39d3b96d7c94c6"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-24-add-artifact-graph-core/specs/artifact-graph/spec.md",
+      "blob": "bc5898f5a7bb91ebc162fa87115b1206934eb6c9"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-24-add-artifact-graph-core/tasks.md",
+      "blob": "125f186cb8a080c55cf70169ae56cac54bdd0ea8"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-25-add-change-manager/design.md",
+      "blob": "12e835141107cb05f4968bc137f548619b2a2ee6"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-25-add-change-manager/proposal.md",
+      "blob": "047d46db6d3d45684fb167734eb1c879a4b00631"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-25-add-change-manager/specs/change-creation/spec.md",
+      "blob": "447bf78b0e187440dbf21c616403993ef83819bb"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-25-add-change-manager/tasks.md",
+      "blob": "d07177cd4ba3cd035fb6cbc1be5846a30316fb0c"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-add-artifact-workflow-cli/design.md",
+      "blob": "ae7616fd02f24baaa755eeae055effaafc348f50"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-add-artifact-workflow-cli/proposal.md",
+      "blob": "93e54038987f3de40864aa5b9bfeb3cb0f2a586f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-add-artifact-workflow-cli/specs/cli-artifact-workflow/spec.md",
+      "blob": "dbf5d3d2d17b8205910d459aa7f460c04a5358d1"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-add-artifact-workflow-cli/tasks.md",
+      "blob": "f1a3d4a17ed37190fc20366e3dc3bb4424221efc"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-add-instruction-loader/design.md",
+      "blob": "332f2db48354adef7ad4f1c5d485e5267cc7db65"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-add-instruction-loader/proposal.md",
+      "blob": "0112fb3b1c1bbfbf2ae29eb424e682796316ec88"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-add-instruction-loader/specs/instruction-loader/spec.md",
+      "blob": "7dbe61d55b2a0eeada94f41beb7ea423a4f0188d"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-add-instruction-loader/tasks.md",
+      "blob": "a4dbc3ac225b79543952b7d8b70fb4b256e437a5"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-restructure-schema-directories/design.md",
+      "blob": "f49cc692c0f0cd3a28366b6fc0ca528adf6c3a49"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-restructure-schema-directories/proposal.md",
+      "blob": "47fe8719ffc04815d5b695564640a9a6cf201c2b"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-restructure-schema-directories/specs/artifact-graph/spec.md",
+      "blob": "1568765d16a21f0a0fe0dc1983f59a40fac82faf"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-28-restructure-schema-directories/tasks.md",
+      "blob": "dd18908dcf8dc1c1b93105c0288ce13ea0a50ebf"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-29-unify-change-state-model/design.md",
+      "blob": "1ffe3b3663e340e63433859258c8a0e0d9f7273a"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-29-unify-change-state-model/proposal.md",
+      "blob": "37753adb052328c5746a6961f74a3d4d1bd182c4"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-29-unify-change-state-model/specs/cli-artifact-workflow/spec.md",
+      "blob": "72270a5a676db433b5fa302857c095bfa25d3ed5"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-29-unify-change-state-model/specs/cli-view/spec.md",
+      "blob": "40f6f7b413c5872f9332988d369a434a19f2a41a"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-29-unify-change-state-model/tasks.md",
+      "blob": "d956b98e3e21fde4af8c02f817ec2c4962808414"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-30-add-antigravity-support/proposal.md",
+      "blob": "6ca49b453e3618a44a9e381cd99293c8e3d2dd58"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-30-add-antigravity-support/specs/cli-init/spec.md",
+      "blob": "5994b8f1e5ae8045179aba848da3b609a1ef69cc"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-30-add-antigravity-support/specs/cli-update/spec.md",
+      "blob": "641688ec9584d6d90fdc9547c2115c2a365f1d36"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-30-add-antigravity-support/tasks.md",
+      "blob": "e58d7b020e4cd311211e8a79cd2c9b2843bc9aa8"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-30-fix-cline-workflows-implementation/proposal.md",
+      "blob": "1d26b19165aa9bd4ad98ca4958f76005ddba189e"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-30-fix-cline-workflows-implementation/specs/cli-init/spec.md",
+      "blob": "06951acb0bca8654377575b7a3937018f2c487d3"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-30-fix-cline-workflows-implementation/specs/cli-update/spec.md",
+      "blob": "2a49df1671294ef4dfc7b2de9e93107a826b682f"
+    },
+    {
+      "path": "openspec/changes/archive/2025-12-30-fix-cline-workflows-implementation/tasks.md",
+      "blob": "a023f820c6d73d79c4fcde6f28107cca1ed31f4f"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-add-agent-schema-selection/proposal.md",
+      "blob": "97a2fe0237e29c0133f4f3d1e574491909966146"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-add-agent-schema-selection/tasks.md",
+      "blob": "6ee5eb44410b055f3f33f2153b54e8f62e0387c8"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-add-per-change-schema-metadata/design.md",
+      "blob": "58671ff1215bafceb11a73ffca6f58ae0cec5bb2"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-add-per-change-schema-metadata/proposal.md",
+      "blob": "524de584a11945ae918b73671f95ef528c88de70"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-add-per-change-schema-metadata/specs/cli-artifact-workflow/spec.md",
+      "blob": "a6f1db5bcab58f188bdafaf6e03fb64c912b9dc2"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-add-per-change-schema-metadata/tasks.md",
+      "blob": "585313116bc05c51de49f785eca5d2e20dc3ef34"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-add-specs-apply-command/.openspec.yaml",
+      "blob": "5d67ddcd6b14261400acf2654ff9c47f0f8e45cc"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-add-specs-apply-command/design.md",
+      "blob": "a3b255933464ff43e5b83c40882474f3ccc310f4"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-add-specs-apply-command/proposal.md",
+      "blob": "22fccb65519b4efced7e72e5533c6a227257c457"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-add-specs-apply-command/specs/specs-sync-skill/spec.md",
+      "blob": "084b3f1cc71931ecac89c3b65db46423846043e2"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-add-specs-apply-command/tasks.md",
+      "blob": "7af3bb04a57c4633fb2cfb6b6a5ab2956cf667d5"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-make-apply-instructions-schema-aware/proposal.md",
+      "blob": "b9c86eda326998f4eb7626fb6a4abbabd7b84997"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-make-apply-instructions-schema-aware/specs/cli-artifact-workflow/spec.md",
+      "blob": "c1ac2472c7db76ba74aba51bb2f7f9e93d7680e6"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-make-apply-instructions-schema-aware/tasks.md",
+      "blob": "29408bd91dab444fa42b57670807c048fa8fcb49"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-opsx-archive-command/.openspec.yaml",
+      "blob": "75b7b3e31f9ddbe09dc3134a89afaa0891fa635a"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-opsx-archive-command/design.md",
+      "blob": "7e01aea7cff3c719a4086f221cedb885dac1ba61"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-opsx-archive-command/proposal.md",
+      "blob": "263faaee251e4a80ad4438008848a32e6562bc5f"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-opsx-archive-command/specs/opsx-archive-skill/spec.md",
+      "blob": "59891c6e54b27305dbcd1f0024a60e3347a23b48"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-06-opsx-archive-command/tasks.md",
+      "blob": "2b1582ab58270b4df0b2b910182ae6f25ccbbf55"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-07-add-nix-flake-support/.openspec.yaml",
+      "blob": "75b7b3e31f9ddbe09dc3134a89afaa0891fa635a"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-07-add-nix-flake-support/design.md",
+      "blob": "ec4cba3b795f575048734ab684bd8dbda2f248e6"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-07-add-nix-flake-support/proposal.md",
+      "blob": "77cb3973cd7eff2c43bea07ffa7a42a11505e123"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-07-add-nix-flake-support/specs/nix-flake-support/spec.md",
+      "blob": "8672490352f352464b93100fb8ce11764373e280"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-07-add-nix-flake-support/tasks.md",
+      "blob": "190d9ec4bdfd884e9e53c4cfae968f40f3b89da5"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-add-flake-update-script/.openspec.yaml",
+      "blob": "e5cb8126be412ef4a90e28f299485bdb3c43353b"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-add-flake-update-script/design.md",
+      "blob": "0cfb0d556dcd3fba360a3c8b56f1c8fb4d85ed0d"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-add-flake-update-script/proposal.md",
+      "blob": "a81b10db1fd19983daba6c72d43f3e37aa40f1a9"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-add-flake-update-script/specs/flake-update-script/spec.md",
+      "blob": "891869ecb24b3bcbbca1074e5b2a897ab5b53a1b"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-add-flake-update-script/tasks.md",
+      "blob": "b9788765658872b7d8d21a052613a0c8bf7d16d3"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-add-posthog-analytics/.openspec.yaml",
+      "blob": "68bc29d0d72016bc5fc3788e10cba00ad4bc4f5b"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-add-posthog-analytics/design.md",
+      "blob": "eb5b3496b4a9e52109d201ed0c0789d7412c8b99"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-add-posthog-analytics/proposal.md",
+      "blob": "6b026514413c3905f092c13b9c2254c44d08f859"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-add-posthog-analytics/specs/global-config/spec.md",
+      "blob": "77782dc040c013eb168240cbed17f3dac0a3281a"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-add-posthog-analytics/specs/telemetry/spec.md",
+      "blob": "c47176fc7d793a8d3003d622a8d5954f72ac65b5"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-add-posthog-analytics/tasks.md",
+      "blob": "972ffe9f54a13e9037663913b8398acb32f26a35"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-fix-codebuddy-frontmatter-fields/proposal.md",
+      "blob": "c4d56db3edb5b65dd4cf4185d6c322869bcb6e77"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-fix-codebuddy-frontmatter-fields/specs/cli-init/spec.md",
+      "blob": "50bfbc0cf0fecad36207849ddbdec5bf4d30d4a6"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-fix-codebuddy-frontmatter-fields/specs/cli-update/spec.md",
+      "blob": "6b6f39d416b2bb9bf6e74e8c503eb2eeae11c9fd"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-09-fix-codebuddy-frontmatter-fields/tasks.md",
+      "blob": "e45285fefabbf73a139b917043df68744857d53f"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-15-add-nix-ci-validation/design.md",
+      "blob": "25cd6d2b6a91b676a5e26cca1d094243a7366cb4"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-15-add-nix-ci-validation/proposal.md",
+      "blob": "c53b0e3ff24d9f1a1a2bb5cf93920dc8b369cb83"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-15-add-nix-ci-validation/specs/ci-nix-validation/spec.md",
+      "blob": "4bda1b8f40bb95bcc511aae646fdc76bbc3e089b"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-15-add-nix-ci-validation/tasks.md",
+      "blob": "e1e759b589a40e05a780f5489a36275bcca447d1"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-30-opencode-command-references/.openspec.yaml",
+      "blob": "fc1220aa934b4918621ff4d4a4941642c4a4848a"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-30-opencode-command-references/README.md",
+      "blob": "db379ceebbe1986ce736f74e0c542256b52a8994"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-30-opencode-command-references/design.md",
+      "blob": "2bd9506eee690b1f24079c0444429475c94efce4"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-30-opencode-command-references/proposal.md",
+      "blob": "d2f7742ab89b04f01098898f9b5c146ddfe001f9"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-30-opencode-command-references/specs/no-changes.md",
+      "blob": "5a671a8e4462010d04d3345dcfb720874c87f07b"
+    },
+    {
+      "path": "openspec/changes/archive/2026-01-30-opencode-command-references/tasks.md",
+      "blob": "56fa3a2f3e72612da830830ea5e46cdca3a63c1a"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-feedback-command/proposal.md",
+      "blob": "c91a7ed0e8527347c915aec62914a1ceaeb66526"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-feedback-command/specs/cli-feedback/spec.md",
+      "blob": "1137e85dc55fbda70209bb4bba1950f2619d9707"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-feedback-command/tasks.md",
+      "blob": "e8c7a6c75a130ebb28e4f565c1f03f2de1c45f64"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-opsx-onboard-skill/.openspec.yaml",
+      "blob": "a5a6fec48a610006b473bd4e596825508c1c1ce5"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-opsx-onboard-skill/design.md",
+      "blob": "505f94e9cc1944b2a8eb2b24cd92c1b800d1a207"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-opsx-onboard-skill/proposal.md",
+      "blob": "b280cc2de78a92f47a55b892936913cadacc52cf"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-opsx-onboard-skill/specs/opsx-onboard-skill/spec.md",
+      "blob": "ffb44743c37b81e840c2e0aebfc18b78b856573c"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-opsx-onboard-skill/tasks.md",
+      "blob": "7671b329115df9093f04134d023f3b4f7534d905"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-verify-skill/design.md",
+      "blob": "523438e58826850e5edf25532b1fec813b7d3525"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-verify-skill/proposal.md",
+      "blob": "00f4919868e60f37f54050228e95b69e826c3a1a"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-verify-skill/specs/opsx-verify-skill/spec.md",
+      "blob": "361fa4cefb1a44dc01ed6d3e6b2c44dfcc023450"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-add-verify-skill/tasks.md",
+      "blob": "e7b591587e65e6611b58118890a813404be1002d"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-merge-init-experimental/.openspec.yaml",
+      "blob": "7df153407096308ce6a8508041d40c41e2d066c7"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-merge-init-experimental/design.md",
+      "blob": "3701e3c2b642022b3f8b58c2df6fc201056e56e1"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-merge-init-experimental/proposal.md",
+      "blob": "c7d25daddaea4370c6ab66a6a5ef29019f12fa63"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-merge-init-experimental/specs/cli-init/spec.md",
+      "blob": "db26a35dc096b82199aefe7675befc69e5271ee1"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-merge-init-experimental/specs/legacy-cleanup/spec.md",
+      "blob": "97eff6fdbc3e81e64dfcfa8322f583b7c49f9a80"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-merge-init-experimental/tasks.md",
+      "blob": "c79e25d24a708bcae0726dbe898d0ab5a3a091bc"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-multi-provider-skill-generation/.openspec.yaml",
+      "blob": "ec9a99039176b75bd8b6c3b866ef820ab4e57ff3"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-multi-provider-skill-generation/design.md",
+      "blob": "c870aeae19dbec140a7e5617b9d59e60aca6c684"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-multi-provider-skill-generation/proposal.md",
+      "blob": "930c948c989a89aff35b6ec75c70d74004f606b4"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-multi-provider-skill-generation/specs/ai-tool-paths/spec.md",
+      "blob": "7a0ded86828e0b58a1d45fd52eb8f2372ce3d9b7"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-multi-provider-skill-generation/specs/cli-artifact-workflow/spec.md",
+      "blob": "45d4850898b7c5ef8ae6820c4c26ec201e0b5690"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-multi-provider-skill-generation/specs/command-generation/spec.md",
+      "blob": "26e8602c1f7d8db0e0aaf645cb5bcd4f1733c169"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-multi-provider-skill-generation/tasks.md",
+      "blob": "3732f15d358e4b4b3a5dbcb560c8baf08fe739fc"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-config/.openspec.yaml",
+      "blob": "800912e1d6a0b65e90e725c6afc5f5fe7f5c1420"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-config/design.md",
+      "blob": "45e4a075db458dda15f4c9a2e2c1544d12b30c99"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-config/proposal.md",
+      "blob": "bd54915cd32f90c24fc78990b13f84ae3960a40e"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-config/specs/config-loading/spec.md",
+      "blob": "cecf93c9dbe410f256a5f487ad65fe4692404206"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-config/specs/context-injection/spec.md",
+      "blob": "101e805d753c22c7808ddccd110ce2edad3ec771"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-config/specs/rules-injection/spec.md",
+      "blob": "7f7671817288af8313d7a7bb44d59bb138c8a19e"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-config/specs/schema-resolution/spec.md",
+      "blob": "ed93c4c5bc43e2eabcdd8bc67dd700eede0abc39"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-config/tasks.md",
+      "blob": "540bc7ed9af2cbdadef00d10a55508a9970dc74f"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-local-schemas/.openspec.yaml",
+      "blob": "800912e1d6a0b65e90e725c6afc5f5fe7f5c1420"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-local-schemas/design.md",
+      "blob": "3c0dae684875de058415626210bc2387d43ed323"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-local-schemas/proposal.md",
+      "blob": "6d5ff3c52f6007cb6c45a8c4a02804d0af403bc1"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-local-schemas/specs/schema-resolution/spec.md",
+      "blob": "201afc238e3c804509b255c217ef9b9f9866ca4c"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-project-local-schemas/tasks.md",
+      "blob": "0a200956f3fb99e2a9bd6bf6545737d4ba27a2d1"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-schema-management-cli/.openspec.yaml",
+      "blob": "749f7518cbeceefd0a60209f3489eb370e78a681"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-schema-management-cli/design.md",
+      "blob": "b7519e5dd4db3a077966e769d33e8e30408bb544"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-schema-management-cli/proposal.md",
+      "blob": "efa2c0920a394af6764df32238279f60e8a77ce7"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-schema-management-cli/specs/schema-fork-command/spec.md",
+      "blob": "3969b666a98ad01bce7a24c49e588af58a47a9b4"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-schema-management-cli/specs/schema-init-command/spec.md",
+      "blob": "8a811fca2778f59ae9f988e776aed921cabed0e9"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-schema-management-cli/specs/schema-validate-command/spec.md",
+      "blob": "977fdfac8ec6fdd2f950fc4270110871b979f4e9"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-schema-management-cli/specs/schema-which-command/spec.md",
+      "blob": "3a3088bd8532c149a80b23a6b3edf1f7ed107723"
+    },
+    {
+      "path": "openspec/changes/archive/2026-02-17-schema-management-cli/tasks.md",
+      "blob": "6933ee0f87119ab4f042f6612e78c841546008e3"
+    },
+    {
+      "path": "openspec/changes/archive/2026-04-23-add-kimi-cli-skills-only-support/.openspec.yaml",
+      "blob": "8b394c6609555d892654b36f9e5a4fef420aeb91"
+    },
+    {
+      "path": "openspec/changes/archive/2026-04-23-add-kimi-cli-skills-only-support/README.md",
+      "blob": "335f01ef7469e4f0251199797336277e4ccafd0e"
+    },
+    {
+      "path": "openspec/changes/archive/2026-04-23-add-kimi-cli-skills-only-support/design.md",
+      "blob": "f8827390e1d64b84f27e327dc2d70f1257f169b1"
+    },
+    {
+      "path": "openspec/changes/archive/2026-04-23-add-kimi-cli-skills-only-support/proposal.md",
+      "blob": "f2f447ee3c5bc5eb4908f11de3f6ec5c2c216787"
+    },
+    {
+      "path": "openspec/changes/archive/2026-04-23-add-kimi-cli-skills-only-support/specs/ai-tool-paths/spec.md",
+      "blob": "e981874b47a078298388d0c1bbb9e83ab6f744d4"
+    },
+    {
+      "path": "openspec/changes/archive/2026-04-23-add-kimi-cli-skills-only-support/specs/cli-init/spec.md",
+      "blob": "193ff116a6730d3c0de19785b6ccd4f63b393094"
+    },
+    {
+      "path": "openspec/changes/archive/2026-04-23-add-kimi-cli-skills-only-support/tasks.md",
+      "blob": "10a71dfb204e292f88cd4fa666adf2d3c839ac1a"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-04-workspace-foundation/design.md",
+      "blob": "be148e8f204523f8abd862d0e8d667da88aa87a5"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-04-workspace-foundation/proposal.md",
+      "blob": "ba788656e5dffb31a04d4a1bfaaaa1101b9e6952"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-04-workspace-foundation/specs/openspec-conventions/spec.md",
+      "blob": "2662fdc24c574da36dcfd9281d5b7698d561a409"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-04-workspace-foundation/specs/workspace-foundation/spec.md",
+      "blob": "2a1373ce360fc47d783a49a13e32f2ebd2a4379a"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-04-workspace-foundation/tasks.md",
+      "blob": "551289431b9a1598c60d657c4d339ed23ec3ee13"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-06-workspace-create-and-register-repos/design.md",
+      "blob": "a1a4ae15c9ed729e063e434cf53b69cec6c28108"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-06-workspace-create-and-register-repos/proposal.md",
+      "blob": "79102b9437c8a55a08eeb4b604149f0408d1ee69"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-06-workspace-create-and-register-repos/specs/cli-artifact-workflow/spec.md",
+      "blob": "c2555ca00cb7dc9b1da5f98363b7fe4369b5622e"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-06-workspace-create-and-register-repos/specs/workspace-foundation/spec.md",
+      "blob": "e93d993b82a2ac4c9df6f2f2d5a620f37069e855"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-06-workspace-create-and-register-repos/specs/workspace-links/spec.md",
+      "blob": "83e6d608cdaa385f59afa7854270a34f519c7de3"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-06-workspace-create-and-register-repos/tasks.md",
+      "blob": "12372706eb353f50043a9d5de5476a2798da02fe"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-06-workspace-open-agent-context/design.md",
+      "blob": "4934cebb3e8e6feb4981b47beb951d7dfcf0166a"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-06-workspace-open-agent-context/proposal.md",
+      "blob": "dd5358b680d24a560238fb39e8943c8bf6c1a742"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-06-workspace-open-agent-context/specs/workspace-foundation/spec.md",
+      "blob": "3dfce21174437252d1ee227cafddd094567f365e"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-06-workspace-open-agent-context/specs/workspace-open/spec.md",
+      "blob": "fc3e565aa3b08a632970434f240f98bf09503af4"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-06-workspace-open-agent-context/tasks.md",
+      "blob": "497d63d8548993a43feaf433f4ba7de182b61906"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/design.md",
+      "blob": "7a297ed0d0b363830860b56c2911f7f95415b084"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/proposal.md",
+      "blob": "6f6442d84a46673de998b98ea5b586eef2250ba8"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/specs/artifact-graph/spec.md",
+      "blob": "84b44f39d18f069bb41bc8e941795112e473b691"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/specs/change-creation/spec.md",
+      "blob": "b0191e073a9800cc3e6eb8b574b2afb3e54bc771"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/specs/cli-artifact-workflow/spec.md",
+      "blob": "5a1c912329d4a9d4b7d82ccf05825e7a3fbe8a2a"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/specs/cli-config/spec.md",
+      "blob": "35695714636a592b82c7d2de80bda58613fe5892"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/specs/cli-update/spec.md",
+      "blob": "71b23422530357fe70f3ba0bc9a3d1169ed3b0cb"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/specs/openspec-conventions/spec.md",
+      "blob": "a18fc9ea5620ddc3ac3689a0af961cc1888da5ba"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/specs/schema-resolution/spec.md",
+      "blob": "434d1d07fd9c55da9995cf5a8ec4a7df4f320357"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/specs/workspace-change-planning/spec.md",
+      "blob": "2fa8525331eabfd52900b7e64cb0cb66cdcfa908"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/specs/workspace-links/spec.md",
+      "blob": "4e050dd9ec193d9dfa72e7ed6b097676b17fafd8"
+    },
+    {
+      "path": "openspec/changes/archive/2026-05-14-workspace-change-planning/tasks.md",
+      "blob": "6710c2d2c464e8210c91c9330c5ffdca6f6d57db"
+    },
+    {
+      "path": "openspec/changes/archive/2026-07-28-fix-schema-init-force-validation-order/.openspec.yaml",
+      "blob": "2bc06e0e51edaa22976acd0ecae157315dfc3ad4"
+    },
+    {
+      "path": "openspec/changes/archive/2026-07-28-fix-schema-init-force-validation-order/design.md",
+      "blob": "c916fa64617c16916c2096806cdf3e5747f18902"
+    },
+    {
+      "path": "openspec/changes/archive/2026-07-28-fix-schema-init-force-validation-order/proposal.md",
+      "blob": "81645c6fee8eaf83c34c6d68a0803dd6e897bad5"
+    },
+    {
+      "path": "openspec/changes/archive/2026-07-28-fix-schema-init-force-validation-order/specs/schema-init-command/spec.md",
+      "blob": "819ed0785c6509f6df5688ade7f4d345fd7ac0b8"
+    },
+    {
+      "path": "openspec/changes/archive/2026-07-28-fix-schema-init-force-validation-order/tasks.md",
+      "blob": "6546729c5c74cfeb880b8cdf5c674de22dbe7100"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/.openspec.yaml",
+      "blob": "7250f8fbf8fde7e5d347b6e5a64d353fd029e4c7"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/design.md",
+      "blob": "ddf5bc4d3360eb876dc757112f050c39ec35c096"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/proposal.md",
+      "blob": "255bc36b01e36b5624bec147ece76164434211d1"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/specs/cli-archive-instructions/spec.md",
+      "blob": "5682dccdce35c184c7ad19d4bc9b3a1674212613"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/specs/cli-artifact-workflow/spec.md",
+      "blob": "9093ebfbe54899f2b45df274b2629ded8019d526"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/specs/config-loading/spec.md",
+      "blob": "f9c32fb0c5a4263de9ba26d179eb5b8ea9f384b6"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/specs/context-injection/spec.md",
+      "blob": "4be0cb9f7df2d7cd811aa601b7a1536f90220afa"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/specs/operation-guidance/spec.md",
+      "blob": "9c0e21f2ee4b0d98f5ba8907b0fa88b3b0ef5a67"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/specs/opsx-apply-skill/spec.md",
+      "blob": "0514456346623ed53aa6761bc5a39a03ca727fc1"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/specs/opsx-archive-skill/spec.md",
+      "blob": "1dc144d5c97bde0cb44a04202d3be6794156fc9c"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/specs/opsx-bulk-archive-skill/spec.md",
+      "blob": "a326090a6a4d2dd1f0443742e3ec1b71e00120cf"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/specs/specs-sync-skill/spec.md",
+      "blob": "2b6c166f01283dc67434fa8dce27fc57ed8b8813"
+    },
+    {
+      "path": "openspec/changes/extend-config-injection-to-apply-archive/tasks.md",
+      "blob": "a8fe23ceceb977f4670bec6b861d56dd101bc406"
+    },
+    {
+      "path": "openspec/changes/feat-add-omp-tool-support/.openspec.yaml",
+      "blob": "34f9314d22075dd7db8ce96d74e7500dd1d8de8e"
+    },
+    {
+      "path": "openspec/changes/feat-add-omp-tool-support/design.md",
+      "blob": "d5de2cad5a827cea3c1c586bdba9ea0f65b37074"
+    },
+    {
+      "path": "openspec/changes/feat-add-omp-tool-support/proposal.md",
+      "blob": "6bb5c80781e39b3c9c437beb14b303dd17f4f009"
+    },
+    {
+      "path": "openspec/changes/feat-add-omp-tool-support/specs/cli-init/spec.md",
+      "blob": "82fe16cac5f0e4f4072089290f6a213a4718c0db"
+    },
+    {
+      "path": "openspec/changes/feat-add-omp-tool-support/specs/cli-update/spec.md",
+      "blob": "2457ea6b47a6bbd83ade3d23349e8543a40f573f"
+    },
+    {
+      "path": "openspec/changes/feat-add-omp-tool-support/specs/oh-my-pi-tool/spec.md",
+      "blob": "a7050e7a47d89d87e49051bdad4c0ca97a3f5444"
+    },
+    {
+      "path": "openspec/changes/feat-add-omp-tool-support/tasks.md",
+      "blob": "ea394c137e85a02daea9ece81fde1212a18778bb"
+    },
+    {
+      "path": "openspec/changes/fix-archive-retirement-guidance/.openspec.yaml",
+      "blob": "41c30bab8881616eb6bbfa63a0ce4f3977e0b90a"
+    },
+    {
+      "path": "openspec/changes/fix-archive-retirement-guidance/proposal.md",
+      "blob": "6da2dfac419aba94dc1ee11e8f775926f025df77"
+    },
+    {
+      "path": "openspec/changes/fix-archive-retirement-guidance/specs/cli-archive/spec.md",
+      "blob": "a22182d47b89cd1bc7532d926a8b98ba42a78d17"
+    },
+    {
+      "path": "openspec/changes/fix-archive-retirement-guidance/tasks.md",
+      "blob": "c9863a1db0eb2229cdf86be55902b1276b3cbabd"
+    },
+    {
+      "path": "openspec/changes/fix-cli-local-date-semantics/.openspec.yaml",
+      "blob": "4f63482c1e2099f612e2bb52ce9f708b0a117746"
+    },
+    {
+      "path": "openspec/changes/fix-cli-local-date-semantics/design.md",
+      "blob": "c8ee25e62cfc22f2294408b90a7730b8c6f09f4c"
+    },
+    {
+      "path": "openspec/changes/fix-cli-local-date-semantics/proposal.md",
+      "blob": "44eee1ffa638a7eabbdf3a0c67a7579a9978a84c"
+    },
+    {
+      "path": "openspec/changes/fix-cli-local-date-semantics/specs/change-creation/spec.md",
+      "blob": "f606d30e9c9d37659e2ccfd565743707d290752d"
+    },
+    {
+      "path": "openspec/changes/fix-cli-local-date-semantics/specs/cli-archive/spec.md",
+      "blob": "aa114e714681156797abaaf270c377cdc3e78ab2"
+    },
+    {
+      "path": "openspec/changes/fix-cli-local-date-semantics/tasks.md",
+      "blob": "9bb6c7067edc9ec0e422706f7b1082840f97894f"
+    },
+    {
+      "path": "openspec/changes/fix-opencode-commands-directory/.openspec.yaml",
+      "blob": "e331c975d929307b68718b95e16969a25293403b"
+    },
+    {
+      "path": "openspec/changes/fix-opencode-commands-directory/design.md",
+      "blob": "9be042ca8276a13e232b78a1112f300615890e02"
+    },
+    {
+      "path": "openspec/changes/fix-opencode-commands-directory/proposal.md",
+      "blob": "ec41e01e562a1df7bcad082bba5c838457ca3244"
+    },
+    {
+      "path": "openspec/changes/fix-opencode-commands-directory/specs/command-generation/spec.md",
+      "blob": "f00cb3ce8d5e9f682d9ad28a740d0888cd255aad"
+    },
+    {
+      "path": "openspec/changes/fix-opencode-commands-directory/tasks.md",
+      "blob": "bfe020764a16a1395372d09eed94b87784d52c55"
+    },
+    {
+      "path": "openspec/changes/fix-schemas-root-selection/.openspec.yaml",
+      "blob": "d77f64e53a869aba00ea90d65891846e9d57af82"
+    },
+    {
+      "path": "openspec/changes/fix-schemas-root-selection/design.md",
+      "blob": "d3dafa37b5e924251f541f15aafff98f776aeb02"
+    },
+    {
+      "path": "openspec/changes/fix-schemas-root-selection/proposal.md",
+      "blob": "7350e52560b6b1dd3bdba45e5980fe7c42bd3912"
+    },
+    {
+      "path": "openspec/changes/fix-schemas-root-selection/specs/schema-resolution/spec.md",
+      "blob": "eedbba075859c78ed67c0774d6a99e03032b8721"
+    },
+    {
+      "path": "openspec/changes/fix-schemas-root-selection/tasks.md",
+      "blob": "17d4197804b87a1647b29ca60e2805e46e1e155c"
+    },
+    {
+      "path": "openspec/changes/fix-spec-parser-fidelity/.openspec.yaml",
+      "blob": "34f9314d22075dd7db8ce96d74e7500dd1d8de8e"
+    },
+    {
+      "path": "openspec/changes/fix-spec-parser-fidelity/design.md",
+      "blob": "f9909941aa087709cab09ad508151989d2bd551b"
+    },
+    {
+      "path": "openspec/changes/fix-spec-parser-fidelity/proposal.md",
+      "blob": "f56cce97f7432870bbe209cedd048a1043e971d6"
+    },
+    {
+      "path": "openspec/changes/fix-spec-parser-fidelity/specs/cli-validate/spec.md",
+      "blob": "479180421822b3e459f406fafb02e0492b7b0e41"
+    },
+    {
+      "path": "openspec/changes/fix-spec-parser-fidelity/tasks.md",
+      "blob": "0c9a3f28babb478064fb5f5a999600303e91bb59"
+    },
+    {
+      "path": "openspec/changes/fix-validate-view-resolution-parity/.openspec.yaml",
+      "blob": "34f9314d22075dd7db8ce96d74e7500dd1d8de8e"
+    },
+    {
+      "path": "openspec/changes/fix-validate-view-resolution-parity/design.md",
+      "blob": "93ef6618b1dc70e57d88ec5897c70b9e861c4e7f"
+    },
+    {
+      "path": "openspec/changes/fix-validate-view-resolution-parity/proposal.md",
+      "blob": "d42af8dbb346404b6a4152a9776b8a354461baa8"
+    },
+    {
+      "path": "openspec/changes/fix-validate-view-resolution-parity/specs/cli-archive/spec.md",
+      "blob": "f6bb55dfa237f7096c02ef120b69fd750f35d59e"
+    },
+    {
+      "path": "openspec/changes/fix-validate-view-resolution-parity/specs/cli-validate/spec.md",
+      "blob": "84c85fa6ef0782c73de411fb7a5ec950b3234112"
+    },
+    {
+      "path": "openspec/changes/fix-validate-view-resolution-parity/specs/cli-view/spec.md",
+      "blob": "de664bf8b9b6436341dfeab8b9326fe475050a3d"
+    },
+    {
+      "path": "openspec/changes/fix-validate-view-resolution-parity/tasks.md",
+      "blob": "ff105ed4b105f89708cba985b78a059e682b3c16"
+    },
+    {
+      "path": "openspec/changes/graceful-status-no-changes/.openspec.yaml",
+      "blob": "e331c975d929307b68718b95e16969a25293403b"
+    },
+    {
+      "path": "openspec/changes/graceful-status-no-changes/design.md",
+      "blob": "0d4d1b21c7f4750c570d0c7aeb9f4991a75533f5"
+    },
+    {
+      "path": "openspec/changes/graceful-status-no-changes/proposal.md",
+      "blob": "dc24d61b8758c9d6687483d5e32aaa303d2146ed"
+    },
+    {
+      "path": "openspec/changes/graceful-status-no-changes/specs/graceful-status-empty/spec.md",
+      "blob": "7c5e390ad802189a089a7855b5dd72cb29a80727"
+    },
+    {
+      "path": "openspec/changes/graceful-status-no-changes/tasks.md",
+      "blob": "bf00684a051e54468bf8209f8a4a24368e092636"
+    },
+    {
+      "path": "openspec/changes/make-codex-skills-only/.openspec.yaml",
+      "blob": "d6b53dee55dec70984cecdfff3ee4fb4ed16425d"
+    },
+    {
+      "path": "openspec/changes/make-codex-skills-only/design.md",
+      "blob": "05d8d16d62b0d221657c1a3734cdcb4d9fbb4a0f"
+    },
+    {
+      "path": "openspec/changes/make-codex-skills-only/proposal.md",
+      "blob": "0db4549f6b46cd794dec1bdd54e15ac0af4829c3"
+    },
+    {
+      "path": "openspec/changes/make-codex-skills-only/specs/ai-tool-paths/spec.md",
+      "blob": "37e9e31781bac34d20b19aed0d0b3feddc26e0cf"
+    },
+    {
+      "path": "openspec/changes/make-codex-skills-only/specs/cli-init/spec.md",
+      "blob": "00d51f71d5b4154d202cc5ba23398768a4cf016f"
+    },
+    {
+      "path": "openspec/changes/make-codex-skills-only/specs/cli-update/spec.md",
+      "blob": "4eae91011fb12e302bebeffab56571a42f51d257"
+    },
+    {
+      "path": "openspec/changes/make-codex-skills-only/specs/command-generation/spec.md",
+      "blob": "e4d0c10db87af49321e55fd8a52b6c46f651a966"
+    },
+    {
+      "path": "openspec/changes/make-codex-skills-only/tasks.md",
+      "blob": "534ddf7072a4022508bd3a6f92e5867721d50629"
+    },
+    {
+      "path": "openspec/changes/schema-alias-support/.openspec.yaml",
+      "blob": "749f7518cbeceefd0a60209f3489eb370e78a681"
+    },
+    {
+      "path": "openspec/changes/schema-alias-support/proposal.md",
+      "blob": "0dd23598148d3feee766b753f4b24047330001e0"
+    },
+    {
+      "path": "openspec/changes/simplify-skill-installation/.openspec.yaml",
+      "blob": "c8d3976aeea4cff30027ec46e86be8f377bc0fe1"
+    },
+    {
+      "path": "openspec/changes/simplify-skill-installation/design.md",
+      "blob": "a51ea919317148f3331e762408de13154cc24bf0"
+    },
+    {
+      "path": "openspec/changes/simplify-skill-installation/proposal.md",
+      "blob": "1a002ab641bfff4f43170ba7675e16d8ee012e6b"
+    },
+    {
+      "path": "openspec/changes/simplify-skill-installation/specs/cli-init/spec.md",
+      "blob": "b779e245d5fd4f8f2a7ebbdd12bb6b07afe28938"
+    },
+    {
+      "path": "openspec/changes/simplify-skill-installation/specs/cli-update/spec.md",
+      "blob": "3ee636dec3b6c2a3362f150af29f2aa5936d83c3"
+    },
+    {
+      "path": "openspec/changes/simplify-skill-installation/specs/profiles/spec.md",
+      "blob": "4b0d85c96252bc5900f13ead76df71b9600a7172"
+    },
+    {
+      "path": "openspec/changes/simplify-skill-installation/specs/propose-workflow/spec.md",
+      "blob": "90952d567f6b5e37a47714cfdb7e5c744b4987db"
+    },
+    {
+      "path": "openspec/changes/simplify-skill-installation/tasks.md",
+      "blob": "899347427751d72df2e86d55435785dde1278cf4"
+    },
+    {
+      "path": "openspec/changes/spec-diffs/.openspec.yaml",
+      "blob": "859e7bb9813a941b4d95e0f0f8ab1a70d37f516f"
+    },
+    {
+      "path": "openspec/changes/spec-diffs/design.md",
+      "blob": "45de7a5c0928845fbac93556382ca459e4c479d0"
+    },
+    {
+      "path": "openspec/changes/spec-diffs/proposal.md",
+      "blob": "ccb6797386e5a10fc232127da85397b996d6d93c"
+    },
+    {
+      "path": "openspec/changes/spec-diffs/specs/cli-show/spec.md",
+      "blob": "fee7a5dafe4005600454aad3a159db07cef112f0"
+    },
+    {
+      "path": "openspec/changes/spec-diffs/tasks.md",
+      "blob": "c791a272b91f12913add605dcaf73f74b54de070"
+    },
+    {
+      "path": "openspec/changes/suppress-telemetry-notice-in-json/.openspec.yaml",
+      "blob": "878dc3156e962105757d3cda69ab4fe1eadf1934"
+    },
+    {
+      "path": "openspec/changes/suppress-telemetry-notice-in-json/proposal.md",
+      "blob": "579026b05cd61d2f6bfeedf64c1b275bae2b551c"
+    },
+    {
+      "path": "openspec/changes/suppress-telemetry-notice-in-json/specs/telemetry/spec.md",
+      "blob": "8e1316eee2642e70af6e33d7233776c0de44cb7f"
+    },
+    {
+      "path": "openspec/changes/suppress-telemetry-notice-in-json/tasks.md",
+      "blob": "b1af654c0dfb1c55e4c2b5a48af5882b30d1c8e3"
+    },
+    {
+      "path": "openspec/changes/unify-template-generation-pipeline/.openspec.yaml",
+      "blob": "a5571c18947d688a5f4c03e0a9200c62919dd418"
+    },
+    {
+      "path": "openspec/changes/unify-template-generation-pipeline/design.md",
+      "blob": "88228f326371d05784419ec4180ea5d570a7cd92"
+    },
+    {
+      "path": "openspec/changes/unify-template-generation-pipeline/proposal.md",
+      "blob": "fc7dde5779a1a38032c026017b4d805fed28f6c3"
+    },
+    {
+      "path": "openspec/changes/unify-template-generation-pipeline/specs/template-artifact-pipeline/spec.md",
+      "blob": "71986cc84f8ebc057710325e11fd0b670938e33f"
+    },
+    {
+      "path": "openspec/changes/unify-template-generation-pipeline/tasks.md",
+      "blob": "a587503d469707edc36a19d8f730d63eb988db46"
+    },
+    {
+      "path": "openspec/changes/warn-on-purpose-placeholder/.openspec.yaml",
+      "blob": "0c73c8f54e67d882c886ca43b793e4ed2f7fb6d6"
+    },
+    {
+      "path": "openspec/changes/warn-on-purpose-placeholder/design.md",
+      "blob": "393a10b1cdede1f6bf6ddda8913e93961c3d9d9c"
+    },
+    {
+      "path": "openspec/changes/warn-on-purpose-placeholder/proposal.md",
+      "blob": "7f5b1b161c05c3e658294ddb7afd0cf501390871"
+    },
+    {
+      "path": "openspec/changes/warn-on-purpose-placeholder/specs/cli-validate/spec.md",
+      "blob": "0c00fe1b5bc496d2e62bb6e61cd209d0c03e3140"
+    },
+    {
+      "path": "openspec/changes/warn-on-purpose-placeholder/tasks.md",
+      "blob": "a341c0bb1183e6813dfd7e183b6f7e66c6177bed"
+    },
+    {
+      "path": "openspec/config.yaml",
+      "blob": "0b7ad5176a5719098aa5969e17c7460406608a87"
+    },
+    {
+      "path": "openspec/explorations/explore-workflow-ux.md",
+      "blob": "081cedf12c23abea5aa1c6e12fd8f0c3a8b68c84"
+    },
+    {
+      "path": "openspec/explorations/workspace-architecture.md",
+      "blob": "0feffb231ca7ea1fd1c5ad4e5675458f4ec9f584"
+    },
+    {
+      "path": "openspec/explorations/workspace-roadmap.md",
+      "blob": "b4a2e8dcf9607a792fdfec47dd48088fa789f6be"
+    },
+    {
+      "path": "openspec/explorations/workspace-user-journeys.md",
+      "blob": "14709fa5c5fc2fb85ac0dd71f4a3b7cf962bab80"
+    },
+    {
+      "path": "openspec/explorations/workspace-ux-simplification.md",
+      "blob": "e1619daf752e6d43883c32ac0ef4ff3d73c57c73"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/.initiative.yaml",
+      "blob": "c67efbeda8da6d2e1dca902f8488386957c95098"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/README.md",
+      "blob": "6574a7d4cad884a721a8dcfdbe19d6c9e4acfdc8"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/decisions.md",
+      "blob": "e2aa873d6ded6a17961ddc2a8367650f19ceda85"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/direction-git-native-work.md",
+      "blob": "a24b346d02c66bcfdedc8eaa25c1edd498f04c5b"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/direction.md",
+      "blob": "c7bf117d01b8b076048ff548db2f1f2b98560e1a"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/questions.md",
+      "blob": "79c42ebc8b8718f3d5c2b91cfafa6d549e3223ec"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/roadmap.md",
+      "blob": "1f8d345ce7cb5729ac5985497c39c03f1dea8bc1"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/tasks.md",
+      "blob": "1acbd6f60fb9555827525919ea44ab98bab0e931"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/01-lock-the-direction/evidence.md",
+      "blob": "d9483abe69827665a75751de0cb3fec9ca3a4da0"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/01-lock-the-direction/plan.md",
+      "blob": "05a15c5a8225077f0329fd2de8838ea12df1126d"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/01-lock-the-direction/tasks.md",
+      "blob": "d04b60a62013ef1b1236db911997204e6450d4b0"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/02-stabilize-workspace-as-local-view/evidence.md",
+      "blob": "85d0b0a03b45e3e852bb6485e2edbe94aec262a7"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/02-stabilize-workspace-as-local-view/plan.md",
+      "blob": "147b94556a87b81e83bffe2d98921e1f9b8f1b81"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/02-stabilize-workspace-as-local-view/tasks.md",
+      "blob": "5a07a1f5795ac69a61890e087f02c9a37eea60be"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/03-add-context-store-foundation/evidence.md",
+      "blob": "402c2f8fbeeea4bc99420323560a22193892d921"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/03-add-context-store-foundation/plan.md",
+      "blob": "2ea0c27afdbabf513b5b9a682c949613b3b88411"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/03-add-context-store-foundation/tasks.md",
+      "blob": "4aeddc285dda74b97ca72693aaaaff275a732005"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/04-add-collection-foundation/evidence.md",
+      "blob": "fe751b6b9143b88a9ebea7e60020a8d958395ee2"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/04-add-collection-foundation/plan.md",
+      "blob": "6475df3a88991b43681a4baa87690b595c1af56a"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/04-add-collection-foundation/tasks.md",
+      "blob": "215b8092da736dd303349836b3d2544dc512d38b"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/05-ship-initiative-mvp/evidence.md",
+      "blob": "7b9e7ab036bbe2d0aa32444110af1539d45b2c83"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/05-ship-initiative-mvp/plan.md",
+      "blob": "d6463765cbdab2abc973c7cab99c5bb14c438abc"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/05-ship-initiative-mvp/tasks.md",
+      "blob": "197a333bf16d76388bb73dfa5533f8038774108f"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/06-add-minimal-context-store-ux/evidence.md",
+      "blob": "6b0bc32b2ebc1d6efd8b607f9488f4101d3d083d"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/06-add-minimal-context-store-ux/plan.md",
+      "blob": "35f64ceb5c97142e4e5f344b8d573544d9fe0376"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/06-add-minimal-context-store-ux/tasks.md",
+      "blob": "e17b34dd7a5786adb3e59c65b0cd3ac331ca7bff"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/07-add-agent-first-initiative-discovery/evidence.md",
+      "blob": "a08d1fe17d40d7a89ed180473eaf88052c414e87"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/07-add-agent-first-initiative-discovery/plan.md",
+      "blob": "d59c23bc88632cd07ad8c4a26b28f0325726a785"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/07-add-agent-first-initiative-discovery/tasks.md",
+      "blob": "2bf8440d78c0008502a466bb34dbc2b65bb8c2c1"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/08-connect-repo-local-changes-to-initiatives/evidence.md",
+      "blob": "917c121652c5ca3484ad21eb181f5bc0e0d43953"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/08-connect-repo-local-changes-to-initiatives/plan.md",
+      "blob": "6019549f954ff1afa27c9804cf00529c4fc0089f"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/08-connect-repo-local-changes-to-initiatives/tasks.md",
+      "blob": "926e34ebbd691d6cadbd2559415cf37833bd66c6"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/09-add-initiative-resolve/decision-review.md",
+      "blob": "a7bf4c51a425634e67cee39dfa28b2544b32805f"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/09-add-initiative-resolve/evidence.md",
+      "blob": "26ce8ca83da5acbe3c2c3d1db8e234c4566e2b3e"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/09-add-initiative-resolve/plan.md",
+      "blob": "6a5a482f476ba6e1bd369cd721408cb5c26f7571"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/09-add-initiative-resolve/tasks.md",
+      "blob": "f442d86bd92af3959170f35c5bad5fcdf56447b1"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/10-let-workspaces-open-initiatives/plan.md",
+      "blob": "42444b568bc613b94f9bc9f9c1ea3d19789cdaec"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/10-let-workspaces-open-initiatives/tasks.md",
+      "blob": "a44944c96cc6ed7e7d1e8d5b317f5bf50ffb169c"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/11-manual-beta-reality-pass/notes.md",
+      "blob": "317aaac69594a3592a3ae63085f4c5c645b7c316"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/11-manual-beta-reality-pass/plan.md",
+      "blob": "93ca446d80ce6d117d8870abbcf5992306f981d1"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/11-manual-beta-reality-pass/tasks.md",
+      "blob": "1d7f4133c05b2c53f98342a5ed62b44be9feeb36"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/12-context-store-first-run-and-cleanup-ux/evidence.md",
+      "blob": "214921ad2d762b27c6a00fd8bc876ebde9405491"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/12-context-store-first-run-and-cleanup-ux/plan.md",
+      "blob": "39b4326c3e01685591eb14d3650113049b5fc2a5"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/12-context-store-first-run-and-cleanup-ux/tasks.md",
+      "blob": "95245a14069f80fb706ba2e4c6d3f351be211031"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/13-agent-handoff-output-and-delivery-polish/evidence.md",
+      "blob": "40b8808512526666fb556a2e3d5118ef16220eeb"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/13-agent-handoff-output-and-delivery-polish/plan.md",
+      "blob": "af578e2de496d4bf31b5fa79f40dd6e85f02f8ee"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/13-agent-handoff-output-and-delivery-polish/tasks.md",
+      "blob": "243af6d1716d50f4080d3e4152ac7f5fd5904226"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/14-workspaces-beta-guide-split/plan.md",
+      "blob": "c4e1d8882e2f0097a2f5617a842ad358e18969c1"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/14-workspaces-beta-guide-split/tasks.md",
+      "blob": "00d86c8c71297bf97445f48b972fbe868c3a36b9"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/15-context-store-project-roots-and-schema-led-initiatives/evidence.md",
+      "blob": "0d52781bba8439f02aabee40c9819868bfb3888f"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/15-context-store-project-roots-and-schema-led-initiatives/plan.md",
+      "blob": "22a01ff2fe539153d29e91accb44ce6fe438602a"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/15-context-store-project-roots-and-schema-led-initiatives/tasks.md",
+      "blob": "dace62c162abf7f1ca32089fe6bfd06825f6a7ad"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/16-add-escalation-ux/plan.md",
+      "blob": "12ddd5d3bbdad722083bf25f318b48d9c0dedd95"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/16-add-escalation-ux/tasks.md",
+      "blob": "6dcd4659151f9f5a87f064d031bc8cb70bfb549b"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/17-harden-team-shared-coordination/plan.md",
+      "blob": "c36f9230f32c07bf248d194d78dc863d38d4f467"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/17-harden-team-shared-coordination/tasks.md",
+      "blob": "fa51ad070a4e88a99bda4793917921c55737ed7c"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/18-explore-initiative-hosted-target-bound-change-artifacts/evidence.md",
+      "blob": "eaaea23940d7cc2ea92a23501819c0cb10ac2b03"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/18-explore-initiative-hosted-target-bound-change-artifacts/plan.md",
+      "blob": "9ae6faabcb4cd1021793df9f91ebd579d87c52c0"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/18-explore-initiative-hosted-target-bound-change-artifacts/tasks.md",
+      "blob": "6218f63bf1583b7c618cf12675c5a486d88dd0ff"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/19-review-workspace-beta-compatibility-before-public-release/plan.md",
+      "blob": "04c4354a4895d218db163f12ba0e2053c2138034"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/19-review-workspace-beta-compatibility-before-public-release/tasks.md",
+      "blob": "4ef391fa8a0ad84c335e82b1043e64da7b04ac2e"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/proposed-initiative-next-agent-handoff-ux/evidence.md",
+      "blob": "884feca24dbc8e19885d5e9ba0e5c4e2ed00043a"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/proposed-initiative-next-agent-handoff-ux/plan.md",
+      "blob": "ca7b13b24becb8061f07de4c4258b3516a5b3ffd"
+    },
+    {
+      "path": "openspec/initiatives/context-store-and-initiatives/work-items/proposed-initiative-next-agent-handoff-ux/tasks.md",
+      "blob": "188dbe726ddaef1c467a8ba946c75c6f887ecda1"
+    },
+    {
+      "path": "openspec/specs/ai-tool-paths/spec.md",
+      "blob": "1b02b9c506aca28b7528d0d4f88ca24d227ce3ee"
+    },
+    {
+      "path": "openspec/specs/artifact-graph/spec.md",
+      "blob": "d9234baa232fb062d22e2c7573845174a83755c7"
+    },
+    {
+      "path": "openspec/specs/change-creation/spec.md",
+      "blob": "3e85719f5d6f0dfe2a2c4db11fae430fc4ee25a0"
+    },
+    {
+      "path": "openspec/specs/ci-nix-validation/spec.md",
+      "blob": "f9029b4ce9cbdea683619b6bc44d5448e4bad7b9"
+    },
+    {
+      "path": "openspec/specs/cli-archive/spec.md",
+      "blob": "6d13b79721125d7adc95687aab1c2c12fbe510b5"
+    },
+    {
+      "path": "openspec/specs/cli-artifact-workflow/spec.md",
+      "blob": "a0f75859d159dcefa24cc5532f4963cba9279e6a"
+    },
+    {
+      "path": "openspec/specs/cli-change/spec.md",
+      "blob": "28092096091837344c1827cf610de098dc71f11a"
+    },
+    {
+      "path": "openspec/specs/cli-completion/spec.md",
+      "blob": "9c6d1209546aff222181bbbc0a73f1ac1449b288"
+    },
+    {
+      "path": "openspec/specs/cli-config/spec.md",
+      "blob": "8b87d110a196ad0794b900efbe3c5ca391a9e7b3"
+    },
+    {
+      "path": "openspec/specs/cli-feedback/spec.md",
+      "blob": "35da60e19f26a4c59f231cfe09047f65fb2819e0"
+    },
+    {
+      "path": "openspec/specs/cli-init/spec.md",
+      "blob": "9653180de25fc7d48e2d789c73863f88b015fbd6"
+    },
+    {
+      "path": "openspec/specs/cli-list/spec.md",
+      "blob": "b11ab49210904b07ff7a08b20ba8bf19778abfca"
+    },
+    {
+      "path": "openspec/specs/cli-show/spec.md",
+      "blob": "0a4aa019a03a26c2778f63d76746af1532f9c485"
+    },
+    {
+      "path": "openspec/specs/cli-spec/spec.md",
+      "blob": "1277d8b9c394d80073ef2b139f858c7faa203a66"
+    },
+    {
+      "path": "openspec/specs/cli-update/spec.md",
+      "blob": "676bf9d60374e90bf82c086cbc014c21f4fc0e49"
+    },
+    {
+      "path": "openspec/specs/cli-validate/spec.md",
+      "blob": "3f04425af09c7d4fcee86c51955247f227bf0e3c"
+    },
+    {
+      "path": "openspec/specs/cli-view/spec.md",
+      "blob": "c77c4c79e4d36c4887005eddbc84beac35d0d0f0"
+    },
+    {
+      "path": "openspec/specs/command-generation/spec.md",
+      "blob": "cb270ae914c16bb5dc40ee348314ede206407cb7"
+    },
+    {
+      "path": "openspec/specs/config-loading/spec.md",
+      "blob": "b3b58f49ea69a63e17b29e3198823575abdb3202"
+    },
+    {
+      "path": "openspec/specs/context-injection/spec.md",
+      "blob": "4fbdfdaedf5c1eb98f063851360feceadf34e7ab"
+    },
+    {
+      "path": "openspec/specs/docs-agent-instructions/spec.md",
+      "blob": "8f2931fbdb92564aa035944ca2a017f1506f99fc"
+    },
+    {
+      "path": "openspec/specs/global-config/spec.md",
+      "blob": "9411fb690421f767ab45872f2a3ccfacdec7cf62"
+    },
+    {
+      "path": "openspec/specs/instruction-loader/spec.md",
+      "blob": "d437d85489130220f3a5634c9e4874d1e665ccc2"
+    },
+    {
+      "path": "openspec/specs/legacy-cleanup/spec.md",
+      "blob": "e72a1803d6bf0853a5c1d12d6124d57ad0437913"
+    },
+    {
+      "path": "openspec/specs/openspec-conventions/spec.md",
+      "blob": "54fc0e0f3b1dfa1843504ef9b896eed0f6634e34"
+    },
+    {
+      "path": "openspec/specs/opsx-archive-skill/spec.md",
+      "blob": "26c1c66f60303f6312e1c6df612878221f078238"
+    },
+    {
+      "path": "openspec/specs/opsx-onboard-skill/spec.md",
+      "blob": "ab028760c1e20ea8ca822095260b3e256b919f99"
+    },
+    {
+      "path": "openspec/specs/opsx-verify-skill/spec.md",
+      "blob": "91562c0e55c99ec6a057bdb85cb1d6ecd3cbedbe"
+    },
+    {
+      "path": "openspec/specs/rules-injection/spec.md",
+      "blob": "5efc540ddaf422474582af530ffd919a0b59c137"
+    },
+    {
+      "path": "openspec/specs/schema-fork-command/spec.md",
+      "blob": "27f29e484fd9fd42879452983d0605239e043545"
+    },
+    {
+      "path": "openspec/specs/schema-init-command/spec.md",
+      "blob": "12df38d29caf0b714e84c15e53fd22f604559f63"
+    },
+    {
+      "path": "openspec/specs/schema-resolution/spec.md",
+      "blob": "a25b5fb151196a2c43c67d6b10cc3d9b026b8c39"
+    },
+    {
+      "path": "openspec/specs/schema-validate-command/spec.md",
+      "blob": "c756709cb215763be06ec45ddbe428035731d853"
+    },
+    {
+      "path": "openspec/specs/schema-which-command/spec.md",
+      "blob": "3c037e446d97f0f051df716803ec42b1c3bca369"
+    },
+    {
+      "path": "openspec/specs/specs-sync-skill/spec.md",
+      "blob": "abb99ce16de2f522b57c56d3093c598dfc85eb37"
+    },
+    {
+      "path": "openspec/specs/telemetry/spec.md",
+      "blob": "07dc851f849eaf25376e5f3487272f1fb8a7962e"
+    },
+    {
+      "path": "openspec/work/AGENTS.md",
+      "blob": "01da7ee7fdc8c2fc26cc004a1486fd0520403ad3"
+    },
+    {
+      "path": "openspec/work/README.md",
+      "blob": "4fedc486413e374284f15ef4a29eee6d342b0b23"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/capstone/gauntlet.md",
+      "blob": "d7da40cf5fcb6bb8eab219b07607194857a6def6"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/capstone/journeys.md",
+      "blob": "49ab7858737b35f8cc45259e63026124d85eb389"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/capstone/release-readiness.md",
+      "blob": "6781068248685fe3dea12da5961edf70c977a6ff"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/capstone/technical-audits.md",
+      "blob": "1d9647950044859903327fc50fb683912386fe4e"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/capstone/usability-audits.md",
+      "blob": "39d95e02c78c85684db9650dc9a3d2d5d25433be"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/goal.md",
+      "blob": "043911556d10dcbaf1ff2552fa23b777ac923ccb"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/roadmap.md",
+      "blob": "7cbb4020bd18308a7477f6d6bb1f347b0c00445d"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/runbook.md",
+      "blob": "284822dbb661e3015942080a2466ede446e0ecf3"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/assemble-working-context/plan.md",
+      "blob": "d37e1ecc92f82326371477958bdddf9cb82ee262"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/assemble-working-context/spec.md",
+      "blob": "baaa0de354360980661b2cd54469369aacebf562"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/declared-store-fallback/plan.md",
+      "blob": "0df7342d63e2f63a8cd090e53b900406a2d6e627"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/declared-store-fallback/spec.md",
+      "blob": "eab1be2b3c44fa2880abf889b67504ff9d8635bd"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/delete-legacy-command-groups/deletion-ledger.md",
+      "blob": "3ff337396706b8d55033f77875c6a8b8858c6188"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/delete-legacy-command-groups/plan.md",
+      "blob": "3c88923ccbd69712151cb87278b4e762cfe90348"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/delete-legacy-command-groups/remainder.md",
+      "blob": "9cec9014d6763336181fbc1233dfedb3d6bef1ee"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/delete-legacy-command-groups/spec.md",
+      "blob": "6277932ed07df9683da30272e05f6e0bcc0440b6"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/personal-worksets/capstone-dogfood.md",
+      "blob": "df48702ad8bb97c8c9520649cab46244323250c6"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/personal-worksets/plan.md",
+      "blob": "a71dfc20f255eef2d818203b7c0bdd2d74188de6"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/personal-worksets/research.md",
+      "blob": "c301db5f0a4f8f88510254c2043d5542a3e5e14f"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/personal-worksets/spec.md",
+      "blob": "145e95012cc5a8ba0a9672a78b0d41bc8a018cfd"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/relationship-health/plan.md",
+      "blob": "15d4bdfcf841376daba04f26070663c2a7550195"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/relationship-health/spec.md",
+      "blob": "38f1542df130a000c7ea89e18f5243617be627b0"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-canonical-remote/plan.md",
+      "blob": "3afc40d9407be4075049c3f4b526f299ff95f7c2"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-canonical-remote/spec.md",
+      "blob": "dca20a14d09763f02d8ab1f456c59f672007bd63"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-lifecycle-proof/plan.md",
+      "blob": "0919737064f7b8ce1c63f9d38e4579a605706456"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-lifecycle-proof/spec.md",
+      "blob": "32398d1c084ed4590a1357aa72cb36d1d1a7e858"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-references/plan.md",
+      "blob": "5a898cb93f29e22f31e175e4a9e4c1ece6f4cd9c"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-references/spec.md",
+      "blob": "28b51e9ccbc8419a46a36b7eec27f5b97e60b44c"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-rename-and-guidance/dogfood-transcript.md",
+      "blob": "4131b19b47775200a1b40573c6f197b1d19e3a29"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-rename-and-guidance/plan.md",
+      "blob": "ef5fc3259372592e3252ae0f765b12978f6914ec"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-rename-and-guidance/spec.md",
+      "blob": "d31c887e353c3010ec5be6910c3de307a88d6786"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-root-parity/plan.md",
+      "blob": "a8a205e8086bd38113d44c7c69d33f69398f333e"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-root-parity/spec.md",
+      "blob": "b8592e816263ee799b026ac7e0696e10ac6c1cd1"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-root-selection/plan.md",
+      "blob": "f1b8d5a63625db796d05dcedf3553df3051d48a8"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/slices/store-root-selection/spec.md",
+      "blob": "189daea3b16d618490ad7ad05f1071637feb1874"
+    },
+    {
+      "path": "openspec/work/simplify-context-and-workspace-model/workset-direction.md",
+      "blob": "caf8624ef27af64e736b31124fa26f3643c7d07c"
+    },
+    {
+      "path": "package.json",
+      "blob": "620bd2e22bc78fc5c0081c46d52dc7a6975599a9"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "blob": "81ccf7d14cf9eb30c9de5e3d590b45724110ce9a"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "blob": "1149ed5ab438970903dde4b6c44af998ba10ae34"
+    },
+    {
+      "path": "schemas/spec-driven/schema.yaml",
+      "blob": "688c38a20bd0350bf27003ccdb78215562b1a334"
+    },
+    {
+      "path": "schemas/spec-driven/templates/design.md",
+      "blob": "dc6ca739e9d336a9c187d7ee773e53da48666175"
+    },
+    {
+      "path": "schemas/spec-driven/templates/proposal.md",
+      "blob": "b075f32e2ae97dcdba4b5f1cdbc87214651a3e41"
+    },
+    {
+      "path": "schemas/spec-driven/templates/spec.md",
+      "blob": "da7475067438111106673b1ceca347fcade42d3e"
+    },
+    {
+      "path": "schemas/spec-driven/templates/tasks.md",
+      "blob": "148874e6fb6261a61b37706a020a6c90847f204e"
+    },
+    {
+      "path": "scripts/README.md",
+      "blob": "0fb25f7747ab61bb8bdea1688e41cd569eac451e"
+    },
+    {
+      "path": "scripts/generate-skillssh.mjs",
+      "blob": "c68137f92a0d426a73a952dcab89551ba425cb67"
+    },
+    {
+      "path": "scripts/pack-version-check.mjs",
+      "blob": "43cf8050ebc77438bf462c22b144d4dc527c4388"
+    },
+    {
+      "path": "scripts/parity-hash-shared.mjs",
+      "blob": "71f6ddb80699f7b6693c071378148a6adac904cc"
+    },
+    {
+      "path": "scripts/regen-parity-hashes.mjs",
+      "blob": "917e20d2fbf9621fb91c9002107afb88726a3425"
+    },
+    {
+      "path": "scripts/skillssh-shared.mjs",
+      "blob": "47ad02e510ebe4283155118abe4651556332fbd7"
+    },
+    {
+      "path": "scripts/update-flake.sh",
+      "blob": "3d7aa46d57b5437b0a5bea7e340a38f2cfc7014f"
+    },
+    {
+      "path": "skills/README.md",
+      "blob": "44c01c60f1b365fcf013bfbc0bf4ce88f28408f2"
+    },
+    {
+      "path": "skills/openspec-apply-change/SKILL.md",
+      "blob": "ed033ba93472e811ac67114b48b48e6edfd7f92e"
+    },
+    {
+      "path": "skills/openspec-archive-change/SKILL.md",
+      "blob": "dd98c4499f9a0093c962d00f768e2613b4bf3f97"
+    },
+    {
+      "path": "skills/openspec-bulk-archive-change/SKILL.md",
+      "blob": "b388f0b802988e3b36732c956253bac6ec42430a"
+    },
+    {
+      "path": "skills/openspec-continue-change/SKILL.md",
+      "blob": "1693da7fa353927ac936de612227043b0d65ffdb"
+    },
+    {
+      "path": "skills/openspec-explore/SKILL.md",
+      "blob": "5b4534e6b9714b2950e3790e617d1679f10208ed"
+    },
+    {
+      "path": "skills/openspec-ff-change/SKILL.md",
+      "blob": "f7b4b69611b3f50905af011f736cbfb7f0abee30"
+    },
+    {
+      "path": "skills/openspec-new-change/SKILL.md",
+      "blob": "432cc45d97a862e746aebcb490e84b2377f59d4a"
+    },
+    {
+      "path": "skills/openspec-onboard/SKILL.md",
+      "blob": "66de72f16ca7d77bbdd87e6997acbb03d042c19e"
+    },
+    {
+      "path": "skills/openspec-propose/SKILL.md",
+      "blob": "7f41c4b27a9b68e4278a11e2b41e8207383b668d"
+    },
+    {
+      "path": "skills/openspec-sync-specs/SKILL.md",
+      "blob": "5683f84d5ae7c90cc0df9732a2c55194f13b26aa"
+    },
+    {
+      "path": "skills/openspec-update-change/SKILL.md",
+      "blob": "9aae524ba0dff0c55806909e83ef6b20090514c9"
+    },
+    {
+      "path": "skills/openspec-verify-change/SKILL.md",
+      "blob": "355febc9b22a622e358d804f688cc953986ac703"
+    },
+    {
+      "path": "src/cli/index.ts",
+      "blob": "75324cfa3870b9e545225bb470b48b27bd69301a"
+    },
+    {
+      "path": "src/commands/change.ts",
+      "blob": "fa13b8655f1f935d508b6561926f8ece1febd3be"
+    },
+    {
+      "path": "src/commands/completion.ts",
+      "blob": "a0487e5740cc7e75cbf8d18ae7350aa6f503714c"
+    },
+    {
+      "path": "src/commands/config.ts",
+      "blob": "470ce7991ff19695a201b28ae0d89643f2237559"
+    },
+    {
+      "path": "src/commands/context.ts",
+      "blob": "1a4b4a8312bf21ea64ac1ba857e86bf466df0920"
+    },
+    {
+      "path": "src/commands/doctor.ts",
+      "blob": "94c5c32a820144182368a487d707b75983a2ae72"
+    },
+    {
+      "path": "src/commands/feedback.ts",
+      "blob": "eebfca7256001110aa15b54d4494f5408323513c"
+    },
+    {
+      "path": "src/commands/schema.ts",
+      "blob": "23f00c7add11730bc6546e2f094e14104a392c64"
+    },
+    {
+      "path": "src/commands/shared-gather.ts",
+      "blob": "b88b0095648971955aab7fb0082e06e022ec9f15"
+    },
+    {
+      "path": "src/commands/shared-output.ts",
+      "blob": "56fbb1ea203b725ba75010086e30418fbb8efcdd"
+    },
+    {
+      "path": "src/commands/show.ts",
+      "blob": "c452229f4cbc0a13b5bc1db34b01a2fa45e6f835"
+    },
+    {
+      "path": "src/commands/spec.ts",
+      "blob": "e459342db5995119c93edeafbdb87ec99d6df517"
+    },
+    {
+      "path": "src/commands/store.ts",
+      "blob": "2caac9126bbc3d0143122e132f69d3c4669a6f8e"
+    },
+    {
+      "path": "src/commands/validate.ts",
+      "blob": "cf64a8d6829a6ac61b86aefa5d1da789a3eb2c55"
+    },
+    {
+      "path": "src/commands/workflow/index.ts",
+      "blob": "8a95ded710d135f25e6e4a9f1013036ea113027e"
+    },
+    {
+      "path": "src/commands/workflow/instructions.ts",
+      "blob": "a585e864ff78c7137885e51d408a72c3c0ca35f1"
+    },
+    {
+      "path": "src/commands/workflow/new-change.ts",
+      "blob": "9dc57fd69d387e1c790366675f95e9164f3dfa78"
+    },
+    {
+      "path": "src/commands/workflow/schemas.ts",
+      "blob": "0880e20c9ae62d6aca3f0c56293c22fd5a77ab6c"
+    },
+    {
+      "path": "src/commands/workflow/shared.ts",
+      "blob": "0b0075ddbcfeacf63939509607c8bbc7c1e6b374"
+    },
+    {
+      "path": "src/commands/workflow/status.ts",
+      "blob": "016338c8d484e32ea6c6f6ea978ce12cdee4d271"
+    },
+    {
+      "path": "src/commands/workflow/templates.ts",
+      "blob": "02d2c5a01d9bd5b7596fd5695153ef019a42a522"
+    },
+    {
+      "path": "src/commands/workset-input.ts",
+      "blob": "0207f3b5abab4fb3670969e450a6043c0e76e45e"
+    },
+    {
+      "path": "src/commands/workset-prompts.ts",
+      "blob": "95c9247b9942f4647eaefdbd911472811b17e3ad"
+    },
+    {
+      "path": "src/commands/workset.ts",
+      "blob": "afb018aa83f0d293be964fed3c4ebcb43b3ae78f"
+    },
+    {
+      "path": "src/core/archive.ts",
+      "blob": "85c74d81aeccf9174fbb57e599190400363b6765"
+    },
+    {
+      "path": "src/core/artifact-graph/graph.ts",
+      "blob": "29a2297848e842692f63360ef7c0ee53905eae06"
+    },
+    {
+      "path": "src/core/artifact-graph/index.ts",
+      "blob": "2a2d346d00beecbed5a8ee93702213fb4e33ed69"
+    },
+    {
+      "path": "src/core/artifact-graph/instruction-loader.ts",
+      "blob": "e1363daaabe67fa099a58b311ba84ccedc01092f"
+    },
+    {
+      "path": "src/core/artifact-graph/outputs.ts",
+      "blob": "a4c2c54efa81ad8d8de703741a02a6f762857137"
+    },
+    {
+      "path": "src/core/artifact-graph/resolver.ts",
+      "blob": "48295086d7a8070529e94f2cf0d3013564c8e5ba"
+    },
+    {
+      "path": "src/core/artifact-graph/schema.ts",
+      "blob": "ebaff3bcf40d3a552d53e6271094a5caf50658d6"
+    },
+    {
+      "path": "src/core/artifact-graph/state.ts",
+      "blob": "47c256ac91844b6ac7f037c703288fc2ab9eecb4"
+    },
+    {
+      "path": "src/core/artifact-graph/types.ts",
+      "blob": "9e281ad074e507d351efbe6c14bac53209005052"
+    },
+    {
+      "path": "src/core/available-tools.ts",
+      "blob": "13273a96860b1fb8009ad239c07406d1b2f0e5f1"
+    },
+    {
+      "path": "src/core/change-metadata/index.ts",
+      "blob": "8868041f90e93b8f3d6c2979da9ee1fb1454d6c5"
+    },
+    {
+      "path": "src/core/change-metadata/schema.ts",
+      "blob": "3644160052451a7346097ca22112d81b1edbdb09"
+    },
+    {
+      "path": "src/core/change-status-policy.ts",
+      "blob": "dd7fe951ddd6b3eadef59e01023efe3a913f744b"
+    },
+    {
+      "path": "src/core/command-generation/adapters/amazon-q.ts",
+      "blob": "4875a27ee3af753d60f67388e890f5ae0640a918"
+    },
+    {
+      "path": "src/core/command-generation/adapters/antigravity.ts",
+      "blob": "ef6af9e76b7113c436920a6e8e630152e8b308a8"
+    },
+    {
+      "path": "src/core/command-generation/adapters/auggie.ts",
+      "blob": "b790c04f51e127f929319afe7c92848c9ed5b2c9"
+    },
+    {
+      "path": "src/core/command-generation/adapters/bob.ts",
+      "blob": "84e201eec4e0b3ae9f48c509dcac58556fdce4d8"
+    },
+    {
+      "path": "src/core/command-generation/adapters/claude.ts",
+      "blob": "17a5f3b6bd03c96b172935944e15ab97a98d4fa0"
+    },
+    {
+      "path": "src/core/command-generation/adapters/cline.ts",
+      "blob": "abc643164d4028466d6a34042d939ce531b0ad03"
+    },
+    {
+      "path": "src/core/command-generation/adapters/codeassistant.ts",
+      "blob": "473bd06f4ff2c19bbfd722f243973346ca267e03"
+    },
+    {
+      "path": "src/core/command-generation/adapters/codebuddy.ts",
+      "blob": "51657e76645a24824f10799d443b67973934978c"
+    },
+    {
+      "path": "src/core/command-generation/adapters/command-code.ts",
+      "blob": "5dbebb4cc4f791e163ac1c8308b55c917627886a"
+    },
+    {
+      "path": "src/core/command-generation/adapters/continue.ts",
+      "blob": "b3bdedea6823895837b077b859eae32b28b2a4b9"
+    },
+    {
+      "path": "src/core/command-generation/adapters/costrict.ts",
+      "blob": "82a4aea6bdbb13cf56f7f8b43d8d77474e2db059"
+    },
+    {
+      "path": "src/core/command-generation/adapters/crush.ts",
+      "blob": "e1f3aae299c0de16db82ed237f2b7524475dab69"
+    },
+    {
+      "path": "src/core/command-generation/adapters/cursor.ts",
+      "blob": "7ee77a1e723d75116cc8142db00a1764edfba2a3"
+    },
+    {
+      "path": "src/core/command-generation/adapters/devin.ts",
+      "blob": "8a912c6854cb3e09be885846eebdf0ab40a36f27"
+    },
+    {
+      "path": "src/core/command-generation/adapters/factory.ts",
+      "blob": "383d36844fbf6835aaec182262161b0b30244b85"
+    },
+    {
+      "path": "src/core/command-generation/adapters/gemini.ts",
+      "blob": "d3a4030513d770e59bb19a12bf34598ff1a9bcde"
+    },
+    {
+      "path": "src/core/command-generation/adapters/github-copilot.ts",
+      "blob": "cd71b87467861c6b3ab120ca476632b7070c8de8"
+    },
+    {
+      "path": "src/core/command-generation/adapters/iflow.ts",
+      "blob": "8d94cc112ac948f0988f1c61ae9f6af41fc23df2"
+    },
+    {
+      "path": "src/core/command-generation/adapters/index.ts",
+      "blob": "324eebcb85e1a78984a0cc7d04a5f17d75c46484"
+    },
+    {
+      "path": "src/core/command-generation/adapters/junie.ts",
+      "blob": "69c0a53484ad55abd5a036447a720a96414af9b4"
+    },
+    {
+      "path": "src/core/command-generation/adapters/kilocode.ts",
+      "blob": "bb60c4dd72a35da6530acaa331db1a3294ad2263"
+    },
+    {
+      "path": "src/core/command-generation/adapters/kiro.ts",
+      "blob": "8d52d47cc4c3933742f20a64cf086bbb0004434a"
+    },
+    {
+      "path": "src/core/command-generation/adapters/lingma.ts",
+      "blob": "e6e15ba1c17342e0bddd73b3a2066acf8452c2e4"
+    },
+    {
+      "path": "src/core/command-generation/adapters/oh-my-pi.ts",
+      "blob": "4842b458df725fed00f05ec05c0e03688eba5cb5"
+    },
+    {
+      "path": "src/core/command-generation/adapters/opencode.ts",
+      "blob": "b3d96d63e52c944f2c87f0de459d8fa8d184829e"
+    },
+    {
+      "path": "src/core/command-generation/adapters/pi.ts",
+      "blob": "03cd43f0d3134fd91829cfa4c21ea087777f800c"
+    },
+    {
+      "path": "src/core/command-generation/adapters/qoder.ts",
+      "blob": "9fa78f9e3db7d785fe14a6de0d38bacff33f3cb0"
+    },
+    {
+      "path": "src/core/command-generation/adapters/qwen.ts",
+      "blob": "c24ccbf880e7360dae4c0c8d446876258cfd69b0"
+    },
+    {
+      "path": "src/core/command-generation/adapters/roocode.ts",
+      "blob": "d131b147693df2ab0bd4fac68a2bb6ef48ae7504"
+    },
+    {
+      "path": "src/core/command-generation/adapters/trae.ts",
+      "blob": "3052961582a2ea530b013593f664be311282814a"
+    },
+    {
+      "path": "src/core/command-generation/adapters/zcode.ts",
+      "blob": "0121debba09d0c4ed32bf801dc3e953c6fc1ee26"
+    },
+    {
+      "path": "src/core/command-generation/generator.ts",
+      "blob": "cedd95463ce5d7cbc5c2647dc2802e613ffdae9e"
+    },
+    {
+      "path": "src/core/command-generation/index.ts",
+      "blob": "47c05cd1bb6d168c78147b271c591181138f9536"
+    },
+    {
+      "path": "src/core/command-generation/invocation.ts",
+      "blob": "ccd67478c985cba70fb3de9d612ec593bdd057ef"
+    },
+    {
+      "path": "src/core/command-generation/registry.ts",
+      "blob": "7e8b32ceb85284b43e926b04b2fd6c56d4d81ea2"
+    },
+    {
+      "path": "src/core/command-generation/types.ts",
+      "blob": "c0b1f5e104e28d6ea810d74bead788dc1587d476"
+    },
+    {
+      "path": "src/core/command-generation/yaml.ts",
+      "blob": "766faa993d0737cfce63ad9f0a5bb3022666357d"
+    },
+    {
+      "path": "src/core/command-surface.ts",
+      "blob": "4162e9253207651c808f3476266eb244893d4643"
+    },
+    {
+      "path": "src/core/completion-tip.ts",
+      "blob": "72387645fa4d38f1205abec7bb86a995b5362587"
+    },
+    {
+      "path": "src/core/completions/command-registry.ts",
+      "blob": "95e550a7ffb4da1e2e25da37bf85d6d00f857851"
+    },
+    {
+      "path": "src/core/completions/completion-provider.ts",
+      "blob": "0159131486e2fd8c7a3b6a3f3e6742a63eb72f8d"
+    },
+    {
+      "path": "src/core/completions/factory.ts",
+      "blob": "8be31782b66f97d76aee8b9554fe18d87aae41a5"
+    },
+    {
+      "path": "src/core/completions/generators/bash-generator.ts",
+      "blob": "7d05d56c4410719893a3528d8f6b922dbf3b1944"
+    },
+    {
+      "path": "src/core/completions/generators/fish-generator.ts",
+      "blob": "3e4b2c4f27bdd3c578ac88ae6b2967b1bd8924e5"
+    },
+    {
+      "path": "src/core/completions/generators/powershell-generator.ts",
+      "blob": "5e4b9498b9d40f31fa97ed9bc93fa728296a53ae"
+    },
+    {
+      "path": "src/core/completions/generators/zsh-generator.ts",
+      "blob": "bf2fc627aaf974bb90d3b1db433cb2eac08feea2"
+    },
+    {
+      "path": "src/core/completions/installers/bash-installer.ts",
+      "blob": "54b8e4a424e54193378b9e01aabe54dedd4f212a"
+    },
+    {
+      "path": "src/core/completions/installers/fish-installer.ts",
+      "blob": "8f4457e734e4db980957784b8cfde623079f10ba"
+    },
+    {
+      "path": "src/core/completions/installers/powershell-installer.ts",
+      "blob": "02cfa4b426f5772b779256eef63498456a7355cb"
+    },
+    {
+      "path": "src/core/completions/installers/shell-quote.ts",
+      "blob": "4c1313135a11a1a9885134a2731bd98434b2eb59"
+    },
+    {
+      "path": "src/core/completions/installers/zsh-installer.ts",
+      "blob": "7332a335cefcb7552f386b1bcd05c6bc00985c2f"
+    },
+    {
+      "path": "src/core/completions/shared-flags.ts",
+      "blob": "3a0d998e480088098d81fcaa53c78d78df916a84"
+    },
+    {
+      "path": "src/core/completions/templates/bash-templates.ts",
+      "blob": "936874c5d4cd7ee16b2e8d6856968968a3c50d53"
+    },
+    {
+      "path": "src/core/completions/templates/fish-templates.ts",
+      "blob": "5e2ecf0248bb8d281fbadc37d5af87628450eef3"
+    },
+    {
+      "path": "src/core/completions/templates/powershell-templates.ts",
+      "blob": "7202961854c440a13b5bf4caa7f14d76c2536738"
+    },
+    {
+      "path": "src/core/completions/templates/zsh-templates.ts",
+      "blob": "d36dbdcfe413b38b5181eff151e65dc3fd1b80f7"
+    },
+    {
+      "path": "src/core/completions/types.ts",
+      "blob": "5d88f0f3a70252ea08a0625943064969d2de39d4"
+    },
+    {
+      "path": "src/core/config-prompts.ts",
+      "blob": "a2259184a6e2851fd302f802a0b01c1656a3186e"
+    },
+    {
+      "path": "src/core/config-schema.ts",
+      "blob": "1310e48fffe6efa1850f37beca883878bac22b5c"
+    },
+    {
+      "path": "src/core/config.ts",
+      "blob": "3b8287ba3c0fbc14048d55371a7904d101ff6bc9"
+    },
+    {
+      "path": "src/core/converters/json-converter.ts",
+      "blob": "b8468c2acac2204ad5e937fdb3b335cb00748975"
+    },
+    {
+      "path": "src/core/file-state.ts",
+      "blob": "d712e88fe175a6eeb1dc3a4f657f9933f11a5ec0"
+    },
+    {
+      "path": "src/core/github-copilot/cloud-agent.ts",
+      "blob": "551037c919d415602833f86181c8638a7d277155"
+    },
+    {
+      "path": "src/core/global-config.ts",
+      "blob": "5bbab86ae04d66992c2f3de590d36d25d0f0c4d0"
+    },
+    {
+      "path": "src/core/id.ts",
+      "blob": "a1f033850d71e4104b41aae81a903216a73bc676"
+    },
+    {
+      "path": "src/core/index.ts",
+      "blob": "384c6daa79cd7426ac9d3dc672b29464972660ca"
+    },
+    {
+      "path": "src/core/init.ts",
+      "blob": "c61652be044d7b6415a72924ea5f9df7e946dde2"
+    },
+    {
+      "path": "src/core/legacy-cleanup.ts",
+      "blob": "66835c6a2d4ba1d254466d68f974268ba4a87827"
+    },
+    {
+      "path": "src/core/list.ts",
+      "blob": "d8eeab90521d23b1a77b158276fae4acdde2c70d"
+    },
+    {
+      "path": "src/core/migration.ts",
+      "blob": "f1362bd61186bee36e8b2aa6c1df733008caadf2"
+    },
+    {
+      "path": "src/core/onboarding-commands.ts",
+      "blob": "0e3d02ddcc10f9ace712010dd158fa6711d7a568"
+    },
+    {
+      "path": "src/core/openers.ts",
+      "blob": "a98960cfc5c7d080d4af64b729fe734cf89cd718"
+    },
+    {
+      "path": "src/core/openspec-root.ts",
+      "blob": "109c92ca58d440cd786b3fe27ec2a872e38943bb"
+    },
+    {
+      "path": "src/core/parsers/change-parser.ts",
+      "blob": "f13b63c4ff366b5fcc95f915c55e25822275135d"
+    },
+    {
+      "path": "src/core/parsers/code-fence.ts",
+      "blob": "bb580c2d8bc4a4a3b83e0172ca338465adb98bf1"
+    },
+    {
+      "path": "src/core/parsers/markdown-parser.ts",
+      "blob": "4d90e965f8c5e7c61ef46b8c1419fcd7c6f628d2"
+    },
+    {
+      "path": "src/core/parsers/requirement-blocks.ts",
+      "blob": "399c50a30d847576d6f05adadaa609b604e7d383"
+    },
+    {
+      "path": "src/core/parsers/requirement-text.ts",
+      "blob": "eb661398e4b25a793a313dec34693ed1232cb259"
+    },
+    {
+      "path": "src/core/parsers/spec-structure.ts",
+      "blob": "b0858e5d7295c2701f19bf334dca6041010d695f"
+    },
+    {
+      "path": "src/core/planning-home.ts",
+      "blob": "c27a8ccbe72c436795f8b18cf57271dc14ade1d4"
+    },
+    {
+      "path": "src/core/profile-sync-drift.ts",
+      "blob": "b731780df6a23f7d764df0f8bcae9357b872568d"
+    },
+    {
+      "path": "src/core/profiles.ts",
+      "blob": "64351cb8a06daf67f663ce06134c5f88313efff2"
+    },
+    {
+      "path": "src/core/project-config.ts",
+      "blob": "0a2edf644fce79f51c4f994f2b899d098fe080ac"
+    },
+    {
+      "path": "src/core/references.ts",
+      "blob": "e81f052d4f8332fd993571494fd343297e63af68"
+    },
+    {
+      "path": "src/core/relationship-health.ts",
+      "blob": "8c7fd8416381c83dee5d0fb0b10343baf7147357"
+    },
+    {
+      "path": "src/core/root-selection.ts",
+      "blob": "333d24f721bcb9068c4f48ffecc57ad447c19964"
+    },
+    {
+      "path": "src/core/schemas/base.schema.ts",
+      "blob": "a6472ddb0ae612f1fd3a7572e178055351853f9a"
+    },
+    {
+      "path": "src/core/schemas/change.schema.ts",
+      "blob": "3c933bbec3ec038327c4cb1cb37e01ba4e2b46bc"
+    },
+    {
+      "path": "src/core/schemas/index.ts",
+      "blob": "b5416c88b8770862015625e31d4b1a09d52bc646"
+    },
+    {
+      "path": "src/core/schemas/spec.schema.ts",
+      "blob": "b9ed3d5aef755e85bbc62c9ecd87324d60976b69"
+    },
+    {
+      "path": "src/core/shared-skill-target.ts",
+      "blob": "63363e4875371831efb47bfc1c24738556bd9d4b"
+    },
+    {
+      "path": "src/core/shared/allowed-tools.ts",
+      "blob": "2fc6d74dc16cd7fad848421a4c49a73a0a127290"
+    },
+    {
+      "path": "src/core/shared/ide-restart.ts",
+      "blob": "2a5db017b2ef3d70af203c0b785de00af3745b96"
+    },
+    {
+      "path": "src/core/shared/index.ts",
+      "blob": "fc7c1cd547117d9801852b8b1ab16ffd09cef359"
+    },
+    {
+      "path": "src/core/shared/skill-content-equivalence.ts",
+      "blob": "25283bb193c87d4a5b44abb30275d5e0d6dbd746"
+    },
+    {
+      "path": "src/core/shared/skill-generation.ts",
+      "blob": "bf3d307ca44b4024d1c1da3f4d28a663d6e84235"
+    },
+    {
+      "path": "src/core/shared/skill-paths.ts",
+      "blob": "ceca0a8294db8f50198a4dba1ebde14966c0d652"
+    },
+    {
+      "path": "src/core/shared/tool-detection.ts",
+      "blob": "6cdb891ffa70c01d8f54e4c9ea489a2cece39a37"
+    },
+    {
+      "path": "src/core/specs-apply.ts",
+      "blob": "ebf650278c2f235082893416f33135b9efff5faf"
+    },
+    {
+      "path": "src/core/store/errors.ts",
+      "blob": "6f248cd9db466c1e90ec77330e76b5f8bd404fe5"
+    },
+    {
+      "path": "src/core/store/foundation.ts",
+      "blob": "3bd1e1f69cd2540a89d8411d117c8cad759a7dc9"
+    },
+    {
+      "path": "src/core/store/git.ts",
+      "blob": "d8ead72aa6e7fe43f38aa8273664f611828d47db"
+    },
+    {
+      "path": "src/core/store/index.ts",
+      "blob": "cf011f35d7852c7dca86a6fd1f55c93d708d7611"
+    },
+    {
+      "path": "src/core/store/operations.ts",
+      "blob": "75dff63d0d4e4d744b78390e99c531fe2e8f6a84"
+    },
+    {
+      "path": "src/core/store/registry.ts",
+      "blob": "507def7c4da472e6dcea791666bfa2abd651c564"
+    },
+    {
+      "path": "src/core/styles/palette.ts",
+      "blob": "78e306a8611166a617c9847e9b35389a5ea7f6ee"
+    },
+    {
+      "path": "src/core/templates/index.ts",
+      "blob": "6bf5d712c49f72441e4913702ea5f93ba6ccc3f0"
+    },
+    {
+      "path": "src/core/templates/optional-workflow.ts",
+      "blob": "d40bc66ddd4e006780af9add36e415874e881d69"
+    },
+    {
+      "path": "src/core/templates/skill-templates.ts",
+      "blob": "041c0331c728a9f6dc8d6dbcc892be45b96fcf68"
+    },
+    {
+      "path": "src/core/templates/types.ts",
+      "blob": "2c5ebb715cea0082e22cfd94e09f3764c24fad3c"
+    },
+    {
+      "path": "src/core/templates/workflows/apply-change.ts",
+      "blob": "6c03cba10d18c3ffd752f9fd84338f3ab306ea6e"
+    },
+    {
+      "path": "src/core/templates/workflows/archive-change.ts",
+      "blob": "3c1c18c5e7395ef6be43132bca490d75f4e856ad"
+    },
+    {
+      "path": "src/core/templates/workflows/bulk-archive-change.ts",
+      "blob": "1235bba8e15d2709b562386b53a6d577c64cce39"
+    },
+    {
+      "path": "src/core/templates/workflows/continue-change.ts",
+      "blob": "56d5b34a63d0249f0a502a274fd1f8c496ca0f8f"
+    },
+    {
+      "path": "src/core/templates/workflows/explore.ts",
+      "blob": "96fe854bd736744c99ce6ac8e9c58ca6b64a3ff3"
+    },
+    {
+      "path": "src/core/templates/workflows/feedback.ts",
+      "blob": "baa984b731fc777281377439f8818f17bb30ece8"
+    },
+    {
+      "path": "src/core/templates/workflows/ff-change.ts",
+      "blob": "42edd7f9606163c4693f681138711e1f9792db64"
+    },
+    {
+      "path": "src/core/templates/workflows/new-change.ts",
+      "blob": "fee477ea8a15223f09bb074da8a8e17c3974afdc"
+    },
+    {
+      "path": "src/core/templates/workflows/onboard.ts",
+      "blob": "127ce8ca242129d9f3a1013652c9483a773a09ff"
+    },
+    {
+      "path": "src/core/templates/workflows/project-root.ts",
+      "blob": "28158442109b799154d51b6084c1822db101b02c"
+    },
+    {
+      "path": "src/core/templates/workflows/propose.ts",
+      "blob": "625bbeee2b8ce54dc63e0b7fc15451c7cd68bc9f"
+    },
+    {
+      "path": "src/core/templates/workflows/store-selection.ts",
+      "blob": "dfa132c3e5de3f6c85ca266f886bc4fa3e0fa6c5"
+    },
+    {
+      "path": "src/core/templates/workflows/sync-specs.ts",
+      "blob": "13a199323edf4fe726efb9126b5055f716eb131d"
+    },
+    {
+      "path": "src/core/templates/workflows/update-change.ts",
+      "blob": "6735d1dbe82bc8a20f2260fc67fce05bf0fd2923"
+    },
+    {
+      "path": "src/core/templates/workflows/verify-change.ts",
+      "blob": "8bc85edfb68eda87c90b2979715ffeb559917950"
+    },
+    {
+      "path": "src/core/update.ts",
+      "blob": "772950fbabab77146a8266ebc708bc4d32a8a945"
+    },
+    {
+      "path": "src/core/validation/constants.ts",
+      "blob": "3c570255cdb9602c7ee9936b1124f1b62d083ef1"
+    },
+    {
+      "path": "src/core/validation/purpose-placeholder.ts",
+      "blob": "5fa3060df063ffd940722e95f6d4e2cb0f2797b1"
+    },
+    {
+      "path": "src/core/validation/task-checkboxes.ts",
+      "blob": "7e32fb39c3b631dcf4cc97717ffd1bc14a8e795b"
+    },
+    {
+      "path": "src/core/validation/task-numbering.ts",
+      "blob": "a77767a26077cbd2432a3cb81559bd20de407fc1"
+    },
+    {
+      "path": "src/core/validation/types.ts",
+      "blob": "a64e3e0c2a102e4b473cf182643b9bf121a70dba"
+    },
+    {
+      "path": "src/core/validation/validator.ts",
+      "blob": "f8c9d06f7a1b517d602ed8324d537a1e5768f029"
+    },
+    {
+      "path": "src/core/version-check.ts",
+      "blob": "de4fdebf663b9f170af429612475cafa170aea0e"
+    },
+    {
+      "path": "src/core/view.ts",
+      "blob": "e79c1905a7ac4acdbff2687200133e978f0c7fa3"
+    },
+    {
+      "path": "src/core/working-set.ts",
+      "blob": "007c33680168afbd9a2e4af6818f3b50d9212142"
+    },
+    {
+      "path": "src/core/worksets.ts",
+      "blob": "192d6092fc8df65e891d068883787d4385b29241"
+    },
+    {
+      "path": "src/core/zod-issues.ts",
+      "blob": "5740db05cd573de970e2c3d1af6b016a15e8e1c7"
+    },
+    {
+      "path": "src/index.ts",
+      "blob": "9776fb47d825544f0dfd75440448a2c0c5b63896"
+    },
+    {
+      "path": "src/prompts/searchable-multi-select.ts",
+      "blob": "e6cdb1f3f2cf51871d1ce04ca37766204817cf9a"
+    },
+    {
+      "path": "src/telemetry/config.ts",
+      "blob": "40920d566378874c4364ad54c75c4dccb65e5670"
+    },
+    {
+      "path": "src/telemetry/index.ts",
+      "blob": "e9a0c323a666c3f1aaa0279eaeaeb3a11b2356f7"
+    },
+    {
+      "path": "src/telemetry/opt-out.ts",
+      "blob": "c7843ad554666a4280c04d5e219020b50c6303bf"
+    },
+    {
+      "path": "src/ui/ascii-patterns.ts",
+      "blob": "5c674952fa591648ce60f0b70749c210ecb20c7a"
+    },
+    {
+      "path": "src/ui/welcome-screen.ts",
+      "blob": "9e33dcf4abb788ed6dc942daa3bd344f97bc0634"
+    },
+    {
+      "path": "src/utils/change-metadata.ts",
+      "blob": "1f31a44596f3ffa3f5803d70cc13036214cad0c0"
+    },
+    {
+      "path": "src/utils/change-utils.ts",
+      "blob": "803405953ec0ceef38a26cc2f6ca58fe070ab227"
+    },
+    {
+      "path": "src/utils/ci.ts",
+      "blob": "87be4565a126e82908c9051facd04c0987739ade"
+    },
+    {
+      "path": "src/utils/command-references.ts",
+      "blob": "115cdce5b3a8af2791723e13d8cf0813c6cf8148"
+    },
+    {
+      "path": "src/utils/date.ts",
+      "blob": "e76a54c1bcc32de3c7c7daf3ca420886ba7be8fb"
+    },
+    {
+      "path": "src/utils/file-system.ts",
+      "blob": "5cf2ef859434a78fe04661e30fcbff485932bff4"
+    },
+    {
+      "path": "src/utils/index.ts",
+      "blob": "d106653a15e458202da2ed5ef8565376ffb9560f"
+    },
+    {
+      "path": "src/utils/interactive.ts",
+      "blob": "400249e867bf5697a0522447edb36ae0a512f7b5"
+    },
+    {
+      "path": "src/utils/item-discovery.ts",
+      "blob": "65d5b45fab2ea6b53a781f696b940a400018c983"
+    },
+    {
+      "path": "src/utils/match.ts",
+      "blob": "03610fada75467dac604ab9bb2a040b63482d2c1"
+    },
+    {
+      "path": "src/utils/nested-change.ts",
+      "blob": "a5bb0eaea8f52598e9f391c5cf227b9fa05a6604"
+    },
+    {
+      "path": "src/utils/requirement-diff.ts",
+      "blob": "095e443e9bf639936876e011bb583460c3da5b70"
+    },
+    {
+      "path": "src/utils/shell-detection.ts",
+      "blob": "1a5987cac3bb13ea2c384b5341e074c055774ce7"
+    },
+    {
+      "path": "src/utils/spec-discovery.ts",
+      "blob": "d1d2d35d2a1dd49a7de79f680960b8aa899282c4"
+    },
+    {
+      "path": "src/utils/task-progress.ts",
+      "blob": "37873aabaa63df5f0ebe649d895c05aeb37d12df"
+    },
+    {
+      "path": "test/AGENTS.md",
+      "blob": "6161583824637102008488de8cfb0988ef3cb262"
+    },
+    {
+      "path": "test/cli-e2e/archive-closed-requirement-heading.test.ts",
+      "blob": "ea0e0fda92b8c2ae7b9fff89336f5ee603cd5f3f"
+    },
+    {
+      "path": "test/cli-e2e/archive-requirement-name-near-miss.test.ts",
+      "blob": "60bff0686dc9a37e14d7e03b24540ed7f90ef0ff"
+    },
+    {
+      "path": "test/cli-e2e/basic.test.ts",
+      "blob": "c05965ea72bf48d00c3f5cd6f319de91359ea06e"
+    },
+    {
+      "path": "test/cli-e2e/capstone-journeys.test.ts",
+      "blob": "adc4271a73e243711a4bd4679a759805ee70fae7"
+    },
+    {
+      "path": "test/cli-e2e/completion-tip.test.ts",
+      "blob": "253d169719e8db094806e96ec9a5ae95d7395f19"
+    },
+    {
+      "path": "test/cli-e2e/store-lifecycle.test.ts",
+      "blob": "39c79da9d8e58a2e8311d3ab5b30c4bf38bbbdb4"
+    },
+    {
+      "path": "test/cli-e2e/validate-archived-tasks.test.ts",
+      "blob": "7ea5ae845b8262399bfcc994a6e460f98492ef4e"
+    },
+    {
+      "path": "test/cli-e2e/validate-findings.test.ts",
+      "blob": "75aa35c643684296598d49052466dd47fbefc6f3"
+    },
+    {
+      "path": "test/cli-e2e/validate-international.test.ts",
+      "blob": "da0ceb040f09c4e23a01a792b01b84cb6697532d"
+    },
+    {
+      "path": "test/cli-e2e/validate-scenario-loss.test.ts",
+      "blob": "cd0375bff40db3747091dd90b1eebb29098fdb69"
+    },
+    {
+      "path": "test/cli-e2e/validate-task-checkboxes.test.ts",
+      "blob": "3afd621dee3cde1309757dc35dc7b9bd5c264f11"
+    },
+    {
+      "path": "test/cli-e2e/validate-task-numbering.test.ts",
+      "blob": "2d6a133b12ed3995c205ce81ae067a892f048bc4"
+    },
+    {
+      "path": "test/cli-e2e/view-store-resolution.test.ts",
+      "blob": "415ca4d93f8e917d9ddc70c7899c80d1f973d8fe"
+    },
+    {
+      "path": "test/cli-e2e/workset-journey.test.ts",
+      "blob": "06c3d01c4432f7c5c37f1db6103a18c31c5e1267"
+    },
+    {
+      "path": "test/commands/apply-instructions-blocked.test.ts",
+      "blob": "798ed32ca7dcd406c0f0fe84cdcb85186a1a778b"
+    },
+    {
+      "path": "test/commands/apply-instructions-tasks.test.ts",
+      "blob": "38f482803e388e970a795597688bbc61043d9adf"
+    },
+    {
+      "path": "test/commands/apply-instructions-warnings.test.ts",
+      "blob": "44f296e9272d60dbf2e1ab65eba864137a56fbbb"
+    },
+    {
+      "path": "test/commands/artifact-workflow.test.ts",
+      "blob": "0658d2beb0654f5277ce49dae765cd1339d49238"
+    },
+    {
+      "path": "test/commands/change-initiative-link.test.ts",
+      "blob": "c1a7797b57d2bf2603fd281a6d4c8ebfcdafc057"
+    },
+    {
+      "path": "test/commands/change.interactive-show.test.ts",
+      "blob": "426117fc42ace45ea9767e9b9d75aaa7cc981bd1"
+    },
+    {
+      "path": "test/commands/change.interactive-validate.test.ts",
+      "blob": "1872e68ec5d1fb9b9378f56f9d5436f912be2aa7"
+    },
+    {
+      "path": "test/commands/completion.test.ts",
+      "blob": "ea558aa2aeddd306e27763ae1d0bbfa0c9854927"
+    },
+    {
+      "path": "test/commands/config-edit.test.ts",
+      "blob": "67317e02594b8143c820b0cfb0118840455be19a"
+    },
+    {
+      "path": "test/commands/config-profile.test.ts",
+      "blob": "3137814e6ae5998ab58935e7aab70647a009625a"
+    },
+    {
+      "path": "test/commands/config.test.ts",
+      "blob": "d7dd733359318b159ec02d021b1c673d2a3ca3c3"
+    },
+    {
+      "path": "test/commands/context.test.ts",
+      "blob": "0b0905c0146dfd98ac5c14297087b06f1cbe57cb"
+    },
+    {
+      "path": "test/commands/declared-store-fallback.test.ts",
+      "blob": "8eb6b50907414d4365813360675d1afc5e8385c9"
+    },
+    {
+      "path": "test/commands/doctor.test.ts",
+      "blob": "e1cb2d5ce9d4673d0365d90be578fd07f8b51b2e"
+    },
+    {
+      "path": "test/commands/feedback.test.ts",
+      "blob": "b079f91cad99866710de0f93151df064f1d415b6"
+    },
+    {
+      "path": "test/commands/global-default-store.test.ts",
+      "blob": "50f0c83013a59e1b5a43cdb79644f094383cfbe2"
+    },
+    {
+      "path": "test/commands/legacy-groups-removed.test.ts",
+      "blob": "99c9700abc3188b0093a353ae68932a5a5414be6"
+    },
+    {
+      "path": "test/commands/profile-handoffs.test.ts",
+      "blob": "1df03c78e220a7e526875e937c9cbb401af02f1c"
+    },
+    {
+      "path": "test/commands/schema-apply-references.test.ts",
+      "blob": "c4e7f3728131802d843ff4f318b924e1739deae6"
+    },
+    {
+      "path": "test/commands/schema-fork-fidelity.test.ts",
+      "blob": "d28703ed0ad7d9a4b72755e5088d2d41d8892003"
+    },
+    {
+      "path": "test/commands/schema.test.ts",
+      "blob": "5bd0e73231261efc667e117fb3d65c696857ffa9"
+    },
+    {
+      "path": "test/commands/schemas.test.ts",
+      "blob": "9b4abcc2333b782bb6579e90127156454d102fd2"
+    },
+    {
+      "path": "test/commands/show-diff.test.ts",
+      "blob": "9c10a331ac9f4634b9f04c2d0f68952fcfe14099"
+    },
+    {
+      "path": "test/commands/show.test.ts",
+      "blob": "bc105e05ba00e4156964c032470259510867b1f8"
+    },
+    {
+      "path": "test/commands/spec.interactive-show.test.ts",
+      "blob": "8c90ab656f4884ed24fef4ea9acab10bfa2918fc"
+    },
+    {
+      "path": "test/commands/spec.interactive-validate.test.ts",
+      "blob": "7475e31e31cb63cc4e175411b438e170709b1bda"
+    },
+    {
+      "path": "test/commands/spec.test.ts",
+      "blob": "42426da982ae81e48cae1fd6b31a5f6412e99b3a"
+    },
+    {
+      "path": "test/commands/status-all.test.ts",
+      "blob": "4b7797e70c2f0cc2e8c15fa61ebec3a0f2db5ab7"
+    },
+    {
+      "path": "test/commands/store-git.test.ts",
+      "blob": "2a9ea8a03c47a78b856a4b4321dc29f9146f87e2"
+    },
+    {
+      "path": "test/commands/store-phantom-root.test.ts",
+      "blob": "aa1d975e10c91b117ea07600938a203b3511fa68"
+    },
+    {
+      "path": "test/commands/store-references.test.ts",
+      "blob": "a93a103b0d5e4c0e9b2ea9dd1ce0240bc928565f"
+    },
+    {
+      "path": "test/commands/store-remote.test.ts",
+      "blob": "b51282c5a45f41059aca6b76c9539a3507e6f171"
+    },
+    {
+      "path": "test/commands/store-remove-nested.test.ts",
+      "blob": "e02e7ec9e311a040059d06293f551bca67064a4f"
+    },
+    {
+      "path": "test/commands/store-root-selection.test.ts",
+      "blob": "f4a818d85cd2a233667a28a023bfff001f50cd56"
+    },
+    {
+      "path": "test/commands/store-setup-no-init-git.test.ts",
+      "blob": "e143e36af28c5709ff49a14963de3fdccee8c430"
+    },
+    {
+      "path": "test/commands/store.test.ts",
+      "blob": "9ee12064e655b17e09b7b499206476b9fe74b48a"
+    },
+    {
+      "path": "test/commands/validate.enriched-output.test.ts",
+      "blob": "65862035495bd111b4983ffe0165020e394435be"
+    },
+    {
+      "path": "test/commands/validate.findings.test.ts",
+      "blob": "383433529df937f5717261c86121a088829c555a"
+    },
+    {
+      "path": "test/commands/validate.name-guard.security.test.ts",
+      "blob": "e32c4319f05de57f23a21fad8fe9f8dc8da96ee3"
+    },
+    {
+      "path": "test/commands/validate.test.ts",
+      "blob": "f3db80e4860a2865ab0721ac207fd36414936fd5"
+    },
+    {
+      "path": "test/commands/workflow-instructions-injection.test.ts",
+      "blob": "8a734812a567e2055a30c78c77749fcd2c51744e"
+    },
+    {
+      "path": "test/commands/workflow-instructions-skipped.test.ts",
+      "blob": "5b90be8239eb8a637c4c90873c696e90d5c6de2f"
+    },
+    {
+      "path": "test/commands/workset.test.ts",
+      "blob": "e1ad7321e92a6c34188e4d02f6cadfb7e92821ea"
+    },
+    {
+      "path": "test/core/archive.test.ts",
+      "blob": "3ad143aa78d041e463bc91b412ee58967fab9c2e"
+    },
+    {
+      "path": "test/core/artifact-graph/graph.test.ts",
+      "blob": "9cbf2fceae222fdbaf55374f15a602e018cecbaf"
+    },
+    {
+      "path": "test/core/artifact-graph/instruction-loader.test.ts",
+      "blob": "33a8e6f19aef68556f52353b9649c49d6ca0d9bd"
+    },
+    {
+      "path": "test/core/artifact-graph/outputs.test.ts",
+      "blob": "cfe030b815d6750e5f87b46cd8d0f11585defb91"
+    },
+    {
+      "path": "test/core/artifact-graph/resolver.test.ts",
+      "blob": "053529c3553bde62fb9b4192ca14ff67f604725c"
+    },
+    {
+      "path": "test/core/artifact-graph/schema-apply-references.test.ts",
+      "blob": "bf4d4dd1b34991ef49139dd36dfacf0b0198da02"
+    },
+    {
+      "path": "test/core/artifact-graph/schema.test.ts",
+      "blob": "b1358dff4da859c2acff08e9ebd9e7f4c1b433a2"
+    },
+    {
+      "path": "test/core/artifact-graph/state.test.ts",
+      "blob": "13eddd348c62b737c703b358bdb6e1e6e3d98b78"
+    },
+    {
+      "path": "test/core/artifact-graph/workflow.integration.test.ts",
+      "blob": "06a12529cc8c0562cdcd80c0c5ed246873377095"
+    },
+    {
+      "path": "test/core/available-tools.test.ts",
+      "blob": "4c23887c29030ce9c99dedbf023c253ceb06bb5b"
+    },
+    {
+      "path": "test/core/change-status-policy.test.ts",
+      "blob": "35691cc49cfa04efbb2694cb85cff4038f1fc712"
+    },
+    {
+      "path": "test/core/cli-is-json-run.test.ts",
+      "blob": "420dcf57cd2ef9ff9965aeb06623447db3e82674"
+    },
+    {
+      "path": "test/core/command-generation/adapters.test.ts",
+      "blob": "c198ffef98a21a76d7b8895c7e7fbca73043b32f"
+    },
+    {
+      "path": "test/core/command-generation/generator.test.ts",
+      "blob": "e7a5c8fb660506139310734a927b120209fc5590"
+    },
+    {
+      "path": "test/core/command-generation/invocation.test.ts",
+      "blob": "fbbf0d963f3ecacd4e42c6a952ba13637056fce2"
+    },
+    {
+      "path": "test/core/command-generation/registry.test.ts",
+      "blob": "b5d150a23a0681f499207ca627084522323e5a5e"
+    },
+    {
+      "path": "test/core/command-generation/types.test.ts",
+      "blob": "ded7daf53269d80d72d5ac36cdceaf48e8b8e96e"
+    },
+    {
+      "path": "test/core/command-generation/yaml.test.ts",
+      "blob": "a19be2946d8c1c2330b5505248d8d623ebea750c"
+    },
+    {
+      "path": "test/core/commands/change-command.list.test.ts",
+      "blob": "fdd72c8f183e0b23b23396ef874c5f3ebafbb6d1"
+    },
+    {
+      "path": "test/core/commands/change-command.show-validate.test.ts",
+      "blob": "15053d1d68910da8a7c9de4ca7d629fc7d479c8b"
+    },
+    {
+      "path": "test/core/commands/spec-command.security.test.ts",
+      "blob": "ec4b198ccd82f830fb0badb02442cfc2b86e4f23"
+    },
+    {
+      "path": "test/core/completion-tip.atomic-write.security.test.ts",
+      "blob": "0901b323ca0671f7060ca6428527502e9b7a1cd4"
+    },
+    {
+      "path": "test/core/completion-tip.test.ts",
+      "blob": "b6e06ccd9836c3beb43e570efc0c2333f9ba566e"
+    },
+    {
+      "path": "test/core/completions/command-registry.test.ts",
+      "blob": "c3ada9fb7981725d0dbdca16e815fece2d894051"
+    },
+    {
+      "path": "test/core/completions/completion-provider.test.ts",
+      "blob": "8f1479867506dc43085cf60f9a5a29b5b5a7b0f7"
+    },
+    {
+      "path": "test/core/completions/generators/bash-generator.test.ts",
+      "blob": "fb84d6a553132a0fb3c013dbf0aa784fef0735c8"
+    },
+    {
+      "path": "test/core/completions/generators/fish-generator.test.ts",
+      "blob": "73306cc7433243199dd607c14a3b1cd7c51f565a"
+    },
+    {
+      "path": "test/core/completions/generators/powershell-generator.test.ts",
+      "blob": "120a3d36f62a40acc585a2a5bf8f8166c055ba08"
+    },
+    {
+      "path": "test/core/completions/generators/zsh-generator.test.ts",
+      "blob": "376f96350e2022a75cb6080311a6d9848f009bed"
+    },
+    {
+      "path": "test/core/completions/installers/bash-installer.round-trip.test.ts",
+      "blob": "f97f2b0999b3b22a85d74c7cb77d5c09706ad935"
+    },
+    {
+      "path": "test/core/completions/installers/bash-installer.test.ts",
+      "blob": "9d6893cd37264c8bcfa3fe4071b78083921572b0"
+    },
+    {
+      "path": "test/core/completions/installers/fish-installer.test.ts",
+      "blob": "9df88241aeb2b61b3d87067fd1b245e18b451d41"
+    },
+    {
+      "path": "test/core/completions/installers/powershell-installer.test.ts",
+      "blob": "6b0f1e4269817583f1da4ec65c79f93fc1604999"
+    },
+    {
+      "path": "test/core/completions/installers/zsh-installer.test.ts",
+      "blob": "9008dff65d7d085bc349200afa37639183139d9c"
+    },
+    {
+      "path": "test/core/completions/validation-report.test.ts",
+      "blob": "2e5a767628a112324662a7dc1bc952e19fd41953"
+    },
+    {
+      "path": "test/core/config-schema.test.ts",
+      "blob": "cae2548888c9f0045538047d071eb6e020514fa1"
+    },
+    {
+      "path": "test/core/converters/json-converter.test.ts",
+      "blob": "1a00f3f8b62d02f1c0a65c9a508bf359639713ce"
+    },
+    {
+      "path": "test/core/file-state.test.ts",
+      "blob": "9456c065335064f48e573177a4763383a0b11aae"
+    },
+    {
+      "path": "test/core/github-copilot-cloud-agent.test.ts",
+      "blob": "863bff82702f9418af201b6c44e3e6ec32f01ebb"
+    },
+    {
+      "path": "test/core/global-config.test.ts",
+      "blob": "978b6c5b865d1c7a28c07daea793633bb6a757e7"
+    },
+    {
+      "path": "test/core/global-config.unparseable.test.ts",
+      "blob": "b1dbf3108502b9013cc8dd7891300f48d7cdf485"
+    },
+    {
+      "path": "test/core/init.test.ts",
+      "blob": "ab78edfbb748caf4ecdcfd3415683dc5f16d1440"
+    },
+    {
+      "path": "test/core/legacy-cleanup.test.ts",
+      "blob": "16f18f3e8b33aa23a1b3f4e53d099fda1f7dbb5e"
+    },
+    {
+      "path": "test/core/legacy-cleanup.user-files.test.ts",
+      "blob": "5f3520688d73c828b64523d4e31c9936a71527b3"
+    },
+    {
+      "path": "test/core/list.test.ts",
+      "blob": "bfe35acdda129a32e63785daca21551a8f96657d"
+    },
+    {
+      "path": "test/core/migration.test.ts",
+      "blob": "2e809a4d7d3fb6ccf2bd669635e1558c0fab707c"
+    },
+    {
+      "path": "test/core/misplaced-delta-files.test.ts",
+      "blob": "39eb200f37b3c36a5417fe0f6fc8fa7394afd995"
+    },
+    {
+      "path": "test/core/onboarding-commands.test.ts",
+      "blob": "c2a4bd3acf1f00f9f607368ada2c757d7121df62"
+    },
+    {
+      "path": "test/core/openers.test.ts",
+      "blob": "fb440ab5c20d4c08663e49e184d6186fb19f9d9f"
+    },
+    {
+      "path": "test/core/openspec-root.test.ts",
+      "blob": "3f5185be30ececf9951a24d20f116b3a136c9551"
+    },
+    {
+      "path": "test/core/parsers/change-parser-delta-agreement.test.ts",
+      "blob": "720f05d9bb941e8c459519cd599968ddff3b730d"
+    },
+    {
+      "path": "test/core/parsers/change-parser.test.ts",
+      "blob": "9a901c0005b46e869a4624e79d5ea22cf63ae4e4"
+    },
+    {
+      "path": "test/core/parsers/closed-requirement-heading.test.ts",
+      "blob": "64f3997f8b642b1eb78a67ce90b4315eab126f60"
+    },
+    {
+      "path": "test/core/parsers/delta-list-markers.test.ts",
+      "blob": "e629da479ad45375898195873bb486554f7ffd81"
+    },
+    {
+      "path": "test/core/parsers/delta-section-collision.test.ts",
+      "blob": "2295ba00bded62a35c156e04683b5eb80b38b0e2"
+    },
+    {
+      "path": "test/core/parsers/markdown-parser.test.ts",
+      "blob": "849e511441239f9ea4f07ca2f476e14b02a65331"
+    },
+    {
+      "path": "test/core/parsers/orphaned-requirements.test.ts",
+      "blob": "db087c953461d68c957b57451f94ff80c638e4e3"
+    },
+    {
+      "path": "test/core/parsers/renamed-pair-integrity.test.ts",
+      "blob": "b72f589d5b8f34ffa8d5c43640c0b57d168972fd"
+    },
+    {
+      "path": "test/core/parsers/requirement-blocks.test.ts",
+      "blob": "396cbab9889cb37185e7d34442f3993fa1692d3e"
+    },
+    {
+      "path": "test/core/planning-home.test.ts",
+      "blob": "fb48bc6ac507b0e769512542ed27b4fa08e8f39f"
+    },
+    {
+      "path": "test/core/profile-sync-drift.test.ts",
+      "blob": "cfa373affef50bb2035d7254760658610c9cdd17"
+    },
+    {
+      "path": "test/core/profiles.test.ts",
+      "blob": "79ff45a1c75abe19a49475c51acd468d769d905c"
+    },
+    {
+      "path": "test/core/project-config.test.ts",
+      "blob": "14e82f505ca2ef151389dde2902db5953f210087"
+    },
+    {
+      "path": "test/core/purpose-placeholder.test.ts",
+      "blob": "aee7b9cbc80e402ab76a19c8c87a2e44ba98a7e9"
+    },
+    {
+      "path": "test/core/references.test.ts",
+      "blob": "4a23c5475e10af7dc68c391b35a87a522a9ca884"
+    },
+    {
+      "path": "test/core/relationship-health.test.ts",
+      "blob": "b9072bbc64014dec1dd3c6d4746eb9449dcb4cfa"
+    },
+    {
+      "path": "test/core/root-selection.test.ts",
+      "blob": "31bfbb3cc80dab45a9928a5bf65826d19a2d5ec1"
+    },
+    {
+      "path": "test/core/shared-ide-restart.test.ts",
+      "blob": "118a2e06c6e88cec57427b67e478dc1fa3b2b268"
+    },
+    {
+      "path": "test/core/shared-skill-target.test.ts",
+      "blob": "48edaaa2035e1b45a558945c338681bc12e662ec"
+    },
+    {
+      "path": "test/core/shared/generated-by-scan.security.test.ts",
+      "blob": "bb7aac1fe450da567c0310f3e35899b7e329b633"
+    },
+    {
+      "path": "test/core/shared/profile-workflow-references.test.ts",
+      "blob": "3ef2c50b6503f7bf6c86701c841db9f75904ab50"
+    },
+    {
+      "path": "test/core/shared/skill-content-equivalence.test.ts",
+      "blob": "fc17838f2e0a60ae58b3c8d9f1f39226468bc1ee"
+    },
+    {
+      "path": "test/core/shared/skill-generation.test.ts",
+      "blob": "5f4bba9d55abbbcb7376592f1cc327d981c3821a"
+    },
+    {
+      "path": "test/core/shared/skill-paths.test.ts",
+      "blob": "a2a1157a3a722e6ee00695374835c2d8db7f9c7e"
+    },
+    {
+      "path": "test/core/shared/tool-detection-command-drift.test.ts",
+      "blob": "ea0cbc7d076d7bf52c7e4ef3e069d2f5626bbf56"
+    },
+    {
+      "path": "test/core/shared/tool-detection.test.ts",
+      "blob": "5905c87b73ab293ff6d42d64b78ec532cba1a8d6"
+    },
+    {
+      "path": "test/core/specs-apply.comment-masking.security.test.ts",
+      "blob": "bf70cc9f59cde9ba86d5a218ab6d8813da8959ff"
+    },
+    {
+      "path": "test/core/specs-apply.fence-preservation.test.ts",
+      "blob": "9c42127364aeb10944eb0d1b870c34a70c144c00"
+    },
+    {
+      "path": "test/core/specs-apply.requirement-name-near-miss.test.ts",
+      "blob": "3e132e812a68917c807270c1fe4cd446e6a9776e"
+    },
+    {
+      "path": "test/core/specs-apply.salvage.test.ts",
+      "blob": "e8891953539a469c8014cf7943f43b4d501688fb"
+    },
+    {
+      "path": "test/core/specs-apply.security.test.ts",
+      "blob": "63ad9181b3687bb2acabf5735724470eb2bb7eaa"
+    },
+    {
+      "path": "test/core/specs-apply.serialization.test.ts",
+      "blob": "3edad0260c27281de673c002ba41fc5f520fc90d"
+    },
+    {
+      "path": "test/core/specs-apply.symlink-escape.security.test.ts",
+      "blob": "875851701adf4129e4bf83f5b742903a2553b1e2"
+    },
+    {
+      "path": "test/core/store/foundation.test.ts",
+      "blob": "6d2239101e86db525dfeb0a3788a2ee214d28ada"
+    },
+    {
+      "path": "test/core/store/git-probe-limits.test.ts",
+      "blob": "d6dddc2177de3bb7cad0e292872766d0624453c9"
+    },
+    {
+      "path": "test/core/store/registry.test.ts",
+      "blob": "931cfa5542db68b6e13b1ee4b463bd740e3a1f71"
+    },
+    {
+      "path": "test/core/task-checkboxes.test.ts",
+      "blob": "642cbb251b4d7d8a9c7f0d853b89f7820b27fe43"
+    },
+    {
+      "path": "test/core/task-numbering.test.ts",
+      "blob": "1c66929202a5349639935d6377b1f441e73ce079"
+    },
+    {
+      "path": "test/core/templates/apply-defer-guardrail.test.ts",
+      "blob": "51fc85f3407a95706fa250f0b0df3cdd7d2586ff"
+    },
+    {
+      "path": "test/core/templates/bulk-archive-existing-target.test.ts",
+      "blob": "3cedd7596aeb47047586d0e012eb7c8b11542aa1"
+    },
+    {
+      "path": "test/core/templates/explore.test.ts",
+      "blob": "feb7504ff6c6ea72b0de7978c544744393d8c512"
+    },
+    {
+      "path": "test/core/templates/main-spec-paths.test.ts",
+      "blob": "3df8e72d0ebb82894bae626584d69163e9762f6e"
+    },
+    {
+      "path": "test/core/templates/optional-workflow.test.ts",
+      "blob": "ccfca2021404a07a82fd22e08767dd259c50ddac"
+    },
+    {
+      "path": "test/core/templates/parity-hash-shared.test.ts",
+      "blob": "6a92b9b37dbc491728f5aeec64d529deca1f5e28"
+    },
+    {
+      "path": "test/core/templates/profile-handoffs.test.ts",
+      "blob": "72aedf3190ba7398b581e9da456f5743c954f0d8"
+    },
+    {
+      "path": "test/core/templates/project-root-guard.test.ts",
+      "blob": "05f417fd6288252eb93267bdc93990e05898ef1c"
+    },
+    {
+      "path": "test/core/templates/propose.test.ts",
+      "blob": "e8594ac33d52b3ea13e4ed7f2dc19c2a4f716a2a"
+    },
+    {
+      "path": "test/core/templates/skill-templates-parity.test.ts",
+      "blob": "3cbe25b3a353fb959970cff46e88b4caf7ee9cc6"
+    },
+    {
+      "path": "test/core/templates/skillssh-generator-guards.test.ts",
+      "blob": "1ae0a198245a6d3195d5974755615d27bdbd7fef"
+    },
+    {
+      "path": "test/core/templates/skillssh-parity.test.ts",
+      "blob": "e5e26928bcab03971c86beb97e1b94f0e1030193"
+    },
+    {
+      "path": "test/core/templates/spec-inventory.test.ts",
+      "blob": "b1dcdf890a98d75f5cab3efacb921e5cc68b3d01"
+    },
+    {
+      "path": "test/core/templates/update-change.test.ts",
+      "blob": "1801f46c0c161c750f28ba8151739d391e4fda31"
+    },
+    {
+      "path": "test/core/templates/workflow-verb-triggers.test.ts",
+      "blob": "c4016e19a049619021ac3f7677ecd60c85c88a3e"
+    },
+    {
+      "path": "test/core/tool-search-aliases.test.ts",
+      "blob": "3e73c7d84c9fc8ca9a36255d77984ca3f642a098"
+    },
+    {
+      "path": "test/core/update-skill-tamper.test.ts",
+      "blob": "cd0da3e240560ef8659263828898ae4db0acba0e"
+    },
+    {
+      "path": "test/core/update.test.ts",
+      "blob": "8541d43d46185f656ce92c81f0951cb4192620a3"
+    },
+    {
+      "path": "test/core/validation.archive-preflight.test.ts",
+      "blob": "525fd864757c86a6b7959bda20cd16bac808856d"
+    },
+    {
+      "path": "test/core/validation.enriched-messages.test.ts",
+      "blob": "7b24d1c17d921962c2bb05e0239088d7ba415d74"
+    },
+    {
+      "path": "test/core/validation.purpose-placeholder.test.ts",
+      "blob": "1f64e3c66446321d5a898dd3d3bd19a29bca81f6"
+    },
+    {
+      "path": "test/core/validation.scenario-body-parity.test.ts",
+      "blob": "83a0a6dd4c6360fea747b4358e62ffa1eb973fa3"
+    },
+    {
+      "path": "test/core/validation.scenario-loss.test.ts",
+      "blob": "522f6969d8a55632bc202fb449f5bb996e6e91a2"
+    },
+    {
+      "path": "test/core/validation.skip-specs.test.ts",
+      "blob": "c78707d99d251b251092af8e0613559be69aeb91"
+    },
+    {
+      "path": "test/core/validation.test.ts",
+      "blob": "284f6b5ae78801b32d3ed5cbf3a4ec604cf1c036"
+    },
+    {
+      "path": "test/core/version-check.test.ts",
+      "blob": "f3150c1794b6dbe1be54685dafc169fd88094245"
+    },
+    {
+      "path": "test/core/view.test.ts",
+      "blob": "f7a8aafb54de3e6efad2f2a722924f6e279b5be4"
+    },
+    {
+      "path": "test/core/working-set.test.ts",
+      "blob": "7462d1b53ef41558c4759162b6be95b19d338889"
+    },
+    {
+      "path": "test/core/worksets.test.ts",
+      "blob": "556f6aff87304dd85fce7797a6beb1c145748d9f"
+    },
+    {
+      "path": "test/explore-docs-claims.test.ts",
+      "blob": "287a4b083b4473da1c06734bbebc1e078a2d6bf1"
+    },
+    {
+      "path": "test/fixtures/tmp-init/openspec/changes/c1/proposal.md",
+      "blob": "90fe2c58a5651ee5cbbc1adc1fed09a6fd36233f"
+    },
+    {
+      "path": "test/fixtures/tmp-init/openspec/changes/c1/specs/alpha/spec.md",
+      "blob": "7969f4cc6cbb1c369a78670ac78ddc0b933061fc"
+    },
+    {
+      "path": "test/fixtures/tmp-init/openspec/specs/alpha/spec.md",
+      "blob": "0e734b297b6ef67eb0657f1fb0f4c10e62aeedb0"
+    },
+    {
+      "path": "test/helpers/fake-tool.ts",
+      "blob": "06a3526b609c8534f452299884db8595e9f78c1b"
+    },
+    {
+      "path": "test/helpers/fs-snapshot.ts",
+      "blob": "ba5791dee8848b5641dfcf215af68390cbc8b398"
+    },
+    {
+      "path": "test/helpers/openspec-fixtures.ts",
+      "blob": "e0eb51d4643e0c0fc34086e2b787be55919d884a"
+    },
+    {
+      "path": "test/helpers/path-env.ts",
+      "blob": "75d44af41f90b8c250d04a0ce3af7b2a3ea7b99d"
+    },
+    {
+      "path": "test/helpers/run-cli.ts",
+      "blob": "3c0cf43f77eefbc0db2d967a9975e8449d26bb36"
+    },
+    {
+      "path": "test/helpers/store-git.ts",
+      "blob": "ff4d5b10548c0a5a505f5d6ab646b036f8717603"
+    },
+    {
+      "path": "test/helpers/temp-cleanup.ts",
+      "blob": "d1ffd1e58ab11434df3e0580a4feae036585046a"
+    },
+    {
+      "path": "test/package-install-scripts.test.ts",
+      "blob": "fb019adcde7f14c6558b3112093485234d1c62d9"
+    },
+    {
+      "path": "test/pnpm-workspace-config.test.ts",
+      "blob": "50b2ce47cb0a602b23a15e012f1d09a6e9e1b6fa"
+    },
+    {
+      "path": "test/prompts/searchable-multi-select.test.ts",
+      "blob": "a77e0c57c931bfed9e1799075c290a6babf2e467"
+    },
+    {
+      "path": "test/specs/source-specs-normalization.test.ts",
+      "blob": "2611a85f9d9ed4f0f862cfbab2c5ab1c330b47eb"
+    },
+    {
+      "path": "test/telemetry/config.test.ts",
+      "blob": "383eedb6a1670e5e259c74cf7a294e38a42c6aa0"
+    },
+    {
+      "path": "test/telemetry/index.test.ts",
+      "blob": "39c396dd6b1c4ba0543d073857cbd4914046ba7d"
+    },
+    {
+      "path": "test/ui/welcome-screen.test.ts",
+      "blob": "263bb6eea48cf61c2bbe8ce9e2ea9857ad3eac52"
+    },
+    {
+      "path": "test/update-flake-script.test.ts",
+      "blob": "130ffe80ccda9b5ab1a6f61b666f489996e8f3ef"
+    },
+    {
+      "path": "test/utils/change-metadata.test.ts",
+      "blob": "c66377bfceef382deb192f7a41571146145daaf9"
+    },
+    {
+      "path": "test/utils/change-utils.test.ts",
+      "blob": "4f32914aa651c566dd80933be4c3de0950ee6a4b"
+    },
+    {
+      "path": "test/utils/ci.test.ts",
+      "blob": "bf31c9a8ff9aa722c4e329e907d50ed3d64cb141"
+    },
+    {
+      "path": "test/utils/command-references.test.ts",
+      "blob": "15620b52977e914ae9b19fb051efd92a24897870"
+    },
+    {
+      "path": "test/utils/file-system.test.ts",
+      "blob": "509030f6aaed8733b7c20fe88c79afe2cf86fc97"
+    },
+    {
+      "path": "test/utils/interactive.test.ts",
+      "blob": "380996321360eca29f8f89fbb25b6c30f4cad976"
+    },
+    {
+      "path": "test/utils/item-discovery.test.ts",
+      "blob": "d831374a7a27d11fa6938368be67b54537cb118e"
+    },
+    {
+      "path": "test/utils/marker-updates.test.ts",
+      "blob": "75476aef96252794a7392ca6b4ff65c3b29c48fe"
+    },
+    {
+      "path": "test/utils/nested-change.test.ts",
+      "blob": "9aa3214f29863a76b9ee528733f47e615cdaf7f7"
+    },
+    {
+      "path": "test/utils/requirement-diff.test.ts",
+      "blob": "8ac3aa51265e51f8930dc2ed861e9737f40bc9cf"
+    },
+    {
+      "path": "test/utils/shell-detection.test.ts",
+      "blob": "89941cf0ad1484982974674e8fc3451382e544ed"
+    },
+    {
+      "path": "test/utils/spec-discovery.test.ts",
+      "blob": "040aa9e6f30b9ea99ed1d1c05c2e38a37d2da6cc"
+    },
+    {
+      "path": "test/utils/task-progress.list-markers.test.ts",
+      "blob": "3335d3ee4209e7100d1f327579770c656ad77e78"
+    },
+    {
+      "path": "test/utils/task-progress.test.ts",
+      "blob": "6de434533962fb138f28623467584a30e7806fdf"
+    },
+    {
+      "path": "test/vocabulary-sweep.test.ts",
+      "blob": "ab5bf157d9caf4a832d1424dec0feca8686d6682"
+    },
+    {
+      "path": "tsconfig.json",
+      "blob": "b06e63d8bd748a114171fd59459913e388a6c66d"
+    },
+    {
+      "path": "vitest.config.ts",
+      "blob": "c2d9435ad844e9d9071b4295d2a7cfdd5e53e8be"
+    },
+    {
+      "path": "vitest.setup.ts",
+      "blob": "f2f33da354a313736c158c8fbf46570087576911"
+    },
+    {
+      "path": "website/.gitignore",
+      "blob": "a37b1c48155a3de29ea949b32cf09df5777fac13"
+    },
+    {
+      "path": "website/README.md",
+      "blob": "52150249fd319a4a034cbbb6d615a30a855b1582"
+    },
+    {
+      "path": "website/app/api/search/route.ts",
+      "blob": "aaaff7ffd1d996fb277538555c815044c3746483"
+    },
+    {
+      "path": "website/app/docs/[[...slug]]/page.tsx",
+      "blob": "a8be2bff8f406a9abbe372887b4150099e458b92"
+    },
+    {
+      "path": "website/app/docs/layout.tsx",
+      "blob": "056328f9a6d70440b0eb15e38ac01fc60acbadc1"
+    },
+    {
+      "path": "website/app/global.css",
+      "blob": "a127bc3903a371a440106653526933bb5e285d3d"
+    },
+    {
+      "path": "website/app/icon.svg",
+      "blob": "710c67a392e0bd53408b444ac5dd593c69ef28f5"
+    },
+    {
+      "path": "website/app/layout.tsx",
+      "blob": "c8e5172f95610f329a0c90109704a95b48a8cb59"
+    },
+    {
+      "path": "website/app/llms-full.txt/route.ts",
+      "blob": "d494d2cbb683c3937f1cd37f3cb27afd801924a0"
+    },
+    {
+      "path": "website/app/llms.mdx/docs/[[...slug]]/route.ts",
+      "blob": "012e877cdae520b63d3ce085f07571e3ea59e57d"
+    },
+    {
+      "path": "website/app/llms.txt/route.ts",
+      "blob": "fc80cb652c8a1a7a12d0391562cb36b6fb8c2f44"
+    },
+    {
+      "path": "website/app/og/docs/[...slug]/route.tsx",
+      "blob": "877166d34f37d6402a5998acbafb13197f7e7a57"
+    },
+    {
+      "path": "website/app/page.tsx",
+      "blob": "8dd5f32fd9cbc356ace04847dc2c581ab8f2a7e6"
+    },
+    {
+      "path": "website/app/robots.ts",
+      "blob": "b0a31af94f640c49c914d525b84233420f288d93"
+    },
+    {
+      "path": "website/app/sitemap.ts",
+      "blob": "83a2dc9b2e2ba56be040c59b6c8e2ccd434fa34b"
+    },
+    {
+      "path": "website/cloudflare/router/worker.js",
+      "blob": "2a680efcd0aab56fce2274b0883c4d7575ced650"
+    },
+    {
+      "path": "website/cloudflare/router/wrangler.jsonc",
+      "blob": "49cb41cc21e5c52a324698b3e73a1bd5f529db06"
+    },
+    {
+      "path": "website/components/file-steps.tsx",
+      "blob": "17e998664add00de4dfbdac6bb1263cf325b62c2"
+    },
+    {
+      "path": "website/components/mdx.tsx",
+      "blob": "68345699a44e1fbbd4c68ad86c30e8de20d86f55"
+    },
+    {
+      "path": "website/components/mermaid.tsx",
+      "blob": "62cc61ebb4f466b68f105bd03852dd99db224242"
+    },
+    {
+      "path": "website/components/provider.tsx",
+      "blob": "522282b2deed0c2bf4080894283e64745acccef7"
+    },
+    {
+      "path": "website/components/search.tsx",
+      "blob": "e075e35a4dd6aa678666906bcd1680d5185ed994"
+    },
+    {
+      "path": "website/docs.sync.config.mjs",
+      "blob": "5594725d2db92752f77c0e47b219bbcef59d369c"
+    },
+    {
+      "path": "website/lib/layout.shared.tsx",
+      "blob": "e854e2887020a0ccdf4f4685da8a28a992015fb9"
+    },
+    {
+      "path": "website/lib/remark-faq.ts",
+      "blob": "1fcb5ff12bcb7f0d6d29e0192f7a45689d3dae5a"
+    },
+    {
+      "path": "website/lib/remark-file-steps.ts",
+      "blob": "248986c2bbe6909c3c29732d7bfdf0efce62d544"
+    },
+    {
+      "path": "website/lib/remark-gfm-alert.ts",
+      "blob": "0d6bfd1875472ebef51de22f73681800286c5434"
+    },
+    {
+      "path": "website/lib/shared.ts",
+      "blob": "06eb54098c2b4a2f598da84aa5af10033147854a"
+    },
+    {
+      "path": "website/lib/source.ts",
+      "blob": "19591939c6dc341fbae5cb9d7437ec24187459de"
+    },
+    {
+      "path": "website/next.config.mjs",
+      "blob": "80c1cfd0cab4b7ffc159cbcd506daa685675cb7b"
+    },
+    {
+      "path": "website/package.json",
+      "blob": "14927c673758583e0a2e2ce1efafc1253c6efe5a"
+    },
+    {
+      "path": "website/pnpm-lock.yaml",
+      "blob": "3c2054d83bcf6a8f04e4f35ed2df02682454c5a3"
+    },
+    {
+      "path": "website/pnpm-workspace.yaml",
+      "blob": "e3012e320c4c3580874aeb140294541e7a1c25bf"
+    },
+    {
+      "path": "website/postcss.config.mjs",
+      "blob": "297374d80baa3b6081a566876859cf746a8b3669"
+    },
+    {
+      "path": "website/public/_redirects",
+      "blob": "1ceb88dc5ae5aec5e26e12c08d7f03ed20f9d653"
+    },
+    {
+      "path": "website/public/openspec-pixel.svg",
+      "blob": "3dda379ff43677aa321f260bfbb88599c9701224"
+    },
+    {
+      "path": "website/scripts/sync-docs.mjs",
+      "blob": "e4506bb3d417deb863c03f06089eed58f2f04590"
+    },
+    {
+      "path": "website/source.config.ts",
+      "blob": "50bef2bc9a237c3280232ac2edf4afb50078485f"
+    },
+    {
+      "path": "website/tsconfig.json",
+      "blob": "e6be490b0fcaa20eda487a5b8ec65c428d648268"
+    }
+  ]
+}

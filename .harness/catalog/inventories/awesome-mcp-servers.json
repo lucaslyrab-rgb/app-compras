@@ -1,0 +1,67 @@
+{
+  "repository": "punkpeye/awesome-mcp-servers",
+  "commit": "393b4e9fafb0348e5a1c2a4ef5a8719b0d85e061",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".github/workflows/check-glama.yml",
+      "blob": "abbf473372be368130b168bace2d223107f366b1",
+      "size": 15955
+    },
+    {
+      "path": ".gitignore",
+      "blob": "4a0644e5688488fdf1ce4c84302e001c9a9e93b1",
+      "size": 40
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "blob": "bdb9eb35c0511a34ea381910b08af87b61bf9181",
+      "size": 2989
+    },
+    {
+      "path": "LICENSE",
+      "blob": "7f5a6e30ea24860b1528cfb7a54cf777650fd46a",
+      "size": 1125
+    },
+    {
+      "path": "README-fa-ir.md",
+      "blob": "007ace885cd8b69b81f8c5d7e08bcfc19c59d623",
+      "size": 308594
+    },
+    {
+      "path": "README-ja.md",
+      "blob": "cefb32ec94ca5edec4f0e9e5b6790bf1bac7e1c7",
+      "size": 119570
+    },
+    {
+      "path": "README-ko.md",
+      "blob": "af2e47a8eb1c9505d316b14461837a8ed8e0f4a2",
+      "size": 106574
+    },
+    {
+      "path": "README-pt_BR.md",
+      "blob": "69b1061e42e466f34919be33aa0a5903884bf111",
+      "size": 85554
+    },
+    {
+      "path": "README-th.md",
+      "blob": "bf77a4f5bd96ed5d4bfc3473ff57fd98b3e2e629",
+      "size": 189180
+    },
+    {
+      "path": "README-zh.md",
+      "blob": "0abab8342ba8696f90b779708f19e06251f6ac07",
+      "size": 103687
+    },
+    {
+      "path": "README-zh_TW.md",
+      "blob": "27cc6ab79f76dc1ef89bc05d322a62396a8244e9",
+      "size": 78488
+    },
+    {
+      "path": "README.md",
+      "blob": "45f85250febd3da224f78340c775ff50d72842fb",
+      "size": 1756337
+    }
+  ]
+}

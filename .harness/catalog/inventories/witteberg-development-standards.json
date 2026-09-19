@@ -1,0 +1,92 @@
+{
+  "repository": "Wittemberg/witteberg-development-standards",
+  "commit": "6e50bfcffe5237a90d1fc85f66a4aa34ae3020c4",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": "README.md",
+      "blob": "c31e632eb41b32dd5717bdc72fa0fbdd593e63d7",
+      "size": 2085
+    },
+    {
+      "path": "assets/README.md",
+      "blob": "587ee48c498b090ecfd738d1b8aff3d1755d3573",
+      "size": 618
+    },
+    {
+      "path": "checklists/FRONTEND-REVIEW.md",
+      "blob": "a4d2c39e2b627a7a8e1667cfb93b57c2b1a95d88",
+      "size": 527
+    },
+    {
+      "path": "checklists/NEW-PROJECT.md",
+      "blob": "3813f4ec0be990983623518abe1a674a534e82d2",
+      "size": 548
+    },
+    {
+      "path": "checklists/RELEASE.md",
+      "blob": "aa5f000044ade429c70f99364a0d8b69be871e1e",
+      "size": 359
+    },
+    {
+      "path": "components/BUTTONS-CARDS-MODALS.md",
+      "blob": "d20455563c0b367f6c7514ef1606cb2b2d0dbcb3",
+      "size": 1034
+    },
+    {
+      "path": "components/FORMS-STATUS.md",
+      "blob": "13acf712e25fce36e108f09deea632bd2971c689",
+      "size": 630
+    },
+    {
+      "path": "engineering/PERSISTENCE-RELIABILITY.md",
+      "blob": "7a5941024fa0edefb5b0c135b6010e66cd024cd6",
+      "size": 692
+    },
+    {
+      "path": "engineering/QUALITY-NON-REGRESSION.md",
+      "blob": "c1536977124c4c56d5afed421f0f18f0b58395fb",
+      "size": 845
+    },
+    {
+      "path": "engineering/SECURITY-BASELINE.md",
+      "blob": "3ae37ce5cfe2231e00ed2399ebb13b06ea502761",
+      "size": 678
+    },
+    {
+      "path": "frontend/DESIGN-SYSTEM.md",
+      "blob": "b6da3724159d25895522a2f2d87d690ab8179b04",
+      "size": 1692
+    },
+    {
+      "path": "frontend/UX-GUIDELINES.md",
+      "blob": "f415df0b7857a1ad07d8d67045a8c50fdfc3b804",
+      "size": 1122
+    },
+    {
+      "path": "frontend/WRITING-GUIDELINES.md",
+      "blob": "36d87a5638590afa3948d8d54fd55ca08c976e38",
+      "size": 878
+    },
+    {
+      "path": "patterns/DOWNLOADS-DISTRIBUTION.md",
+      "blob": "a328c3e46a58279dd3afbf22e0a8d58c3ddf1c04",
+      "size": 657
+    },
+    {
+      "path": "patterns/ERROR-HANDLING.md",
+      "blob": "db7da45ed24c46a8705414376b599b08958abc79",
+      "size": 649
+    },
+    {
+      "path": "patterns/LOCAL-AGENTS.md",
+      "blob": "4e12c7276173f6bcb934367fe148e9aa44b7feab",
+      "size": 978
+    },
+    {
+      "path": "templates/DEVELOPMENT-REQUEST-TEMPLATE.md",
+      "blob": "ebf7d1d34eafc834aa6ed4fff7a33feba7fcdd4f",
+      "size": 789
+    }
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "repository": "fabricioveronez/harness-publico",
+  "commit": "a568977eab62829d40ce689df0ae0278c3063bcd",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "blob": "424dc624d2af6e0779ae1a54d8ea77701ff16d5e",
+      "size": 478
+    },
+    {
+      "path": ".github/workflows/deploy-pages.yml",
+      "blob": "2848556632f8122473e21ee960152d9da8d711b0",
+      "size": 968
+    },
+    {
+      "path": ".gitignore",
+      "blob": "a9b7223a028613d4bf917f1ade29414889fdad87",
+      "size": 264
+    },
+    {
+      "path": "CLAUDE.md",
+      "blob": "cf1c14b796a3c7a7d4d67f094990333e9e39431f",
+      "size": 2556
+    },
+    {
+      "path": "README.md",
+      "blob": "6e22b6f8c2e247b5839dec2eb3afd88bbb6255e9",
+      "size": 1754
+    },
+    {
+      "path": "plugins/spec-driven-development/.claude-plugin/plugin.json",
+      "blob": "359a8ab61d7cd51ae47038cd977fed66b17b5722",
+      "size": 220
+    },
+    {
+      "path": "plugins/spec-driven-development/docs/escrever-prd.md",
+      "blob": "6f56689688dae53e7a44a743de69cf8b3e1a414c",
+      "size": 6230
+    },
+    {
+      "path": "plugins/spec-driven-development/docs/escrever-trd.md",
+      "blob": "1ae7cfa5523daaba86bd46040ab0a7dae0b72dda",
+      "size": 8313
+    },
+    {
+      "path": "plugins/spec-driven-development/skills/escrever-prd/SKILL.md",
+      "blob": "26f6e72613f7ba13cc17b153e1fb1c24077cb857",
+      "size": 13219
+    },
+    {
+      "path": "plugins/spec-driven-development/skills/escrever-prd/evals/evals.json",
+      "blob": "a9281e473543c8523f6ac1e48f6b4df7b3628ef7",
+      "size": 5694
+    },
+    {
+      "path": "plugins/spec-driven-development/skills/escrever-prd/references/template-prd.md",
+      "blob": "3b8dc4ace7e9431285e8db1ed80547fb6d436600",
+      "size": 10231
+    },
+    {
+      "path": "plugins/spec-driven-development/skills/escrever-trd/SKILL.md",
+      "blob": "7fb5b3274f561908881580c829fa902fa6101b7a",
+      "size": 17408
+    },
+    {
+      "path": "plugins/spec-driven-development/skills/escrever-trd/references/template-adr.md",
+      "blob": "4546d8f7760272a4633357f44146d41b39629fb8",
+      "size": 2695
+    },
+    {
+      "path": "plugins/spec-driven-development/skills/escrever-trd/references/template-trd.md",
+      "blob": "da334c1ef7dbd5987501995c2d4bc5a6b250bbe5",
+      "size": 4465
+    },
+    {
+      "path": "plugins/uso-geral/.claude-plugin/plugin.json",
+      "blob": "a48939f894671a6a876df056578bd35d54a826ab",
+      "size": 225
+    },
+    {
+      "path": "plugins/uso-geral/docs/brainstorm.md",
+      "blob": "9ae0d001e76f6dec02f54aa4439eac8ab7c6f359",
+      "size": 3699
+    },
+    {
+      "path": "plugins/uso-geral/skills/brainstorm/SKILL.md",
+      "blob": "b2aad6c6b859be6e513fd0f66a88e02e28090736",
+      "size": 14637
+    },
+    {
+      "path": "plugins/uso-geral/skills/brainstorm/references/spec-desenvolvimento.md",
+      "blob": "2172178355310b41eb13e195222ef36cf42a0dee",
+      "size": 7434
+    },
+    {
+      "path": "site/.gitignore",
+      "blob": "a1d64848a648e9e7b9dca3155af1197ea278dbc8",
+      "size": 96
+    },
+    {
+      "path": "site/README.md",
+      "blob": "a7dba5913bbd9af4aba84e7198997cd0498a0eda",
+      "size": 2291
+    },
+    {
+      "path": "site/astro.config.mjs",
+      "blob": "461b7992c3a7fd1803dfa54fb5a41e9eabf16301",
+      "size": 343
+    },
+    {
+      "path": "site/package-lock.json",
+      "blob": "c530be9bb4937b036ddcc79fddd4dbe36d7fb1de",
+      "size": 237335
+    },
+    {
+      "path": "site/package.json",
+      "blob": "1d5760f66e4dc581188b501c4101557d76c7c502",
+      "size": 440
+    },
+    {
+      "path": "site/public/logo.svg",
+      "blob": "132dc4560ebbf0ae28c98b2038c06e2b058b5668",
+      "size": 378
+    },
+    {
+      "path": "site/src/components/CategoryFilter.astro",
+      "blob": "fa09ee10fcc65bd2e8b02c7038b623338c548f26",
+      "size": 1813
+    },
+    {
+      "path": "site/src/components/InstallCommand.astro",
+      "blob": "755affaf3022d893a331952f3298cb15205afd4a",
+      "size": 982
+    },
+    {
+      "path": "site/src/components/PluginBadge.astro",
+      "blob": "8f8cc660421ffd86e05cb9366720548c1cb23d66",
+      "size": 481
+    },
+    {
+      "path": "site/src/components/SkillCard.astro",
+      "blob": "0f3e88eca0cd0011c905af550a3ee7124b7d2e53",
+      "size": 2326
+    },
+    {
+      "path": "site/src/content.config.ts",
+      "blob": "5270c8fe48ae36c3ead9ded1a2337804e57cdb94",
+      "size": 5625
+    },
+    {
+      "path": "site/src/layouts/Base.astro",
+      "blob": "d44d2c020e151fb06d1af65ec6f3c66326c9ad9e",
+      "size": 2730
+    },
+    {
+      "path": "site/src/pages/index.astro",
+      "blob": "9837f1d8f133da898ee04eed649e0d7d4fe88644",
+      "size": 1563
+    },
+    {
+      "path": "site/src/pages/plugins/[slug].astro",
+      "blob": "cd94a2f5608f34dc2aa20c79d4ad2f7971c2adbd",
+      "size": 1945
+    },
+    {
+      "path": "site/src/pages/skills/[slug].astro",
+      "blob": "04ceed73ea84257f6eca34362e5ba634e9fc7690",
+      "size": 2672
+    },
+    {
+      "path": "site/src/site.config.ts",
+      "blob": "44e732101b2703049e278a59c0eb5bd96f738b88",
+      "size": 1055
+    },
+    {
+      "path": "site/src/styles/theme.css",
+      "blob": "a0b613f3a8d320f8b23803013b07b6d72466d06a",
+      "size": 2556
+    },
+    {
+      "path": "site/tsconfig.json",
+      "blob": "8bf91d3bb997dfb0ea4a592b849545656f0fcebe",
+      "size": 109
+    }
+  ]
+}

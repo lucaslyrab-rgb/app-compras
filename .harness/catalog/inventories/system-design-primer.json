@@ -1,0 +1,563 @@
+{
+  "repository": "donnemartin/system-design-primer",
+  "commit": "ae9bbd7b02d90b9866215de185217d33f39ab733",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".gitattributes",
+      "blob": "f4c7e5f018f631dc0da4de60c67faad93903dafe"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "blob": "ca9bd9795c8839d9e205671f1fff74c44a8245eb"
+    },
+    {
+      "path": ".gitignore",
+      "blob": "5ca2fa242d43065db1067a78a3e6c7386e64ad9d"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "blob": "c220a52db20fd33345dd4e3772f1bf539ee9609f"
+    },
+    {
+      "path": "LICENSE.txt",
+      "blob": "5a04d642d61db37868f7485fa0fbcc96d8916919"
+    },
+    {
+      "path": "README-ja.md",
+      "blob": "74400bdd702747015f1e24362a5598ce917d9359"
+    },
+    {
+      "path": "README-zh-Hans.md",
+      "blob": "474fb4251a8298121172d372fd6c4e89abb5ad5b"
+    },
+    {
+      "path": "README-zh-TW.md",
+      "blob": "b51b0e7be7ce5a18b31e067f5e46816a61645347"
+    },
+    {
+      "path": "README.md",
+      "blob": "9e2cdb88dec86c34c9b49b657f5629a1866c6976"
+    },
+    {
+      "path": "TRANSLATIONS.md",
+      "blob": "584c3e2ebac6a7c7cacc5b8c16cad0ba76e36059"
+    },
+    {
+      "path": "epub-metadata.yaml",
+      "blob": "f4b296baf92015e1b40676ec9e01913b81a04122"
+    },
+    {
+      "path": "generate-epub.sh",
+      "blob": "a6bfe05b50da634165286363c80931d1093c607b"
+    },
+    {
+      "path": "images/0vBc0hN.png",
+      "blob": "f1466344e2b21440c48baba4089589665b11a2bf"
+    },
+    {
+      "path": "images/4edXG0T.png",
+      "blob": "f2fc0c295e61bc1a0a572a6ab99965af52ab7e66"
+    },
+    {
+      "path": "images/4j99mhe.png",
+      "blob": "9ced87347c11af93822ca9cca755d53be9e9ebde"
+    },
+    {
+      "path": "images/54GYsSx.png",
+      "blob": "b23ea554e711fe37ae6b31a129e163e6db0e35ac"
+    },
+    {
+      "path": "images/5KeocQs.jpg",
+      "blob": "0b718689256b7f2b64ae338062062de795a9f0f9"
+    },
+    {
+      "path": "images/C9ioGtn.png",
+      "blob": "cea66c9802870253321924ea127a040a681d62f2"
+    },
+    {
+      "path": "images/IOyLj4i.jpg",
+      "blob": "413c8ee8d834b7a8e4890b0858c0c708a443c0e6"
+    },
+    {
+      "path": "images/JdAsdvG.jpg",
+      "blob": "8c989e203eb7e155ac8cf7230d23782398765f10"
+    },
+    {
+      "path": "images/MzExP06.png",
+      "blob": "348df4761dedcc6441b6f865646111a5c5fd8ace"
+    },
+    {
+      "path": "images/ONjORqk.png",
+      "blob": "3841ca6a7e317e4ed9a0ac9687e9b16a9351a2d1"
+    },
+    {
+      "path": "images/OfVllex.png",
+      "blob": "c8dba136c0ab8280fa6c523ec70ac2f794d3ba47"
+    },
+    {
+      "path": "images/Q6z24La.png",
+      "blob": "b673a72c5bdb84f9db6634d6ce362aac961a90b5"
+    },
+    {
+      "path": "images/TcUo2fw.png",
+      "blob": "d0727cb62c48e98380147a734b0a531f7e0a14fd"
+    },
+    {
+      "path": "images/U3qV33e.png",
+      "blob": "a0e147e92e8ab6923a48613bfde9c2fbfc0818cc"
+    },
+    {
+      "path": "images/V5q57vU.png",
+      "blob": "39f4f05363fffd6a2caeb13682e3b02a711ee199"
+    },
+    {
+      "path": "images/Xkm5CXz.png",
+      "blob": "3aa5dd3805d6fd3dce3d1313fe89137956698a3d"
+    },
+    {
+      "path": "images/b4YtAEN.png",
+      "blob": "bdb7ac4c5ae13fcf28d0ced38c33ed278378026a"
+    },
+    {
+      "path": "images/bWxPtQA.png",
+      "blob": "e5e0726b7c29eaffd3c92b11d9887dc24bd56687"
+    },
+    {
+      "path": "images/bgLMI2u.png",
+      "blob": "e40e658dc115035497fde9d3344488f418f34c41"
+    },
+    {
+      "path": "images/cdCv5g7.png",
+      "blob": "d9ab23e51d7ba34cf1926073c79241901869e328"
+    },
+    {
+      "path": "images/fNcl65g.png",
+      "blob": "7d5b6f6e3da1b297a0d050bedff65651422d2396"
+    },
+    {
+      "path": "images/h81n9iK.png",
+      "blob": "2ba3f1b75480a2250c4654aa36557018657b31ff"
+    },
+    {
+      "path": "images/h9TAuGI.jpg",
+      "blob": "692e06317324a1b3d3a5b6f3c4d8c99706779a47"
+    },
+    {
+      "path": "images/iF4Mkb5.png",
+      "blob": "391e3cd9c48841b6f59fa31d2bd203bd871f0642"
+    },
+    {
+      "path": "images/jj3A5N8.png",
+      "blob": "e400e5f4cd12b2b78d68e32a34e31d214c7c3c6d"
+    },
+    {
+      "path": "images/jrUBAF7.png",
+      "blob": "623b58242b9757a1881618ba3f778b051311022b"
+    },
+    {
+      "path": "images/krAHLGg.png",
+      "blob": "7cc0e80238161b502acff9d54faa6cf30cf9f7ba"
+    },
+    {
+      "path": "images/kxtjqgE.png",
+      "blob": "98d6c06b36992b637d44605c5df6e3a6be2fcfb3"
+    },
+    {
+      "path": "images/n16iOGk.png",
+      "blob": "8a9be232fd9b43dd7df3151e111f19e4f38de204"
+    },
+    {
+      "path": "images/n41Azff.png",
+      "blob": "b4ed1a81b0f7e5f4fecad718045389b4d12a44ec"
+    },
+    {
+      "path": "images/rgSrvjG.png",
+      "blob": "dddfc503c3c773e1f4c8765600f3dca6df0a9d2d"
+    },
+    {
+      "path": "images/wU8x5Id.png",
+      "blob": "369a9c3a5031d16a80de953959224cd97aa9a691"
+    },
+    {
+      "path": "images/wXGqG5f.png",
+      "blob": "7184333c11b928aa7c55316abcd001daf3c03868"
+    },
+    {
+      "path": "images/yB5SYwm.png",
+      "blob": "6d494b4ddc2c307c1d657bf7384e2ce25a7c43ab"
+    },
+    {
+      "path": "images/yzDrJtA.jpg",
+      "blob": "f70ebd6504ccc66e7c4c1ceb4d8c3f9d3e9b0ea2"
+    },
+    {
+      "path": "images/zdCAkB3.png",
+      "blob": "8df59582039fd6080fb7083dfeae57c94ce212fd"
+    },
+    {
+      "path": "resources/flash_cards/OO Design.apkg",
+      "blob": "576466b00bbc3c0b285ed62bad9e6badf0c922c6"
+    },
+    {
+      "path": "resources/flash_cards/System Design Exercises.apkg",
+      "blob": "67a2feb30d85ef8200a1af6de46a5338ce8e8124"
+    },
+    {
+      "path": "resources/flash_cards/System Design.apkg",
+      "blob": "67f05d190cbaf67142d0cf634db38b95e696d7ce"
+    },
+    {
+      "path": "resources/study_guide.graffle",
+      "blob": "39f81b0164154aa7dfa3ff2b4a05a31790f8ec51"
+    },
+    {
+      "path": "resources/study_guide.png",
+      "blob": "e69bc9e7363aad34b531e04bedc5f18d7fc7bc7c"
+    },
+    {
+      "path": "solutions/object_oriented_design/call_center/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/object_oriented_design/call_center/call_center.ipynb",
+      "blob": "c540c6a6422b5bcbaf4b0ff8a6215b875570a65f"
+    },
+    {
+      "path": "solutions/object_oriented_design/call_center/call_center.py",
+      "blob": "1d5e7bc6bc168b0825867ae8b2c5aa4861d88e0d"
+    },
+    {
+      "path": "solutions/object_oriented_design/deck_of_cards/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/object_oriented_design/deck_of_cards/deck_of_cards.ipynb",
+      "blob": "1a9bc1c530b306b60d2410386cba29b9df1e756a"
+    },
+    {
+      "path": "solutions/object_oriented_design/deck_of_cards/deck_of_cards.py",
+      "blob": "a47087585e07587d875f4abb1a71555d24613731"
+    },
+    {
+      "path": "solutions/object_oriented_design/hash_table/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/object_oriented_design/hash_table/hash_map.ipynb",
+      "blob": "92713d94bb7aa138cdc15c909297de7bdf76005a"
+    },
+    {
+      "path": "solutions/object_oriented_design/hash_table/hash_map.py",
+      "blob": "33d9a35de1539405e0aa90744bde7209df50b60f"
+    },
+    {
+      "path": "solutions/object_oriented_design/lru_cache/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/object_oriented_design/lru_cache/lru_cache.ipynb",
+      "blob": "cd91da11ba590c8cac23f748eda6310ce91ba564"
+    },
+    {
+      "path": "solutions/object_oriented_design/lru_cache/lru_cache.py",
+      "blob": "acee46516eb3f3b0cc8ac710d7715716e12db08f"
+    },
+    {
+      "path": "solutions/object_oriented_design/online_chat/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/object_oriented_design/online_chat/online_chat.ipynb",
+      "blob": "b9f84ef424ee85d7f716941e5ee1a4d6d1271e0c"
+    },
+    {
+      "path": "solutions/object_oriented_design/online_chat/online_chat.py",
+      "blob": "7063ca0442616f51cc75234ab6b67d9781f36463"
+    },
+    {
+      "path": "solutions/object_oriented_design/parking_lot/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/object_oriented_design/parking_lot/parking_lot.ipynb",
+      "blob": "4613b79bded3e23121bb48073c45fae470c0a781"
+    },
+    {
+      "path": "solutions/object_oriented_design/parking_lot/parking_lot.py",
+      "blob": "08852d9dc22d084068a8717d49223099ba90381c"
+    },
+    {
+      "path": "solutions/system_design/mint/README-zh-Hans.md",
+      "blob": "58467bc6bf11e25cfe22aff28d10e2f991111ddb"
+    },
+    {
+      "path": "solutions/system_design/mint/README.md",
+      "blob": "1ec31674db097dc0352a3050674f6933b768b4e4"
+    },
+    {
+      "path": "solutions/system_design/mint/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/system_design/mint/mint.graffle",
+      "blob": "5ba2e5f8680c884c16dafea5bc6f5cf19a9b8c63"
+    },
+    {
+      "path": "solutions/system_design/mint/mint.png",
+      "blob": "0994195e812accaa7d3a90b18d3f27dca1ec3172"
+    },
+    {
+      "path": "solutions/system_design/mint/mint_basic.graffle",
+      "blob": "95c2e81e34b984f0dbf7b65bb529904d13edb9f6"
+    },
+    {
+      "path": "solutions/system_design/mint/mint_basic.png",
+      "blob": "f14a577ee902a554b995b7e166eb6de569b3278d"
+    },
+    {
+      "path": "solutions/system_design/mint/mint_mapreduce.py",
+      "blob": "e3554243018f58e79a33263376d7213f382c27f4"
+    },
+    {
+      "path": "solutions/system_design/mint/mint_snippets.py",
+      "blob": "cc5d228b2a4073f107799254d52b6b309c3b5212"
+    },
+    {
+      "path": "solutions/system_design/pastebin/README-zh-Hans.md",
+      "blob": "d2946e970903b381d30c1a2a264b1f37f297f327"
+    },
+    {
+      "path": "solutions/system_design/pastebin/README.md",
+      "blob": "2d87ddcc7e344e08a696498b2a5823c1771483df"
+    },
+    {
+      "path": "solutions/system_design/pastebin/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/system_design/pastebin/pastebin.graffle",
+      "blob": "879a6275331d666d39ad857da0e4e80df457e3f6"
+    },
+    {
+      "path": "solutions/system_design/pastebin/pastebin.png",
+      "blob": "1841f0a489c9404bdf802f46e600d53f29e07441"
+    },
+    {
+      "path": "solutions/system_design/pastebin/pastebin.py",
+      "blob": "7e8d268a0ead389ef6c84dca46dcfc9f2d842c55"
+    },
+    {
+      "path": "solutions/system_design/pastebin/pastebin_basic.graffle",
+      "blob": "fad80c2315052ee4343a5fc004d3c699766ddbf6"
+    },
+    {
+      "path": "solutions/system_design/pastebin/pastebin_basic.png",
+      "blob": "4cee694281e5e123d2f4f78e1738d3c2364302a2"
+    },
+    {
+      "path": "solutions/system_design/query_cache/README-zh-Hans.md",
+      "blob": "c6f4be7519b49892a8175565e5b0906efce9efef"
+    },
+    {
+      "path": "solutions/system_design/query_cache/README.md",
+      "blob": "032adf34abdb204c53f31fe5faf49c893b1aa1c8"
+    },
+    {
+      "path": "solutions/system_design/query_cache/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/system_design/query_cache/query_cache.graffle",
+      "blob": "bb122b4f057b4db82ee0c5c19c0fd1b37602e9f8"
+    },
+    {
+      "path": "solutions/system_design/query_cache/query_cache.png",
+      "blob": "55c93f402ec5982829298575a9253308e5d4309a"
+    },
+    {
+      "path": "solutions/system_design/query_cache/query_cache_basic.graffle",
+      "blob": "27ebf47fb201c4414763ba705991be5c9c5800ef"
+    },
+    {
+      "path": "solutions/system_design/query_cache/query_cache_basic.png",
+      "blob": "a1128e541e6da350bc40d04508ff15280601f9c2"
+    },
+    {
+      "path": "solutions/system_design/query_cache/query_cache_snippets.py",
+      "blob": "19d3f5cdd63043cb373d1d279388ab46c5f40bc9"
+    },
+    {
+      "path": "solutions/system_design/sales_rank/README-zh-Hans.md",
+      "blob": "960f9258f23a4e2306f703bfe279f77b8daa9d04"
+    },
+    {
+      "path": "solutions/system_design/sales_rank/README.md",
+      "blob": "71ad1c7d202d5e12383c08ef9470e26cbd739664"
+    },
+    {
+      "path": "solutions/system_design/sales_rank/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/system_design/sales_rank/sales_rank.graffle",
+      "blob": "0a491db54f8871c7b1a46d4bac77dd7f6be9e480"
+    },
+    {
+      "path": "solutions/system_design/sales_rank/sales_rank.png",
+      "blob": "dd0af6193aaf40a3a22bcd0bbd55cc81605f3146"
+    },
+    {
+      "path": "solutions/system_design/sales_rank/sales_rank_basic.graffle",
+      "blob": "19eb85ff4e3a8c1aa52974a901890c28ecbcc72c"
+    },
+    {
+      "path": "solutions/system_design/sales_rank/sales_rank_basic.png",
+      "blob": "225bb9b19de28fc5d40349a861cbc911595a0c75"
+    },
+    {
+      "path": "solutions/system_design/sales_rank/sales_rank_mapreduce.py",
+      "blob": "6eeeb52503576b8527b89480a15e98235616b3fd"
+    },
+    {
+      "path": "solutions/system_design/scaling_aws/README-zh-Hans.md",
+      "blob": "c071c70eb0852da99a9547ac3a0597fc518b2665"
+    },
+    {
+      "path": "solutions/system_design/scaling_aws/README.md",
+      "blob": "99af0cfff8d46e7531fe70b27f3a79206047dbe2"
+    },
+    {
+      "path": "solutions/system_design/scaling_aws/scaling_aws.graffle",
+      "blob": "460d1debfc040f479a58e90d9a65a4afd5e82b7f"
+    },
+    {
+      "path": "solutions/system_design/scaling_aws/scaling_aws.png",
+      "blob": "dee8994d99c595033d68c3d64c493a1183bb8ef4"
+    },
+    {
+      "path": "solutions/system_design/scaling_aws/scaling_aws_1.png",
+      "blob": "e4fae5d5928a3ea0e33b9eb5a09a08a2ffb2521b"
+    },
+    {
+      "path": "solutions/system_design/scaling_aws/scaling_aws_2.png",
+      "blob": "34342b013582272c3b353ff25d576cf29b75e529"
+    },
+    {
+      "path": "solutions/system_design/scaling_aws/scaling_aws_3.png",
+      "blob": "766932d5c81c03dab1070f0d887349f1bfda01ff"
+    },
+    {
+      "path": "solutions/system_design/scaling_aws/scaling_aws_4.png",
+      "blob": "958a10e6a60ad9f2d9a0dc4f98c0a46ccbdf36d4"
+    },
+    {
+      "path": "solutions/system_design/scaling_aws/scaling_aws_5.png",
+      "blob": "703d4137573aa8e77ffc0fb1648d4aaf88bb32eb"
+    },
+    {
+      "path": "solutions/system_design/scaling_aws/scaling_aws_6.png",
+      "blob": "e663d950b1c2b6d6879f418f8f7acc5705df4d6d"
+    },
+    {
+      "path": "solutions/system_design/scaling_aws/scaling_aws_7.png",
+      "blob": "8498cb547d2e10d6fe65c925d2fc03b415140e8b"
+    },
+    {
+      "path": "solutions/system_design/social_graph/README-zh-Hans.md",
+      "blob": "07b8e3e7886a53d30f36556d914f08cf3327d00e"
+    },
+    {
+      "path": "solutions/system_design/social_graph/README.md",
+      "blob": "f7dfd4efe8d3b46edc367614f906f32d5c40cb54"
+    },
+    {
+      "path": "solutions/system_design/social_graph/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/system_design/social_graph/social_graph.graffle",
+      "blob": "a245d5a66c6cf1adee681f215f75695d42f0c3e5"
+    },
+    {
+      "path": "solutions/system_design/social_graph/social_graph.png",
+      "blob": "86b730bb1e34876f2a00f686f60ac233bfe2044d"
+    },
+    {
+      "path": "solutions/system_design/social_graph/social_graph_basic.graffle",
+      "blob": "a753b39c782fbbe976ae8348e047b086cc8475fa"
+    },
+    {
+      "path": "solutions/system_design/social_graph/social_graph_basic.png",
+      "blob": "d6f4255e8407717225aa067220dbb16917d516a5"
+    },
+    {
+      "path": "solutions/system_design/social_graph/social_graph_snippets.py",
+      "blob": "f0ea4c4b9320a80775bb96b7c331bff72f0cf163"
+    },
+    {
+      "path": "solutions/system_design/template/template.graffle",
+      "blob": "6908231eee318cb474b6b630a31e0531db7d5479"
+    },
+    {
+      "path": "solutions/system_design/twitter/README-zh-Hans.md",
+      "blob": "1853444dbc8ec367f7f203663b562acbc5a402a5"
+    },
+    {
+      "path": "solutions/system_design/twitter/README.md",
+      "blob": "d14996f1526cec8c3316d1414ec6f9a13c1f69a4"
+    },
+    {
+      "path": "solutions/system_design/twitter/twitter.graffle",
+      "blob": "f93f4eac7b46b024f9ae8cc441a15eba22a9a64d"
+    },
+    {
+      "path": "solutions/system_design/twitter/twitter.png",
+      "blob": "e7de28832605bb27eb8dd5fd6f5fefde12c9dd5b"
+    },
+    {
+      "path": "solutions/system_design/twitter/twitter_basic.graffle",
+      "blob": "c754b9e8844cac5a8e2e04b177bfe4805236df65"
+    },
+    {
+      "path": "solutions/system_design/twitter/twitter_basic.png",
+      "blob": "7c67f7644f865e0c84a534bff9e7ba8f25997ff4"
+    },
+    {
+      "path": "solutions/system_design/web_crawler/README-zh-Hans.md",
+      "blob": "2ad0938e5d9a42f5327e4d7be1903c2d1f9faad6"
+    },
+    {
+      "path": "solutions/system_design/web_crawler/README.md",
+      "blob": "e6e79ad2245928567177051d2729b89a1deba16c"
+    },
+    {
+      "path": "solutions/system_design/web_crawler/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "solutions/system_design/web_crawler/web_crawler.graffle",
+      "blob": "831e02fd36379087b44c9f57a08b251816258c00"
+    },
+    {
+      "path": "solutions/system_design/web_crawler/web_crawler.png",
+      "blob": "da55126125b27e046634a9d5c83f6b8881c606f5"
+    },
+    {
+      "path": "solutions/system_design/web_crawler/web_crawler_basic.graffle",
+      "blob": "7d466eb227fa349717677771f29c2e28c859d5be"
+    },
+    {
+      "path": "solutions/system_design/web_crawler/web_crawler_basic.png",
+      "blob": "6f2cb517130c2d64bab64a356299ebd4e42de7b9"
+    },
+    {
+      "path": "solutions/system_design/web_crawler/web_crawler_mapreduce.py",
+      "blob": "8a5f808779a1fda5575a958086f8f29c06c29ac8"
+    },
+    {
+      "path": "solutions/system_design/web_crawler/web_crawler_snippets.py",
+      "blob": "d84a25362ec14f72702cd85e83fbfa3f837d53c8"
+    }
+  ]
+}

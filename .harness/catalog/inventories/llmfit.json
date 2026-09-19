@@ -1,0 +1,2279 @@
+{
+  "repository": "AlexsJones/llmfit",
+  "commit": "42c2641b75ba610997718b90231ef2a412b66bf3",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".dockerignore",
+      "blob": "a4257ccd705a4fe4fde6fc25d763e600ab76710c"
+    },
+    {
+      "path": ".gitattributes",
+      "blob": "6313b56c57848efce05faa7aa7e901ccfc2886ea"
+    },
+    {
+      "path": ".githooks/pre-push",
+      "blob": "d4935d0ee6333a8ed8a86eace368c3d28668f8c3"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug-report.yml",
+      "blob": "04451721cad122e85dd2203e3c70d058d208e206"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "blob": "6c6fe0b0e724e1de51b737f061d9cc6471d7c6cd"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/documentation.yml",
+      "blob": "a808c943ee952d6acef7276d5ccd51e9408db024"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature-request.yml",
+      "blob": "c867081683fe362a0fd281451ff5d82137c6db33"
+    },
+    {
+      "path": ".github/dependabot.yml",
+      "blob": "ee2fb8d32089ee4da18653336473d7ce34947c14"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "blob": "6fc18fe95e4c28e48b0ead7580eb7b5f8846e9e5"
+    },
+    {
+      "path": ".github/workflows/community-benchmarks.yml",
+      "blob": "c3f5351cc7d999a4e429ebfa6f6b9c9e73a39645"
+    },
+    {
+      "path": ".github/workflows/docker.yml",
+      "blob": "2ac0e4dd3a88e51caa4870ad0a95cbf1b9e97d0b"
+    },
+    {
+      "path": ".github/workflows/release-desktop.yml",
+      "blob": "346a2db187769c76954995c6ceea9cdff56c103c"
+    },
+    {
+      "path": ".github/workflows/release-please.yml",
+      "blob": "eae772dc13b9758454729d85ad14ce898dfde244"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "blob": "e61c63111d1b82db3779b13b807523c3205d0d17"
+    },
+    {
+      "path": ".github/workflows/weekly-model-update.yml",
+      "blob": "12b03d9ea713b1be5790c522ff8c13b0aba58a2d"
+    },
+    {
+      "path": ".gitignore",
+      "blob": "293cb0b8249189500f77bf6c636a85c775a63b95"
+    },
+    {
+      "path": ".release-please-manifest.json",
+      "blob": "7e4379317a4c6e767332b96d6686ba9c219e7b93"
+    },
+    {
+      "path": "AGENTS.md",
+      "blob": "68c3468ba2652df48e8cd72ee3faa0499018fdd3"
+    },
+    {
+      "path": "API.md",
+      "blob": "08b4d3fb210929627db219f0b5e2d2f93ac231fa"
+    },
+    {
+      "path": "AUDIO_SUPPORT.md",
+      "blob": "895ca4e1643834004494df443f07e4bfb8db5a9a"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "blob": "4f7bf852de4fcf32462f3b30a904dc85f32ba96d"
+    },
+    {
+      "path": "CNAME",
+      "blob": "c023a2cf79b870570805f3deb77fe4023f4ed3ac"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "blob": "e50733267dbe12552d7e30132be1fb57f45a3667"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "blob": "c8165441d6c36825b7d70927c8aaf6955882ed15"
+    },
+    {
+      "path": "Cargo.lock",
+      "blob": "23cd67aa4af63f682b5d02e9cdebbc6b8416a347"
+    },
+    {
+      "path": "Cargo.toml",
+      "blob": "fe65a200658bff434d55e1811cfae9bb74f10d65"
+    },
+    {
+      "path": "Dockerfile",
+      "blob": "7ab5ce0a46d16a4e46d62cb493e55f535efdc763"
+    },
+    {
+      "path": "LICENSE",
+      "blob": "42f7d741ac011ca8933e84f48e58eb56a57dcd42"
+    },
+    {
+      "path": "MODELS.md",
+      "blob": "1078edcde9aaa5b7bfc4f6b76217069bafb82aa2"
+    },
+    {
+      "path": "Makefile",
+      "blob": "6f13bb63c671bbb3f4978a2eb2e46c98301ade59"
+    },
+    {
+      "path": "README.ja.md",
+      "blob": "0aee0aa8a02bd23c54d52234953969b28159a98a"
+    },
+    {
+      "path": "README.md",
+      "blob": "f375a80e01e79eff01138beb845f01e4c4356c32"
+    },
+    {
+      "path": "README.zh.md",
+      "blob": "0f87da08db4013cd132d6bbfd6bd2a6173257d1c"
+    },
+    {
+      "path": "assets/benchmark-guide-bench.png",
+      "blob": "d167321b19d0c260f4f1412d4a9d41faf6a4ece0"
+    },
+    {
+      "path": "assets/benchmark-guide-download.png",
+      "blob": "67545954ba7a449b51f3e8782054d8f046cec8ad"
+    },
+    {
+      "path": "assets/benchmark-guide-serve.png",
+      "blob": "cd77e043f33f218c3a26c8d280743d61174bdc13"
+    },
+    {
+      "path": "assets/benchmark-guide-share-pr.png",
+      "blob": "4ec24fd14b145802e9194648f20b0ec05d10dcf4"
+    },
+    {
+      "path": "assets/benchmark.jpeg",
+      "blob": "83665a1289594b65c3d4b3f76507a6c4cfc50a82"
+    },
+    {
+      "path": "assets/demo.gif",
+      "blob": "93573caf748384b78e99165874da1aadcc913ef5"
+    },
+    {
+      "path": "assets/icon.svg",
+      "blob": "a971cd3f40b9c79eb45a64e9705724f911eb860b"
+    },
+    {
+      "path": "assets/simulation.png",
+      "blob": "5b5f1ba037481c581b2521532089265fa615e339"
+    },
+    {
+      "path": "data/onnx_models.json",
+      "blob": "1e7feae172fa35f9dfef9b9d9ac1655e8fe02cf6"
+    },
+    {
+      "path": "docs/benchmarking.md",
+      "blob": "1a28a1d13ef76e6e6213606197ccea232ca94b78"
+    },
+    {
+      "path": "docs/cli.md",
+      "blob": "6342a877c3f7b7d1487933f29c5833f0f41a5b91"
+    },
+    {
+      "path": "docs/custom-models.md",
+      "blob": "7a24901febb81f52bf21f3534dc3b4915699b76c"
+    },
+    {
+      "path": "docs/development.md",
+      "blob": "ba0c524851a4774fd6a86a484b84f4da2459cd4b"
+    },
+    {
+      "path": "docs/how-it-works.md",
+      "blob": "6d36ff1ada70798da6a22bee474b3e9075a33b61"
+    },
+    {
+      "path": "docs/openclaw.md",
+      "blob": "6e68e60581212622fa7d97defa90755176da1b72"
+    },
+    {
+      "path": "docs/platform-support.md",
+      "blob": "4dc4502e0c8d5619cc61b671fa2ae14f425131ad"
+    },
+    {
+      "path": "docs/providers.md",
+      "blob": "afb720aa7350bf5a9860da5faa7e58dc28cb07f9"
+    },
+    {
+      "path": "docs/tui.md",
+      "blob": "feb499f81011be6be001c028b16a473b79df6efa"
+    },
+    {
+      "path": "flake.lock",
+      "blob": "8d169a6c4eb0c77dcf8d9a0537cc79e5509db3dc"
+    },
+    {
+      "path": "flake.nix",
+      "blob": "2db39651d8347ff07ca46c8485e35b300404b1cd"
+    },
+    {
+      "path": "index.html",
+      "blob": "61c596365919b7bce79dd7246b9117d82c3f65bc"
+    },
+    {
+      "path": "install.sh",
+      "blob": "f7acf20d5bca2dbb54aa88a2a5bf6eb09dc07e8f"
+    },
+    {
+      "path": "llmfit-core/Cargo.toml",
+      "blob": "1fa20b25f219d46b5d4a03c829c9045b4eab8380"
+    },
+    {
+      "path": "llmfit-core/build.rs",
+      "blob": "e8449b5b524863c70997b56671ae131555a8e3a2"
+    },
+    {
+      "path": "llmfit-core/data/baselines.json",
+      "blob": "bb25868e6b095c3ba847f9c1171c568c5cce9ea1"
+    },
+    {
+      "path": "llmfit-core/data/benchmark_cache.json",
+      "blob": "09de382ca75554c2ac5cca040113212fcb044e83"
+    },
+    {
+      "path": "llmfit-core/data/benchmarks.yaml",
+      "blob": "dc666d6e382ec3e2cb8d5eb275efd80628e6232b"
+    },
+    {
+      "path": "llmfit-core/data/community/README.md",
+      "blob": "d80dbc49017acd4feb4e0c1306d7c195fd47cbaf"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-ati/1787414658-e8b526e8.json",
+      "blob": "37ffecf041bfecafcf48ca3aa0524bbaf92affdf"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-ati/1787414905-8f06b380.json",
+      "blob": "92bcd0fecbceb3e2734d47a7a0d6ceeaf9c39c49"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-ati/1787415809-b0c428aa.json",
+      "blob": "f0f4460bfa97da4ebf290614735c287c0fc3e301"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-ati/1788362341-95c60220.json",
+      "blob": "3fc2728f6062f8cf023b13e5d69133cf47a34164"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-ati/1788395496-693e3cb6.json",
+      "blob": "e257a208d50f85fa51c83b8aa0fb0bf60c0a98d9"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-gpu/1788085386-4f91f4d5.json",
+      "blob": "156de798941c24ccac901b7f4f4861a91bc4050c"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-gpu/1788086609-e586ba26.json",
+      "blob": "14453dddbfba9a00c36692a2c3c4e8f5a8596100"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-gpu/1788088672-2f9f0c07.json",
+      "blob": "a5977f46e390bc65d1d567df867c90c6d2d1432e"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-gpu/1788089395-655ea961.json",
+      "blob": "970a60624798da32d18cd25bc26609459de7e736"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-radeon-780m-graphics/1787552186-4a7944ba.json",
+      "blob": "e9a7514aad93a01e4f96f0c7787b787fa19b6308"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-radeon-rx-6800/1787148179-236ae802.json",
+      "blob": "174ef51162c8b473d77be0b1e0063af0aca4970e"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-radeon-rx-6800/1787228004-51452456.json",
+      "blob": "c95bd3c92101385d7a20c37221cecea2de284f5d"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-radeon-rx-7900-xt/1785258762-ee642f2d.json",
+      "blob": "5653b9b4276c047eef0445bfc7915faf76d8db83"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-radeon-rx-7900-xt/1785264271-b4f9391c.json",
+      "blob": "2f9bfa4f4450928b7dad2a64a87a4485411a6afa"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-radeon-rx-7900-xt/1786562074-7e61b3fb.json",
+      "blob": "efc147526e3bb28e8d3536ec575b53ab2b5e5f3f"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-radeon-rx-7900-xt/1786727248-720fe9e2.json",
+      "blob": "361a4fc46acb7890144ac42692732d1388ab0609"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-radeon-rx-9060-xt/1787953827-a95905cc.json",
+      "blob": "6c58947676e8c62a6b57092e36e2e52c161bf180"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-radeon-rx-9060-xt/1787954130-762d9978.json",
+      "blob": "de1431ca3b70cef74cbf3afcf2b76784e16b3322"
+    },
+    {
+      "path": "llmfit-core/data/community/amd-radeon-rx-9060-xt/1787954274-9d8b0472.json",
+      "blob": "a81ab2915312b4ae2543c130c44f94694fd9d000"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m1-max/1786995154-7cbcebe0.json",
+      "blob": "036fd9625d6ab51130a764fc5d8de4cadfda5254"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789147615-33a9a91b.json",
+      "blob": "7445680be9e5acd88c829bbde650a36e09621fdb"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232152-169eb9ac.json",
+      "blob": "1fe9bc8559b9abd8ebc331cfe66b86cac1ef1c7d"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232214-2bcb6c65.json",
+      "blob": "608d2c440a026d771b5f7fa33d6d2df5c7ab9c3c"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232278-55e17ddf.json",
+      "blob": "f958d15b68d4477b02fd4a5cfbee5ca02a0d2eae"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232319-1f269f8f.json",
+      "blob": "5d06ce772deaee145a77e6428ae0e6ff9d177844"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232349-d8b7a99e.json",
+      "blob": "83eaaf4d821d401d128f866e3feed3d021bb4ced"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232389-a56a244a.json",
+      "blob": "e7998f0b7b249d3aa1454afcfcde66a2f8b59855"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232457-643238af.json",
+      "blob": "6550ae1205287f33ad24a026944890a9cf5f1f83"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232529-9ada68d1.json",
+      "blob": "aa9b8c74e5c21f2b4dcc9ba973e632cceb359ceb"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232583-dc46ec4f.json",
+      "blob": "be74bc7513e9b47278005118e80f9b9c3ae02dba"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232656-0f3c6cf4.json",
+      "blob": "5144216db0a327b2f23518ba235e0b70bdb3f5ed"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232726-b20630b1.json",
+      "blob": "8893ad71b663fe33e7d4d6ef4606a3d7277b9dbe"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232773-632e1f12.json",
+      "blob": "699f62da4bc2d1c35decdaae68ee96f09fb0df8c"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232823-1108e91f.json",
+      "blob": "c9a388ec6e71632b4c399e12622ee15fa371cccb"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232866-4b56e143.json",
+      "blob": "9cd7184e28e905dbca3af3664c358f20254fa946"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232933-3c26b840.json",
+      "blob": "0f3925fb047d271f022852a4f45cb1a7dc454d80"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789232974-dbe3b655.json",
+      "blob": "da651b14e0da7883d6e72b60f2a383615c360262"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789233033-57dab5d2.json",
+      "blob": "362ac26b6d37ecea200628dcc61a5f23bea5d557"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789233090-2860ef97.json",
+      "blob": "dfcb412e9ef7d20c7c59d5d56331f05dc227f675"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789233182-ae70b590.json",
+      "blob": "7f87c6e200cbe53355d6354079779c1cb250db8e"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789233221-997a1fb4.json",
+      "blob": "ca935c39af838ecb5619784d3f57b0df8d0dfe1f"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789233264-5f6674fa.json",
+      "blob": "2f78c66d5d022abc31d3e205c0ba2605a5db6aa8"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789233292-c197776f.json",
+      "blob": "4e95b7b33f49f7fd3aad502e2deb2d88f173d1db"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789243977-c0d46da2.json",
+      "blob": "768408039afb916365cdc13a27b2fed80e7fe71a"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789244018-ec3469ec.json",
+      "blob": "d347aeff5af153c98e8af5bf55178f0cf8cb0f05"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789244049-922c14d9.json",
+      "blob": "4b4c4adc82eb6c8722e030673c77002568717e90"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789244079-08c6f115.json",
+      "blob": "23f26b4b9f666ef55fe1e74d053b9eaf28daf6af"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789256132-a6090200.json",
+      "blob": "d0cc5f5a098dd56d0fe30293f7ecf2231f421f49"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789260070-ae22efb3.json",
+      "blob": "9875c0765a4c83ae6af878ebe7ea6fb2d6a6fb9c"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789260226-926401a5.json",
+      "blob": "4138ca69be4ec75a2ec900a7cb197844498fa191"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789260385-30914f7b.json",
+      "blob": "33ef508f24ba5ef766920f18f01c652a3aa93bae"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789260504-6875e975.json",
+      "blob": "e4080c55e51d4fe7c67b73e3859f927fc7c99325"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789260573-58b24c89.json",
+      "blob": "67edad8d31b7dc6065791373a8b9a14b1ecf0920"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m2-pro/1789260687-ff4707b3.json",
+      "blob": "b09b99de65459bc5b940efb4784f5c88b7fb6394"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-max/1787699128-65d3f56f.json",
+      "blob": "cb0c2d97de571241dbf68ab1f63b9fb847f3a066"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-max/1787700406-52d79e39.json",
+      "blob": "0cc1caf0d6871e4b9f8cf4a0bf902cf4932d32e3"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-max/1787738897-8370bd0e.json",
+      "blob": "6c9630ba893ccdca655b9ef053b16dc5d4c1ee78"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-pro/1787061718-5023ef6b.json",
+      "blob": "59db460c45e60d8495909a2f74fe37c433f46597"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-pro/1787061784-485c5458.json",
+      "blob": "5e8aac1ec6638b66d813d69d762df24aa64f79db"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-pro/1787070836-6865b9c3.json",
+      "blob": "03885c2c194872c230293c9f72a2fe44534ae40f"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-pro/1787071607-5ccea88a.json",
+      "blob": "1166c71bb1731c0ae86a3591a14e846758a8bf03"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-pro/1787071869-3826a7a0.json",
+      "blob": "85d607fcad6734d622406ee2c75db7494cdee80f"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-pro/1789033732-36ebadeb.json",
+      "blob": "37c8ecaf685c95799188427269edec23b7dfc202"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-pro/1789033740-4d65bbb2.json",
+      "blob": "4ba210adbdb7033c39106a18bdad282c8c1e8e57"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-pro/1789033772-3da42c73.json",
+      "blob": "297cbcf7e094b8b0fa7986e8756adecc688b625f"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-pro/1789055717-c4c15918.json",
+      "blob": "502c46d1cc14bf4e58b302331825370b0dc34bc5"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m3-pro/1789055869-52db7ec9.json",
+      "blob": "6609a3f2bd87566d96581f24a2e7c419040b1f82"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m4-pro/1785350891-d9aff26a.json",
+      "blob": "ec63390ac76e0e998bfb1d45228a21cdb0c0fb16"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m4-pro/1786347990-003c6fb4.json",
+      "blob": "fd97ff435b69c209cfd24650129d643bec5ffe9c"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m4-pro/1786562271-33df4e5e.json",
+      "blob": "eef6a91d4ec84e4702cbf597ffc16d71a66f1966"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m4-pro/1787042206-b1a521ec.json",
+      "blob": "b609342cb2b2d0939b0027e6699b96d2054c310a"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m4/1788075238-b0d9cd05.json",
+      "blob": "c286a13329e0e6e0e60c4863b17be7a9f513e003"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m4/1788955575-34cd68e1.json",
+      "blob": "d3762b3443c65ad8c8826179d94d455d7f111dc0"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m4/1789171270-998a4fc7.json",
+      "blob": "0117006fc88e505b1ac56cd53180fad3dd93542e"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m4/1789171844-4d339236.json",
+      "blob": "3f4b6ba3697ac616a6f25ff8a974b30f66437fb1"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-max/1785638798-d689b0c3.json",
+      "blob": "be7b74964ccaf33a866bfdca7f1b0545dd85a234"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785311808-421556ef.json",
+      "blob": "6e3e1b3b7be06381572f464c58a262573b67fb17"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785328035-90122fc9.json",
+      "blob": "c0aa95bf97f57c9b5e10a4acc94601cb0d519362"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785328170-3ce8ff2d.json",
+      "blob": "856435244a7f849fa1a705a89433e33379797d04"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785333484-6240bf1e.json",
+      "blob": "57945f11fbaba24487325d6b1848b726a7da180f"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785333581-cfdcaaba.json",
+      "blob": "b0ece71f81214256e17c156aec3240a813fceca1"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785333632-5353aabf.json",
+      "blob": "dc516885fe490e08ebb7639e3bda681ab7efda0e"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785333729-0fa72ca1.json",
+      "blob": "3783472e631403a14d17b3abb3a1fb089327aa06"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785333821-f40df0fd.json",
+      "blob": "b47c3e77c23e464cdf809c2521f7e9222341ba9d"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785333935-a57e9421.json",
+      "blob": "6fb45072718f2d447aa6994cef8b7b87b5c40619"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785334817-e7a18256.json",
+      "blob": "e58b2ed424bbce4b7090ecb5fe6d4f9f60988d83"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785334917-44100718.json",
+      "blob": "b48d03ca806196b4d2dd9ce74f8ab3c933641c59"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785335093-27fd237b.json",
+      "blob": "5569402c2a4533dc004d9379d8ca7fdcf9c63742"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785335296-8d908ba6.json",
+      "blob": "867a38ed0dc06f8297debed325510f9bc9f54ac3"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785355831-e157b91d.json",
+      "blob": "74503fc88cf9b4fbc9aa4b0adc509d42007c9061"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785356568-6461f05d.json",
+      "blob": "c3f5e524876adb408287487226b53cbb5f0acf94"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785357082-4617dedb.json",
+      "blob": "a4c43367ec43d53d5aec9663450193e64c6ab660"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785395838-6f46e3bb.json",
+      "blob": "cc04252afab072318b702aee8bca6d38918d2311"
+    },
+    {
+      "path": "llmfit-core/data/community/apple-m5-pro/1785439736-dcd891fe.json",
+      "blob": "8b13c33209efa6e4de11a43b3e4b1827e3cd31ae"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788615847-16a8beab.json",
+      "blob": "1b2c7f75b44011eb37c1914c1adf0945f3993667"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788615926-cbcc63b5.json",
+      "blob": "36c889eb5c5e3913349bb4c4e46a2a3a015aed46"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788616145-972937a9.json",
+      "blob": "9e562067cb03f7c387adbbb62c2f5f3a71774d15"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788616233-c5ca7dda.json",
+      "blob": "004221039725a9f248b38b7ea29c5b3739953f23"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788616313-dd73bf7a.json",
+      "blob": "f850618e038a53fd2998c9470f089abdf26750be"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788616409-b6898083.json",
+      "blob": "c7ca7f21f1d39b3ed5ac7b92ada5b9b3bf58142d"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788616506-6d5f1ec3.json",
+      "blob": "f46ffbec9578e1c23aaafb4399417df22bc41a8d"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788616712-259c75d0.json",
+      "blob": "31dc8b240a86253f7b0bbffdffac162e65b00255"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788626088-847c41c5.json",
+      "blob": "944fe311d7d5ae4de624ef4ba8d754bebe65c93e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788626429-ab21e745.json",
+      "blob": "39fb07047ba5554076edce6d1e867e94c31af177"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788626706-f813113a.json",
+      "blob": "e467c81d1261d1ad5a3d224752f585e65cbacb5e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788627189-45b0e05c.json",
+      "blob": "49c575731d98718ee89eaff9d09c0b4692b54287"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788627707-a23fb202.json",
+      "blob": "79e31d88e157e2e32b84884bd14bf3b15a1921e0"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788628510-8c07f618.json",
+      "blob": "ed42155028cad2134c9db9fb62048936b52ec10c"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788629456-65753740.json",
+      "blob": "1820dae4651960dd61cff7af3f391592ca86c7ff"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788630394-e708115e.json",
+      "blob": "0d6956c71a0c1eb50d8b7f5b30fa63c22a1c0be2"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788631432-08871ec1.json",
+      "blob": "39d7015ead13f86265724c928955ed65ad2f7212"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788632708-a89c0e7e.json",
+      "blob": "5053dc332406555e5339dfed5da8f0cdcbdccfcd"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788642097-4d0b1aa2.json",
+      "blob": "82fbcc50f514dc87bc0292d1e3038f30e2fcf7ae"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788642372-658f5bf7.json",
+      "blob": "4fe19efae6d3d12698cbf32df52c1d9441d4bdc9"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788643332-b0186686.json",
+      "blob": "99ea1bbbb9400065deeb440ccb2779270fbb554f"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788644098-2c4f2e99.json",
+      "blob": "c9879a5e349aca81854b09af90a7bd5a26f511aa"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788753837-c7d76608.json",
+      "blob": "0c51a0b1f64a05ccb93db97a19fbee46cc301faa"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788754352-b4891a4f.json",
+      "blob": "7f6a6a147acc099f2a927ed31324d4e695f669dd"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788754915-1021444d.json",
+      "blob": "538c446c1d2ded109cd3e348f40606952874752e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-3rd-gen-core-processor-graphics-controller-integrated/1788755149-bfec0f86.json",
+      "blob": "1b24af62a3b2e465e8dc9ed3af7bc7e7e3a16741"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-alder-lake-p-gt2-iris-xe-graphics-integrated/1786014822-8408f994.json",
+      "blob": "700af2d5907cca3b4d27ea4f0c3ddaed7f0ec1f1"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-alder-lake-p-gt2-iris-xe-graphics-integrated/1786104208-61a3a3c2.json",
+      "blob": "daae1d76b26f5ccff89f822e6774b4e54092bc03"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-alder-lake-p-gt2-iris-xe-graphics-integrated/1786109911-27ac5d2b.json",
+      "blob": "5625219dde46b9d4086a05f72162d7399c9f020d"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-alder-lake-p-gt2-iris-xe-graphics-integrated/1786111568-c5238f97.json",
+      "blob": "837daedb5169256f32f676c0390da0c3857280b3"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-alder-lake-p-gt2-iris-xe-graphics-integrated/1786423670-43ac2482.json",
+      "blob": "5a09525423708201e1e95e1f368507343a040cb7"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-arc-graphics-130v-140v-integrated/1783676393-31f19579.json",
+      "blob": "3e01cc6d8c22fd73ef0d6162fac49cac33ee6838"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-arc-graphics-130v-140v-integrated/1783676393-792a24b6-0.json",
+      "blob": "0e1769d12ffb7cce8677fd5e07c35ab9c30e1d6e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-arc-graphics-130v-140v-integrated/1783681711-9b1bfd67.json",
+      "blob": "02502c5ad29370421d8db5f8d83fda7c975b7315"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-arc-graphics-130v-140v-integrated/1784549933-26960319.json",
+      "blob": "1da5587e6036d7d51d20838b9579c68ee02fd111"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-arc-graphics-130v-140v-integrated/1787215420-9250955b.json",
+      "blob": "b628cf94df083a80d51bb15490eec7e7b8f2bc01"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-arc-graphics-130v-140v-integrated/1787303582-0e345a84.json",
+      "blob": "7f84500a01510933278732f69f3ad55e63c6a00e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-arc-graphics-130v-140v-integrated/1787303941-f5edf0aa.json",
+      "blob": "84fa4e2b1c5f4495bad6070cad5405ebf7a2ab78"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-arc-graphics-130v-140v-integrated/1787304662-be8c30da.json",
+      "blob": "3c6f0a855e92ff76ee5a7a7849e692492613db25"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788303805-a32bbe34.json",
+      "blob": "cffeecdb7bcff0426c6bd42f4cbf84469c76803d"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788304560-904ca957.json",
+      "blob": "8960f820edf798b9a522430d2bb44c67d8181aae"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788307440-cb19947c.json",
+      "blob": "b7bd6cbe792a6edb6cf7861bda6d72ada8e0927e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788307781-a65d2ea0.json",
+      "blob": "5173cfe3f17596134709f57b0982aed9f32ecf56"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788309065-091de24d.json",
+      "blob": "529d5258b44f1993cf24d0ef1359dec78f0a6268"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788309337-0f68971f.json",
+      "blob": "38daadeb0376b441f15c1c3efd7c5ffbe8ea367a"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788309384-45601290.json",
+      "blob": "ed334f1d6640554c0290c109790bba1eba17e17b"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788309433-ab6592e9.json",
+      "blob": "d8ecee4b492a4d9819f4381e8de16d9cace7a7a8"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788309959-a9b77926.json",
+      "blob": "a2bfa8f61a7c391af35c8445edfe48fd6e1a4a9a"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788483459-e5d8cf71.json",
+      "blob": "f2693f8cb18878b3db9e4e86143437895a4b81b0"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788483487-2a29bc22.json",
+      "blob": "7a5b105fdce13976690106537556781aabae3b51"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-coffeelake-s-gt2-uhd-graphics-630-integrated/1788484052-8c292b4d.json",
+      "blob": "9a31f2ccfa71e84184fc0a1a0bb69370467e0e9d"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-r-arc-tm-b390-gpu/1788314219-e5e7141c.json",
+      "blob": "8153dce70dee9067179070a92ef9d3db84c96665"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788588804-e8262005.json",
+      "blob": "e9b484a02eb0b1b24f9984d49fb10424f58f551a"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788589320-ccd44d63.json",
+      "blob": "0b9eb376566ba90e8efced486f680e1c6fcf6475"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788589831-44e1d823.json",
+      "blob": "7fc085d7ef80a189a4d082cf679d8a00b9e88b3b"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788590146-000e6321.json",
+      "blob": "38629f41e40d75e4265b5edc15e359fe9dd3f4ae"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788590671-2c9139d9.json",
+      "blob": "12df07d339e9168593b7366ada33c7d90e5ce019"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788594922-20cd726b.json",
+      "blob": "978fcb6dc409f7660e70ff68ab8f5d2f8da04eb6"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788595165-1fabdd1e.json",
+      "blob": "b8306ed92d9bca9715c318d42085b4894b6b1095"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788595252-e718baed.json",
+      "blob": "ae422459c4c72dcc98068b4a3f62be95ec31deb7"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788595514-8fbaa398.json",
+      "blob": "488d4f8c24e8d04767afb01d495bf4ff33dc6ea0"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788595602-cc6d9b9f.json",
+      "blob": "8bbb9a929e2abb650c5837ec446da28cc43f0f67"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788595694-795fea1b.json",
+      "blob": "6314182aa1013e725b53e2c2f6484fcce5f22c94"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788595827-84cd2687.json",
+      "blob": "2888f1376092aeccc49d592c16fa7500a4025125"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788595937-49f17e87.json",
+      "blob": "a098f1a6b7594fe3f2bbb876176d66ad26106611"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788596108-ca246f43.json",
+      "blob": "3fb7f1202b8ddbc2bcdb4e304b2c68b74e036bf6"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788596148-afdf37b5.json",
+      "blob": "f88248dd494a14999d4cf4e746a55019264d5a5b"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788596266-7fd34c50.json",
+      "blob": "ed23972a8f0f8703cbd3cd8a0d91fc7d57b31128"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788596438-d1a3d4fa.json",
+      "blob": "3807973e6baff89a013fc3b606dc8f49abcad121"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788596725-76d324e4.json",
+      "blob": "a35fe6e5f4f92632f336e176b8df3126f3e58a20"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788596968-11fb336f.json",
+      "blob": "3f2327566445f2c7d4b0d67f3961247e6f3441bd"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788597093-dad514d5.json",
+      "blob": "82c03383a341bd3fd85074b425c7927bb7dd9c4a"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788597236-6b2bad06.json",
+      "blob": "69582e18c50a4c4a05aac336561ba64e8eb1b01a"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788616113-05d11579.json",
+      "blob": "e5473e96676961f4ab205d815baa078d6f39bdbf"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788616290-b22c8fa6.json",
+      "blob": "f996cb9be1a40ca1a72772d2718c33cc13f0176b"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788616444-93a71311.json",
+      "blob": "47169b8b7c709f6e2e062c23814f5e9788c4267e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788616602-66d45aaf.json",
+      "blob": "881933274d117b225ff36d45edeed2bc3768ee9e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788616792-39d9427d.json",
+      "blob": "861aabac20e08a1df2b106204077fe57922af827"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788617045-591d2440.json",
+      "blob": "9a210598f307628bf57e6251d3ee2559ddd1f839"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788617320-deead0c0.json",
+      "blob": "08b184033561fb76b592a04328274b9e21d64773"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788617493-8bb3b979.json",
+      "blob": "8833ab2f41a7948dea1d1486a7127f60f4509825"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788617818-5a08d77c.json",
+      "blob": "44ecc415538ab791bfbe533d1f4bcc8c4217c0f7"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788636444-3014cefc.json",
+      "blob": "fc113c552ba88ba66b2367248271c120fffd6cf7"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788708749-3d65cd31.json",
+      "blob": "8e4bac532068db28ce7d9206102838fa0a9a7922"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788708993-6d7c30fe.json",
+      "blob": "1f06a773507463c7d0a6924df50496a8bd79bdab"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788709719-9cbf627d.json",
+      "blob": "a1deaf27767a96c1e05d2b2a212672c102af8451"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788710013-c0e61eb1.json",
+      "blob": "89ee4f17c4885acd0f602a8accc47fa883f210bd"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788711728-17363dc0.json",
+      "blob": "1df7ba21a10488ee476af1471ed5ee90383f54d0"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788717654-59910fb4.json",
+      "blob": "e06891fd2677987e18f791f405ab39268cbfdbd8"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788725507-c4522bf4.json",
+      "blob": "71a174605fd8c162111d4f39b6ba0a63138e755c"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788725565-eedfe5a9.json",
+      "blob": "6accc13cb070a03d0e08880a8273bea42953fd1b"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788725796-652e19d0.json",
+      "blob": "28e8790eed38971e23d5ae64c7d961f9c1ab224e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788725887-c1321ee0.json",
+      "blob": "d8dbda41ebd5efee35e1c878e094335f5fb0bb90"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788726217-8df376a6.json",
+      "blob": "d8d49d4900e5da18bfaf8b02612a99153768c9d2"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788726501-584f74e5.json",
+      "blob": "3614b8df8a1f0907a93c6a1fed00851c017f5f64"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788726720-e0d3b49f.json",
+      "blob": "051af58f922cae46656331c47f1e03238b916828"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788731524-15ac0583.json",
+      "blob": "b274264340123c7356f3d91d45798e027eab486f"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788731736-7b6437b6.json",
+      "blob": "078bc1e0f3c41bf6012ee29b563bac198ca377ee"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788731933-1700095d.json",
+      "blob": "4c00a4bf9cf671835b7bc0367a35fef4f435d0b7"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788732111-6eee6b33.json",
+      "blob": "e7e0a27e7acb7f67d986ddb36a65e94e8605ebf3"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788732279-03fb3312.json",
+      "blob": "993953167d19e89438c296221564cf2b0af760a4"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788732516-e36ba86b.json",
+      "blob": "88923bd44c6deef32d02627252fe0b12a99df188"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788732842-3bab38d3.json",
+      "blob": "38e74f268abb1f15e8123741fd032fe50f2b3464"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788733129-7f38c571.json",
+      "blob": "3d61ca961d8dfcd3b6c3e561eeb2ca4760fca826"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788733409-801507b9.json",
+      "blob": "4a343a3cc1469a3dad8cddc034b8aba685510d42"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788733669-23cdaf37.json",
+      "blob": "3d7946f432f752dc036f905b3196d113bc965268"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788734048-5b341c52.json",
+      "blob": "8fefd9e46d70f344d632250ec9e5d72a9cf111a8"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788734480-569ad538.json",
+      "blob": "6b1052fd2e574024931dd9f1101273899e03248d"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788734893-7904fdc1.json",
+      "blob": "273938bcf62303b2b30e5b025bc94d543a8479a6"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788735253-837a05ab.json",
+      "blob": "f2b6e4974d54fa4d53a505406f1b46a94e16d05b"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788735584-9b2ad8f6.json",
+      "blob": "c66da950cdcc9e96c80182f934f753ec06d6a638"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788735808-dd2cbf30.json",
+      "blob": "655db563f0b796d08387e9e1647172e4e107d89b"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788736018-1a9aa0a7.json",
+      "blob": "4572f79cfd826186ac7ba5c0f05840f45d1a44cc"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788736210-e2bbcf39.json",
+      "blob": "1f2fe3f41c0cd055babcb0c4d9959a22093a486b"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788736385-d0699db0.json",
+      "blob": "fd275b15a779b6868dce7dc30b81c673100e751f"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788736553-67d505d5.json",
+      "blob": "f103c6f79e71d4a84f920e54484651c6afa38766"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788736786-f9186001.json",
+      "blob": "fd4c49862070b4b980f0a3094522ea48ca5dbd61"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788737021-4d3d4bf0.json",
+      "blob": "7f6a826d470a19d97cddd6c6ac19906e82aa3e6e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788737227-4f297e51.json",
+      "blob": "2bf3cfa748b97c999da8a2af1d1f0741cb282b35"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788737444-9d00f90a.json",
+      "blob": "3de4f902f24301ece17bbbe0073aa3eaf4b66f05"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788737655-41f621b9.json",
+      "blob": "12159d4424940efa90eb50d8465c206cb5e83983"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788737766-aa0a293e.json",
+      "blob": "ff7bfefc64fa734ead8670d8546c74a43f19a67a"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788737885-ec2535f4.json",
+      "blob": "8d5a85938df874a6317aa4bbfca5b8f8a7342a3e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788737995-0b8818aa.json",
+      "blob": "dc25177c6bee0e518934dec8630999b2b895528a"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788738106-0209e0a8.json",
+      "blob": "009a302b7ef54abe29a84698ed683b9fc76dc447"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788738220-93d4c9a5.json",
+      "blob": "ae3f61530510a592d2b204e133c5326782f69422"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788738379-801310e6.json",
+      "blob": "3041bfac896f5408c9a2b9d80492a6172d2ce0b1"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788738560-406fd568.json",
+      "blob": "d63376938bc5405ed5e1ed2a325a18103f1b7b68"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788738738-e4dbeb18.json",
+      "blob": "1eaefaf26223479f6294e6a313a598dc7693259c"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788738907-aeeb9c81.json",
+      "blob": "0a2d56e65a915977dcc31e976a29fec4903717cb"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788739089-adb3f0e4.json",
+      "blob": "77114d14defbf13d2c98c623b2dbc05934e66286"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788739363-ce3d40b9.json",
+      "blob": "67048bb236b8786cbb59f439fdb3f90ec7f3ed36"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788739604-9e1a141b.json",
+      "blob": "6bfda1405f2131bfbb38dd327a316ea1286654ad"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788739833-da0fa199.json",
+      "blob": "40e421364931d40d5df996ce6da4e98be1e25416"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788740087-24ebf0fd.json",
+      "blob": "5070a6325721d43993cf4f5fae189253e37c0173"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788740310-7fc2de68.json",
+      "blob": "016645a01bb77fbb4ab75ce518fc210e3f5086b2"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788740464-2eaf985e.json",
+      "blob": "c03659ec0ce9f617fea5b8538177407ae1fc9c8d"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788740622-ccbda9df.json",
+      "blob": "f7d2161ce84b48bb2798e8efe3fc30cb39927eac"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788740782-4dbf5ac8.json",
+      "blob": "d1aa4de99423672068125ee6ead882392b621973"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788740940-3187bf5f.json",
+      "blob": "17085097a2c0ea046ace603f1dcddbbf4ebc69b1"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788741090-6797c1b7.json",
+      "blob": "b3c798894c27a1e922f9b48bb4fdf85a206d4419"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788741343-a65a61e9.json",
+      "blob": "63f67d1de580f2f29485a2bdbf175fee040bc080"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788741642-b0db027a.json",
+      "blob": "771c287dd358996217d8bdb11a38a8c455aeaf83"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788741934-769013c2.json",
+      "blob": "7e82c7991ac82ec30dfe4b802efff7ad0938c6dd"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788742194-593ca24f.json",
+      "blob": "c8ae716a92146acbfabeac656cc2924aa022cb86"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788742456-d4e229ce.json",
+      "blob": "01aeb20b343915646097e4dd234ea69d296be449"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788742660-1bc6fd2e.json",
+      "blob": "b69d8efda93e30513661eed200d13fafeaf0e9d5"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788742890-574502c7.json",
+      "blob": "5ef01bf85953b2e6d4f77577494b3067a9f3a66d"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788743099-89d41712.json",
+      "blob": "c40a569adada35ea97ba285c0c87ee50069e1798"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788743317-4f4f4a1d.json",
+      "blob": "ae9743954a8df857aec7df0737664ed6160d02dd"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788743527-fe13efbc.json",
+      "blob": "167614c8ef3a502bc63109e80632081d8b788dbe"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788743717-5ca9f2c1.json",
+      "blob": "a275e4122e93810a16f3efaeea02aa613b7c12b5"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788743889-623ed871.json",
+      "blob": "bc27e7dec4c2db27d506f8fb42e00c6efc6524a1"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788744085-edc29979.json",
+      "blob": "04be93373012430361a3ed76aecb78411b3f5b33"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788744266-a0200f9f.json",
+      "blob": "bec7677b8366fa628d50b27b456d2c70a84d1004"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788744409-4e67cf30.json",
+      "blob": "28bcf7c069266237d217e829d644de637f38b6c6"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788744563-2c71ed0a.json",
+      "blob": "61d56511eb9df83b3aab884dba34ba7076a3f970"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788744722-8501c4c4.json",
+      "blob": "3f97614f8e11e16d40ed86fee39d490731e6ccb8"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788744874-bae2615e.json",
+      "blob": "79f06848f299c638d86000e3e295f075aaa4111b"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788745029-dc141c4b.json",
+      "blob": "0caa9164ad548531909c02d11822291f2a596e7a"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788745188-c3afdd2c.json",
+      "blob": "a45ed86af1ec2a0b12519b4cd009a5dad44fb9b8"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788745350-c951f079.json",
+      "blob": "2060a904d920af1be1a3c585bc90e6de3a8cfcf8"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788745530-7da5b517.json",
+      "blob": "6fbfb06cc6b0b3560730ea23eda08cdb39830889"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788745682-4a4f7242.json",
+      "blob": "927f3c8e28b68c194fdae2dc6bc99edac37b32ca"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788745914-47026577.json",
+      "blob": "85d6ae29cd0d571a603b5daf3ac1ed1c0f1ff5ed"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788746043-dfe9f712.json",
+      "blob": "d506c758d48860d8460c6ca62554f7f4d11e82e2"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788746164-018f1061.json",
+      "blob": "cf75fa2cb55b91767cecca7318d27202a5cdcb6f"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788746306-8693336b.json",
+      "blob": "4b75b8f52c921406350cb1e964b5966e83cec317"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788746418-70c35c81.json",
+      "blob": "2fc622cac88f47c6671c4ed5e47533e404ec6636"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788746530-43a92688.json",
+      "blob": "b8572cd5ec65d4c3188a4125704f54d2562df135"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788746648-c44aea6c.json",
+      "blob": "74c1f9572a702c077e5dd5aeefb473e27ced6c34"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788746956-7e974492.json",
+      "blob": "20465cb7005dbaba2dfd35d482ad199f9e6745f9"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788747311-a4a26561.json",
+      "blob": "e6e1702b18cbb320eb1dee26cfc12348f40f9d3e"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788747642-a3405980.json",
+      "blob": "9780cb2586461a829caa716ad52ce6d34dea1321"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788747986-88de836b.json",
+      "blob": "fe6408b9423e813caff485c194f2b30f2b106a05"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788748287-a9589c95.json",
+      "blob": "0f2d85c7fd62a674e7e7b3bf0463a29390bcd4b1"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788748572-cb9e469d.json",
+      "blob": "1d67074e4c336bf75909d46b792bc40e4e84f5f2"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788748881-38b4bc48.json",
+      "blob": "7ac1d0577592ffcbf616cf1e4c51542a6fa0cdb5"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788749176-afab53a8.json",
+      "blob": "06703cbecc77ba1f0a904896a9bf6d1486954d2f"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788749461-a9ec9da2.json",
+      "blob": "22c013f3ec210ba179afe38fa15b54aa740088fc"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788749696-6bad7958.json",
+      "blob": "408af048765a6bf255dbde44c04fcf1a04220267"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788750202-eac895a7.json",
+      "blob": "c8d42c920ce7eb9130778b81ce29f38f7cc00a26"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788750722-2adebbae.json",
+      "blob": "64133e16cf8181a91da2e5352883d1c50bc034d9"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788751241-5929363d.json",
+      "blob": "2b02f206a9bdd47d03a33fb76ace7fc50d88e913"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788751712-3c24a680.json",
+      "blob": "d129dc84a6b367de537a82323ab19682628486d9"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788752168-9642291d.json",
+      "blob": "6cd083799974e3c4dc62dd009001a5d8e42bddde"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788753131-2ede2319.json",
+      "blob": "4ee30006e2dc4edf7f8c79022ebf6cfb135f7528"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788753578-f250b532.json",
+      "blob": "bb8a6c8205f629c5634e99226148bf112e0a005a"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788754218-77ea61cc.json",
+      "blob": "a2390b99f985a6bff6fae0ce6e4cbce7c0a779fa"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788754489-d4fbe912.json",
+      "blob": "cfd3b0d2582ceab4c0c584f6d4b207f99e5f5f34"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788754764-b8fa26d4.json",
+      "blob": "8a8387cef5e3c4a371023487f716916d513d866d"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788755016-f507f5b4.json",
+      "blob": "6463d71970cb132a6bcc52cab07dc28ad7683754"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788755213-b8b74484.json",
+      "blob": "1209f78779b2e6e059995c2f156409b0e3bd9f62"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788755419-7eb53c43.json",
+      "blob": "52c1e89c0e25f60818dcb7f605fcd5bd51cb7a07"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788755657-255bfb4d.json",
+      "blob": "6653f6ba0e15f615031589a7440a1860d3e51196"
+    },
+    {
+      "path": "llmfit-core/data/community/intel-raptor-lake-p-iris-xe-graphics-integrated/1788755847-d74d642f.json",
+      "blob": "d48617d545284fae0ce017e7e8819c2884590196"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-gb10/1786611367-03c54b31-1.json",
+      "blob": "6c5e60dc9a22a0247f5a8083a2e528ed38469e59"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-gb10/1786611367-06d57be3-2.json",
+      "blob": "449e50a941490a8b916b702abb6ff62ea62fbb9a"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-gb10/1787176718-e50785ee.json",
+      "blob": "bb13dec55441d2b402434095b7854c295deb2d36"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-gb10/1788882219-d4186849.json",
+      "blob": "34ddb7c4945bf6821f091486e87dfb097eec4cba"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-gb10/1788898055-e0d9a579.json",
+      "blob": "1f794e0de1f3dcbfadb6e7931dfd63717035f819"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-gb10/1788898137-829d5421.json",
+      "blob": "3e8a80c0a93b8a36eb002a2e16a49a70ca0edd3d"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-gtx-1050-ti/1785427599-bb74bb6f.json",
+      "blob": "008f85f1d059c4bf099280cc4a3bfcecdae16361"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-gtx-1070/1786600923-94f2e31c.json",
+      "blob": "1122eed8cedcf422f81b1be02e698f975587f5b0"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-gtx-1650-with-max-q-design/1788288178-ed642883.json",
+      "blob": "adbf77d2d8bbee69bf4e46941f3efc726d7a405a"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-gtx-1650-with-max-q-design/1788294775-acb4f25f.json",
+      "blob": "32beca0b2cddc983b4f4c10b0b9f963c296a9690"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-gtx-1650-with-max-q-design/1788295253-fdd4c24b.json",
+      "blob": "8d096c2d60c5aa68eabef5c87a22422727af7f38"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-gtx-1650-with-max-q-design/1788295458-643d1c43.json",
+      "blob": "5e23cfb15e81a9267f3340f176f7aa60a4456098"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-gtx-1650-with-max-q-design/1788295883-66bebfb6.json",
+      "blob": "dea0ebf285dc825445e935e0e6d396f61ab63c99"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-gtx-1650-with-max-q-design/1788295921-aeb17104.json",
+      "blob": "38fe742f55aa1986baffdaaa389ab32130d6bd72"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-gtx-1650/1789222880-777cfc22.json",
+      "blob": "c6707b28deb03136f5a896b911f054264fa0c548"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2070-super/1784677844-2ff6ea93.json",
+      "blob": "724095838cfb12d6027c72b168481a7f2d4d1be8"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1784193317-d01967fb.json",
+      "blob": "0979962062cf839f0dbea1f1837ca5b283916e0c"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1784560682-efc5c3a6.json",
+      "blob": "204b10afa4f5be43f8bda084e7d2710a2fb350b4"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1784560683-66d0d9d1.json",
+      "blob": "9e4c1aa9aa580592377f13e23153ff84d968cf27"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1784560684-cacae003.json",
+      "blob": "386e74affffd8e24ade69cb7166685dff20ea822"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1784627096-7bd7947b.json",
+      "blob": "003cad87eecdf7025c5116ee0b4378bf3753da9c"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1784627097-07f3856f.json",
+      "blob": "c61adfac1b74aea51ec8bf5809a81b2e01413a90"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789222086-4cb295d9.json",
+      "blob": "fcbfd854de9c9a0f2082aba1e9f0a2fbed324483"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789222199-1730015c.json",
+      "blob": "c9a684bc906c61aaada36d2b803a0cfe92e3c246"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789224996-89ccff69.json",
+      "blob": "f4e5edc77f56bc9fdb37dfaa5aa6b856bd22d34a"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789225042-b929e9eb.json",
+      "blob": "782b802cf00805c42028830613b3e47578b51cc8"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789230597-4e60f173.json",
+      "blob": "d691d235cfe1b59a19ed634ecf26bf16ca3f5872"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789230647-0660235b.json",
+      "blob": "99696e27740965b3bf45a5ef681370ffe7ddcde6"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789230673-76b73322.json",
+      "blob": "4f204d637db10e2a43f08234536fa1146dcc0c6c"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789231922-cf552a87.json",
+      "blob": "803edebca542a7483ebd80215404e7d3f8d6efd0"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789237581-6b6fdfd9.json",
+      "blob": "7435f9b8a86842607c54e874345c3f09a566d6e2"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789237591-730db5b6.json",
+      "blob": "df9395431855891ad148d7d396c4d000abe6b9f1"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789239218-d75c984f.json",
+      "blob": "5c8e294da2998aa1c9f62342809460928e92d28f"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-2080/1789264643-00424ad5.json",
+      "blob": "11354daa92ae629b54c9bb2a0c9dba038cb84953"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-3050-ti-laptop-gpu/1787389800-f717a862.json",
+      "blob": "0b3142326ac9e387fc76c52dfdfdd77b1251afea"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-3080/1788769190-ca289a07.json",
+      "blob": "8666f5ec664f279a539f0b5b79e1fe4ca6258793"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-3090/1787062221-99e4b57e.json",
+      "blob": "5ce862ca988e54bfd48076b5d9cf86feb6273dfc"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-4060-laptop-gpu/1787829695-4755d3c9.json",
+      "blob": "e269ac8458d885b2d2a52c733ca8d2ba62047086"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-4060-ti/1788957186-e4871a22.json",
+      "blob": "963542c0cde9a40c5d15f49ddd1c13f444723a0f"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-4060-ti/1788957201-87d258fc.json",
+      "blob": "1796cd72631da02066553bdfbbe37652194ac674"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-4060-ti/1788958611-d5879fc0.json",
+      "blob": "0a81717ca4f578fe702b978870e0091cefaff6eb"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-4070-ti/1788252236-725d0265.json",
+      "blob": "46b436ce57ffd252c53a2ab957fe42cad324364b"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-4070-ti/1788252329-b220d0fb.json",
+      "blob": "b6f580c4fa7275e7282368967bc1b50930b9b929"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-5070-ti/1788800689-69ce2bfd.json",
+      "blob": "c45e9f4bee7cd39cc529dfb1e05f310c5ca1569a"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-5070/1784651642-be272e2d.json",
+      "blob": "b1066e7bb14a1c3c6f43a9010d3ce63e80bb159f"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-5070/1784931100-99599818.json",
+      "blob": "b013ea64fde2f55f58838889fbff387c01dbc5fa"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-5070/1784931282-e173655a.json",
+      "blob": "2b3a44eb8739def3c6a07b954f581f086f715af0"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-5070/1784931840-d429dedc.json",
+      "blob": "594a174c1b0caf04b10bbc0b0c7d5883e38edf29"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-5070/1784933153-e11ea270.json",
+      "blob": "5a350ebd491a5774fe575a6ec39ee5a8f56c0d0e"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-geforce-rtx-5090-laptop-gpu/1787133487-d45430f7.json",
+      "blob": "8657f07103cf8714c96664b4467a60ecb5730296"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-rtx-5880-ada-generation/1784978714-a021e906.json",
+      "blob": "3127346c94637c138835be6deca8a65521edb7d8"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-rtx-5880-ada-generation/1784978871-54ae51d4.json",
+      "blob": "3ecc06b3dd6356649ff3c03938c6685e73144877"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-rtx-5880-ada-generation/1784982934-d81f1c0c.json",
+      "blob": "9a6c46343200143df0a4c16267018bdabe836e74"
+    },
+    {
+      "path": "llmfit-core/data/community/nvidia-rtx-5880-ada-generation/1784990632-60d664dc.json",
+      "blob": "3ff56f2494ba26df4e3316ab1d7160a02884c042"
+    },
+    {
+      "path": "llmfit-core/data/community/radeon-840m-860m-graphics/1786355096-7527bd61.json",
+      "blob": "1b16da28365728ff395db90e8b0db7957b8bc426"
+    },
+    {
+      "path": "llmfit-core/data/community/radeon-840m-860m-graphics/1786356571-753cf899.json",
+      "blob": "1348e3beac45258b6b66a420588a7b296331f290"
+    },
+    {
+      "path": "llmfit-core/data/community/radeon-ai-pro-r9700/1789317524-af85166f.json",
+      "blob": "7744be4a48a1af2c6cdf75fd70e6a98f2d3d5489"
+    },
+    {
+      "path": "llmfit-core/data/community/radeon-ai-pro-r9700/1789342604-2ff13ceb.json",
+      "blob": "e6da6a1fd73989b44353ff31e649d31b62d3eccf"
+    },
+    {
+      "path": "llmfit-core/data/community/radeon-rx-9060-xt/1787688387-2650432a.json",
+      "blob": "1395833f25877fb618ca62e73c0e5c491854d778"
+    },
+    {
+      "path": "llmfit-core/data/community/radeon-rx-9060-xt/1787688457-624b1d89.json",
+      "blob": "23534a3e29c5538dcd10d252edbe68d17a7fb2bb"
+    },
+    {
+      "path": "llmfit-core/data/community/radeon-rx-9060-xt/1787688507-be1c9a39.json",
+      "blob": "10e0a3042a60fcecdaa94b39a593130b5ae982d9"
+    },
+    {
+      "path": "llmfit-core/data/community/radeon-rx-9060-xt/1787688549-bf4cf917.json",
+      "blob": "b2ae12252db898f3d6704f2d448e532dadd46b58"
+    },
+    {
+      "path": "llmfit-core/data/community/schema.json",
+      "blob": "aa2696ffeb10577361fb48a3ec6aea114df0938a"
+    },
+    {
+      "path": "llmfit-core/data/community/tesla-t4/1784112256-43b7d49b.json",
+      "blob": "745ece6effe0a3550740155295c4c5c7f25a75d5"
+    },
+    {
+      "path": "llmfit-core/data/docker_models.json",
+      "blob": "8bad4d97e9bf51ffb42050b80dd6a201467d9200"
+    },
+    {
+      "path": "llmfit-core/data/hardware/README.md",
+      "blob": "94d154df85b4b9e7ee5b0ce73e455201951b8621"
+    },
+    {
+      "path": "llmfit-core/data/hardware/apple-m3-max-128gb.json",
+      "blob": "9079a371a94f1e59d2941feda1587d0d5b75b022"
+    },
+    {
+      "path": "llmfit-core/data/hardware/nvidia-rtx-4090.json",
+      "blob": "9e2e61a541a4fe8ead4400cf5a03199a42152bc3"
+    },
+    {
+      "path": "llmfit-core/data/hardware/ryzen-ai-max-plus-395.json",
+      "blob": "c46c949b7ce8c7d15137940d4960bdd464f07402"
+    },
+    {
+      "path": "llmfit-core/data/hardware/schema.json",
+      "blob": "e9e9bd1661531af3ba2a8abfff2ad4865e0f4f7d"
+    },
+    {
+      "path": "llmfit-core/data/hf_models.json",
+      "blob": "b3f45c97dddde6065e6c15fce5664f5e6cf8e407"
+    },
+    {
+      "path": "llmfit-core/data/onnx_models.json",
+      "blob": "1e7feae172fa35f9dfef9b9d9ac1655e8fe02cf6"
+    },
+    {
+      "path": "llmfit-core/data/schema.json",
+      "blob": "6811d37dcb899ebbc9b3290ca3265c0809980326"
+    },
+    {
+      "path": "llmfit-core/data/use_case_benchmarks.json",
+      "blob": "9dd9bffc777501c3817315104b8ffda3ac40e307"
+    },
+    {
+      "path": "llmfit-core/src/analysis.rs",
+      "blob": "6e93f4e5ae17992b2666b2d204295ed446164d8a"
+    },
+    {
+      "path": "llmfit-core/src/bench.rs",
+      "blob": "204ae5098c2c8de05e89c462b27a36e12130053a"
+    },
+    {
+      "path": "llmfit-core/src/benchmarks.rs",
+      "blob": "a019af22fde2df3a4066a8bb74ac228f0be08402"
+    },
+    {
+      "path": "llmfit-core/src/claim.rs",
+      "blob": "0ab77e48d263be02abfb1609201a7843ee0f01fd"
+    },
+    {
+      "path": "llmfit-core/src/concurrency.rs",
+      "blob": "a68a06067f9ee90b27ef778d5856024c2aaa722a"
+    },
+    {
+      "path": "llmfit-core/src/doctor.rs",
+      "blob": "e97e5769c5078545b4101e42e2113a1bf7999f12"
+    },
+    {
+      "path": "llmfit-core/src/fit.rs",
+      "blob": "e063386a17252b137545fe1d2904ab2ce5d2616b"
+    },
+    {
+      "path": "llmfit-core/src/hardware.rs",
+      "blob": "e0f0013e76ff2f0217f3fda8078083fe567ad7dc"
+    },
+    {
+      "path": "llmfit-core/src/hwprofile.rs",
+      "blob": "e0464454fc749d3df98a8fea52f56152b847886d"
+    },
+    {
+      "path": "llmfit-core/src/lib.rs",
+      "blob": "63de52632ed53d529e7203b2e257c21ee59dc727"
+    },
+    {
+      "path": "llmfit-core/src/models.rs",
+      "blob": "e639af33bad584077df2389d7736f1ec23236786"
+    },
+    {
+      "path": "llmfit-core/src/plan.rs",
+      "blob": "6ce2ca2664a98f941e6a1acef3a19196ed9bbb56"
+    },
+    {
+      "path": "llmfit-core/src/providers.rs",
+      "blob": "84fddb95eb66c98c7764bd47d5200b697e0327cb"
+    },
+    {
+      "path": "llmfit-core/src/quality.rs",
+      "blob": "faeced4c26087bdad435052e3a6e8d198b3fd4e0"
+    },
+    {
+      "path": "llmfit-core/src/share.rs",
+      "blob": "5f743beb724e043629b5435cf0e4f6862b4bb1d0"
+    },
+    {
+      "path": "llmfit-core/src/storage.rs",
+      "blob": "820d481ab544110b9301e00d2510867ecc66f4bc"
+    },
+    {
+      "path": "llmfit-core/src/task_bench.rs",
+      "blob": "cfc23335f8a25bd5d81d7739829bd9bf0a93ce40"
+    },
+    {
+      "path": "llmfit-core/src/update.rs",
+      "blob": "dcad2e56ca06b62cffb3e78ce0b324a40aa0cde4"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/macos/apple-a18-pro.json",
+      "blob": "87fadde0972efd3429e55c4de3c3654406f7362a"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/macos/apple-a18-pro.txt",
+      "blob": "3b5bd2d9edc783709fc40c0b8abfc748381efe70"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/macos/apple-silicon.json",
+      "blob": "329bf776a29acd0218ee59791ebf70f98773dda7"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/macos/intel-amd.json",
+      "blob": "f3004be6e59392f60961abdd7a323b62cdc50637"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/macos/invalid.json",
+      "blob": "d14641765003d4a28c365294c1942d8d51890542"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/macos/missing-array.json",
+      "blob": "4b906d24e5983eb9d260004005f2b496476adac9"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/macos/missing-metal.json",
+      "blob": "509b9e60a918bd4b4776a1d9bac5071f039cb978"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/macos/missing-vram.json",
+      "blob": "273cbe9b697be8f3a404464ffb9c878ea0c83e4a"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/mixed/rocm-product.txt",
+      "blob": "9b1dc0cc7db5e6adfb5a4dfa3d107b6dc521df5b"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/mixed/rocm-vram.txt",
+      "blob": "1525881906cd65bfee8b93d52276841f58b60c96"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/mixed/vulkan-malformed.txt",
+      "blob": "20f8dbed7570c00fb096c529001ec8215367ece1"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/mixed/vulkan-summary.txt",
+      "blob": "74bc9374ba675975e1a723902106a4a7ad078111"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/nvidia/empty.txt",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/nvidia/extended-unified.csv",
+      "blob": "3be51403d2fb620908add273bba1f63217cc6168"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/nvidia/standard-distinct.csv",
+      "blob": "a2d23946e3f67ef6c6e4cced96744d1344e4fc24"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/nvidia/standard-identical.csv",
+      "blob": "fb1af4038a4e74ff1162ca305309c14386f6d562"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/nvidia/standard-single.csv",
+      "blob": "7ff9719a23aa405404a3297f1d454c052a99b05a"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/rocm/block-product.txt",
+      "blob": "23ff32b16f2025a6b5861f5c7703d3db522de7e9"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/rocm/block-vram.txt",
+      "blob": "b612f8e15d474b433dd2240849693ca56c07c6d7"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/rocm/malformed.txt",
+      "blob": "e83c7d5f210a33d5e1fc97b1fa435c9b75d27691"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/rocm/mixed-product.txt",
+      "blob": "898b1fefb112f59f576b8e3586ffd2ad92c51c0b"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/rocm/mixed-vram.txt",
+      "blob": "4bce6e8b2b77f7c22061df28284eecbdb05492c0"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/rocm/tabular-product.txt",
+      "blob": "399292725e6b391476fa78ad763c52806047ae38"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/rocm/tabular-vram.txt",
+      "blob": "f281d85966c47e5804369ce04a034cfd23041f86"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/sysfs/malformed-vram/card0/device/mem_info_vram_total",
+      "blob": "3fb64badd8f232a47d7e531c2bd84deec4e6f42b"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/sysfs/malformed-vram/card0/device/vendor",
+      "blob": "7f97d854fce738e7db9c5ad1c34403c2198605f0"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/sysfs/missing-vram/card0/device/vendor",
+      "blob": "7f97d854fce738e7db9c5ad1c34403c2198605f0"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/sysfs/mixed/card0/device/mem_info_vram_total",
+      "blob": "c934a44c2897e45e246b0daad1df2c96d414bed8"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/sysfs/mixed/card0/device/vendor",
+      "blob": "7f97d854fce738e7db9c5ad1c34403c2198605f0"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/sysfs/mixed/card1/device/mem_info_vram_total",
+      "blob": "c2317bfadd357775267cf1141ec1012bade3b70d"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/sysfs/mixed/card1/device/vendor",
+      "blob": "7f97d854fce738e7db9c5ad1c34403c2198605f0"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/sysfs/mixed/card2/device/vendor",
+      "blob": "466e5df4993dbebc9bd8dd7a61b96366e42a2b1d"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/sysfs/strix-halo/card1/device/device",
+      "blob": "350fb56547a455e2d67add51f4eab02fc4079136"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/sysfs/strix-halo/card1/device/mem_info_vram_total",
+      "blob": "b1e267f849001749c210a188fc9a52804ebfed3c"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/sysfs/strix-halo/card1/device/vendor",
+      "blob": "7f97d854fce738e7db9c5ad1c34403c2198605f0"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/windows/registry-vram.txt",
+      "blob": "547efcc0742123ce9b24e3cad355b12e98853768"
+    },
+    {
+      "path": "llmfit-core/tests/fixtures/hardware/windows/win32-video-controller.txt",
+      "blob": "9eff0a566bfea92bd192cc59d536258845c9968f"
+    },
+    {
+      "path": "llmfit-core/tests/hardware_profiles.rs",
+      "blob": "f840e2afe6043ea1a645c190fec99f4b76714bfc"
+    },
+    {
+      "path": "llmfit-core/tests/onnx_models.rs",
+      "blob": "7bf9d3a8502b1b3366d7121383a7be96c9c403ef"
+    },
+    {
+      "path": "llmfit-core/tests/schema_validation.rs",
+      "blob": "6f955e5b31c4cc9ff4db3b6eea1a06bd40f6ffb2"
+    },
+    {
+      "path": "llmfit-desktop/Cargo.toml",
+      "blob": "506366301cbb31e4079af2ac4a0d877485330c79"
+    },
+    {
+      "path": "llmfit-desktop/build.rs",
+      "blob": "d860e1e6a7cac333c3cc0bc9cb67faf286b07d69"
+    },
+    {
+      "path": "llmfit-desktop/capabilities/default.json",
+      "blob": "eff948b81eb9fd8c64f49e00b16e54b63e754297"
+    },
+    {
+      "path": "llmfit-desktop/icons/1024x1024.png",
+      "blob": "b432ea75b7447a8987f219d30ba71c9e36bd2a5f"
+    },
+    {
+      "path": "llmfit-desktop/icons/128x128.png",
+      "blob": "91ddf8e5cd0bf85c673991b856fcd42eeb0daea1"
+    },
+    {
+      "path": "llmfit-desktop/icons/256x256.png",
+      "blob": "851720b357681eb432fcbae9eab9c6e7f7058389"
+    },
+    {
+      "path": "llmfit-desktop/icons/32x32.png",
+      "blob": "d0d1f5d8b0f02d78640c360b7943019ead8f12c6"
+    },
+    {
+      "path": "llmfit-desktop/icons/512x512.png",
+      "blob": "7a4123b8d2d9a1cc41d7f6515ac408ef1b14f620"
+    },
+    {
+      "path": "llmfit-desktop/icons/icon.png",
+      "blob": "851720b357681eb432fcbae9eab9c6e7f7058389"
+    },
+    {
+      "path": "llmfit-desktop/src/main.rs",
+      "blob": "92978d5d3f8a43e66e075385263b85dda5999999"
+    },
+    {
+      "path": "llmfit-desktop/tauri.conf.json",
+      "blob": "3bf9c45fd23047c6eb3646db31a772e927bb2019"
+    },
+    {
+      "path": "llmfit-desktop/ui/app.js",
+      "blob": "f6a69d94b33158d04d0b9d0782a940fb0138c527"
+    },
+    {
+      "path": "llmfit-desktop/ui/i18n.js",
+      "blob": "0370ae4891af3d9d257f488e67b428ba5cad99df"
+    },
+    {
+      "path": "llmfit-desktop/ui/index.html",
+      "blob": "63f86f78c1c084c843384bc63b743344e8b7adfe"
+    },
+    {
+      "path": "llmfit-desktop/ui/styles.css",
+      "blob": "7f170dfeadf210f27be7a20e9dedbaefaa75fa79"
+    },
+    {
+      "path": "llmfit-python/LICENSE",
+      "blob": "ea5b60640b01f74e295037aa8a6b7d4ea278a739"
+    },
+    {
+      "path": "llmfit-python/Makefile",
+      "blob": "814cf90f398930854c2218ff2aab63b49cf9dc42"
+    },
+    {
+      "path": "llmfit-python/hatch_build.py",
+      "blob": "c854c64c79365e61121f59bcd55e6b2e5bb5e0c7"
+    },
+    {
+      "path": "llmfit-python/pyproject.toml",
+      "blob": "06a546650b6f4c4323fd911e176aa42409de66e9"
+    },
+    {
+      "path": "llmfit-python/src/llmfit/__init__.py",
+      "blob": "8e3f8f8f71e7d7efce3f36ca1bfabf342eeb77f2"
+    },
+    {
+      "path": "llmfit-python/src/llmfit/__main__.py",
+      "blob": "327585501dd025c982c3c8aaa7880fe1d06be8e1"
+    },
+    {
+      "path": "llmfit-python/tests/test_llmfit.py",
+      "blob": "97b3db182c7818d61b9871eafc7e749328e7dbbb"
+    },
+    {
+      "path": "llmfit-python/uv.lock",
+      "blob": "e5818664bb9665dca89d959dbe5b7aa1b28cfd92"
+    },
+    {
+      "path": "llmfit-tui/Cargo.toml",
+      "blob": "43cbf9c3de45ff6a44b8c630af9d099c2661fd66"
+    },
+    {
+      "path": "llmfit-tui/build.rs",
+      "blob": "69b4af0293438abb6c37462760e5abd4091c274d"
+    },
+    {
+      "path": "llmfit-tui/src/display.rs",
+      "blob": "c1feb6b71e013a64e946315954c38caf94278fe3"
+    },
+    {
+      "path": "llmfit-tui/src/download_history.rs",
+      "blob": "d660e05f5ddd219471117bfecd4e6662c01af7b8"
+    },
+    {
+      "path": "llmfit-tui/src/events.rs",
+      "blob": "f55daf6eacf1b5fbbdaca6872e882fc369f6e4e2"
+    },
+    {
+      "path": "llmfit-tui/src/filter_config.rs",
+      "blob": "bda1ae9cd20ef79577b4cf5a4f1cc471b0560d3f"
+    },
+    {
+      "path": "llmfit-tui/src/main.rs",
+      "blob": "4bf353cc50b2a99f4bc704e6d6ae5252e7606291"
+    },
+    {
+      "path": "llmfit-tui/src/mcp_server.rs",
+      "blob": "ed81bd389a22e11707c0a4c7dd6c65b0f5cbafcd"
+    },
+    {
+      "path": "llmfit-tui/src/serve_api.rs",
+      "blob": "fb417010ae48469030d0849030f6abbad2414b13"
+    },
+    {
+      "path": "llmfit-tui/src/serve_shared.rs",
+      "blob": "56ec30fd840eab2785e402801be41805414fa570"
+    },
+    {
+      "path": "llmfit-tui/src/theme.rs",
+      "blob": "b34d0a357fb521444aaf40f0a5c2212836d1f29a"
+    },
+    {
+      "path": "llmfit-tui/src/tui_app.rs",
+      "blob": "fc4d3abd0c2a604eac1fc02011b951fd83337570"
+    },
+    {
+      "path": "llmfit-tui/src/tui_events.rs",
+      "blob": "e6d129fe472385435d2d97e53e17a4cdf07add64"
+    },
+    {
+      "path": "llmfit-tui/src/tui_ui.rs",
+      "blob": "7fe4bf7b089a3166ae8251410f8d0a741477eb56"
+    },
+    {
+      "path": "llmfit-tui/tests/cli_smoke.rs",
+      "blob": "575d7608a374a8462fda5e948c66925ef216128f"
+    },
+    {
+      "path": "llmfit-tui/tests/hardware_profiles_cli.rs",
+      "blob": "f2b633497195934021a42660457bffbf7a6a7ad3"
+    },
+    {
+      "path": "llmfit-tui/tests/macos_gpu_detection.rs",
+      "blob": "f5959b7ed286202eebfe022870d54ec1f61e9c15"
+    },
+    {
+      "path": "llmfit-tui/tests/storage_cli.rs",
+      "blob": "837acac0c158158ab0e19c156a76d5e163eb07ca"
+    },
+    {
+      "path": "llmfit-web/README.md",
+      "blob": "3982475188489c6fd7440dd0a953190350062a4a"
+    },
+    {
+      "path": "llmfit-web/index.html",
+      "blob": "d30a57b48986cb526e121342a0a0bd6b6d2451af"
+    },
+    {
+      "path": "llmfit-web/package-lock.json",
+      "blob": "23093a51c4e968a51f8dd86bf442e9f767073675"
+    },
+    {
+      "path": "llmfit-web/package.json",
+      "blob": "7d8c50b647066dc9c436e6368e94bfa9b57cdc38"
+    },
+    {
+      "path": "llmfit-web/src/App.jsx",
+      "blob": "b8b765ee412e4cd3242f5a1732935a42c1d47d41"
+    },
+    {
+      "path": "llmfit-web/src/App.test.jsx",
+      "blob": "55a1db0df779f2572645e6184bbfaedcf4de3746"
+    },
+    {
+      "path": "llmfit-web/src/api.js",
+      "blob": "5819f311bfc6fd8006a22e1c6a6845d7a15401de"
+    },
+    {
+      "path": "llmfit-web/src/api.test.js",
+      "blob": "9419e9bb0bb15416558fa16d03b70f8c4eced497"
+    },
+    {
+      "path": "llmfit-web/src/components/ComparePanel.jsx",
+      "blob": "4cc479c1ae7f0692be4a52b59cc1c264acbda7ac"
+    },
+    {
+      "path": "llmfit-web/src/components/DetailPanel.jsx",
+      "blob": "e7edc254434e107937c7451ac8a9214ba317dd3e"
+    },
+    {
+      "path": "llmfit-web/src/components/FilterBar.jsx",
+      "blob": "9282ff97a80b98e12da0ac7527cf75520b4fddaa"
+    },
+    {
+      "path": "llmfit-web/src/components/Header.jsx",
+      "blob": "97ef19439bdc534896ad58a47d6849c984476307"
+    },
+    {
+      "path": "llmfit-web/src/components/ModelTable.jsx",
+      "blob": "0ac84b3d5fb97dd19c630e21396544d14cfebbea"
+    },
+    {
+      "path": "llmfit-web/src/components/SystemPanel.jsx",
+      "blob": "d3b84b43a7f7211ac8cc9d585c3f4c2c295322a2"
+    },
+    {
+      "path": "llmfit-web/src/contexts/FilterContext.jsx",
+      "blob": "42065b2b6bee7bf5b069dbe9c9e13563a799a923"
+    },
+    {
+      "path": "llmfit-web/src/contexts/I18nContext.jsx",
+      "blob": "e94b7d3dec6198d42ad12387e150b09e2ea8c085"
+    },
+    {
+      "path": "llmfit-web/src/contexts/ModelContext.jsx",
+      "blob": "e347bb91b84f041ce1a7a90daf6b58f0c1cfe502"
+    },
+    {
+      "path": "llmfit-web/src/hooks/useModels.js",
+      "blob": "d3e3f69472e55986896a7591025ed7fb50f29833"
+    },
+    {
+      "path": "llmfit-web/src/hooks/useSystem.js",
+      "blob": "486a5547f48978791701c60551741a9041390c54"
+    },
+    {
+      "path": "llmfit-web/src/i18n.test.js",
+      "blob": "48513430e27d1a03d0753c0201a14d5d6f8e29ee"
+    },
+    {
+      "path": "llmfit-web/src/i18n/locales/en.js",
+      "blob": "873c8689db49ced3c8a1dffe439b6a1215a42e2f"
+    },
+    {
+      "path": "llmfit-web/src/i18n/locales/zh-CN.js",
+      "blob": "33c0118f2379d4b2951a589b21e8a8e152febf78"
+    },
+    {
+      "path": "llmfit-web/src/main.jsx",
+      "blob": "96eca6a8705a341b5062e7ffd205c58971e66432"
+    },
+    {
+      "path": "llmfit-web/src/styles.css",
+      "blob": "d457d6e6afa6e7653922ba2cc695ba2d8490ec4e"
+    },
+    {
+      "path": "llmfit-web/src/test-setup.js",
+      "blob": "bb02c60cd055452852c33afe9078e35455935fb0"
+    },
+    {
+      "path": "llmfit-web/src/themes.css",
+      "blob": "4f2b4ee1232cc977b05fd090a30d6e1928160fb3"
+    },
+    {
+      "path": "llmfit-web/src/utils.js",
+      "blob": "bab413880c26ee2e4b737e4e79d95a1369fe9729"
+    },
+    {
+      "path": "llmfit-web/vite.config.js",
+      "blob": "b80cf1bcb155282b8f905175ac073d190afd5bff"
+    },
+    {
+      "path": "release-please-config.json",
+      "blob": "135a6c8f37b410f26ec0a57839d51292b801844b"
+    },
+    {
+      "path": "scripts/install-openclaw-skill.sh",
+      "blob": "a9cace6320bc667fb6e33cc2da6f164910f92f70"
+    },
+    {
+      "path": "scripts/scrape_benchmarks.py",
+      "blob": "6fe214fbb544a4d60862f8d615c59f18c1a7d93d"
+    },
+    {
+      "path": "scripts/scrape_docker_models.py",
+      "blob": "25daf2d4b44e78192bc94c9a624adc407765a1d1"
+    },
+    {
+      "path": "scripts/scrape_hf_models.py",
+      "blob": "29a9d61017c92ea95e11303e5d2f6bce3cd915d4"
+    },
+    {
+      "path": "scripts/test_api.py",
+      "blob": "27fea41f1c4de4aed6c3a346938b350d57db6f4c"
+    },
+    {
+      "path": "scripts/test_preserve_catalog_metadata.py",
+      "blob": "b487cb329525e9895557d6953005a5872fa7087d"
+    },
+    {
+      "path": "scripts/update_models.sh",
+      "blob": "e7c84300e0778bb664cd29184d8e0c21fabbbc02"
+    },
+    {
+      "path": "scripts/validate_community_benchmarks.py",
+      "blob": "f91f3a12004b7f46fa54e3dc9201c22fa8d2d384"
+    },
+    {
+      "path": "scripts/validate_generation_scoring.py",
+      "blob": "edbf13b58f597fd171ce8ba1db408ab4e25a3d19"
+    },
+    {
+      "path": "scripts/verify_models.py",
+      "blob": "fe74a5d8018944f9ae91467a82c5094905184259"
+    },
+    {
+      "path": "skills/llmfit-advisor/SKILL.md",
+      "blob": "524ece0c760b64d709b7ed7660cf481e56e2d601"
+    },
+    {
+      "path": "tests/README.md",
+      "blob": "f16e72645c1e6618c737a8a2d054abde1204c970"
+    },
+    {
+      "path": "tests/docker-compose.yml",
+      "blob": "ae2a1c22dd5186b3a1eec3208d8b09cf11d7d94a"
+    },
+    {
+      "path": "tests/test_docker_compose.sh",
+      "blob": "aa743ccec8ceeb0a59d0fb3ea117720a0b844238"
+    },
+    {
+      "path": "version.txt",
+      "blob": "645377eea8d0ff0cc974600d76e48ea516c4c8c0"
+    }
+  ]
+}

@@ -1,0 +1,1055 @@
+{
+  "repository": "afonsoft/skills",
+  "commit": "971de1e7fac5cb000388121c75b4d31a9d913c0e",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "blob": "f191bccedc41afc6b2a47e8098e554d32b2a5b9f"
+    },
+    {
+      "path": ".claude-plugin/plugin.json",
+      "blob": "918ddba16fb918fcd0d46eee68e316a60efb2937"
+    },
+    {
+      "path": ".codex-plugin/plugin.json",
+      "blob": "66b0a53ac5aa565684f2c0f4131ddc769e743291"
+    },
+    {
+      "path": ".devin-plugin/plugin.json",
+      "blob": "7d35c7d1dc6bbdadf863bd269048ab6102d18022"
+    },
+    {
+      "path": ".github/workflows/clawhub-publish.yml",
+      "blob": "ae6c052c6376acce81e9922928809eecddd8d63d"
+    },
+    {
+      "path": ".github/workflows/lobehub-publish.yml",
+      "blob": "b445acd84df071687429fb34623187fd4767416f"
+    },
+    {
+      "path": ".github/workflows/skills-sh-audit.yml",
+      "blob": "4b81e363e83347bfb59bd0be8e41f52cd844d719"
+    },
+    {
+      "path": ".github/workflows/skills-validate.yml",
+      "blob": "16927299ed07894cfe92191348365aebf92427e1"
+    },
+    {
+      "path": ".gitignore",
+      "blob": "7a60b85e148f80966a550e5ab6a762a907c69ca6"
+    },
+    {
+      "path": ".mcp.json",
+      "blob": "40d8290b6df10814b73d7fc9fa03ee7baae3633e"
+    },
+    {
+      "path": "LICENSE",
+      "blob": "a754fa211fdaf4a2b3a0c9daa446858e4d1352e3"
+    },
+    {
+      "path": "README.md",
+      "blob": "814b880fb603543d91eb5d30e7f4f25495619fd9"
+    },
+    {
+      "path": "README.pt-br.md",
+      "blob": "ffd863dd7fcb7e1665c1c13a2754764974769c50"
+    },
+    {
+      "path": "commands/building-mcp-servers.md",
+      "blob": "c736cbb7cbaea11ffa54c1585ca2780698f5cd3e"
+    },
+    {
+      "path": "commands/code-review-and-quality.md",
+      "blob": "927eccefbf2ea24becaec1730d7284b2b6bfeb5d"
+    },
+    {
+      "path": "commands/composio-mcp.md",
+      "blob": "228700640350d8bdd4e3f51d2dff6126b25c85ee"
+    },
+    {
+      "path": "commands/create-agent-harness.md",
+      "blob": "78720d3154beb67d751c72543639af45ac69b2cb"
+    },
+    {
+      "path": "commands/create-issues.md",
+      "blob": "e408013a5e27f9295fed78581f79600618adbb8a"
+    },
+    {
+      "path": "commands/create-readme.md",
+      "blob": "3ccd3b171f99b4c7a0d167f8f7ee95dc529326da"
+    },
+    {
+      "path": "commands/design.md",
+      "blob": "5e673e8330369a5e6571a3624d062a53fd1ba858"
+    },
+    {
+      "path": "commands/diagnose.md",
+      "blob": "4bd58ce99e86d3f482d02429a94bf69c6579a2fc"
+    },
+    {
+      "path": "commands/drawio-architecture.md",
+      "blob": "3389baf7cd88d4eb8ba4afb9e72f2fbc55fc8ccc"
+    },
+    {
+      "path": "commands/execute-specs.md",
+      "blob": "88915dbc1ea3e2cd5ee0c02bf5099d57e6423e66"
+    },
+    {
+      "path": "commands/gap-analysis.md",
+      "blob": "492b5dfb05a6db77629f343d518bcaad54f82625"
+    },
+    {
+      "path": "commands/improve-codebase-architecture.md",
+      "blob": "4dbdfa8c8a7d17e62f52f6145abca063b9f80b48"
+    },
+    {
+      "path": "commands/mermaid-architecture.md",
+      "blob": "741049b1348e76723b2cdc24836f11cb269ffa23"
+    },
+    {
+      "path": "commands/notebooklm-mcp.md",
+      "blob": "814cf01bbb54ff71080cdf6807093dfc46ec58eb"
+    },
+    {
+      "path": "commands/observability-and-instrumentation.md",
+      "blob": "f5cf0501e2add70317d801dc237bd3ff23266c40"
+    },
+    {
+      "path": "commands/obsidian.md",
+      "blob": "330d25b799f8a080fafaf210cced5d25bc97df92"
+    },
+    {
+      "path": "commands/orchestrator.md",
+      "blob": "65a7783313ae0d1ac961ffb58bda6adced6946ba"
+    },
+    {
+      "path": "commands/qa-analyst.md",
+      "blob": "c1f25943039ca28411a46312e2f579c3ea7ba2cb"
+    },
+    {
+      "path": "commands/quality-test-implementation.md",
+      "blob": "d7e0ddf77bda4ece73ec32ee74854e7f71414131"
+    },
+    {
+      "path": "commands/scaffold-mvp.md",
+      "blob": "a60ebc6a54599cbcf23b3e83ca07f0bf76372ab2"
+    },
+    {
+      "path": "commands/sonarqube-autofix.md",
+      "blob": "28ae8abf91ab2882f1a6d13b21e600d3d9163963"
+    },
+    {
+      "path": "commands/spec-driven.md",
+      "blob": "86c86641d2ef8298515f80733a4d78665089596e"
+    },
+    {
+      "path": "commands/wordpress-mcp.md",
+      "blob": "a94d06529e122745672e984ef95a1e9d8c711c3f"
+    },
+    {
+      "path": "commands/write-specs.md",
+      "blob": "b87622cee25c772f51da59e0d2f000df9a5f6c9c"
+    },
+    {
+      "path": "docs/README.md",
+      "blob": "c27a4e54f6652b91a1744ac9f7495a9f78e37f9a"
+    },
+    {
+      "path": "docs/en/building-mcp-servers.md",
+      "blob": "793d10b9246abf5a58ac90e576b4b9a4421d8d4f"
+    },
+    {
+      "path": "docs/en/code-review-and-quality.md",
+      "blob": "9e23e690a526ad2a7222f7edda1a145224f85840"
+    },
+    {
+      "path": "docs/en/composio-mcp.md",
+      "blob": "af58e6132619e6d9e9c4be5bc7e0cca0a56ae16c"
+    },
+    {
+      "path": "docs/en/create-agent-harness.md",
+      "blob": "0d0ea34693cae6c6dece1448a4a88798871b2a6a"
+    },
+    {
+      "path": "docs/en/create-readme.md",
+      "blob": "4b8e58830a5df634ef8b5797ba8fcea8875960b8"
+    },
+    {
+      "path": "docs/en/design.md",
+      "blob": "98bd0f597b6310d5a56ce655612224614655dcba"
+    },
+    {
+      "path": "docs/en/drawio-architecture.md",
+      "blob": "64206a521adaf3677b01667455bbe4733cc7a6f0"
+    },
+    {
+      "path": "docs/en/execute-specs.md",
+      "blob": "7a23f10a1cf53232534a461c6b6894eb85712223"
+    },
+    {
+      "path": "docs/en/gap-analysis.md",
+      "blob": "70d8201af9d42258dfc3ae3c627c8f1313100b95"
+    },
+    {
+      "path": "docs/en/mermaid-architecture.md",
+      "blob": "c400fe1b9e0f5936d7cadd112200b86e7d3393dc"
+    },
+    {
+      "path": "docs/en/notebooklm-mcp.md",
+      "blob": "341b2ad879ac7e4bd8a7919a582616feb64f3e76"
+    },
+    {
+      "path": "docs/en/observability-and-instrumentation.md",
+      "blob": "b22b3c32742bf1a81b10a5c5fd178a9c75b4e014"
+    },
+    {
+      "path": "docs/en/obsidian.md",
+      "blob": "0363de24b917ce94f4ef1e286c84571abf4e23c7"
+    },
+    {
+      "path": "docs/en/orchestrator.md",
+      "blob": "5dc8edbb32b0e2a79ab884c4728dfa68587c5e3d"
+    },
+    {
+      "path": "docs/en/quality-test-implementation.md",
+      "blob": "4678cd88a4685c14f91e1d5d5c9c1cebfef2c931"
+    },
+    {
+      "path": "docs/en/sonarqube-autofix.md",
+      "blob": "8129b35fc339b43e31d80f6bb67c87695616e120"
+    },
+    {
+      "path": "docs/en/wordpress-mcp.md",
+      "blob": "20b780a9059c202095ec50516957a03daa9828b0"
+    },
+    {
+      "path": "docs/en/write-specs.md",
+      "blob": "645015b825459bcec52408314a83729511019dba"
+    },
+    {
+      "path": "docs/pt-br/building-mcp-servers.md",
+      "blob": "e2cf5752acbcb0e5b158e8f621d22fb424cc4550"
+    },
+    {
+      "path": "docs/pt-br/code-review-and-quality.md",
+      "blob": "9e0c36e74f3d51022d7a20f932e9f2119b981305"
+    },
+    {
+      "path": "docs/pt-br/composio-mcp.md",
+      "blob": "13eecec9abc0ecd48371482de846fe4aa2913947"
+    },
+    {
+      "path": "docs/pt-br/create-agent-harness.md",
+      "blob": "4f444277994727c45d2eae86bbd5eb517d968b51"
+    },
+    {
+      "path": "docs/pt-br/create-readme.md",
+      "blob": "ef57ff73b975ac3048991eeca69a80e696a13ae4"
+    },
+    {
+      "path": "docs/pt-br/design.md",
+      "blob": "43c738ad47cb8015371ac140f62841239333f576"
+    },
+    {
+      "path": "docs/pt-br/drawio-architecture.md",
+      "blob": "8a40abc85f053938809c13ca9c5d818f1ca62aa2"
+    },
+    {
+      "path": "docs/pt-br/execute-specs.md",
+      "blob": "20f9af9a76f1c50f245ec713b0cb51c2ef7db2ee"
+    },
+    {
+      "path": "docs/pt-br/gap-analysis.md",
+      "blob": "00d75f5b735a03dd7b50677a207730b57260d20c"
+    },
+    {
+      "path": "docs/pt-br/mermaid-architecture.md",
+      "blob": "9ea1abd654a88950b50139022620e30011d12ec9"
+    },
+    {
+      "path": "docs/pt-br/notebooklm-mcp.md",
+      "blob": "e675a8f933780d82ac0e318af165f04efc6df6b7"
+    },
+    {
+      "path": "docs/pt-br/observability-and-instrumentation.md",
+      "blob": "24adc29dc64392883468905d25c9bf4ac9495358"
+    },
+    {
+      "path": "docs/pt-br/obsidian.md",
+      "blob": "43235c91afabf4d94cd306bfcd51eadf2c9c8fb2"
+    },
+    {
+      "path": "docs/pt-br/orchestrator.md",
+      "blob": "34e56cc08b68056ecf763b7d845aa856b2acd10b"
+    },
+    {
+      "path": "docs/pt-br/quality-test-implementation.md",
+      "blob": "0cf49932a891d0eebab0428927fbb19bec87e361"
+    },
+    {
+      "path": "docs/pt-br/sonarqube-autofix.md",
+      "blob": "658c2e132004020cff7c323c4de714ccf8a0a023"
+    },
+    {
+      "path": "docs/pt-br/wordpress-mcp.md",
+      "blob": "438168d81c35c435879b980cc6740da68918d457"
+    },
+    {
+      "path": "docs/pt-br/write-specs.md",
+      "blob": "b67cf5c3e8bebc151dfb4fe9de295b8dcd8519f5"
+    },
+    {
+      "path": "install.sh",
+      "blob": "7e2006bc3105a5dca3339cc05cd4f07e2862b746"
+    },
+    {
+      "path": "publish-clawhub.sh",
+      "blob": "3b28cd23c997367ca1b9ba737e4d0e517075d3ab"
+    },
+    {
+      "path": "publish-lobehub.sh",
+      "blob": "b5c2319eedbae50d5cc4453b0c90d569be984ca3"
+    },
+    {
+      "path": "refresh-lobehub-auth.sh",
+      "blob": "834dc1cd02c63b4c52049e95581ca949e4cf15de"
+    },
+    {
+      "path": "scripts/skills-sh-audit.py",
+      "blob": "fae33e70206428338fa0bb9b69ce338a1b355638"
+    },
+    {
+      "path": "skills.sh.json",
+      "blob": "d10b9b01db6b910c289cacab7a8e694c767ecf6a"
+    },
+    {
+      "path": "skills/building-mcp-servers/SKILL.md",
+      "blob": "01533cefa7d243dcee69c3b9e16fadf3ea09dca1"
+    },
+    {
+      "path": "skills/building-mcp-servers/references/dotnet_mcp_server.md",
+      "blob": "6a26a4c30bf39cb3366828ecb749f3c1d76df2cd"
+    },
+    {
+      "path": "skills/building-mcp-servers/references/evaluation.md",
+      "blob": "87e9bb78840fac113d93b4a27ab5b229a18cf226"
+    },
+    {
+      "path": "skills/building-mcp-servers/references/mcp_best_practices.md",
+      "blob": "4d87392e852327362c00be2512cb53638692a071"
+    },
+    {
+      "path": "skills/building-mcp-servers/references/node_mcp_server.md",
+      "blob": "f6e5df982adc0848bf261c47ab8d65a1e0469391"
+    },
+    {
+      "path": "skills/building-mcp-servers/references/python_mcp_server.md",
+      "blob": "cf7ec996d2e6e3655bc75ff6902738d03a37334e"
+    },
+    {
+      "path": "skills/building-mcp-servers/references/quick-start.md",
+      "blob": "00b1f212ea16a1f6669e4135f90ce284edc8a639"
+    },
+    {
+      "path": "skills/building-mcp-servers/references/transport-and-auth.md",
+      "blob": "e4085cd5a40aa43ba4c5640ccd4c2dc359264835"
+    },
+    {
+      "path": "skills/code-review-and-quality/SKILL.md",
+      "blob": "d8123128e839fd9285f36948999eae8c5365d95c"
+    },
+    {
+      "path": "skills/code-review-and-quality/references/performance-checklist.md",
+      "blob": "b4f380c2d70792201499b9d682ff4978bf56b684"
+    },
+    {
+      "path": "skills/code-review-and-quality/references/security-checklist.md",
+      "blob": "66e04b63e61654e1e57f1e526e99ffb7cdc67eb2"
+    },
+    {
+      "path": "skills/composio-mcp/SKILL.md",
+      "blob": "376cac0638f9d2bc4de4d2e71d3cabd6303eb13a"
+    },
+    {
+      "path": "skills/composio-mcp/references/cli-reference.md",
+      "blob": "c7b7d045015df5f6108b53749b4526c7b7c387b6"
+    },
+    {
+      "path": "skills/composio-mcp/references/mcp-config.md",
+      "blob": "f50d68510df98e400cbb767b6499bcf6add8edee"
+    },
+    {
+      "path": "skills/composio-mcp/references/platform-quirks.md",
+      "blob": "e92e7616f80e4955d2a59ef59121ff879de982c1"
+    },
+    {
+      "path": "skills/composio-mcp/references/tools-inventory.md",
+      "blob": "113868758300dd0923daf1a79e05499d68de8912"
+    },
+    {
+      "path": "skills/composio-mcp/references/troubleshooting.md",
+      "blob": "63d3272ba3f9fc519a50bc5a55bfa79469984259"
+    },
+    {
+      "path": "skills/composio-mcp/scripts/setup_composio_mcp.sh",
+      "blob": "e6ae39d119266db16f88b5aa7bdad5680b1f5ccb"
+    },
+    {
+      "path": "skills/composio-mcp/scripts/verify_composio.sh",
+      "blob": "8aff55720c7550a7128dc307015a76f2c6856ff8"
+    },
+    {
+      "path": "skills/create-agent-harness/SKILL.md",
+      "blob": "a77d16006099c9506fe1a60fd00b33d7e5f687d1"
+    },
+    {
+      "path": "skills/create-agent-harness/references/agents/engineer.md",
+      "blob": "338b6dfb4213c9c111cadfebd78a993ab04a2b02"
+    },
+    {
+      "path": "skills/create-agent-harness/references/agents/plan.md",
+      "blob": "063376490bc1c85ca3644d68416818aaae88ad5b"
+    },
+    {
+      "path": "skills/create-agent-harness/references/agents/review.md",
+      "blob": "f1a18069d654d698650500fc78a360134a593223"
+    },
+    {
+      "path": "skills/create-agent-harness/references/agents/test.md",
+      "blob": "ff795d42c5bfe9d7e1e45238a8304b95c0e1564f"
+    },
+    {
+      "path": "skills/create-agent-harness/references/context-engineering.md",
+      "blob": "fc38b84025952d3df1c4dbde14fb3afb039efbbe"
+    },
+    {
+      "path": "skills/create-agent-harness/references/memory-protocol.md",
+      "blob": "b1e67d1dd7ace44cede93f7f4b83cda978fb6f3b"
+    },
+    {
+      "path": "skills/create-agent-harness/references/migration-map.md",
+      "blob": "972c7fa7ba7cc963298efe293fca43f9e184406c"
+    },
+    {
+      "path": "skills/create-agent-harness/references/platform-quirks.md",
+      "blob": "05a8851968d1a4eb0146223143086d3806a53a38"
+    },
+    {
+      "path": "skills/create-agent-harness/references/spec-sdd-template.md",
+      "blob": "7a3cf2d48f1cdd51871c68b7f856c2e019b107f9"
+    },
+    {
+      "path": "skills/create-agent-harness/references/validation-artifacts.md",
+      "blob": "754b157085c28f6381c82442b35c6df078bb24c2"
+    },
+    {
+      "path": "skills/create-agent-harness/scripts/validate-harness.sh",
+      "blob": "450056cb17460af79caddac04a80175c39db270b"
+    },
+    {
+      "path": "skills/create-issues/SKILL.md",
+      "blob": "f61b67e510a92ab412bf852c3f48e877da39a1f7"
+    },
+    {
+      "path": "skills/create-issues/references/spec-sdd-template.md",
+      "blob": "7a3cf2d48f1cdd51871c68b7f856c2e019b107f9"
+    },
+    {
+      "path": "skills/create-readme/SKILL.md",
+      "blob": "44cca08787559e38bc1719b46d40c5235aae4919"
+    },
+    {
+      "path": "skills/design/SKILL.md",
+      "blob": "5e58eda6c98465bf7da4a2f9e957c5d7e173e54e"
+    },
+    {
+      "path": "skills/design/references/accessibility.md",
+      "blob": "387fbf327a88cf83849487ee882bd71572353e3e"
+    },
+    {
+      "path": "skills/design/references/angular-design.md",
+      "blob": "c92cfa9f7f7071531083385808d7a43df246fc97"
+    },
+    {
+      "path": "skills/design/references/anti-patterns.md",
+      "blob": "2bbc6b521f55873cadab6733d935e460d40c980e"
+    },
+    {
+      "path": "skills/design/references/blazor-design.md",
+      "blob": "98a0b7bd0a566468493f26c7c107037d693f5c91"
+    },
+    {
+      "path": "skills/design/references/color-system.md",
+      "blob": "db3330edd7ab775a1e51beb062aae19efe8fc8e1"
+    },
+    {
+      "path": "skills/design/references/components-patterns.md",
+      "blob": "65d096a86127cb6d43fb3399e5245282cf8f6b68"
+    },
+    {
+      "path": "skills/design/references/craft-floor.md",
+      "blob": "2ad27c1f77b7863657fab8a905a3b66c2d51bc0b"
+    },
+    {
+      "path": "skills/design/references/css-frameworks.md",
+      "blob": "d3a720aa71eab2a83897f74ab20b50b115afe2ba"
+    },
+    {
+      "path": "skills/design/references/design-tokens.md",
+      "blob": "82bc2c7620d870053d661835d3813b73b74e7bba"
+    },
+    {
+      "path": "skills/design/references/framework-comparison.md",
+      "blob": "638d46cc0d7c4a47ebb60aaa61175d79c1ace4cd"
+    },
+    {
+      "path": "skills/design/references/harden.md",
+      "blob": "a1bab17da2a32aea58f885ebeb6ec36fe9720046"
+    },
+    {
+      "path": "skills/design/references/layout-grid.md",
+      "blob": "d1acabdee55081898b285f933cc7bbf3190688c1"
+    },
+    {
+      "path": "skills/design/references/mobile-first.md",
+      "blob": "7d06217cf458115110dad9fbc7fc1ef0fdf63007"
+    },
+    {
+      "path": "skills/design/references/motion.md",
+      "blob": "4f776db3e9f0c2b3c3c7cc1afd4f7b1526ee15c3"
+    },
+    {
+      "path": "skills/design/references/onboard.md",
+      "blob": "e461cb51660c3919f9487a89ceae41c1a8a83f15"
+    },
+    {
+      "path": "skills/design/references/polish.md",
+      "blob": "01277ba7d4870e4253db7a07cc32a3ae10450104"
+    },
+    {
+      "path": "skills/design/references/react-design.md",
+      "blob": "9c5506b344705310a9c702d9b1a12362ccd64a54"
+    },
+    {
+      "path": "skills/design/references/responsive-breakpoints.md",
+      "blob": "f0000d5192648c81a5d59e51ba72c6fbac88a4a2"
+    },
+    {
+      "path": "skills/design/references/shape.md",
+      "blob": "e2e2c70e1a98844e0870870a59a2c5191d5c9b75"
+    },
+    {
+      "path": "skills/design/references/spacing-system.md",
+      "blob": "84f93f83a86117abb61cc9aaa561a611060c8657"
+    },
+    {
+      "path": "skills/design/references/testing-responsive.md",
+      "blob": "183672ef258d0e18547e1fbb04d5cb7782a3c21e"
+    },
+    {
+      "path": "skills/design/references/typography.md",
+      "blob": "a7e4b31d0beb47c304871aac1b5e0a4ba5ba69ec"
+    },
+    {
+      "path": "skills/design/references/ux-writing.md",
+      "blob": "1beddf51b0b705fe839d4f7c39f5aebde3c025fe"
+    },
+    {
+      "path": "skills/diagnose/SKILL.md",
+      "blob": "4bc71c755c9ed7a82eeb8d59fedfe0378277ac9a"
+    },
+    {
+      "path": "skills/diagnose/scripts/hitl-loop.template.sh",
+      "blob": "40afc4652f6f52fc117b2b00e1fa65fcec235838"
+    },
+    {
+      "path": "skills/drawio-architecture/SKILL.md",
+      "blob": "7582cb05d0668d7b118253c50e91b2a723b12dc9"
+    },
+    {
+      "path": "skills/drawio-architecture/references/architecture-patterns.md",
+      "blob": "93c34a68f3a4dec8ebb775eb6cbbcf57116da0b6"
+    },
+    {
+      "path": "skills/drawio-architecture/references/cloud-icons.md",
+      "blob": "ee23a78b5ee93024c730d2ce07f6cc88ecd8e564"
+    },
+    {
+      "path": "skills/drawio-architecture/references/mcp-config.md",
+      "blob": "10c6dc1c2234c212311dd5a0fb72028a6d3a5f8c"
+    },
+    {
+      "path": "skills/drawio-architecture/references/mcp-tools-reference.md",
+      "blob": "062af1fb455b904a21c10a1a4ed8a3fe621513c0"
+    },
+    {
+      "path": "skills/drawio-architecture/references/mcp-tools-reference.pt-br.md",
+      "blob": "41c27541d9ac6a43f42c0028f247600d37adcc1d"
+    },
+    {
+      "path": "skills/drawio-architecture/references/style-guide.md",
+      "blob": "3b96b2b650102b6c4562c2fca4c51bc3d8c39682"
+    },
+    {
+      "path": "skills/drawio-architecture/references/usage-examples.md",
+      "blob": "357dc14ae993766ceb5fa5b47f5b7841618eba58"
+    },
+    {
+      "path": "skills/drawio-architecture/references/usage-examples.pt-br.md",
+      "blob": "41ceb10e7196fb99bc2043cce05919b72a05ca35"
+    },
+    {
+      "path": "skills/drawio-architecture/references/usage-guide.md",
+      "blob": "b517ddb965354b4de686af7c76dad24fb4bc12b7"
+    },
+    {
+      "path": "skills/drawio-architecture/references/usage-guide.pt-br.md",
+      "blob": "4095402f20b6e6856500ed7dd0b8d4a8b33b28da"
+    },
+    {
+      "path": "skills/drawio-architecture/scripts/setup_drawio_mcp.py",
+      "blob": "54e2d058b968209aec98c12df652344f0b9b7860"
+    },
+    {
+      "path": "skills/drawio-architecture/scripts/validate_drawio.py",
+      "blob": "44a8d671d561218da584e0acf2c5f06b64c1d855"
+    },
+    {
+      "path": "skills/execute-specs/SKILL.md",
+      "blob": "f70fa7946b1f2be64cbec794348aea7cdd8daa2d"
+    },
+    {
+      "path": "skills/execute-specs/references/deep-modules.md",
+      "blob": "0d9720cf1dce25e51f4ba66d16f9d2de78a12abb"
+    },
+    {
+      "path": "skills/execute-specs/references/interface-design.md",
+      "blob": "a0a20ca41f02f18e63b78cde06cec0763923a403"
+    },
+    {
+      "path": "skills/execute-specs/references/mocking.md",
+      "blob": "71cbfee674d93244ce81d1830b930ca9a69200bd"
+    },
+    {
+      "path": "skills/execute-specs/references/refactoring.md",
+      "blob": "8a4443924fbe40c2f865c56a9477d5ec01cc9962"
+    },
+    {
+      "path": "skills/execute-specs/references/tests.md",
+      "blob": "ff22f809ccbcac26ecd7a3c4bc48ef701a8ac82e"
+    },
+    {
+      "path": "skills/execute-specs/scripts/validate_spec.py",
+      "blob": "0d8d97bcaae3f71ca070b2327b1bb99d3bcaecde"
+    },
+    {
+      "path": "skills/gap-analysis/SKILL.md",
+      "blob": "7eff8567dcc04698f2e8754df8e1906387c35d4e"
+    },
+    {
+      "path": "skills/gap-analysis/references/gap-record.md",
+      "blob": "2e3c3202aed554739744fda41bf49d7589669c69"
+    },
+    {
+      "path": "skills/gap-analysis/references/report-template.md",
+      "blob": "417f03c66ebbe5008960d4ded2d2461e70aaaef2"
+    },
+    {
+      "path": "skills/gap-analysis/scripts/collect-sources.sh",
+      "blob": "1566e8f5efd3f5ca03499d9e4ccd5c57092562f4"
+    },
+    {
+      "path": "skills/improve-codebase-architecture/SKILL.md",
+      "blob": "3b8cb16d913e6b88e88fb95ef203941d535f8b38"
+    },
+    {
+      "path": "skills/improve-codebase-architecture/references/DEEPENING.md",
+      "blob": "ecaf5d7dcf7aae2aff6dbc63742dd069351b4f5c"
+    },
+    {
+      "path": "skills/improve-codebase-architecture/references/HTML-REPORT.md",
+      "blob": "a7c00210b015d0c6c62ec6167b2c8a77905fbc86"
+    },
+    {
+      "path": "skills/improve-codebase-architecture/references/INTERFACE-DESIGN.md",
+      "blob": "9606800f007f8281d76748173d667e932a020737"
+    },
+    {
+      "path": "skills/improve-codebase-architecture/references/LANGUAGE.md",
+      "blob": "530c27630a045406a66712c8f062e873c3b22449"
+    },
+    {
+      "path": "skills/mermaid-architecture/SKILL.md",
+      "blob": "df2543de1ce5882040224eafdd8dbb19ede63a04"
+    },
+    {
+      "path": "skills/mermaid-architecture/assets/api-design-template.md",
+      "blob": "7657a383fc40f8ff0b961de42bc69648bc9e8b2c"
+    },
+    {
+      "path": "skills/mermaid-architecture/assets/architecture-design-template.md",
+      "blob": "63d0f8f735ef24bb6ef7d19129046b619ac51e4e"
+    },
+    {
+      "path": "skills/mermaid-architecture/assets/database-design-template.md",
+      "blob": "4432371d5a28087be092170a131bfd76b460721b"
+    },
+    {
+      "path": "skills/mermaid-architecture/assets/feature-design-template.md",
+      "blob": "9b650c281bfc140bb7de4bd407bc43d178a5c25b"
+    },
+    {
+      "path": "skills/mermaid-architecture/assets/system-design-template.md",
+      "blob": "7c016e18b8334ea9eae60a5a22f26ed7b321e9f3"
+    },
+    {
+      "path": "skills/mermaid-architecture/examples/fastapi/README.md",
+      "blob": "e5a72cc77b969568b1bf00f4d667daee058e9bbf"
+    },
+    {
+      "path": "skills/mermaid-architecture/examples/java-webapp/README.md",
+      "blob": "933e9441805a2ae97ae0567555e78e83a8e9d378"
+    },
+    {
+      "path": "skills/mermaid-architecture/examples/node-webapp/README.md",
+      "blob": "fa322d4c81ab47789103be239f76290d008b5c5b"
+    },
+    {
+      "path": "skills/mermaid-architecture/examples/python-etl/README.md",
+      "blob": "82feabc26da79c9b5821a2f8239d117a0af68326"
+    },
+    {
+      "path": "skills/mermaid-architecture/examples/react/README.md",
+      "blob": "6a9d6f57fb7551ba8c60adfd52b09da47553bf8c"
+    },
+    {
+      "path": "skills/mermaid-architecture/examples/spring-boot/README.md",
+      "blob": "3f6fad7a49127f994cd45148c8129861b75e29fc"
+    },
+    {
+      "path": "skills/mermaid-architecture/references/guides/code-to-diagram/README.md",
+      "blob": "72264fb93d7921aaf297f942667ecd6de264b12c"
+    },
+    {
+      "path": "skills/mermaid-architecture/references/guides/diagrams/activity-diagrams.md",
+      "blob": "9d7db9099d223450bb6ebe37098ac23093374503"
+    },
+    {
+      "path": "skills/mermaid-architecture/references/guides/diagrams/architecture-diagrams.md",
+      "blob": "0ecafe27cbc21f318f7487e2a7ebfc58e8ae6a05"
+    },
+    {
+      "path": "skills/mermaid-architecture/references/guides/diagrams/deployment-diagrams.md",
+      "blob": "c9c7759a523412dbbdbc989118e927adb97edcaf"
+    },
+    {
+      "path": "skills/mermaid-architecture/references/guides/diagrams/sequence-diagrams.md",
+      "blob": "24ab2bf667a248d7e5c3140d7f6414d77515cef3"
+    },
+    {
+      "path": "skills/mermaid-architecture/references/guides/resilient-workflow.md",
+      "blob": "ae808fb6c0076a065a9b3d46b9395e8643ae2a30"
+    },
+    {
+      "path": "skills/mermaid-architecture/references/guides/troubleshooting.md",
+      "blob": "6f533585d799f15cdabf5c7bd72492bdb74b6d28"
+    },
+    {
+      "path": "skills/mermaid-architecture/references/guides/unicode-symbols/guide.md",
+      "blob": "cf4c8e6c501a689113e2ff39a0f3ccea3deb30b4"
+    },
+    {
+      "path": "skills/mermaid-architecture/references/guides/wiki-ticket-and-github.md",
+      "blob": "59d97f385bea3a3bc84e73a2e68d6d54544b0f4c"
+    },
+    {
+      "path": "skills/mermaid-architecture/references/mermaid-diagram-guide.md",
+      "blob": "75858cdf871396c23497f206aa47abbbf50a9180"
+    },
+    {
+      "path": "skills/mermaid-architecture/scripts/extract_mermaid.py",
+      "blob": "47b61bfd7cba40dfb8118178b86ef87b23e8ffed"
+    },
+    {
+      "path": "skills/mermaid-architecture/scripts/mermaid_to_image.py",
+      "blob": "213e059ea7c74270a01fb4950d144d3c353f8051"
+    },
+    {
+      "path": "skills/mermaid-architecture/scripts/resilient_diagram.py",
+      "blob": "dd7f8f058e572dcb57188158ccd9880a701776b1"
+    },
+    {
+      "path": "skills/notebooklm-mcp/SKILL.md",
+      "blob": "7994b592f4155e1fc75b8403b8c32f67363fbad3"
+    },
+    {
+      "path": "skills/notebooklm-mcp/references/auth-guide.md",
+      "blob": "09a42e5259ff0f03f9422771fc0f5db7481283f2"
+    },
+    {
+      "path": "skills/notebooklm-mcp/references/mcp-config.md",
+      "blob": "9eb6cf1cbd91648d638de19da8468be3c4866baa"
+    },
+    {
+      "path": "skills/notebooklm-mcp/references/platform-quirks.md",
+      "blob": "e92e7616f80e4955d2a59ef59121ff879de982c1"
+    },
+    {
+      "path": "skills/notebooklm-mcp/scripts/extract_cookies_help.sh",
+      "blob": "27cb2dde4ad2ef19908e334445482209be8ab690"
+    },
+    {
+      "path": "skills/notebooklm-mcp/scripts/setup_notebooklm_mcp.sh",
+      "blob": "75c3e9b22bf18e2f1946afe697c7faf08a730661"
+    },
+    {
+      "path": "skills/notebooklm-mcp/scripts/verify_notebooklm.sh",
+      "blob": "a5a1587a0ebf62694763158eef25ab64e272d019"
+    },
+    {
+      "path": "skills/observability-and-instrumentation/SKILL.md",
+      "blob": "f89ea1ad877270b97d3aed24839a379d33c05952"
+    },
+    {
+      "path": "skills/observability-and-instrumentation/references/observability-checklist.md",
+      "blob": "6c43e2ce087bc7b7046c453a45dc9cc8aa323e53"
+    },
+    {
+      "path": "skills/obsidian/SKILL.md",
+      "blob": "7695e8a41d31a4e78385c03d5b431e4ae0ee92c4"
+    },
+    {
+      "path": "skills/obsidian/references/CALLOUTS.md",
+      "blob": "c086824c64156d17731c94a7029d3496dadbaa04"
+    },
+    {
+      "path": "skills/obsidian/references/EMBEDS.md",
+      "blob": "668851abe0f056493e162f0a866762cced15c991"
+    },
+    {
+      "path": "skills/obsidian/references/FUNCTIONS_REFERENCE.md",
+      "blob": "047888deca657c2da5a56163b7156b9a423642cd"
+    },
+    {
+      "path": "skills/obsidian/references/PROPERTIES.md",
+      "blob": "e46a63abadd7c18224a79c2c9ea902bfb3e88bd6"
+    },
+    {
+      "path": "skills/obsidian/references/obsidian-bases.md",
+      "blob": "ff29c459fad2feaedd6da1b9339fd88dd3726ec4"
+    },
+    {
+      "path": "skills/obsidian/references/obsidian-cli.md",
+      "blob": "6728a9f62dd3d4e35e88791ad05090fb8849a1ce"
+    },
+    {
+      "path": "skills/obsidian/references/obsidian-markdown.md",
+      "blob": "c5a94605dbe56b96084d7775350d5c5c729b8d0a"
+    },
+    {
+      "path": "skills/orchestrator/SKILL.md",
+      "blob": "2bc9cf20a6ef044a9ce33a17030e6070cdc110eb"
+    },
+    {
+      "path": "skills/orchestrator/references/ESTADO_ORQUESTRATOR.md",
+      "blob": "9ea1276bd12af88d1b041324ea0a7cd98a4cd2a7"
+    },
+    {
+      "path": "skills/orchestrator/references/orchestrator-delegation-protocol.md",
+      "blob": "c1e4a742357f63a32a2e63a0da15edb854a034db"
+    },
+    {
+      "path": "skills/orchestrator/references/orchestrator_stats.md",
+      "blob": "42574b075f89af94bc32d2613923dc8dfd13c4bf"
+    },
+    {
+      "path": "skills/qa-analyst/SKILL.md",
+      "blob": "04b03839dd6a6a4983e22926b7c198e3fadf1fcd"
+    },
+    {
+      "path": "skills/qa-analyst/references/qa-templates.md",
+      "blob": "5ac9ff02c30e100b1be9b4947d5f8858ea5186fa"
+    },
+    {
+      "path": "skills/quality-test-implementation/SKILL.md",
+      "blob": "1ffc33be0750b8b68de0b64bf2235137e3432f80"
+    },
+    {
+      "path": "skills/quality-test-implementation/references/coverage-dotnet.md",
+      "blob": "354bfbd3ae68216a36bd998f65a641938af9b59c"
+    },
+    {
+      "path": "skills/quality-test-implementation/references/coverage-java.md",
+      "blob": "02dfc494df22c13c0591f5eea6c52532b636cc75"
+    },
+    {
+      "path": "skills/quality-test-implementation/references/coverage-python.md",
+      "blob": "e5031a212a31bf6fd88a7639927301255741b9f6"
+    },
+    {
+      "path": "skills/quality-test-implementation/references/run-coverage.sh",
+      "blob": "7117aeabdd5ad6af4df6cec0277b0309f5328a68"
+    },
+    {
+      "path": "skills/scaffold-mvp/SKILL.md",
+      "blob": "39337a5eb3c6518450c2901a012865219ec82aec"
+    },
+    {
+      "path": "skills/sonarqube-autofix/SKILL.md",
+      "blob": "0e582f786cd1604984dbc88b71fde11c54189a08"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/detect-stack.sh",
+      "blob": "8bf78c1bda1e2cd36ddfcd6785216d402022e3bc"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/download-issues.sh",
+      "blob": "8a69b397807807865d9114c948f69f40bf7d3039"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/jsonf.sh",
+      "blob": "73bf065770ced74b4eab9d6185f78e4584fe8917"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/sonar-local-scan.sh",
+      "blob": "0f85be1186dd1217f358d5baafabcaa93ca738ac"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/spec-sdd-template.md",
+      "blob": "7a3cf2d48f1cdd51871c68b7f856c2e019b107f9"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/templates/test-angular.md",
+      "blob": "b4f2635c5f7675d7a3a295716cdc218d5d7a3382"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/templates/test-csharp.md",
+      "blob": "94308ed0df717ed602843c8fa6ab617dd8582720"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/templates/test-go.md",
+      "blob": "6e71e0f17a17001f5263450ee38f92b5abd21cf8"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/templates/test-java.md",
+      "blob": "bab9785ff6323913ca5e14b905908c5f23db2692"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/templates/test-javascript.md",
+      "blob": "222030787acb5397697edcac9fc39d7a6e69ff0d"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/templates/test-kotlin.md",
+      "blob": "91638f3d564e46b247326a4c772aeb683ee90870"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/templates/test-php.md",
+      "blob": "9fa6536abfc83914536c7f03eae8f563195dac73"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/templates/test-python.md",
+      "blob": "bd4b272463c02cacee12aa5c20fcc8c9e7d9f39b"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/templates/test-ruby.md",
+      "blob": "cf931bbf41ecfe0abde0834e926c1ca6fb140326"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/templates/test-scala.md",
+      "blob": "ade15631e87d38f868f64512e27717936eb4ad53"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/templates/test-typescript.md",
+      "blob": "0cc8539372d1252ec9b85b1b0c42884a807529c5"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/validate-angular.sh",
+      "blob": "91b0850e4a5ed0c60e863489c51f50a8a62f3b52"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/validate-csharp.sh",
+      "blob": "d427cd8aa3775aad2b1db2537d09c64125d81d2f"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/validate-go.sh",
+      "blob": "50d4d286afb3dca8c9e9e5099f5f2c9628d411da"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/validate-java.sh",
+      "blob": "d331ed8b67947e8fc2f87c742f4b857362564726"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/validate-js.sh",
+      "blob": "dbb605b5162dd709e9b0626af1bc6748b177f3b0"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/validate-php.sh",
+      "blob": "eea089d97dc0f2855658cbb1975b5a97f28ceff4"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/validate-python.sh",
+      "blob": "6a17cdb061ef6e5c2eb41715850b072c0d17f009"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/validate-ruby.sh",
+      "blob": "76701139fbccf07248954d3baafdccbbe0efa561"
+    },
+    {
+      "path": "skills/sonarqube-autofix/references/validate-scala.sh",
+      "blob": "d7847f231d07e238e1220b1adaaa88208572d438"
+    },
+    {
+      "path": "skills/wordpress-mcp/SKILL.md",
+      "blob": "1f5ebf33715f1358e17a36b56e776352b3ac5db5"
+    },
+    {
+      "path": "skills/wordpress-mcp/references/ai-engine-tools.md",
+      "blob": "7c17f7a048974e16c6034c36e3489f98ea770029"
+    },
+    {
+      "path": "skills/wordpress-mcp/references/mcp-adapter-guide.md",
+      "blob": "ba85f38837d2c163d532ed5557c00428ab468a2e"
+    },
+    {
+      "path": "skills/wordpress-mcp/references/mcp-config.md",
+      "blob": "99763f44964e00567b0b97a14e62973fa38e48d0"
+    },
+    {
+      "path": "skills/wordpress-mcp/references/platform-quirks.md",
+      "blob": "5b3314d9d89c71b8636c922141c6da4f2860717b"
+    },
+    {
+      "path": "skills/wordpress-mcp/references/real-world-workflows.md",
+      "blob": "833f6b1ded091c46518401ae57f9a7285ac39673"
+    },
+    {
+      "path": "skills/wordpress-mcp/references/troubleshooting.md",
+      "blob": "72d5836b07f4f456e1c29c9a18a367af57946909"
+    },
+    {
+      "path": "skills/wordpress-mcp/references/wp-mcp-ultimate.md",
+      "blob": "2a1088aefa2bad47aa4812e31a126f128e568901"
+    },
+    {
+      "path": "skills/wordpress-mcp/scripts/install_wp_plugin.sh",
+      "blob": "d8da637cdd065d64a15fb9cf88555463123a5c43"
+    },
+    {
+      "path": "skills/wordpress-mcp/scripts/setup_wordpress_mcp.sh",
+      "blob": "8233144ad9c4417bd574c73bd7d0db66503becd8"
+    },
+    {
+      "path": "skills/wordpress-mcp/scripts/verify_wordpress_mcp.sh",
+      "blob": "29277f65e1d85e388a13c3dd113018461e8622a8"
+    },
+    {
+      "path": "skills/write-specs/SKILL.md",
+      "blob": "6effdfefaeaf2a65c1acf5a3dc0fb776fcd74ced"
+    },
+    {
+      "path": "skills/write-specs/references/spec-sdd-template.md",
+      "blob": "7a3cf2d48f1cdd51871c68b7f856c2e019b107f9"
+    }
+  ]
+}

@@ -1,0 +1,712 @@
+{
+  "repository": "mdigitalbh81/secops-orchestrator",
+  "commit": "8e88d3c397ecb752c405365b3807778d9b822a65",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".dockerignore",
+      "blob": "70653a7966d9f71635839f0779ac41307a13c300",
+      "size": 398
+    },
+    {
+      "path": ".env.example",
+      "blob": "711969bb63ca89492edadc520c206af651e075b1",
+      "size": 1115
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "blob": "d11d8838e7afe4040e0df1ae40e50990a2d67946",
+      "size": 2657
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "blob": "0086358db1eb971c0cfa8739c27518bbc18a5ff4",
+      "size": 27
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.yml",
+      "blob": "e97d7c7afeb8b103b726991eeef36f8b1d578591",
+      "size": 1956
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/new_scanner.yml",
+      "blob": "e4b217197cb69482546657ba052de1d7593d568d",
+      "size": 3947
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "blob": "89be7c4970854f2b0eff118e19c572dc6775d73b",
+      "size": 1488
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "blob": "4cccf17c162fec3e456cf0f9376ae65606c93696",
+      "size": 4270
+    },
+    {
+      "path": ".gitignore",
+      "blob": "9b9a9e940084b3389791f44f48c571d7d081d748",
+      "size": 194
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "blob": "21c3b394f7972b2143324027c9fa56582a55a23f",
+      "size": 7823
+    },
+    {
+      "path": "LICENSE",
+      "blob": "088231fb5ec6ed13bdcd3e67f4c2b0f404eb0568",
+      "size": 4529
+    },
+    {
+      "path": "NOTICE",
+      "blob": "63829bfc805b11862499df4c39aa7d543f88847b",
+      "size": 139
+    },
+    {
+      "path": "README.md",
+      "blob": "daa6da04e9ff6e7f2e0bf32de1118a7364d4d102",
+      "size": 26329
+    },
+    {
+      "path": "SECURITY.md",
+      "blob": "788686c308c6cbdd4c791e1b80824b9626f13689",
+      "size": 5108
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "blob": "7864739c75cbf23e1bc3efdff0963abfc0b18491",
+      "size": 10448
+    },
+    {
+      "path": "backend/alembic.ini",
+      "blob": "41303b75939afa9c20b37dbf6e096d714eb8e96b",
+      "size": 590
+    },
+    {
+      "path": "backend/alembic/env.py",
+      "blob": "6d77506098376ff8a0ab47ff771c52d7973c84ae",
+      "size": 1331
+    },
+    {
+      "path": "backend/alembic/script.py.mako",
+      "blob": "1a2f2d9950f933fa2326ba298a689171c14a18bd",
+      "size": 616
+    },
+    {
+      "path": "backend/alembic/versions/001_initial.py",
+      "blob": "2cf6edd5ac277ba04d611c5108727ac80f63c620",
+      "size": 4004
+    },
+    {
+      "path": "backend/alembic/versions/002_phase2_codeql_ai_correlation.py",
+      "blob": "39af618433230a67e886f74845155a70f214ad4c",
+      "size": 1826
+    },
+    {
+      "path": "backend/alembic/versions/003_phase3_dast_target_url.py",
+      "blob": "021bbb8cf03507f1c85e8ae9582ddac60ecdc56c",
+      "size": 497
+    },
+    {
+      "path": "backend/alembic/versions/004_finding_dispositions.py",
+      "blob": "0b933ea5fd2bf77906e5207c9eb11b47b8e32e6d",
+      "size": 3758
+    },
+    {
+      "path": "backend/alembic/versions/005_dast_only_scan_mode.py",
+      "blob": "6ae1adf589fad125b290e3a6e29e12dceeb37662",
+      "size": 1502
+    },
+    {
+      "path": "backend/app/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/app/agents/__init__.py",
+      "blob": "5803f97c331b11d210bf1ecff5f99e481816a065",
+      "size": 642
+    },
+    {
+      "path": "backend/app/agents/base.py",
+      "blob": "be28856f1ea07a9514c26fb5703c6b5a11c2b391",
+      "size": 4006
+    },
+    {
+      "path": "backend/app/agents/mantis.py",
+      "blob": "c262d03fe2821a003dced1889c81c7c22c7c4749",
+      "size": 12596
+    },
+    {
+      "path": "backend/app/agents/mantis_runtime.py",
+      "blob": "e24a83a258b837fbe76667b1dfc3696fe753991e",
+      "size": 28552
+    },
+    {
+      "path": "backend/app/agents/registry.py",
+      "blob": "22b2a73b9a00fd81a0fec10a6ac6b0f2daae0ad7",
+      "size": 1240
+    },
+    {
+      "path": "backend/app/api/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/app/api/routes.py",
+      "blob": "161bdfd32a0b816a2cccff173b02ff3c6c7ecea2",
+      "size": 16304
+    },
+    {
+      "path": "backend/app/cli.py",
+      "blob": "ed6f704330540ade50bf58a4d8984c71b6b329bf",
+      "size": 62507
+    },
+    {
+      "path": "backend/app/core/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/app/core/config.py",
+      "blob": "042b9c14641a69c1d47bd01183a4ca7e25857a59",
+      "size": 4936
+    },
+    {
+      "path": "backend/app/db/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/app/db/base.py",
+      "blob": "6d6e58c3065be66fd1efd548ee38be6e4ff30255",
+      "size": 119
+    },
+    {
+      "path": "backend/app/db/session.py",
+      "blob": "1e89317dc27a92aed6cf3fd31f504c900cfde52d",
+      "size": 720
+    },
+    {
+      "path": "backend/app/main.py",
+      "blob": "00231de4296f7968fea44cab402f54ef021a77ff",
+      "size": 539
+    },
+    {
+      "path": "backend/app/models/__init__.py",
+      "blob": "77a686965b36023f72de5c71e090bfe02db422c7",
+      "size": 737
+    },
+    {
+      "path": "backend/app/models/correlation.py",
+      "blob": "a90742a1d87ebeb8800f5db30d0b96d3dc44a6f3",
+      "size": 1848
+    },
+    {
+      "path": "backend/app/models/disposition.py",
+      "blob": "283a1e1b58950d9d2faa4f14e286ebccc919cfef",
+      "size": 3144
+    },
+    {
+      "path": "backend/app/models/enums.py",
+      "blob": "1c0c456fb5211ecee04534d3e24c1995ebdc780d",
+      "size": 1180
+    },
+    {
+      "path": "backend/app/models/finding.py",
+      "blob": "613e144c688e182aed5b1beec7388de7d994d724",
+      "size": 3728
+    },
+    {
+      "path": "backend/app/models/project.py",
+      "blob": "11c24b73585d111835d81f29378942c7b9bf1fcb",
+      "size": 1086
+    },
+    {
+      "path": "backend/app/models/scan.py",
+      "blob": "476c26ec8e65eae3cac3a767c50f109754243b38",
+      "size": 2120
+    },
+    {
+      "path": "backend/app/models/scanner_run.py",
+      "blob": "c6535ab12396279816adf6b942b77e5491745cbd",
+      "size": 1388
+    },
+    {
+      "path": "backend/app/scanners/__init__.py",
+      "blob": "17c4ee4cd197b9fdc543e86b3642b58eaaedb3c0",
+      "size": 1058
+    },
+    {
+      "path": "backend/app/scanners/ai_appsec.py",
+      "blob": "871bcca0cbf093b4f25d71c3e676f602a1aa2eb6",
+      "size": 12783
+    },
+    {
+      "path": "backend/app/scanners/base.py",
+      "blob": "f32aa56ab6a55391964d60e91c21006c4bd7b74b",
+      "size": 5169
+    },
+    {
+      "path": "backend/app/scanners/codeql.py",
+      "blob": "7074d574452dd543e528cb1e428d60b9a11cf989",
+      "size": 14337
+    },
+    {
+      "path": "backend/app/scanners/npm_audit.py",
+      "blob": "fbafd40303468aae2faa672591c4116d415f10c6",
+      "size": 3665
+    },
+    {
+      "path": "backend/app/scanners/nuclei.py",
+      "blob": "fc30f3dbc4d416a938cd5e05e9fc815cb2e3a40a",
+      "size": 8735
+    },
+    {
+      "path": "backend/app/scanners/pip_audit.py",
+      "blob": "a9f21d65e6f53f9bcdd3a6f004c8ad76bec533e5",
+      "size": 3673
+    },
+    {
+      "path": "backend/app/scanners/semgrep.py",
+      "blob": "71784ae7bccf77c07343c63f00ea5e3e19ccdda4",
+      "size": 3477
+    },
+    {
+      "path": "backend/app/scanners/trivy.py",
+      "blob": "d28254da7c37e5295ca681755334c19394805c0b",
+      "size": 4063
+    },
+    {
+      "path": "backend/app/scanners/zap.py",
+      "blob": "f5c700c4e0fb665f59f80d698a0361ab3f6ea6e5",
+      "size": 12141
+    },
+    {
+      "path": "backend/app/schemas/__init__.py",
+      "blob": "508ddf20a5b948f01537386575af750831c0418d",
+      "size": 912
+    },
+    {
+      "path": "backend/app/schemas/correlation.py",
+      "blob": "c73f326ab931a3f5dc112116502126a3e815249c",
+      "size": 674
+    },
+    {
+      "path": "backend/app/schemas/disposition.py",
+      "blob": "6b6fbe62bea5ac227aecaf5eeed4545be7b010f2",
+      "size": 1988
+    },
+    {
+      "path": "backend/app/schemas/finding.py",
+      "blob": "7475f1f969ae3c5466b2e8f0fb4ceba9d124c6ca",
+      "size": 1189
+    },
+    {
+      "path": "backend/app/schemas/project.py",
+      "blob": "7ee45fe202293540105b819132562f21726be848",
+      "size": 469
+    },
+    {
+      "path": "backend/app/schemas/scan.py",
+      "blob": "024aa550ebd5c1b9df4b639dec539658b01859b2",
+      "size": 722
+    },
+    {
+      "path": "backend/app/schemas/scanner_run.py",
+      "blob": "36b2eab1b8308509ef9d6ecb9d7b3d00c62b5170",
+      "size": 474
+    },
+    {
+      "path": "backend/app/schemas/summary.py",
+      "blob": "48903a775ddec7071276e775f4e1893975447848",
+      "size": 1038
+    },
+    {
+      "path": "backend/app/security/__init__.py",
+      "blob": "f7a11bb0d270272f3fba073a98c7a308a1073e8c",
+      "size": 420
+    },
+    {
+      "path": "backend/app/security/dast_validator.py",
+      "blob": "712e1988dc5c3f59467fa51ce10986866b045f25",
+      "size": 8592
+    },
+    {
+      "path": "backend/app/security/runner.py",
+      "blob": "c152b5ba8fc566211bd264c2901edc3077ce63fd",
+      "size": 6795
+    },
+    {
+      "path": "backend/app/services/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/app/services/confidence.py",
+      "blob": "53f37a54a3f02dafeb0e4d70050e9fc853f4f363",
+      "size": 2100
+    },
+    {
+      "path": "backend/app/services/correlation.py",
+      "blob": "0660516e81ac9ac968ed59996be13a5c7143bedd",
+      "size": 10928
+    },
+    {
+      "path": "backend/app/services/dedup.py",
+      "blob": "4d2a870241b5ecb752633c75ae123f75c2cf5b1c",
+      "size": 3174
+    },
+    {
+      "path": "backend/app/services/finding_disposition.py",
+      "blob": "082f6e6c5e75dff7cb868c7177bd72076e2fa14a",
+      "size": 12667
+    },
+    {
+      "path": "backend/app/services/mantis_advisory.py",
+      "blob": "02ac9fbffe9332c8358f49f23cc8b1316a64adc8",
+      "size": 11278
+    },
+    {
+      "path": "backend/app/services/orchestrator.py",
+      "blob": "00801751a9f3910a47979b8002c8274433a6bc17",
+      "size": 16987
+    },
+    {
+      "path": "backend/app/services/risk_engine.py",
+      "blob": "470b2d494f00c14da83f47eaf43c18b1326d3061",
+      "size": 1880
+    },
+    {
+      "path": "backend/app/services/stack_detector.py",
+      "blob": "94260853ec6e719a845356fdcf24e795053d405d",
+      "size": 1338
+    },
+    {
+      "path": "backend/app/services/target_discovery.py",
+      "blob": "d0d11f28984a6dabcf718cf2a8bb055ee4a3029d",
+      "size": 5153
+    },
+    {
+      "path": "backend/app/toolchain/__init__.py",
+      "blob": "e8039ec5f049ef306b2dcb2abcc6930c840eebcc",
+      "size": 396
+    },
+    {
+      "path": "backend/app/toolchain/manager.py",
+      "blob": "0418df8a92b12c5cf46defa216420d348f19511d",
+      "size": 29570
+    },
+    {
+      "path": "backend/app/toolchain/models.py",
+      "blob": "49083406915435e79d6cd4a0ed302226e5e552ca",
+      "size": 1633
+    },
+    {
+      "path": "backend/app/workers/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/app/workers/scan_worker.py",
+      "blob": "4fc638334d9950f2cce1bb1df54f9be4428cccc3",
+      "size": 3370
+    },
+    {
+      "path": "backend/pyproject.toml",
+      "blob": "92704345abb61aa154b85260393ad90309f7fdf3",
+      "size": 1340
+    },
+    {
+      "path": "backend/tests/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/tests/agents/test_base.py",
+      "blob": "06ba6c976598c3cbaa8f2ca59d9d5c153d1b87c5",
+      "size": 3435
+    },
+    {
+      "path": "backend/tests/agents/test_mantis.py",
+      "blob": "614df27bd68727ab054cac7878315504366ad267",
+      "size": 17577
+    },
+    {
+      "path": "backend/tests/agents/test_mantis_runtime.py",
+      "blob": "09a7fea649a348465e8c99e6fa8a6b2488fb53e3",
+      "size": 38274
+    },
+    {
+      "path": "backend/tests/api/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/tests/api/test_routes.py",
+      "blob": "ef1e111ab50a9f00f514d9b956ee975a2992a6d6",
+      "size": 17753
+    },
+    {
+      "path": "backend/tests/conftest.py",
+      "blob": "0adf44e060c7851538251596dd34170a38a7dbeb",
+      "size": 2634
+    },
+    {
+      "path": "backend/tests/fixtures/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/tests/fixtures/codeql_output.sarif",
+      "blob": "cd8891ae81bf96ce2b9d558e4c9572e866bb664b",
+      "size": 3199
+    },
+    {
+      "path": "backend/tests/fixtures/npm_audit_output.json",
+      "blob": "d243c11ef9468d71cc631a966d9de77215a9e067",
+      "size": 1739
+    },
+    {
+      "path": "backend/tests/fixtures/nuclei_output.jsonl",
+      "blob": "76c05713295cf0109909cfebaeb3f4539ada5bd1",
+      "size": 1933
+    },
+    {
+      "path": "backend/tests/fixtures/pip_audit_output.json",
+      "blob": "3b34476f7c193f482249a477294a369e2ce7bec6",
+      "size": 641
+    },
+    {
+      "path": "backend/tests/fixtures/sample-monorepo/backend/app.py",
+      "blob": "8fe723602dfd05a89760f17484e5cf6d000e8559",
+      "size": 97
+    },
+    {
+      "path": "backend/tests/fixtures/sample-monorepo/backend/requirements.txt",
+      "blob": "96e3a08a280bffd0998f19c3295a11663ef6b870",
+      "size": 32
+    },
+    {
+      "path": "backend/tests/fixtures/sample-monorepo/frontend/package.json",
+      "blob": "dec3a104739179bf2125119174977dd3c41b76d0",
+      "size": 102
+    },
+    {
+      "path": "backend/tests/fixtures/sample-monorepo/frontend/src/app.js",
+      "blob": "cbdff32ce165f5b79cc503c07f8cfa4b58066458",
+      "size": 102
+    },
+    {
+      "path": "backend/tests/fixtures/semgrep_output.json",
+      "blob": "7fe84829be1ac16b7772b94bade24ad03cdbc52d",
+      "size": 1833
+    },
+    {
+      "path": "backend/tests/fixtures/trivy_output.json",
+      "blob": "a4ff04e25e6dcfc2643b6a628bb30bb3a0d28410",
+      "size": 1891
+    },
+    {
+      "path": "backend/tests/fixtures/zap_output.json",
+      "blob": "ea6989ba18a07c8e887d63a474afde09e629fe84",
+      "size": 2910
+    },
+    {
+      "path": "backend/tests/scanners/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/tests/scanners/test_ai_appsec.py",
+      "blob": "b63142a78ccca99e07d396f6c37a253aa08d6dbf",
+      "size": 7290
+    },
+    {
+      "path": "backend/tests/scanners/test_codeql.py",
+      "blob": "84399f1f4b30bad14a51d539b02146dfce043423",
+      "size": 7660
+    },
+    {
+      "path": "backend/tests/scanners/test_npm_audit.py",
+      "blob": "48d22fe98f7942eff8101e0684e2076441e13bc3",
+      "size": 1396
+    },
+    {
+      "path": "backend/tests/scanners/test_nuclei.py",
+      "blob": "a1eee550a67e3d734c305ce3fe4bb2ea33e8d7e1",
+      "size": 2433
+    },
+    {
+      "path": "backend/tests/scanners/test_pip_audit.py",
+      "blob": "a71ab4aaf7e74e6b86bf628b8044d04dafd21e21",
+      "size": 1560
+    },
+    {
+      "path": "backend/tests/scanners/test_semgrep.py",
+      "blob": "dec58524325275f92b8ff9b51b57b22da7eae750",
+      "size": 1575
+    },
+    {
+      "path": "backend/tests/scanners/test_trivy.py",
+      "blob": "c49a4c8d70f279ac5e0c6efb816ea7f00d971584",
+      "size": 2149
+    },
+    {
+      "path": "backend/tests/scanners/test_zap.py",
+      "blob": "da3195cda89120bfd3aea1a730a2447f2bb21882",
+      "size": 5564
+    },
+    {
+      "path": "backend/tests/security/test_dast_security.py",
+      "blob": "773e87fc9e4597448eacddabe65a4246a38699ba",
+      "size": 8876
+    },
+    {
+      "path": "backend/tests/services/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/tests/services/test_confidence_and_risk_v2.py",
+      "blob": "fc86670fe59d365ee61cad88202ba1270c76daa3",
+      "size": 2583
+    },
+    {
+      "path": "backend/tests/services/test_correlation.py",
+      "blob": "5c7b03faae0d6957ff7908569c59f66399e79c05",
+      "size": 7474
+    },
+    {
+      "path": "backend/tests/services/test_dast_correlation_and_risk.py",
+      "blob": "ac75f87c1f1187f3662b061ce47dd2e5796cb19e",
+      "size": 5551
+    },
+    {
+      "path": "backend/tests/services/test_dast_orchestrator.py",
+      "blob": "4923512624b91713381ddcb664f3708ef1e39b47",
+      "size": 14299
+    },
+    {
+      "path": "backend/tests/services/test_dedup_and_confidence.py",
+      "blob": "44858be733fba075c94cac7dd948eb297b5ea450",
+      "size": 2762
+    },
+    {
+      "path": "backend/tests/services/test_finding_disposition.py",
+      "blob": "03be974ebe2f82037f06bfcbb31df25493ad83b6",
+      "size": 28688
+    },
+    {
+      "path": "backend/tests/services/test_mantis_advisory.py",
+      "blob": "71c71fb82565b44697373357aa7adfa8b6f63030",
+      "size": 41427
+    },
+    {
+      "path": "backend/tests/services/test_orchestrator.py",
+      "blob": "4cd5491ebdc1194cb3a01bc1fa3f3fa5345d05ed",
+      "size": 23769
+    },
+    {
+      "path": "backend/tests/services/test_risk_engine.py",
+      "blob": "336c1c447844f2b45891b89dd9aee5123ad89ae6",
+      "size": 2410
+    },
+    {
+      "path": "backend/tests/services/test_semantic_dedup_correlation.py",
+      "blob": "37aae08d16f2b4cf1dbdcd85f40d8351423fe4f4",
+      "size": 16808
+    },
+    {
+      "path": "backend/tests/services/test_stack_detector.py",
+      "blob": "9137a962a5caa210bc06d155d0dda05e81722444",
+      "size": 2094
+    },
+    {
+      "path": "backend/tests/services/test_target_discovery.py",
+      "blob": "2793b320bbeb6d07325ee6ea4ee962e2b6075002",
+      "size": 11734
+    },
+    {
+      "path": "backend/tests/test_cli.py",
+      "blob": "19f66c07bc6a54d6fb97b707a1a4204c562e7ff3",
+      "size": 37996
+    },
+    {
+      "path": "backend/tests/test_dast_cli.py",
+      "blob": "6525475cad04f3c1c3614269c7b460dc7c003198",
+      "size": 21166
+    },
+    {
+      "path": "backend/tests/test_integration.py",
+      "blob": "0f21d6fcc80feb6afc39f0f2082590bff5644340",
+      "size": 10537
+    },
+    {
+      "path": "backend/tests/test_mantis_cli.py",
+      "blob": "91d0489c8878ec955a08b57740a7a0e4451f6f74",
+      "size": 5292
+    },
+    {
+      "path": "backend/tests/test_security_runner.py",
+      "blob": "c35227392a07b1d8c3142af56c4fda8d4a62fe9e",
+      "size": 4526
+    },
+    {
+      "path": "backend/tests/test_tools_cli.py",
+      "blob": "1c7e3049c3eaef8c9972e49b1561ae581f857dc4",
+      "size": 5281
+    },
+    {
+      "path": "backend/tests/toolchain/test_manager.py",
+      "blob": "d4b9043094ae76e84cc3f0364944ae83b836b1a7",
+      "size": 18656
+    },
+    {
+      "path": "backend/tests/workers/__init__.py",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1
+    },
+    {
+      "path": "backend/tests/workers/test_scan_worker.py",
+      "blob": "1c8cdab30ab8b1209a485f822e190a45deb97fb6",
+      "size": 1951
+    },
+    {
+      "path": "docker-compose.codeql.yml",
+      "blob": "2844751199a57d8403421fb95d7b9f81cf41bcfc",
+      "size": 668
+    },
+    {
+      "path": "docker-compose.mantis.yml",
+      "blob": "dfd47846d70f3a52e6b257fa59c7a2d06b6c8a6e",
+      "size": 1518
+    },
+    {
+      "path": "docker-compose.yml",
+      "blob": "7ee4f257ae21fc01ea11a3491ecae4786f617594",
+      "size": 4565
+    },
+    {
+      "path": "docker/Dockerfile.api",
+      "blob": "dd7fc38e3ac10989f3a9c0c26759d3d2bb6318dd",
+      "size": 479
+    },
+    {
+      "path": "docker/Dockerfile.worker",
+      "blob": "f411fc6c7fd567e0d8d6a1bcecce162ad23fed84",
+      "size": 2258
+    },
+    {
+      "path": "scripts/install-cli.sh",
+      "blob": "24d66ad1fb082a71b69ad12dfa0e619c2b8624a5",
+      "size": 555
+    },
+    {
+      "path": "secops",
+      "blob": "4def7d5dbdc1a9ac998a830cdb5fcf7a1cad16cb",
+      "size": 630
+    }
+  ]
+}

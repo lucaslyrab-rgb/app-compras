@@ -1,0 +1,147 @@
+{
+  "repository": "fabricioveronez/boilerplates",
+  "commit": "b5076fdd93a460577223cf822d3dc5928affb6a4",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".gitignore",
+      "blob": "83b13ecba6b673603ea696f1067ccdccfe04ead7"
+    },
+    {
+      "path": "README.md",
+      "blob": "8543f571fae6527c5fd835d48ef5677dedd3511e"
+    },
+    {
+      "path": "boilerplate-python-web-agent/.env.example",
+      "blob": "460ec0bdfac12d366588e21df14bee53f2c0757f"
+    },
+    {
+      "path": "boilerplate-python-web-agent/.gitignore",
+      "blob": "0d80e48699e05f357a9342bb45cd90ab07ece83c"
+    },
+    {
+      "path": "boilerplate-python-web-agent/AGENTS.md",
+      "blob": "8e5e2e32865c990409b8ba4eea23ea9ce456b713"
+    },
+    {
+      "path": "boilerplate-python-web-agent/CLAUDE.md",
+      "blob": "ad088ac05fb99314eed4202e206c88d331bb428a"
+    },
+    {
+      "path": "boilerplate-python-web-agent/Makefile",
+      "blob": "10457f86a617972af956a7d0dd62c2563595da2b"
+    },
+    {
+      "path": "boilerplate-python-web-agent/README.md",
+      "blob": "1e221eb6a9a5afa60ef5313c5961f7366b9ed124"
+    },
+    {
+      "path": "boilerplate-python-web-agent/alembic.ini",
+      "blob": "2b521d388fd3e53334daafd4dc6e8d2658619a1c"
+    },
+    {
+      "path": "boilerplate-python-web-agent/docker-compose.yml",
+      "blob": "07dd4cf2da2b02e229cb4700036ac80d60c5b8d4"
+    },
+    {
+      "path": "boilerplate-python-web-agent/docs/adrs/.gitkeep",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "boilerplate-python-web-agent/docs/prds/.gitkeep",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "boilerplate-python-web-agent/migrations/env.py",
+      "blob": "d88c18bc352e407682702f2cd85724315c9a92be"
+    },
+    {
+      "path": "boilerplate-python-web-agent/migrations/script.py.mako",
+      "blob": "11016301e749297acb67822efc7974ee53c905c6"
+    },
+    {
+      "path": "boilerplate-python-web-agent/migrations/versions/.gitkeep",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "boilerplate-python-web-agent/pyproject.toml",
+      "blob": "6463a6b574bcfbef399b9cc40eb21a0936515eef"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/agents/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/api/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/api/router.py",
+      "blob": "475d40c27b035196a7a37e9ae8002c52b7498eb9"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/config.py",
+      "blob": "f79e8f6d63dba9dac1d3d375c25fc14ddf7b55e8"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/database.py",
+      "blob": "7490184196008ef94699a7834ce4d72f6d58e618"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/main.py",
+      "blob": "ea0146fec6913a4fe2526c19f6d0d73ba55efb7e"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/models/__init__.py",
+      "blob": "865797566997e1674a9020358b2a9055d601653f"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/services/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/templates/base.html",
+      "blob": "e63b8c771531f853a8f099b1ece4fb4c1090e4ab"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/templates/error.html",
+      "blob": "03ad32346def8452a85f5e2a88b68ae080694d97"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/templates/home.html",
+      "blob": "94f27b1fb4f4b7b021146df80310953735751c56"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/web/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "boilerplate-python-web-agent/src/my_agent_app/web/router.py",
+      "blob": "94fd3c4748e06b64fe03c6cd20e96374a109d80d"
+    },
+    {
+      "path": "boilerplate-python-web-agent/tests/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "boilerplate-python-web-agent/tests/conftest.py",
+      "blob": "41c2ec341d7edc422df0aeff3f3cec81a39bc705"
+    },
+    {
+      "path": "boilerplate-python-web-agent/tests/test_health.py",
+      "blob": "08fe88a221f14221a9ea04e1c329b3ae1b3b20f8"
+    },
+    {
+      "path": "boilerplate-python-web-agent/tests/test_hello.py",
+      "blob": "1877f6be7e5c3431b5aab6090eaf8a0759f2b419"
+    },
+    {
+      "path": "boilerplate-python-web-agent/uv.lock",
+      "blob": "b6ab736529dbc5b7f96185d0f5bf010c1c0ccd04"
+    }
+  ]
+}

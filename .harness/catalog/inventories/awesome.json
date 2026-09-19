@@ -1,0 +1,122 @@
+{
+  "repository": "sindresorhus/awesome",
+  "commit": "bc98e517ddca672f55f9857d714fc3ea3c3540b2",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".editorconfig",
+      "blob": "aaac3258bea46fa996fd8aceb2386575c4ed8001",
+      "size": 129
+    },
+    {
+      "path": ".gitattributes",
+      "blob": "c7c67fff44326125c6fc5ada894a8c6cdc4e1307",
+      "size": 107
+    },
+    {
+      "path": ".github/workflows/main.yml",
+      "blob": "006519f27425061b87d1018f775c0ee730529013",
+      "size": 272
+    },
+    {
+      "path": ".github/workflows/repo_linter.sh",
+      "blob": "b8a72d4351be63808cab50a1bf727d90977ca03f",
+      "size": 603
+    },
+    {
+      "path": "awesome.md",
+      "blob": "aa378616fbc5debd028668b1425a503e55bfc80d",
+      "size": 4298
+    },
+    {
+      "path": "code-of-conduct.md",
+      "blob": "506ad0c94a75f53c3703a3d9e43f242653a47efe",
+      "size": 3230
+    },
+    {
+      "path": "contributing.md",
+      "blob": "87bb6de8b495a62bdbc540d73167d6e2b2e5e216",
+      "size": 2190
+    },
+    {
+      "path": "create-list.md",
+      "blob": "61d349f260c136e1caec6ef7649445da021ca852",
+      "size": 573
+    },
+    {
+      "path": "license",
+      "blob": "3ad65fdca6c56fc42eadbd442f08f418cdd6ed5e",
+      "size": 6478
+    },
+    {
+      "path": "media/badge-flat.svg",
+      "blob": "a2bfeca267ac63000492f4ed0d00840efd59b4cb",
+      "size": 2894
+    },
+    {
+      "path": "media/badge-flat2.svg",
+      "blob": "e350d9d28c7be7f9c0dc51c5c8872045de0e820e",
+      "size": 741
+    },
+    {
+      "path": "media/badge.ai",
+      "blob": "f83760959af47fc76320df9e69769f20381fa230",
+      "size": 67949
+    },
+    {
+      "path": "media/badge.svg",
+      "blob": "8bc8ddc22c3a82ddf61d751478cdbe1fb2fdf847",
+      "size": 5829
+    },
+    {
+      "path": "media/logo.ai",
+      "blob": "6e8a4c7ccf2919228755ad8acd1bb05a2943fe24",
+      "size": 82308
+    },
+    {
+      "path": "media/logo.png",
+      "blob": "ff9685033bfd2cffe5c6d0545b968f20426f7142",
+      "size": 4491
+    },
+    {
+      "path": "media/logo.svg",
+      "blob": "e3ce1649c7631fdd8edc81dd21889ebb9e2d8cfd",
+      "size": 2569
+    },
+    {
+      "path": "media/mentioned-badge-flat.svg",
+      "blob": "5d9da969246854ba139e5ce8e94c29e5df3ae9ca",
+      "size": 4920
+    },
+    {
+      "path": "media/mentioned-badge.sketch",
+      "blob": "31cd6f85dd8da4e03e47bf2e8c32a30ecfe9240a",
+      "size": 21222
+    },
+    {
+      "path": "media/mentioned-badge.svg",
+      "blob": "0f6fabf0e3d5afb8d4c8e8560c379b0ec9c8a4b0",
+      "size": 8165
+    },
+    {
+      "path": "media/readme.md",
+      "blob": "4369adc4933f28199fd3fcffc93c00bc7a69b2ae",
+      "size": 218
+    },
+    {
+      "path": "media/social-preview.png",
+      "blob": "30b122e8b10d202f3d87e5f6b70a4e0fbb9de3e1",
+      "size": 6668
+    },
+    {
+      "path": "pull_request_template.md",
+      "blob": "46cfbdfc9571a703f591257f96f000f5ee720ec3",
+      "size": 9040
+    },
+    {
+      "path": "readme.md",
+      "blob": "0acaa99d5f45582ecf70f987213f59ae1855226f",
+      "size": 78330
+    }
+  ]
+}

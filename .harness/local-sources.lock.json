@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "codex-skill-creator",
+      "kind": "local-bundle",
+      "origin": "$CODEX_HOME/skills/.system/skill-creator",
+      "retrieved_at": "2026-09-17T11:24:11.645149+00:00",
+      "license_detected": "Apache-2.0",
+      "files": [
+        {
+          "upstream_path": "agents/openai.yaml",
+          "local_path": "skills/skill-creator/agents/openai.yaml",
+          "sha256": "b750627cdd588fdbb5b46e854d3384d1a504fad3b8ed73ca5d7ead3804df78b6"
+        },
+        {
+          "upstream_path": "assets/skill-creator-small.svg",
+          "local_path": "skills/skill-creator/assets/skill-creator-small.svg",
+          "sha256": "edb19a0c59f9a1b5253b9af6d2f9f03cac27b2fe6a0275ebccbbdbff07891a1a"
+        },
+        {
+          "upstream_path": "assets/skill-creator.png",
+          "local_path": "skills/skill-creator/assets/skill-creator.png",
+          "sha256": "a4024b0306ddb05847e1012879d37aaf1e658205199da596f5145ed7a88d9162"
+        },
+        {
+          "upstream_path": "license.txt",
+          "local_path": "skills/skill-creator/license.txt",
+          "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+        },
+        {
+          "upstream_path": "references/openai_yaml.md",
+          "local_path": "skills/skill-creator/references/openai_yaml.md",
+          "sha256": "7039d465b05342cbacf861f08d20192ab1eeee112bc5d8ff0fb66234756887a9"
+        },
+        {
+          "upstream_path": "scripts/generate_openai_yaml.py",
+          "local_path": "skills/skill-creator/scripts/generate_openai_yaml.py",
+          "sha256": "30c73f1ea7d47dbab2b231bb92c5bf9026f1ad14ba8e3b3a4a544092c4d24ebe"
+        },
+        {
+          "upstream_path": "scripts/init_skill.py",
+          "local_path": "skills/skill-creator/scripts/init_skill.py",
+          "sha256": "74dfa9361a93bee6932d6cbb332ed19ac26a27ba3800e69fb07ba7512c1025f9"
+        },
+        {
+          "upstream_path": "scripts/quick_validate.py",
+          "local_path": "skills/skill-creator/scripts/quick_validate.py",
+          "sha256": "6068513d924ed3559e186dfcdead7439129828dcf402167fd925c06dffbf2806"
+        },
+        {
+          "upstream_path": "SKILL.md",
+          "local_path": "skills/skill-creator/SKILL.md",
+          "sha256": "cccd291077ec57c6f50ca6529f0f3fb93212da09473effb2fcec808e81b21288"
+        }
+      ]
+    }
+  ]
+}

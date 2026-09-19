@@ -1,0 +1,57 @@
+{
+  "repository": "ripienaar/free-for-dev",
+  "commit": "c352e156270d85b7de3e8a3c4bc7c709f993d917",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "blob": "2d8fcfb150f5bcba3fbffc287ed53b27814d68f9",
+      "size": 2038
+    },
+    {
+      "path": ".gitignore",
+      "blob": "485dee64bcfb48793379b200a1afd14e85a8aaf4",
+      "size": 6
+    },
+    {
+      "path": "AGENTS.md",
+      "blob": "ba15bc40d2698e1307cc749a0fad92a890e77bd4",
+      "size": 392
+    },
+    {
+      "path": "CLAUDE.md",
+      "blob": "ba15bc40d2698e1307cc749a0fad92a890e77bd4",
+      "size": 392
+    },
+    {
+      "path": "CNAME",
+      "blob": "6c25bec887fe53622438740ade02a59ae2c19fad",
+      "size": 12
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "blob": "e3f13e8a7f9fd29332d093ba45573a9b614b6e0f",
+      "size": 289
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "blob": "11dd7a3ded749f87138d5eb3c31f9932ff832f87",
+      "size": 1921
+    },
+    {
+      "path": "README.md",
+      "blob": "b73129b8ecd4320934448776b10aabe428f37384",
+      "size": 254294
+    },
+    {
+      "path": "index.html",
+      "blob": "d1a78f98b039111aefa2f95e35e7a4724aaaff36",
+      "size": 3556
+    },
+    {
+      "path": "logo.webp",
+      "blob": "00a4beb3bc31213b350860564d208098a5d59c45",
+      "size": 768
+    }
+  ]
+}

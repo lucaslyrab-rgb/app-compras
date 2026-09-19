@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MultiShow FLV - V8 Teste</title>
+<style>
+:root{--bg:#f5f7f8;--card:#fff;--ink:#17211b;--muted:#68736c;--line:#dce3df;--brand:#176b43;--brand2:#0e5132;--soft:#eaf5ef;--warn:#fff3cd;--danger:#fde8e8;--dangerInk:#a51d1d;--ok:#e8f6ed;--shadow:0 5px 20px rgba(0,0,0,.06)}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--ink)}
+header{background:linear-gradient(120deg,var(--brand2),var(--brand));color:#fff;padding:18px 24px;display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+header h1{margin:0;font-size:21px} header .sub{opacity:.85;font-size:12px}.shell{max-width:1500px;margin:18px auto;padding:0 16px}
+.toolbar,.tabs,.filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar select,.toolbar input,.filters input,.filters select{min-height:38px}
+button,.btn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 13px;border-radius:9px;cursor:pointer;font-weight:650}
+button:hover{background:#f0f4f2}.primary{background:var(--brand);border-color:var(--brand);color:#fff}.primary:hover{background:var(--brand2)}
+.danger{color:#a51d1d}.tabs{margin:14px 0}.tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px;margin:12px 0}
+h2{font-size:19px;margin:0 0 6px} h3{font-size:15px;margin:0 0 10px}.muted{color:var(--muted)}.small{font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:10px}.kpi{background:var(--soft);padding:12px;border-radius:11px}.kpi b{display:block;font-size:20px}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:10px}table{width:100%;border-collapse:collapse;background:#fff;min-width:760px}
+th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}th{position:sticky;top:0;background:#f0f4f2;z-index:1;font-size:12px;white-space:nowrap}
+td.num,th.num{text-align:right}.changed td{background:var(--danger);color:var(--dangerInk)}.inactive{opacity:.55}
+input,select{border:1px solid #cbd5cf;border-radius:7px;padding:7px 8px;background:#fff;color:var(--ink)}input[type=number]{width:90px;text-align:right}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:700;font-size:12px}.yes{background:var(--ok);color:#176b43}.no{background:var(--danger);color:#a51d1d}
+.notice{background:var(--warn);padding:10px 12px;border-radius:9px}.right{margin-left:auto}.hidden{display:none!important}.actions{display:flex;gap:7px;flex-wrap:wrap}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}.modalbox{background:#fff;border-radius:14px;max-width:1000px;width:100%;max-height:88vh;overflow:auto;padding:18px}
+@media(max-width:850px){.grid{grid-template-columns:1fr 1fr}header{padding:15px}.shell{padding:0 8px}.card{padding:12px}th,td{padding:8px 6px}}
+@media print{
+ body{background:#fff;font-size:11px} header,.shell>.toolbar,.tabs,.no-print,.screen-only{display:none!important}.shell{max-width:none;margin:0;padding:0}.card{box-shadow:none;border:0;padding:0;margin:0}.print-area{display:block!important}
+ .tablewrap{overflow:visible;border:0} table{min-width:0} th{position:static;background:#eee!important;color:#000} th,td{padding:5px;border:1px solid #aaa}
+ @page{size:A4 landscape;margin:9mm}.portrait{@page{size:A4 portrait;margin:10mm}}
+}
+
+/* V5 mobile test */
+.mobile-summary{display:none}
+.storechips{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.storechip{padding:3px 7px;border-radius:7px;font-weight:750;font-size:12px}
+.storechip.p{background:#dcf7e8;color:#176b43}.storechip.b{background:#e3f0ff;color:#1266b5}.storechip.s{background:#eee6ff;color:#6636b5}
+.cost-card-list{display:none}.cost-card{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;margin:8px 0}
+.cost-card .name{font-weight:800;font-size:15px}.cost-card .row{display:flex;align-items:center;gap:10px;margin-top:9px}
+.cost-card .cost{width:112px;font-size:16px;padding:10px}.bigcheck{width:25px;height:25px}
+.filterbar{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.storebox.ponta{background:#f2fbf6;border-left:3px solid #24a46d}.storebox.balneario{background:#f2f8ff;border-left:3px solid #2b7ed1}.storebox.santa{background:#f8f4ff;border-left:3px solid #7a4dcc}
+@media(max-width:700px){
+ header{position:sticky;top:0;z-index:8} header h1{font-size:18px}.shell{margin:8px auto}
+ .tabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:3px}.tabs button{white-space:nowrap}
+ .grid{grid-template-columns:1fr 1fr}.desktop-costs{display:none}.cost-card-list{display:block}
+ .mobile-summary{display:block}.cost-card .row label{font-size:12px;color:var(--muted)}
+ .cost-card .row .right{margin-left:auto}.cost-card input[type=number]{width:112px}
+ .consolidated-desktop{display:none}.mobile-consolidated{display:block!important}
+ .storebox{padding:8px;border-radius:9px;margin:5px 0}.storebox b{display:inline-block;min-width:72px}
+}
+
+.order-mobile{display:none}.order-card{border:1px solid var(--line);border-radius:14px;padding:13px;background:#fff;margin:9px 0}.order-card.filled{border-color:#8bc9aa;background:#f8fdf9}.order-head{display:flex;gap:8px;align-items:center;margin-bottom:10px}.order-name{font-weight:800;font-size:16px}.order-check{margin-left:auto;color:var(--brand);font-size:18px}.order-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px}.order-inputs label{font-size:12px;font-weight:700}.order-inputs input{display:block;width:100%;margin-top:5px;padding:12px 8px;font-size:18px;font-weight:750;text-align:center}.sticky-actions{display:none}
+@media(max-width:700px){.order-desktop{display:none!important}.order-mobile{display:block}.sticky-actions{display:flex;position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:9px;gap:8px;margin:10px -12px -12px;z-index:7}.sticky-actions button{flex:1;padding:12px}}
+
+.pending-store{background:#fde8e8!important;color:#8e2020!important;border:1px solid #f1bcbc!important}
+.supplier-head{background:#f0f7f3;border:1px solid var(--line);border-radius:11px;padding:12px;margin-bottom:12px}
+.supplier-store{margin:16px 0 22px}.supplier-store+.supplier-store{page-break-before:always;break-before:page}
+.supplier-store h3{padding-bottom:6px;border-bottom:2px solid var(--brand)}
+@media print{.supplier-report .no-print{display:none!important}.supplier-report{display:block!important}.supplier-store+.supplier-store{page-break-before:always!important;break-before:page!important}}
+</style>
+</head>
+<body>
+<header>
+ <div><h1>MultiShow FLV <span class="small">V8 Teste</span></h1><div class="sub">Pedidos • Custos • Precificação • Separação • Histórico</div></div>
+ <div class="toolbar"><label>Perfil: <select id="role"></select></label><span id="todayLabel"></span></div>
+</header>
+<div class="shell">
+ <div class="toolbar no-print">
+   <button onclick="seedDemo()">Carregar exemplo</button>
+   <button class="danger" onclick="resetAll()">Zerar teste</button>
+   <span class="muted small">Dados salvos somente neste navegador (localStorage).</span>
+ </div>
+ <div id="tabs" class="tabs no-print"></div>
+ <main id="app"></main>
+</div>
+<div id="modal" class="modal hidden"><div class="modalbox"><div class="toolbar"><h2 id="modalTitle"></h2><button class="right" onclick="closeModal()">Fechar</button></div><div id="modalBody"></div></div></div>
+
+<script>
+const BASE_PRODUCTS = [{"code":1,"name":"ABACATE KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":736,"name":"ABACAXI UN","unit":"UND","markup":100.0,"purchaseFormat":"UND","exclusiveSupplier":false,"active":true},{"code":4,"name":"ABOBORA JACARE KG","unit":"KG","markup":100.0,"purchaseFormat":"SC","exclusiveSupplier":false,"active":true},{"code":5,"name":"ABOBORA JAPONESA KG","unit":"KG","markup":100.0,"purchaseFormat":"SC","exclusiveSupplier":false,"active":true},{"code":6,"name":"ABOBORA MARANHAO KG","unit":"KG","markup":100.0,"purchaseFormat":"SC","exclusiveSupplier":false,"active":true},{"code":8,"name":"ABOBORA PRINCESA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":11,"name":"ABOBRINHA REDONDA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":14,"name":"AIPIM KG","unit":"KG","markup":150.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":22,"name":"ALHO IMPORTADO","unit":"UND","markup":70.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":32,"name":"BANANA MACA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":33,"name":"BANANA NANICA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":35,"name":"BANANA PRATA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":37,"name":"BANANA TERRA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":1112,"name":"BATATA BOLINHA 1KG PCT","unit":"PCT","markup":100.0,"purchaseFormat":"UND","exclusiveSupplier":false,"active":true},{"code":40,"name":"BATATA DOCE KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":41,"name":"BATATA INGLESA KG","unit":"KG","markup":70.0,"purchaseFormat":"SC","exclusiveSupplier":false,"active":true},{"code":43,"name":"BERINJELA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":45,"name":"BETERRABA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":53,"name":"CAQUI RAMA FORTE KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":56,"name":"CEBOLA KG","unit":"KG","markup":100.0,"purchaseFormat":"SC","exclusiveSupplier":false,"active":true},{"code":57,"name":"CEBOLA ROXA KG","unit":"KG","markup":100.0,"purchaseFormat":"SC","exclusiveSupplier":false,"active":true},{"code":450,"name":"CEBOLINHA 1KG PCT","unit":"PCT","markup":100.0,"purchaseFormat":"UND","exclusiveSupplier":false,"active":true},{"code":59,"name":"CENOURA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":62,"name":"CHUCHU KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":63,"name":"COCO SECO KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":66,"name":"COUVE CHINESA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":67,"name":"COUVE FLOR KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":75,"name":"GENGIBRE KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":77,"name":"GOIABA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":81,"name":"INHAME DEDO KG","unit":"KG","markup":120.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":87,"name":"KIWI IMPORTADO KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":88,"name":"LARANJA BAHIA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":90,"name":"LARANJA PERA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":96,"name":"LIMAO THAITY KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":97,"name":"MACA ARGENTINA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":99,"name":"MACA FUJI KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":100,"name":"MACA GALA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":101,"name":"MACA VERDE KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":102,"name":"MAMAO FORMOSA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":103,"name":"MAMAO HAVAI KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":104,"name":"MANGA ESPADA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":105,"name":"MANGA PALMER KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":107,"name":"MANGA TOMMY KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":111,"name":"MARACUJA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":114,"name":"MELANCIA KG","unit":"KG","markup":100.0,"purchaseFormat":"UND","exclusiveSupplier":false,"active":true},{"code":115,"name":"MELAO AMARELO KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":120,"name":"MEXERICA BERGAMOTA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":856,"name":"MEXERICA PONKAN KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":453,"name":"MILHO VERDE C/5UN BDJ","unit":"BDJ","markup":100.0,"purchaseFormat":"UND","exclusiveSupplier":false,"active":true},{"code":130,"name":"OVOS BRANCOS 30UN","unit":"UND","markup":50.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":131,"name":"OVOS BRANCOS DZ","unit":"DZ","markup":70.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":132,"name":"OVOS CAIPIRA DZ","unit":"DZ","markup":70.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":133,"name":"OVOS CODORNA 30UN","unit":"UND","markup":70.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":135,"name":"OVOS VERMELHOS 30UN","unit":"UND","markup":70.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":137,"name":"OVOS VERMELHOS DZ","unit":"DZ","markup":70.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":138,"name":"PEPINO JAPONES KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":139,"name":"PEPINO KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":140,"name":"PERA DANJOU KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":141,"name":"PERA PORTUGUESA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":142,"name":"PERA PT KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":144,"name":"PERA WILLIANS KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":151,"name":"PIMENTAO AMARELO KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":152,"name":"PIMENTAO VERDE KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":153,"name":"PIMENTAO VERMELHO KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":154,"name":"PINHA KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":159,"name":"REPOLHO BRANCO KG","unit":"KG","markup":200.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":160,"name":"REPOLHO ROXO KG","unit":"KG","markup":200.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":465,"name":"TOMATE CEREJA 300G BDJ","unit":"BDJ","markup":100.0,"purchaseFormat":"UND","exclusiveSupplier":false,"active":true},{"code":172,"name":"TOMATE ITALIANO KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":169,"name":"TOMATE KG","unit":"KG","markup":70.0,"purchaseFormat":"CX","exclusiveSupplier":true,"active":true},{"code":175,"name":"UVA CRINSON 500G BANDEJA","unit":"BDJ","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":179,"name":"UVA THOMPSON 500G BANDEJA","unit":"BDJ","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":180,"name":"UVA VITORIA 500G BANDEJA","unit":"BDJ","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true},{"code":182,"name":"VAGEM VERDE KG","unit":"KG","markup":100.0,"purchaseFormat":"CX","exclusiveSupplier":false,"active":true}];
+const STORES = {
+ loja1:"MultiShow Ponta da Fruta",
+ loja2:"MultiShow Balneário",
+ loja3:"MultiShow Santa Mônica"
+};
+const ROLES = {...STORES, comprador:"Comprador", gestor:"Gestor"};
+const KEY="multishow_flv_v8_teste";
+const $=s=>document.querySelector(s);
+const fmt=n=>Number(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const money=n=>"R$ "+fmt(n);
+const isoDate=()=>new Date().toISOString().slice(0,10);
+const brDate=s=>s?new Date(s+"T12:00:00").toLocaleDateString("pt-BR"):"";
+const dt=s=>new Date(s).toLocaleString("pt-BR");
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+function initialState(){
+ return {products:structuredClone(BASE_PRODUCTS),drafts:{loja1:{},loja2:{},loja3:{}},orders:[],costHistory:{},shipments:{},purchased:{},invoices:{}};
+}
+let state=JSON.parse(localStorage.getItem(KEY)||"null")||initialState(); state.purchased??={}; state.invoices??={};
+let role=localStorage.getItem(KEY+"_role")||"loja1", tab="";
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function activeProducts(){return state.products.filter(p=>p.active)}
+function latestOrder(store,date=isoDate()){
+ return state.orders.filter(o=>o.store===store&&o.date===date).sort((a,b)=>b.createdAt.localeCompare(a.createdAt))[0]||null;
+}
+function latestOrdersByStore(date=isoDate()){return Object.fromEntries(Object.keys(STORES).map(s=>[s,latestOrder(s,date)]))}
+function itemFromOrder(order,code){return order?.items?.find(i=>i.code===code)||{stock:0,order:0}}
+function latestCost(code){let a=(state.costHistory[code]||[]).slice().sort((x,y)=>y.at.localeCompare(x.at));return a[0]||null}
+function previousCost(code){let a=(state.costHistory[code]||[]).slice().sort((x,y)=>y.at.localeCompare(x.at));return a[1]||null}
+function recordCost(code,value){
+ value=Number(value||0); let a=state.costHistory[code]||[];
+ const today=isoDate(), existing=a.find(x=>x.date===today);
+ if(existing){existing.value=value;existing.at=new Date().toISOString()} else a.push({date:today,value,at:new Date().toISOString()});
+ state.costHistory[code]=a; save();
+}
+function unitOf(p){return p.unit||"UND"}
+function tabsFor(r){
+ if(r.startsWith("loja")) return [["pedido","Meu Pedido"],["historico","Histórico"],["conferencia","Relatório de Conferência"]];
+ if(r==="comprador") return [["consolidado","Consolidado"],["custos","Lançar Custos"],["fornecedor","Pedido Fornecedor"],["separacao","Separação / Embarque"]];
+ return [["consolidado","Consolidado"],["custos","Custos"],["fornecedor","Pedido Fornecedor"],["precificacao","Precificação"],["notas","Notas Fiscais"],["produtos","Produtos"],["historicoG","Histórico de Pedidos"],["separacao","Expedição"]];
+}
+function init(){
+ roleEl=$("#role"); roleEl.innerHTML=Object.entries(ROLES).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join(""); roleEl.value=role;
+ roleEl.onchange=e=>{role=e.target.value;localStorage.setItem(KEY+"_role",role);tab="";render()};
+ $("#todayLabel").textContent=new Date().toLocaleDateString("pt-BR");
+ render();
+}
+function render(){
+ const tabs=tabsFor(role); if(!tabs.some(x=>x[0]===tab))tab=tabs[0][0];
+ $("#tabs").innerHTML=tabs.map(([k,n])=>`<button class="tab ${k===tab?"active":""}" onclick="tab='${k}';render()">${n}</button>`).join("");
+ if(tab==="pedido")renderOrder();
+ if(tab==="historico")renderStoreHistory();
+ if(tab==="conferencia")renderConference();
+ if(tab==="consolidado")renderConsolidated();
+ if(tab==="custos")renderCosts();
+ if(tab==="fornecedor")renderSupplierOrder();
+ if(tab==="notas")renderInvoices();
+ if(tab==="precificacao")renderPricing();
+ if(tab==="produtos")renderProducts();
+ if(tab==="historicoG")renderManagerHistory();
+ if(tab==="separacao")renderSeparation();
+}
+let orderFilter="all",orderSearch="";
+function setOrderFilter(f){orderFilter=f;renderOrder()}
+function setOrderSearch(v){orderSearch=v.toLowerCase();renderOrder()}
+function clearStoreDraft(){if(confirm("Limpar os dados preenchidos?")){state.drafts[role]={};save();renderOrder()}}
+function renderOrder(){
+ let d=state.drafts[role]||{},all=activeProducts(),withN=all.filter(p=>Number(d[p.code]?.order||0)>0).length;
+ let ps=all.filter(p=>(!orderSearch||p.name.toLowerCase().includes(orderSearch))&&(orderFilter==="all"||(orderFilter==="with"&&Number(d[p.code]?.order||0)>0)||(orderFilter==="without"&&Number(d[p.code]?.order||0)===0)));
+ let rows=ps.map(p=>{let x=d[p.code]||{};return `<tr><td>${p.code}</td><td>${esc(p.name)}</td><td>${unitOf(p)}</td><td class=num><input type=number min=0 step=.01 value="${x.stock??""}" onchange="draft('${role}',${p.code},'stock',this.value)"></td><td class=num><input type=number min=0 step=.01 value="${x.order??""}" onchange="draft('${role}',${p.code},'order',this.value)"></td><td class=num>${latestCost(p.code)?money(latestCost(p.code).value):"—"}</td><td class=num>${latestCost(p.code)?money(latestCost(p.code).value*(1+p.markup/100)):"—"}</td></tr>`}).join("");
+ let cards=ps.map(p=>{let x=d[p.code]||{},filled=Number(x.stock||0)>0||Number(x.order||0)>0;return `<div class="order-card ${filled?"filled":""}"><div class=order-head><span class=order-name>${esc(p.name)}</span>${filled?'<span class=order-check>✓</span>':""}</div><div class=order-inputs><label>Estoque atual (${unitOf(p).toLowerCase()})<input inputmode=decimal type=number min=0 step=.01 value="${x.stock??""}" onchange="draft('${role}',${p.code},'stock',this.value);renderOrder()"></label><label>Pedido (${unitOf(p).toLowerCase()})<input inputmode=decimal type=number min=0 step=.01 value="${x.order??""}" onchange="draft('${role}',${p.code},'order',this.value);renderOrder()"></label></div></div>`}).join("");
+ $("#app").innerHTML=`<section class=card><div class="toolbar order-desktop"><div><h2>${STORES[role]} — Pedido de ${brDate(isoDate())}</h2></div><button class="primary right" onclick="submitOrder()">Salvar / Enviar pedido</button></div><div class=order-mobile><h2>Pedido de hoje</h2><div class=muted>${STORES[role]} • ${brDate(isoDate())}</div><div style="margin-top:12px"><input style="width:100%;padding:11px" placeholder="Buscar produto..." value="${esc(orderSearch)}" oninput="setOrderSearch(this.value)"></div><div class=filterbar><button class="${orderFilter==="all"?"active":""}" onclick="setOrderFilter('all')">Todos ${all.length}</button><button class="${orderFilter==="without"?"active":""}" onclick="setOrderFilter('without')">Sem pedido ${all.length-withN}</button><button class="${orderFilter==="with"?"active":""}" onclick="setOrderFilter('with')">Com pedido ${withN}</button></div>${cards||'<div class=notice>Nenhum produto neste filtro.</div>'}<div class=sticky-actions><button onclick="clearStoreDraft()">Limpar</button><button class=primary onclick="submitOrder()">Salvar Pedido</button></div></div><div class="tablewrap order-desktop"><table><thead><tr><th>Cód.</th><th>Produto</th><th>Un.</th><th class=num>Estoque</th><th class=num>Pedido</th><th class=num>Custo</th><th class=num>Preço sugerido</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+function draft(store,code,field,value){state.drafts[store]??={};state.drafts[store][code]??={};state.drafts[store][code][field]=Number(value||0);save()}
+function submitOrder(){
+ let d=state.drafts[role]||{}, items=activeProducts().map(p=>({code:p.code,stock:Number(d[p.code]?.stock||0),order:Number(d[p.code]?.order||0)}));
+ if(!items.some(i=>i.stock||i.order)){alert("Preencha pelo menos um estoque ou pedido.");return}
+ let o={id:"PED-"+Date.now(),store:role,date:isoDate(),createdAt:new Date().toISOString(),items};
+ state.orders.push(o);save();alert("Pedido salvo no histórico e enviado ao consolidado.");render();
+}
+function renderStoreHistory(){
+ let arr=state.orders.filter(o=>o.store===role).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+ let rows=arr.map(o=>{let its=o.items.filter(i=>i.order>0);return `<tr><td>${brDate(o.date)}</td><td>${dt(o.createdAt)}</td><td>${its.length}</td><td class=num>${fmt(its.reduce((s,i)=>s+i.order,0))}</td><td><button onclick="viewOrder('${o.id}')">Visualizar</button></td></tr>`}).join("");
+ $("#app").innerHTML=`<section class=card><h2>Histórico — ${STORES[role]}</h2><div class=tablewrap><table><thead><tr><th>Data</th><th>Envio</th><th>Itens pedidos</th><th class=num>Qtd. total</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan=5>Nenhum pedido salvo.</td></tr>'}</tbody></table></div></section>`;
+}
+function viewOrder(id){
+ let o=state.orders.find(x=>x.id===id);if(!o)return;
+ let rows=o.items.filter(i=>i.order>0||i.stock>0).map(i=>{let p=state.products.find(p=>p.code===i.code);return `<tr><td>${i.code}</td><td>${esc(p?.name||"")}</td><td class=num>${fmt(i.stock)}</td><td class=num>${fmt(i.order)}</td></tr>`}).join("");
+ openModal(`Pedido — ${STORES[o.store]} — ${brDate(o.date)}`,`<div class=tablewrap><table><thead><tr><th>Cód.</th><th>Produto</th><th class=num>Estoque</th><th class=num>Pedido</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+}
+function renderConference(){
+ let o=latestOrder(role);
+ if(!o){$("#app").innerHTML=`<section class=card><h2>Relatório de Conferência</h2><div class=notice>Salve o pedido de hoje para gerar o relatório.</div></section>`;return}
+ let rows=o.items.filter(i=>i.order>0).map(i=>{let p=state.products.find(p=>p.code===i.code);return `<tr><td>${i.code}</td><td>${esc(p.name)}</td><td>${unitOf(p)}</td><td class=num>${fmt(i.order)}</td><td style="height:28px"></td></tr>`}).join("");
+ $("#app").innerHTML=`<section class="card print-area portrait"><div class="toolbar no-print"><h2>Relatório de Conferência</h2><button class="primary right" onclick="window.print()">Imprimir</button></div>
+ <h2>MultiShow — Conferência de Recebimento</h2><p><b>Loja:</b> ${STORES[role]} &nbsp; <b>Data do pedido:</b> ${brDate(o.date)}<br><b>Data do recebimento:</b> ____/____/______ &nbsp; <b>Responsável:</b> __________________________</p>
+ <div class=tablewrap><table><thead><tr><th>Cód. ERP</th><th>Produto</th><th>Un.</th><th class=num>Pedido</th><th>Peso / Qtd. recebida</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+function renderConsolidated(){
+ let orders=latestOrdersByStore();
+ let products=activeProducts().map(p=>{
+   let a=itemFromOrder(orders.loja1,p.code),b=itemFromOrder(orders.loja2,p.code),c=itemFromOrder(orders.loja3,p.code),tot=a.order+b.order+c.order;
+   return {p,a,b,c,tot};
+ });
+ let rows=products.map(x=>`<tr><td>${x.p.code}</td><td>${esc(x.p.name)}</td><td>${x.p.purchaseFormat}</td>
+   <td class="num storebox ponta">${fmt(x.a.stock)}</td><td class="num storebox ponta"><b>${fmt(x.a.order)}</b></td>
+   <td class="num storebox balneario">${fmt(x.b.stock)}</td><td class="num storebox balneario"><b>${fmt(x.b.order)}</b></td>
+   <td class="num storebox santa">${fmt(x.c.stock)}</td><td class="num storebox santa"><b>${fmt(x.c.order)}</b></td>
+   <td class=num><b>${fmt(x.tot)}</b></td></tr>`).join("");
+ let mobile=products.filter(x=>x.tot||x.a.stock||x.b.stock||x.c.stock).map(x=>`<div class=cost-card>
+   <div class=name>${esc(x.p.name)}</div>
+   <div class="storebox ponta"><b>Ponta</b> Est. ${fmt(x.a.stock)} &nbsp; <strong>Ped. ${fmt(x.a.order)}</strong></div>
+   <div class="storebox balneario"><b>Balneário</b> Est. ${fmt(x.b.stock)} &nbsp; <strong>Ped. ${fmt(x.b.order)}</strong></div>
+   <div class="storebox santa"><b>Santa M.</b> Est. ${fmt(x.c.stock)} &nbsp; <strong>Ped. ${fmt(x.c.order)}</strong></div>
+   <div class=row><b>Total pedido</b><b class=right>${fmt(x.tot)} ${unitOf(x.p)}</b></div></div>`).join("");
+ let submitted=Object.values(orders).filter(Boolean).length;
+ $("#app").innerHTML=`<section class=card><div class=grid><div class=kpi><span>Lojas com pedido hoje</span><b>${submitted}/3</b></div><div class="kpi ${orders.loja1?"":"pending-store"}"><span>Ponta da Fruta</span><b>${orders.loja1?"Enviado":"Pedido pendente"}</b></div><div class="kpi ${orders.loja2?"":"pending-store"}"><span>Balneário</span><b>${orders.loja2?"Enviado":"Pedido pendente"}</b></div><div class="kpi ${orders.loja3?"":"pending-store"}"><span>Santa Mônica</span><b>${orders.loja3?"Enviado":"Pedido pendente"}</b></div></div></section>
+ <section class=card><h2>Consolidado — ${brDate(isoDate())}</h2><div class=muted>Estoque e pedido de cada unidade separados visualmente.</div>
+ <div class="tablewrap consolidated-desktop"><table><thead><tr><th rowspan=2>Cód.</th><th rowspan=2>Produto</th><th rowspan=2>Compra</th><th colspan=2>Ponta da Fruta</th><th colspan=2>Balneário</th><th colspan=2>Santa Mônica</th><th rowspan=2 class=num>Total pedido</th></tr><tr><th>Est.</th><th>Ped.</th><th>Est.</th><th>Ped.</th><th>Est.</th><th>Ped.</th></tr></thead><tbody>${rows}</tbody></table></div>
+ <div class="mobile-consolidated hidden">${mobile||'<div class=notice>Nenhum pedido informado.</div>'}</div></section>`;
+}
+let costFilter="all", costSearch="";
+function purchasedKey(code){return isoDate()+"|"+code}
+function isPurchased(code){return !!state.purchased[purchasedKey(code)]}
+function setPurchased(code,yes){state.purchased[purchasedKey(code)]=!!yes;save();renderCosts()}
+function setCostFilter(f){costFilter=f;renderCosts()}
+function setCostSearch(v){costSearch=v.toLowerCase();renderCosts()}
+function costData(){
+ let orders=latestOrdersByStore();
+ return activeProducts().map(p=>{let a=itemFromOrder(orders.loja1,p.code),b=itemFromOrder(orders.loja2,p.code),c=itemFromOrder(orders.loja3,p.code);
+   return {p,a:a.order,b:b.order,c:c.order,total:a.order+b.order+c.order,bought:isPurchased(p.code),cost:latestCost(p.code)};
+ }).filter(x=>x.total>0).filter(x=>costFilter==="all"||(costFilter==="missing"&&!x.bought)||(costFilter==="bought"&&x.bought))
+ .filter(x=>!costSearch||x.p.name.toLowerCase().includes(costSearch));
+}
+function renderCosts(){
+ let allOrders=latestOrdersByStore(), all=activeProducts().map(p=>{let a=itemFromOrder(allOrders.loja1,p.code).order,b=itemFromOrder(allOrders.loja2,p.code).order,c=itemFromOrder(allOrders.loja3,p.code).order;return {p,total:a+b+c}}).filter(x=>x.total>0);
+ let missing=all.filter(x=>!isPurchased(x.p.code)).length, bought=all.length-missing, data=costData();
+ let filter=`<div class=filterbar>
+ <button class="${costFilter==="all"?"active":""}" onclick="setCostFilter('all')">Todos ${all.length}</button>
+ <button class="${costFilter==="missing"?"active":""}" onclick="setCostFilter('missing')">Faltam comprar ${missing}</button>
+ <button class="${costFilter==="bought"?"active":""}" onclick="setCostFilter('bought')">Comprados ${bought}</button></div>`;
+ let rows=data.map(x=>`<tr><td>${esc(x.p.name)}</td><td><div class=storechips><span class="storechip p">P ${fmt(x.a)}</span><span class="storechip b">B ${fmt(x.b)}</span><span class="storechip s">S ${fmt(x.c)}</span></div><b>Total ${fmt(x.total)} ${x.p.purchaseFormat}</b></td><td class=num><input type=number min=0 step=.01 value="${x.cost?.value??""}" onchange="recordCost(${x.p.code},this.value)"></td><td style="text-align:center"><input class=bigcheck type=checkbox ${x.bought?"checked":""} onchange="setPurchased(${x.p.code},this.checked)"></td></tr>`).join("");
+ let cards=data.map(x=>`<div class=cost-card>
+ <div class=row style="margin-top:0"><div class=name>${esc(x.p.name)}</div><span class="pill right">Compra: ${x.p.purchaseFormat}</span></div>
+ <div class=storechips><span class="storechip p">P ${fmt(x.a)}</span><span class="storechip b">B ${fmt(x.b)}</span><span class="storechip s">S ${fmt(x.c)}</span></div>
+ <div class=small><b>Total: ${fmt(x.total)} ${x.p.purchaseFormat}</b></div>
+ <div class=row><label>Custo (R$)<br><input class=cost type=number min=0 step=.01 inputmode=decimal value="${x.cost?.value??""}" onchange="recordCost(${x.p.code},this.value)"></label>
+ <label class=right style="text-align:center">Comprado<br><input class=bigcheck type=checkbox ${x.bought?"checked":""} onchange="setPurchased(${x.p.code},this.checked)"></label></div></div>`).join("");
+ $("#app").innerHTML=`<section class=card><h2>Lançamento de Custos</h2><div class=muted>Defina os custos e marque o que já foi comprado.</div>
+ <div style="margin-top:12px"><input style="width:100%;max-width:520px;padding:11px" placeholder="Buscar produto..." value="${esc(costSearch)}" oninput="setCostSearch(this.value)"></div>${filter}
+ <div class=notice>${missing===0&&all.length?"Todos os produtos do pedido foram marcados como comprados.":`<b>${missing}</b> produto(s) ainda faltam comprar.`}</div>
+ <div class="tablewrap desktop-costs"><table><thead><tr><th>Produto</th><th>Pedido das lojas</th><th class=num>Custo (R$)</th><th>Comprado</th></tr></thead><tbody>${rows||'<tr><td colspan=4>Nenhum produto neste filtro.</td></tr>'}</tbody></table></div>
+ <div class=cost-card-list>${cards||'<div class=notice>Nenhum produto neste filtro.</div>'}</div></section>`;
+}
+function renderPricing(){
+ let rows=activeProducts().map(p=>{let cur=latestCost(p.code),prev=previousCost(p.code),changed=cur&&prev&&Number(cur.value)!==Number(prev.value),diff=cur&&prev?cur.value-prev.value:null;
+ return `<tr class="${changed?"changed":""}" data-changed="${changed?1:0}"><td>${p.code}</td><td>${esc(p.name)}</td><td class=num>${prev?money(prev.value):"Sem histórico"}</td><td class=num>${cur?money(cur.value):"—"}</td><td class=num>${diff===null?"—":money(diff)}</td><td class=num>${fmt(p.markup)}%</td><td class=num><b>${cur?money(cur.value*(1+p.markup/100)):"—"}</b></td></tr>`}).join("");
+ $("#app").innerHTML=`<section class=card><div class=toolbar><div><h2>Precificação</h2><div class=muted>Somente mudanças entre custos registrados ficam em vermelho.</div></div><label class=right><input id=onlyChanged type=checkbox onchange="filterChanged()"> Somente custos alterados</label><button onclick="window.print()">Imprimir</button></div>
+ <div class=tablewrap><table><thead><tr><th>Cód.</th><th>Produto</th><th class=num>Custo anterior</th><th class=num>Custo atual</th><th class=num>Diferença</th><th class=num>Markup</th><th class=num>Preço sugerido</th></tr></thead><tbody id=priceRows>${rows}</tbody></table></div></section>`;
+}
+function filterChanged(){let only=$("#onlyChanged").checked;document.querySelectorAll("#priceRows tr").forEach(tr=>tr.classList.toggle("hidden",only&&tr.dataset.changed!=="1"))}
+
+let invoiceFilter="pending";
+function invoiceKey(date,code){return date+"|"+code}
+function invoiceReceived(date,code){return !!state.invoices[invoiceKey(date,code)]?.received}
+function setInvoiceReceived(date,code,yes){state.invoices[invoiceKey(date,code)]={received:!!yes,at:yes?new Date().toISOString():null};save();renderInvoices()}
+function setInvoiceFilter(f){invoiceFilter=f;renderInvoices()}
+function renderInvoices(){
+ let all=[];
+ Object.entries(state.costHistory).forEach(([code,entries])=>{let p=state.products.find(x=>x.code===Number(code));if(p)(entries||[]).forEach(e=>{if(Number(e.value||0)>0)all.push({date:e.date,code:Number(code),name:p.name,cost:Number(e.value),received:invoiceReceived(e.date,Number(code))})})});
+ all.sort((a,b)=>b.date.localeCompare(a.date)||a.name.localeCompare(b.name));
+ let pending=all.filter(x=>!x.received).length,received=all.length-pending;
+ let data=all.filter(x=>invoiceFilter==="all"||(invoiceFilter==="pending"&&!x.received)||(invoiceFilter==="received"&&x.received));
+ let rows=data.map(x=>`<tr class="${x.received?"":"changed"}"><td>${brDate(x.date)}</td><td>${esc(x.name)}</td><td class=num>${money(x.cost)}</td><td style="text-align:center"><input class=bigcheck type=checkbox ${x.received?"checked":""} onchange="setInvoiceReceived('${x.date}',${x.code},this.checked)"></td><td>${x.received?(state.invoices[invoiceKey(x.date,x.code)]?.at?dt(state.invoices[invoiceKey(x.date,x.code)].at):"Recebida"):"Pendente"}</td></tr>`).join("");
+ $("#app").innerHTML=`<section class=card><h2>Controle de Notas Fiscais</h2><div class=muted>Controle por data da compra e produto. Fornecedor/vendedor poderá ser incluído posteriormente.</div><div class=grid style="margin-top:12px"><div class=kpi><span>Registros</span><b>${all.length}</b></div><div class="kpi ${pending?"pending-store":""}"><span>NF pendente</span><b>${pending}</b></div><div class=kpi><span>NF recebida</span><b>${received}</b></div></div><div class=filterbar><button class="${invoiceFilter==="pending"?"active":""}" onclick="setInvoiceFilter('pending')">Pendentes ${pending}</button><button class="${invoiceFilter==="received"?"active":""}" onclick="setInvoiceFilter('received')">Recebidas ${received}</button><button class="${invoiceFilter==="all"?"active":""}" onclick="setInvoiceFilter('all')">Todas ${all.length}</button></div><div class=tablewrap><table><thead><tr><th>Data da compra</th><th>Produto</th><th class=num>Custo</th><th>NF recebida</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan=5>Nenhum registro neste filtro. Os itens aparecem após o lançamento de custo.</td></tr>'}</tbody></table></div></section>`;
+}
+function renderProducts(){
+ let rows=state.products.map(p=>`<tr class="${p.active?"":"inactive"}"><td>${p.code}</td><td><input style="width:260px" value="${esc(p.name)}" onchange="editProduct(${p.code},'name',this.value)"></td><td><input style="width:65px" value="${esc(p.unit)}" onchange="editProduct(${p.code},'unit',this.value)"></td><td><input style="width:70px" value="${esc(p.purchaseFormat)}" onchange="editProduct(${p.code},'purchaseFormat',this.value)"></td><td><input type=number value="${p.markup}" onchange="editProduct(${p.code},'markup',this.value)"></td><td><button onclick="toggleProduct(${p.code})">${p.active?"Inativar":"Ativar"}</button></td></tr>`).join("");
+ $("#app").innerHTML=`<section class=card><div class=toolbar><div><h2>Cadastro de Produtos</h2><div class=muted>Área exclusiva do Gestor.</div></div><button class="primary right" onclick="newProduct()">Novo produto</button></div><div class=tablewrap><table><thead><tr><th>Cód.</th><th>Produto</th><th>Un.</th><th>Formato compra</th><th>Markup %</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+function editProduct(code,f,v){let p=state.products.find(x=>x.code===code);if(!p)return;p[f]=f==="markup"?Number(v):String(v).toUpperCase();save()}
+function toggleProduct(code){let p=state.products.find(x=>x.code===code);p.active=!p.active;save();render()}
+function newProduct(){
+ let code=Number(prompt("Código interno ERP:"));if(!code||state.products.some(p=>p.code===code)){alert("Código inválido ou já existente.");return}
+ let name=prompt("Nome do produto:");if(!name)return;let unit=(prompt("Unidade (KG, UND, BDJ...):","KG")||"KG").toUpperCase();
+ let purchase=(prompt("Formato de compra (CX, SC, UND...):","CX")||"CX").toUpperCase();let markup=Number(prompt("Markup (%):","100")||100);
+ state.products.push({code,name,unit,purchaseFormat:purchase,markup,active:true});save();render();
+}
+function renderManagerHistory(){
+ let opts=Object.entries(STORES).map(([k,v])=>`<option value="${k}">${v}</option>`).join("");
+ let rows=state.orders.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(o=>`<tr data-store="${o.store}"><td>${brDate(o.date)}</td><td>${STORES[o.store]}</td><td>${dt(o.createdAt)}</td><td>${o.items.filter(i=>i.order>0).length}</td><td><button onclick="viewOrder('${o.id}')">Visualizar</button></td></tr>`).join("");
+ $("#app").innerHTML=`<section class=card><div class=toolbar><div><h2>Histórico de Pedidos</h2><div class=muted>Histórico das três lojas.</div></div><label class=right>Loja: <select id=histStore onchange="filterHistory()"><option value="">Todas</option>${opts}</select></label></div>
+ <div class=tablewrap><table><thead><tr><th>Data</th><th>Loja</th><th>Envio</th><th>Itens</th><th></th></tr></thead><tbody id=histRows>${rows||'<tr><td colspan=5>Nenhum pedido salvo.</td></tr>'}</tbody></table></div></section>`;
+}
+function filterHistory(){let s=$("#histStore").value;document.querySelectorAll("#histRows tr[data-store]").forEach(tr=>tr.classList.toggle("hidden",s&&tr.dataset.store!==s))}
+function shipmentKey(store,date=isoDate()){return date+"|"+store}
+function setShipped(store,yes){let k=shipmentKey(store);state.shipments[k]=yes?{shipped:true,at:new Date().toISOString()}:{shipped:false,at:null};save();render()}
+
+function renderSupplierOrder(){
+ let exclusive=activeProducts().filter(p=>p.exclusiveSupplier);
+ let orders=latestOrdersByStore();
+ let sections=Object.entries(STORES).map(([store,name])=>{
+   let o=orders[store];
+   if(!o) return `<div class="supplier-store"><h3>${name}</h3><div class="notice pending-store">Pedido desta loja ainda não foi enviado.</div></div>`;
+   let items=exclusive.map(p=>({p,i:itemFromOrder(o,p.code),c:latestCost(p.code)})).filter(x=>x.i.order>0);
+   let rows=items.map(x=>`<tr><td>${esc(x.p.name)}</td><td class=num>${fmt(x.i.order)} ${x.p.purchaseFormat}</td><td class=num>${x.c?money(x.c.value):"—"}</td></tr>`).join("");
+   return `<div class="supplier-store"><h3>${name}</h3><div class=tablewrap><table><thead><tr><th>Produto</th><th class=num>Quantidade</th><th class=num>Custo</th></tr></thead><tbody>${rows||'<tr><td colspan=3>Nenhum item exclusivo solicitado por esta loja.</td></tr>'}</tbody></table></div></div>`;
+ }).join("");
+ let missing=Object.keys(STORES).filter(s=>!orders[s]).length;
+ $("#app").innerHTML=`<section class="card supplier-report"><div class="toolbar no-print"><div><h2>Pedido do Fornecedor</h2><div class=muted>Somente produtos marcados como exclusivos na planilha.</div></div><button class="primary right" onclick="window.print()">Imprimir / Salvar PDF</button></div>
+ <div class=supplier-head><b>MultiShow — Pedido para faturamento</b><br>Data: ${brDate(isoDate())}<br>Itens exclusivos cadastrados: ${exclusive.length}${missing?`<br><span style="color:#a51d1d"><b>Atenção:</b> ${missing} loja(s) ainda não enviaram o pedido.</span>`:""}</div>
+ ${sections}</section>`;
+}
+function renderSeparation(){
+ let cards=Object.entries(STORES).map(([s,name])=>{let o=latestOrder(s),ship=state.shipments[shipmentKey(s)]||{shipped:false};
+ if(!o)return `<section class=card><h3>${name}</h3><span class="pill no">Pedido pendente</span></section>`;
+ return `<section class=card><div class=toolbar><div><h3>${name}</h3><span class="pill ${ship.shipped?"yes":"no"}">${ship.shipped?"Embarcado":"Não embarcado"}</span>${ship.at?` <span class="small muted">${dt(ship.at)}</span>`:""}</div>
+ <div class="actions right"><button onclick="printSeparation('${s}')">Imprimir separação</button><button class="${ship.shipped?"":"primary"}" onclick="setShipped('${s}',${ship.shipped?"false":"true"})">${ship.shipped?"Desmarcar embarque":"Marcar como embarcado"}</button></div></div></section>`}).join("");
+ $("#app").innerHTML=`<section class=card><h2>Separação e Embarque</h2><div class=muted>Fluxo simplificado: imprimir a separação por loja e marcar somente se a carga foi embarcada.</div></section>${cards}`;
+}
+function printSeparation(store){
+ let o=latestOrder(store);if(!o)return;
+ let rows=o.items.filter(i=>i.order>0).map(i=>{let p=state.products.find(p=>p.code===i.code);return `<tr><td style="width:28px">☐</td><td>${i.code}</td><td>${esc(p.name)}</td><td>${unitOf(p)}</td><td class=num>${fmt(i.order)}</td></tr>`}).join("");
+ let w=window.open("","_blank");w.document.write(`<!doctype html><html><head><meta charset=utf-8><title>Separação - ${STORES[store]}</title><style>body{font:12px Arial;margin:20px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #777;padding:7px}th{background:#eee;text-align:left}.num{text-align:right}h2{margin-bottom:4px}@page{size:A4 portrait;margin:10mm}
+/* V5 mobile test */
+.mobile-summary{display:none}
+.storechips{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.storechip{padding:3px 7px;border-radius:7px;font-weight:750;font-size:12px}
+.storechip.p{background:#dcf7e8;color:#176b43}.storechip.b{background:#e3f0ff;color:#1266b5}.storechip.s{background:#eee6ff;color:#6636b5}
+.cost-card-list{display:none}.cost-card{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;margin:8px 0}
+.cost-card .name{font-weight:800;font-size:15px}.cost-card .row{display:flex;align-items:center;gap:10px;margin-top:9px}
+.cost-card .cost{width:112px;font-size:16px;padding:10px}.bigcheck{width:25px;height:25px}
+.filterbar{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.filterbar button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.storebox.ponta{background:#f2fbf6;border-left:3px solid #24a46d}.storebox.balneario{background:#f2f8ff;border-left:3px solid #2b7ed1}.storebox.santa{background:#f8f4ff;border-left:3px solid #7a4dcc}
+@media(max-width:700px){
+ header{position:sticky;top:0;z-index:8} header h1{font-size:18px}.shell{margin:8px auto}
+ .tabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:3px}.tabs button{white-space:nowrap}
+ .grid{grid-template-columns:1fr 1fr}.desktop-costs{display:none}.cost-card-list{display:block}
+ .mobile-summary{display:block}.cost-card .row label{font-size:12px;color:var(--muted)}
+ .cost-card .row .right{margin-left:auto}.cost-card input[type=number]{width:112px}
+ .consolidated-desktop{display:none}.mobile-consolidated{display:block!important}
+ .storebox{padding:8px;border-radius:9px;margin:5px 0}.storebox b{display:inline-block;min-width:72px}
+}
+
+.order-mobile{display:none}.order-card{border:1px solid var(--line);border-radius:14px;padding:13px;background:#fff;margin:9px 0}.order-card.filled{border-color:#8bc9aa;background:#f8fdf9}.order-head{display:flex;gap:8px;align-items:center;margin-bottom:10px}.order-name{font-weight:800;font-size:16px}.order-check{margin-left:auto;color:var(--brand);font-size:18px}.order-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px}.order-inputs label{font-size:12px;font-weight:700}.order-inputs input{display:block;width:100%;margin-top:5px;padding:12px 8px;font-size:18px;font-weight:750;text-align:center}.sticky-actions{display:none}
+@media(max-width:700px){.order-desktop{display:none!important}.order-mobile{display:block}.sticky-actions{display:flex;position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:9px;gap:8px;margin:10px -12px -12px;z-index:7}.sticky-actions button{flex:1;padding:12px}}
+
+.pending-store{background:#fde8e8!important;color:#8e2020!important;border:1px solid #f1bcbc!important}
+.supplier-head{background:#f0f7f3;border:1px solid var(--line);border-radius:11px;padding:12px;margin-bottom:12px}
+.supplier-store{margin:16px 0 22px}.supplier-store+.supplier-store{page-break-before:always;break-before:page}
+.supplier-store h3{padding-bottom:6px;border-bottom:2px solid var(--brand)}
+@media print{.supplier-report .no-print{display:none!important}.supplier-report{display:block!important}.supplier-store+.supplier-store{page-break-before:always!important;break-before:page!important}}
+</style></head><body><h2>MultiShow — Separação FLV</h2><p><b>Loja:</b> ${STORES[store]} &nbsp; <b>Pedido:</b> ${brDate(o.date)}</p><table><thead><tr><th>✓</th><th>Cód.</th><th>Produto</th><th>Un.</th><th class=num>Quantidade</th></tr></thead><tbody>${rows}</tbody></table><p style="margin-top:24px;font-size:15px"><b>☐ EMBARCADO</b></p><p>Responsável: ______________________________ &nbsp; Horário: ____:____</p><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close();
+}
+function openModal(t,b){$("#modalTitle").textContent=t;$("#modalBody").innerHTML=b;$("#modal").classList.remove("hidden")}
+function closeModal(){$("#modal").classList.add("hidden")}
+function resetAll(){if(confirm("Apagar todos os dados de teste desta V4?")){state=initialState();save();render()}}
+function seedDemo(){
+ if(!confirm("Carregar dados de exemplo para testar o fluxo?"))return;
+ const codes=activeProducts().slice(0,12).map(p=>p.code);
+ Object.keys(STORES).forEach((s,si)=>{state.drafts[s]={};codes.forEach((c,i)=>state.drafts[s][c]={stock:(i+si)%7,order:(i%4+1)*5+si*2});let items=activeProducts().map(p=>({code:p.code,stock:Number(state.drafts[s][p.code]?.stock||0),order:Number(state.drafts[s][p.code]?.order||0)}));state.orders.push({id:"DEMO-"+s+"-"+Date.now(),store:s,date:isoDate(),createdAt:new Date(Date.now()+si*1000).toISOString(),items})});
+ activeProducts().slice(0,18).forEach((p,i)=>{let base=3+i*.65;state.costHistory[p.code]=[{date:"2026-09-17",value:base,at:"2026-09-17T10:00:00"},{date:isoDate(),value:base+(i%3===0?.5:0),at:new Date().toISOString()}]});
+ save();render();
+}
+init();
+</script>
+</body>
+</html>

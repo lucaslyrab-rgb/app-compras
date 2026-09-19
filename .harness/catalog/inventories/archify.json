@@ -1,0 +1,2602 @@
+{
+  "repository": "tt-a1i/archify",
+  "commit": "72c750bb070d95171dbb2244e5b62b1b7da69c12",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".agents/skills/archify-review/SKILL.md",
+      "blob": "68b98baad229beb36767a6a89f3b6bd937940c65",
+      "size": 1631
+    },
+    {
+      "path": ".coderabbit.yaml",
+      "blob": "2fa93dc65e65735735da22591ae28dbe059f6b30",
+      "size": 7018
+    },
+    {
+      "path": ".gitattributes",
+      "blob": "0f499f175dab8066ec32a1cb481617beacf3db5c",
+      "size": 1002
+    },
+    {
+      "path": ".github/CODEOWNERS",
+      "blob": "3a3b40703ebcc09bfc0354eb70e88878860ca8a0",
+      "size": 185
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug-report.yml",
+      "blob": "ec1deab6d2e144171d5f145fa5dc416ad5e3c6ab",
+      "size": 3048
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "blob": "0086358db1eb971c0cfa8739c27518bbc18a5ff4",
+      "size": 27
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/showcase.yml",
+      "blob": "8da5be66089003a703a1559958871ebc1a462de2",
+      "size": 3777
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "blob": "ac999daa2fe94c278eec5b7ea34223ef18ba7af0",
+      "size": 1351
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "blob": "368c28885ff3c3dc869b209e0b2afbc1d0119c79",
+      "size": 10147
+    },
+    {
+      "path": ".github/workflows/dsh.yml",
+      "blob": "bd8ac3808fa4ce243aff5420068b4c57a07b6615",
+      "size": 2583
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "blob": "4733a40d70b5a33d9ae66b73a1b7a05ac077ac49",
+      "size": 4938
+    },
+    {
+      "path": ".github/workflows/star-history.yml",
+      "blob": "637979d0e12f241c91d631353f73f54696ce9205",
+      "size": 649
+    },
+    {
+      "path": ".gitignore",
+      "blob": "499aeb54895d49eab5adff8e7ee443b993a96e8d",
+      "size": 66
+    },
+    {
+      "path": "CHANGELOG.md",
+      "blob": "1b841d017a127ced5b13b1bfe3d728d586738140",
+      "size": 97490
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "blob": "84585f715c156842b81aab70251863a30c06192d",
+      "size": 10214
+    },
+    {
+      "path": "DESIGN.md",
+      "blob": "eaf1c8bc3dc1deaa529e83a0f627f27192a0674a",
+      "size": 12286
+    },
+    {
+      "path": "LICENSE",
+      "blob": "0f9f9397a0496ef63c7d555d36b40c3f932aff84",
+      "size": 1102
+    },
+    {
+      "path": "PRODUCT.md",
+      "blob": "d0071a67c62da99f2052ebf1e22a0be531897e80",
+      "size": 3101
+    },
+    {
+      "path": "README.md",
+      "blob": "b1ef38e4552354d5562c74c26426aefd8c5edbe7",
+      "size": 19044
+    },
+    {
+      "path": "README_EN.md",
+      "blob": "b1ef38e4552354d5562c74c26426aefd8c5edbe7",
+      "size": 19044
+    },
+    {
+      "path": "README_ZH.md",
+      "blob": "a99570a928775792b367fe53e6d1c087c596f1d5",
+      "size": 20534
+    },
+    {
+      "path": "REVIEWING.md",
+      "blob": "128b9041d56f8925ae3cb5e50b5dfd7d5270420a",
+      "size": 4292
+    },
+    {
+      "path": "ROADMAP.md",
+      "blob": "3d77da0a6e9f0b58fd1822b6a757890266926759",
+      "size": 48459
+    },
+    {
+      "path": "SECURITY.md",
+      "blob": "d0513681f817593543ece09f21514f47e052515e",
+      "size": 2111
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "blob": "3c15e20a0ac9452d8dac46beb92a672e1973cad4",
+      "size": 5248
+    },
+    {
+      "path": "archify.zip",
+      "blob": "ede3ba354013e16b1c1e5aa2fac9c9f3186d76c1",
+      "size": 1885058
+    },
+    {
+      "path": "archify/LICENSE",
+      "blob": "0f9f9397a0496ef63c7d555d36b40c3f932aff84",
+      "size": 1102
+    },
+    {
+      "path": "archify/SKILL.md",
+      "blob": "4011ba54329756a702dc93f9c7f4576151c110e3",
+      "size": 16396
+    },
+    {
+      "path": "archify/THIRD_PARTY_NOTICES.md",
+      "blob": "3c15e20a0ac9452d8dac46beb92a672e1973cad4",
+      "size": 5248
+    },
+    {
+      "path": "archify/assets/JetBrainsMono-OFL.txt",
+      "blob": "675d198b74b6f10b5ca149e6a21cf06dcc46b676",
+      "size": 4398
+    },
+    {
+      "path": "archify/assets/template.html",
+      "blob": "a762d9d360775d42afab344caec95d2f938bebd0",
+      "size": 774866
+    },
+    {
+      "path": "archify/bin/archify.mjs",
+      "blob": "9ea8ab9a0822b0a02f3db37257b8b332346dfcb9",
+      "size": 78627
+    },
+    {
+      "path": "archify/bin/open-artifact.mjs",
+      "blob": "878f6b4caa06b5ed2185ae45fb3be9675925ce5b",
+      "size": 2225
+    },
+    {
+      "path": "archify/bin/preview.mjs",
+      "blob": "16ed94ed61d18a92b65394fc0ba5c50d8c26e147",
+      "size": 23722
+    },
+    {
+      "path": "archify/bin/visual-check.mjs",
+      "blob": "8adb154b8db4ba8da5fc822599a1520aad106d12",
+      "size": 33390
+    },
+    {
+      "path": "archify/brand-marks/README.md",
+      "blob": "83578f6f6cb3d10bc48c3044c46c7b7d46e84be7",
+      "size": 1449
+    },
+    {
+      "path": "archify/brand-marks/catalog.json",
+      "blob": "ac5698939b0baba2582e3b65556b1ebdbeea8fe6",
+      "size": 14162
+    },
+    {
+      "path": "archify/delta/architecture-delta.mjs",
+      "blob": "7ca38d62f8563e25a7c60a861f73469032432f8e",
+      "size": 73530
+    },
+    {
+      "path": "archify/examples/agent-run.lifecycle.json",
+      "blob": "fc1deb87fbed22b817efa943b029868c97205d7f",
+      "size": 4044
+    },
+    {
+      "path": "archify/examples/agent-tool-call.workflow.json",
+      "blob": "c8c31995ab70ef0c570677dbaf8fb02c452f3250",
+      "size": 5687
+    },
+    {
+      "path": "archify/examples/async-job-roundtrip.sequence.json",
+      "blob": "351104966631e17a490c594c4d614b9547a65576",
+      "size": 4370
+    },
+    {
+      "path": "archify/examples/brand-aware-delivery.architecture.json",
+      "blob": "1ccc9c02e62aedf892294bca02be52460c3c1193",
+      "size": 3271
+    },
+    {
+      "path": "archify/examples/cache-miss-request.sequence.json",
+      "blob": "f3247780e3f337e2179a4cabee22f4794eaa94ca",
+      "size": 4374
+    },
+    {
+      "path": "archify/examples/checkout-platform.base.architecture.json",
+      "blob": "6a0697c10f9cada3a08e3bab73b87b3158280513",
+      "size": 2234
+    },
+    {
+      "path": "archify/examples/checkout-platform.head.architecture.json",
+      "blob": "224d62b4b5c3cc02ec29b5adc14146d666956fce",
+      "size": 2368
+    },
+    {
+      "path": "archify/examples/dataflow-product-analytics.html",
+      "blob": "5eacdc4a4056107b6677bf3e889823bd34e8c59a",
+      "size": 817071
+    },
+    {
+      "path": "archify/examples/deployment-release.lifecycle.json",
+      "blob": "ba87dc22eb3624b3d1ac4dd094b922d0fd20a436",
+      "size": 4274
+    },
+    {
+      "path": "archify/examples/event-stream.dataflow.json",
+      "blob": "e7cc500295908d715778c3587d994b40319e9cf2",
+      "size": 5433
+    },
+    {
+      "path": "archify/examples/incident-response.workflow.json",
+      "blob": "7446e55f29d73b1fceb1fc0b03a86b374fdb3db4",
+      "size": 5375
+    },
+    {
+      "path": "archify/examples/lifecycle-agent-run.html",
+      "blob": "37c84d2fd7fc92860544cc6ca107e2e36c4290d6",
+      "size": 810174
+    },
+    {
+      "path": "archify/examples/product-analytics.dataflow.json",
+      "blob": "62a50d914ec19a1830a5bc845cc50fbbdeb68d98",
+      "size": 5618
+    },
+    {
+      "path": "archify/examples/production-deployment.architecture.json",
+      "blob": "472cb83e5b92f7937c3e0a522fc90402d9e301bb",
+      "size": 5476
+    },
+    {
+      "path": "archify/examples/release-delivery.workflow.json",
+      "blob": "915e39c47e095b99cab59f9525071fdfa97d0914",
+      "size": 5164
+    },
+    {
+      "path": "archify/examples/sequence-cache-miss-request.html",
+      "blob": "9fa75af288f8386ab880567f8910575ccb1e947c",
+      "size": 814754
+    },
+    {
+      "path": "archify/examples/web-app-rendered.html",
+      "blob": "0493a68429da4a04e02e6cafc2ba9e76a5d1d4e5",
+      "size": 811809
+    },
+    {
+      "path": "archify/examples/web-app.architecture.json",
+      "blob": "9f6cb1404b005bd2feff1274cee73a1e94a2ae2c",
+      "size": 3793
+    },
+    {
+      "path": "archify/examples/workflow-agent-tool-call-rendered.html",
+      "blob": "213061611eef203a2221ebdf904f299925b2b578",
+      "size": 819631
+    },
+    {
+      "path": "archify/migrations/workflow-v2.mjs",
+      "blob": "85ba80cbd2a6b520ba23cbad034ab9fdca21d7b5",
+      "size": 9168
+    },
+    {
+      "path": "archify/package-lock.json",
+      "blob": "6d19a7287e6f5b709a4802fe45417ea2c1d3ef04",
+      "size": 4906
+    },
+    {
+      "path": "archify/package.json",
+      "blob": "7cec5a79838e8ba29f8774c7d268ada6e155997c",
+      "size": 1632
+    },
+    {
+      "path": "archify/recipes/scenarios.mjs",
+      "blob": "5076134bc7e17b7ff8b7358f58d9d85fbf70bb69",
+      "size": 32073
+    },
+    {
+      "path": "archify/references/authoring-contract.md",
+      "blob": "6c5c8df34d04eca491fad9d63266c88bd17f95aa",
+      "size": 14192
+    },
+    {
+      "path": "archify/references/brand-marks.md",
+      "blob": "55411787dc17bc228bb43e9de6435115aa5305a6",
+      "size": 2179
+    },
+    {
+      "path": "archify/references/delivery-contract.md",
+      "blob": "11d0dfe6ceff25c0012888a1c0cc7c7a7b182149",
+      "size": 9607
+    },
+    {
+      "path": "archify/references/viewer-runtime.md",
+      "blob": "919b71bc94d13ae9927b2fa83a6c2f97a2a2aad5",
+      "size": 4243
+    },
+    {
+      "path": "archify/renderers/architecture/grid.mjs",
+      "blob": "807a1b860f531bab0ee217af19e6887fbbade398",
+      "size": 2071
+    },
+    {
+      "path": "archify/renderers/architecture/render-architecture.mjs",
+      "blob": "b21ac8e4ee8a20cd4e9d0564910b9fb277da4470",
+      "size": 45546
+    },
+    {
+      "path": "archify/renderers/dataflow/README.md",
+      "blob": "d5c43fcb3db0ea55472d41fbaf3534e30ee995fd",
+      "size": 4202
+    },
+    {
+      "path": "archify/renderers/dataflow/render-dataflow.mjs",
+      "blob": "3eda9d4a9b28975c496b55064ac1cf0fa9b7aca8",
+      "size": 21194
+    },
+    {
+      "path": "archify/renderers/lifecycle/README.md",
+      "blob": "b66a7ddf9a0261052a56dfc29ea4a5022c8434f1",
+      "size": 5197
+    },
+    {
+      "path": "archify/renderers/lifecycle/render-lifecycle.mjs",
+      "blob": "eb7922c479bd7c91e636f3bb31011195e055f935",
+      "size": 24285
+    },
+    {
+      "path": "archify/renderers/sequence/README.md",
+      "blob": "82cfa166bf02dfa736944f396e18400783072fba",
+      "size": 4828
+    },
+    {
+      "path": "archify/renderers/sequence/render-sequence.mjs",
+      "blob": "1cfc032a12ed72a0d2b0bb09797d337c039218b3",
+      "size": 21734
+    },
+    {
+      "path": "archify/renderers/shared/brand-marks.mjs",
+      "blob": "1e18e0b5311ddbfa954f5bca317d7ffc30089e50",
+      "size": 22582
+    },
+    {
+      "path": "archify/renderers/shared/cli.mjs",
+      "blob": "f4a6eed04b946b256c75a4a80c809677e3e68a66",
+      "size": 10238
+    },
+    {
+      "path": "archify/renderers/shared/desktop-readability.mjs",
+      "blob": "1a4c249d1f212e80cb41858ec6adda53cc3befcd",
+      "size": 1089
+    },
+    {
+      "path": "archify/renderers/shared/diagnostics.mjs",
+      "blob": "5d74de7dc415a6dd79e1fbc38d68cd7287a1f833",
+      "size": 6154
+    },
+    {
+      "path": "archify/renderers/shared/engineering-profiles.mjs",
+      "blob": "76e3166aa19cbd23cc2187f16b0c120280ef4d48",
+      "size": 6936
+    },
+    {
+      "path": "archify/renderers/shared/generated-brand-marks.mjs",
+      "blob": "69dbb7c1c290f28620705486ecacba4d2184f634",
+      "size": 163612
+    },
+    {
+      "path": "archify/renderers/shared/generated-validators.mjs",
+      "blob": "7e2558ca96c632df2cf50f3df180ea0c81272276",
+      "size": 431711
+    },
+    {
+      "path": "archify/renderers/shared/geometry.mjs",
+      "blob": "733129c2a5f6bb9a50e350c2c538d5fd3d93b2dd",
+      "size": 57175
+    },
+    {
+      "path": "archify/renderers/shared/i18n.mjs",
+      "blob": "28e9d02f2465184070b45a8c52571398063e66e2",
+      "size": 48475
+    },
+    {
+      "path": "archify/renderers/shared/layout-report.mjs",
+      "blob": "3128a65aa2678e4f705c2a662d33aa8289318ee4",
+      "size": 1015
+    },
+    {
+      "path": "archify/renderers/shared/legend.mjs",
+      "blob": "e9e80d6fd74f013c30bf87d56fcaf0dfa2b794cf",
+      "size": 8652
+    },
+    {
+      "path": "archify/renderers/shared/output-path.mjs",
+      "blob": "e8e480a22d7b931d1c2e94f0c50daaa0a1794802",
+      "size": 11645
+    },
+    {
+      "path": "archify/renderers/shared/repository-evidence.mjs",
+      "blob": "e0b805ecf7dc08fbd920077d0473d90a30db100b",
+      "size": 12542
+    },
+    {
+      "path": "archify/renderers/shared/repository-location.mjs",
+      "blob": "32257d62d9ccab438b321ce4ed94e4cd3c5a1e1a",
+      "size": 3453
+    },
+    {
+      "path": "archify/renderers/shared/text-fit.mjs",
+      "blob": "31c0b1799089b760eae103ede9d357b04d5ca035",
+      "size": 2191
+    },
+    {
+      "path": "archify/renderers/shared/utils.mjs",
+      "blob": "8307518359a103ea51ad38293f72a9e518f34363",
+      "size": 11603
+    },
+    {
+      "path": "archify/renderers/shared/validator.mjs",
+      "blob": "7664657b62f684f19af0fdb362e11209d7fb0d3c",
+      "size": 3508
+    },
+    {
+      "path": "archify/renderers/workflow/README.md",
+      "blob": "186d7b6b6d9cec6737c27faee450a9da2bd01852",
+      "size": 10386
+    },
+    {
+      "path": "archify/renderers/workflow/render-workflow.mjs",
+      "blob": "27bfa14bd00aff7f8952bb8bbe079c97523dec99",
+      "size": 1153
+    },
+    {
+      "path": "archify/renderers/workflow/workflow-compiler.mjs",
+      "blob": "a12348f9c37733542305e4016526922f1ad83687",
+      "size": 171400
+    },
+    {
+      "path": "archify/renderers/workflow/workflow-migration-geometry.mjs",
+      "blob": "00533871268dfb1f7281dfd6cab6d36bd79bc0f6",
+      "size": 5299
+    },
+    {
+      "path": "archify/schemas/README.md",
+      "blob": "4a43011c2a2964e4b0d9dd8d2c0d7bbbb42ab9c7",
+      "size": 11462
+    },
+    {
+      "path": "archify/schemas/architecture.schema.json",
+      "blob": "6943b27d93ca8732afe0048928dfca393ef9b5c0",
+      "size": 6753
+    },
+    {
+      "path": "archify/schemas/common.schema.json",
+      "blob": "20a8515eee7ba2de35f8d9890fb34f60e18a084a",
+      "size": 3096
+    },
+    {
+      "path": "archify/schemas/dataflow.schema.json",
+      "blob": "00f51487e15387d7dc6b6b00a206e241bbee117d",
+      "size": 5907
+    },
+    {
+      "path": "archify/schemas/lifecycle.schema.json",
+      "blob": "017c155f3de0eaf2883742389ab7b3cf713949ab",
+      "size": 6597
+    },
+    {
+      "path": "archify/schemas/sequence.schema.json",
+      "blob": "446d0ec6931d7680aa5e9824b417c797e660a6ab",
+      "size": 5642
+    },
+    {
+      "path": "archify/schemas/workflow.schema.json",
+      "blob": "1ccaf17f35790475f814848dea41a3a49108bb14",
+      "size": 9752
+    },
+    {
+      "path": "archify/scripts/check-render-output.mjs",
+      "blob": "f71496879c25d93bae32f221e81886177ce585c8",
+      "size": 36425
+    },
+    {
+      "path": "archify/scripts/check-update.mjs",
+      "blob": "dd12e4ba464a83dd25cb97c02a100c9125769bcd",
+      "size": 56369
+    },
+    {
+      "path": "archify/scripts/generate-brand-marks.mjs",
+      "blob": "73490babbbbde02ffd6f657ab9edb5538bee5cca",
+      "size": 5136
+    },
+    {
+      "path": "archify/scripts/generate-validators.mjs",
+      "blob": "ab205bd1a586e764e9ee06d1940b6dba15a6653a",
+      "size": 2400
+    },
+    {
+      "path": "archify/scripts/render-examples.mjs",
+      "blob": "9889a2f7a41c73907a048a30e3f6671dc7a616d7",
+      "size": 1178
+    },
+    {
+      "path": "archify/scripts/update-contract.mjs",
+      "blob": "527ae8a9b50646242278ab74cb7bb7e6aafe64c3",
+      "size": 6750
+    },
+    {
+      "path": "archify/skill-release.json",
+      "blob": "aa40d67ac7e1f305cbc1b96c8063a50f805be46d",
+      "size": 272
+    },
+    {
+      "path": "archify/test/adaptive-reader-layout.test.mjs",
+      "blob": "6a8fa7a14f0c4cd7cf46e3555679bbaf7e42e352",
+      "size": 4875
+    },
+    {
+      "path": "archify/test/animation.test.mjs",
+      "blob": "df13590299fb8488fefe54fee094e88c48859644",
+      "size": 8891
+    },
+    {
+      "path": "archify/test/architecture-compare-recovery.test.mjs",
+      "blob": "014564e49bcadbbd3f6c0b0d4fbf620dc7e34ce0",
+      "size": 8836
+    },
+    {
+      "path": "archify/test/architecture-delta-markers.test.mjs",
+      "blob": "4ff2dae82c4b5cf223dcc63b20e49a77fef3afb9",
+      "size": 6775
+    },
+    {
+      "path": "archify/test/architecture-delta.test.mjs",
+      "blob": "6670921720efee2313a775451d8acc0f8c82d097",
+      "size": 36424
+    },
+    {
+      "path": "archify/test/artifact-receipt-flush.test.mjs",
+      "blob": "50ec9465f4799094a8da7b14c7f1eeba256a419b",
+      "size": 5299
+    },
+    {
+      "path": "archify/test/authored-reachability.test.mjs",
+      "blob": "6aced775389bf550ebf3fbe5da4e3c9a5c6c4bcf",
+      "size": 4486
+    },
+    {
+      "path": "archify/test/authoring-safety-contract.test.mjs",
+      "blob": "6c1d8430d33efe854e2f7f88a0a770c9ac41c553",
+      "size": 2892
+    },
+    {
+      "path": "archify/test/automatic-port-spread.test.mjs",
+      "blob": "dc6e1868680f33d338afda6e8f1628405b6f2565",
+      "size": 16458
+    },
+    {
+      "path": "archify/test/base-input-compatibility.test.mjs",
+      "blob": "c500d36a69ac2334a2bcf9ed4e325f18e235c780",
+      "size": 1318
+    },
+    {
+      "path": "archify/test/brand-marks.test.mjs",
+      "blob": "4aba30bd7141bd67120bb752c0e0a6b8bc2eeb03",
+      "size": 30758
+    },
+    {
+      "path": "archify/test/chapter-delta-preview.test.mjs",
+      "blob": "f269651f3e5edc63ab7d18d2a72061d6b632b452",
+      "size": 7538
+    },
+    {
+      "path": "archify/test/chapter-handoff.test.mjs",
+      "blob": "6a2bf62d5fdd9b1ecc926acb61076f1019b7e196",
+      "size": 5031
+    },
+    {
+      "path": "archify/test/chapter-rail.test.mjs",
+      "blob": "ed1ec6a54eb42899a2e08a881dce1c7d830dfcf1",
+      "size": 4342
+    },
+    {
+      "path": "archify/test/checkout-line-endings.test.mjs",
+      "blob": "a7acf1ff31921e905447d706d8a40c672d178c38",
+      "size": 3682
+    },
+    {
+      "path": "archify/test/clean-skill-staging.test.mjs",
+      "blob": "59d455c1633c9ed6ef6ea7a81d35b173b4bbef0e",
+      "size": 18193
+    },
+    {
+      "path": "archify/test/cli-output-types.test.mjs",
+      "blob": "2676c479005c7f937b1a942284a5bcf701468c9a",
+      "size": 8737
+    },
+    {
+      "path": "archify/test/cli.test.mjs",
+      "blob": "de2fd91ce29bbc2f4d5e98f5e3abc3c2945922c4",
+      "size": 41434
+    },
+    {
+      "path": "archify/test/community-proof-intake.test.mjs",
+      "blob": "1d09031b9dfc60e6258963ce11d0216317b0726e",
+      "size": 4722
+    },
+    {
+      "path": "archify/test/cursor-onboarding.test.mjs",
+      "blob": "358becce7e11cd62b52500f305e63259a1fcb945",
+      "size": 3555
+    },
+    {
+      "path": "archify/test/degraded.test.mjs",
+      "blob": "1385906873e6d49f37fe9d9efe717109ba0aa40a",
+      "size": 7011
+    },
+    {
+      "path": "archify/test/delivery-contract.test.mjs",
+      "blob": "e280d0bf3c69a97ceee5751b69f521a2e229eace",
+      "size": 3088
+    },
+    {
+      "path": "archify/test/desktop-reader-browser.test.mjs",
+      "blob": "076579470290e3b2b721e8607b1d3f0e2b6303f6",
+      "size": 3925
+    },
+    {
+      "path": "archify/test/diagram-guide.test.mjs",
+      "blob": "a47630052cae806385bcdac123ec88d747205beb",
+      "size": 4835
+    },
+    {
+      "path": "archify/test/engineering-profile.test.mjs",
+      "blob": "ad3de7ff9b12d52a3f9517ca7ae7c0014690eed6",
+      "size": 10281
+    },
+    {
+      "path": "archify/test/export-browser.test.mjs",
+      "blob": "70d758f0f3aee32a2cc942eb305b4373d35d543b",
+      "size": 24258
+    },
+    {
+      "path": "archify/test/export-cleanup-browser.test.mjs",
+      "blob": "8800e6790dd533ca313d6f1e9df3b59e14346ac3",
+      "size": 17413
+    },
+    {
+      "path": "archify/test/finder-browser.test.mjs",
+      "blob": "95abccd00543010b340e6c49dbd6082c9ecd756c",
+      "size": 18641
+    },
+    {
+      "path": "archify/test/finder.test.mjs",
+      "blob": "979d8910b4b3fd08e73d7f03420f8eac578ee8ee",
+      "size": 5448
+    },
+    {
+      "path": "archify/test/fixtures/automatic-routing-node-border-clearance.workflow.json",
+      "blob": "f5e48e87d2bdcc2844e406872e36337a44e6c3a0",
+      "size": 855
+    },
+    {
+      "path": "archify/test/fixtures/fail-migration-cleanup.mjs",
+      "blob": "8ea2af51185a3a59a55898a81689accad36640d0",
+      "size": 580
+    },
+    {
+      "path": "archify/test/fixtures/issue-126/custom-widths.workflow.json",
+      "blob": "68bd7207d7d1f87fc681a1cfee01cf920efdc154",
+      "size": 528
+    },
+    {
+      "path": "archify/test/fixtures/issue-126/explicit-route.workflow.json",
+      "blob": "6d5737978e957e945bf97bd63e5838a6e49251f4",
+      "size": 703
+    },
+    {
+      "path": "archify/test/fixtures/issue-126/explicit-viewbox.workflow.json",
+      "blob": "f09740f06ad00a8ba4baa3503d9c6879a6cf52b1",
+      "size": 533
+    },
+    {
+      "path": "archify/test/fixtures/issue-126/labels.workflow.json",
+      "blob": "0e27edbe674cb94b2c51bcf6c2717dbe29463750",
+      "size": 520
+    },
+    {
+      "path": "archify/test/fixtures/v1-baseline/agent-run.lifecycle.json",
+      "blob": "eb09b78f190448b795c5bdf4644c1c891f30866c",
+      "size": 3538
+    },
+    {
+      "path": "archify/test/fixtures/v1-baseline/agent-tool-call.workflow.json",
+      "blob": "eb13d731388de309c46332c355938ec6a0db7587",
+      "size": 5360
+    },
+    {
+      "path": "archify/test/fixtures/v1-baseline/cache-miss-request.sequence.json",
+      "blob": "6a10a97ecd962512fd8f5d9bf85417e7e036715b",
+      "size": 3550
+    },
+    {
+      "path": "archify/test/fixtures/v1-baseline/event-stream.dataflow.json",
+      "blob": "e7cc500295908d715778c3587d994b40319e9cf2",
+      "size": 5433
+    },
+    {
+      "path": "archify/test/fixtures/v1-baseline/product-analytics.dataflow.json",
+      "blob": "09b1f8b278b3d626c333b372b2fdbaf84bbdf9a8",
+      "size": 4827
+    },
+    {
+      "path": "archify/test/fixtures/v1-baseline/production-deployment.architecture.json",
+      "blob": "9150768979f4c0e704214ef2250da9a8b90c6111",
+      "size": 5454
+    },
+    {
+      "path": "archify/test/fixtures/v1-baseline/web-app.architecture.json",
+      "blob": "87df60afd953acbf00e625a4442c2e6c86b11b91",
+      "size": 3021
+    },
+    {
+      "path": "archify/test/fixtures/v1-workflow-700x400.workflow.json",
+      "blob": "722124246f7a93558fcbe0ea3a5511eae8390822",
+      "size": 915
+    },
+    {
+      "path": "archify/test/fixtures/v1-workflow-explicit-coordinates.workflow.json",
+      "blob": "203be26673968c05e4441d1287b59bf10c9b58fe",
+      "size": 1432
+    },
+    {
+      "path": "archify/test/focus-browser.test.mjs",
+      "blob": "d1f88741ea112454e9b122a2936d4173b1da392d",
+      "size": 29709
+    },
+    {
+      "path": "archify/test/gallery.test.mjs",
+      "blob": "1a8058d17e9dffcdd99f5a766015cfafdaf5ad61",
+      "size": 7206
+    },
+    {
+      "path": "archify/test/generate-validators.test.mjs",
+      "blob": "3d5df07046ebc5905953bf0076d53f6a7b22421e",
+      "size": 2300
+    },
+    {
+      "path": "archify/test/generate-viewer.test.mjs",
+      "blob": "1de23f7e000306a5141197f7101eca25d915428f",
+      "size": 8188
+    },
+    {
+      "path": "archify/test/generated-artifact-xml.test.mjs",
+      "blob": "22e7a7af3187c7782785bbd15fcef121f9368243",
+      "size": 3754
+    },
+    {
+      "path": "archify/test/geometry.test.mjs",
+      "blob": "2b93f8c4a87df639e5fadc36e4233f86ecf0f3ff",
+      "size": 32303
+    },
+    {
+      "path": "archify/test/golden.mjs",
+      "blob": "bbdae366089858a2f20b4ac717bb7decdf0eed04",
+      "size": 9400
+    },
+    {
+      "path": "archify/test/grid.test.mjs",
+      "blob": "4154d847bedb4474221be0bb168eb9d36a8ad9f6",
+      "size": 1751
+    },
+    {
+      "path": "archify/test/guide-page.test.mjs",
+      "blob": "227e0dc5607dcbf8bb61520a9423d444374e010d",
+      "size": 2492
+    },
+    {
+      "path": "archify/test/guide.test.mjs",
+      "blob": "939cba0f7f06de1c2c6f1d8ed49a52568e438ad0",
+      "size": 3353
+    },
+    {
+      "path": "archify/test/guided-views-browser.test.mjs",
+      "blob": "642d1d4aa5a5499a282933f049c85f7034ec35db",
+      "size": 41323
+    },
+    {
+      "path": "archify/test/guided-views.test.mjs",
+      "blob": "544b5ffd7d89b9929b03653432181b0ddaf8d0ea",
+      "size": 7547
+    },
+    {
+      "path": "archify/test/helpers/desktop-browser.mjs",
+      "blob": "00bc1f466da9cee985a2d46b6f1d6786ef662c76",
+      "size": 2237
+    },
+    {
+      "path": "archify/test/helpers/offline-fonts.mjs",
+      "blob": "d5beebf10ecf9afb4311cad3829ab189c3daa341",
+      "size": 5252
+    },
+    {
+      "path": "archify/test/helpers/viewer-click.mjs",
+      "blob": "85aae826d5ec88db49a443906ce317e6321263e3",
+      "size": 3497
+    },
+    {
+      "path": "archify/test/helpers/xml.mjs",
+      "blob": "84c006df5ac46d815d347641b29a2c7bc3c913d8",
+      "size": 1273
+    },
+    {
+      "path": "archify/test/i18n.test.mjs",
+      "blob": "a93d433bb074e784cbfb16c4a47cb6a18cf31b26",
+      "size": 17690
+    },
+    {
+      "path": "archify/test/intent-trace-browser.test.mjs",
+      "blob": "497e0934c334db4dc301131fc14cff7e0b50906e",
+      "size": 21100
+    },
+    {
+      "path": "archify/test/intent-trace.test.mjs",
+      "blob": "04d702e7caec42174b8d53da3d26dde3291c5959",
+      "size": 5747
+    },
+    {
+      "path": "archify/test/landing.test.mjs",
+      "blob": "340241c482b6c8ef0b72c18e5da3458c9ec78bfe",
+      "size": 5558
+    },
+    {
+      "path": "archify/test/layout-rules.test.mjs",
+      "blob": "433f39750a84d124c4e72048745bb206fd8873d0",
+      "size": 64653
+    },
+    {
+      "path": "archify/test/legend-contract.test.mjs",
+      "blob": "978f951e373180a8a3922492fa5afa41819642ca",
+      "size": 17144
+    },
+    {
+      "path": "archify/test/motion-governor-browser.test.mjs",
+      "blob": "4f64469a568d4587e663e9177fc6ef22e2d6daa2",
+      "size": 21921
+    },
+    {
+      "path": "archify/test/motion-governor.test.mjs",
+      "blob": "e3d216303b586995df87410593a25fe985be6096",
+      "size": 6425
+    },
+    {
+      "path": "archify/test/offline-font-browser.test.mjs",
+      "blob": "717401ef1a1feeb78ed9513c4945f2dc3e4c098e",
+      "size": 12385
+    },
+    {
+      "path": "archify/test/offline-self-containment.test.mjs",
+      "blob": "9175447bce10a16f2628f80c745c8c9048c10a0e",
+      "size": 5488
+    },
+    {
+      "path": "archify/test/open-artifact.test.mjs",
+      "blob": "22be2813e2f7a6f3841a7429f3c4e094365481fa",
+      "size": 3128
+    },
+    {
+      "path": "archify/test/ordinary-model-floor.test.mjs",
+      "blob": "eab980adb184f36ed7d17afcb65ee13ae1bf7a66",
+      "size": 43283
+    },
+    {
+      "path": "archify/test/output-path.test.mjs",
+      "blob": "51a545181ee622fc8bd23169fcb9f8877dea34dc",
+      "size": 23923
+    },
+    {
+      "path": "archify/test/presentation.test.mjs",
+      "blob": "57fd6a72781573dafac09596fa2714a8fa52bc33",
+      "size": 3268
+    },
+    {
+      "path": "archify/test/preset-tryon.test.mjs",
+      "blob": "37c55dd43d9797e2d2d59a5274c71d93c2ab6322",
+      "size": 5476
+    },
+    {
+      "path": "archify/test/preview-contract.test.mjs",
+      "blob": "ccf5bb262f5ba1aec6957191571783b181a4409c",
+      "size": 2066
+    },
+    {
+      "path": "archify/test/preview.test.mjs",
+      "blob": "6ffd8cde20cb9daf5713bbcec68985926b2c11e5",
+      "size": 24185
+    },
+    {
+      "path": "archify/test/proof-aperture.test.mjs",
+      "blob": "97a869fb7033ef8464b4a86e80f4bed8c80017e7",
+      "size": 4540
+    },
+    {
+      "path": "archify/test/reach-share-card.test.mjs",
+      "blob": "d98342d73fd970d2a4e6a0dc1fecfd32c134e22d",
+      "size": 8431
+    },
+    {
+      "path": "archify/test/reader-layout-browser.test.mjs",
+      "blob": "f5f46b3351d49e01784485e27c7c43932d0de0b1",
+      "size": 17781
+    },
+    {
+      "path": "archify/test/readme-showcase.test.mjs",
+      "blob": "a5d830e7cb786c9ed938aa35f69cd3ff877bbe78",
+      "size": 15353
+    },
+    {
+      "path": "archify/test/real-repository-proof.test.mjs",
+      "blob": "a6597f10b348075642bba75275009f3a3ab1a1c1",
+      "size": 9086
+    },
+    {
+      "path": "archify/test/relationship-direct-explorer.test.mjs",
+      "blob": "d3805b28b5375614dd1233dd8d1479119ed35fad",
+      "size": 6442
+    },
+    {
+      "path": "archify/test/relationship-lens.test.mjs",
+      "blob": "e86ed94cec0cc10ee553459f7c7bf432bfe16935",
+      "size": 7313
+    },
+    {
+      "path": "archify/test/relationship-permalink.test.mjs",
+      "blob": "fc50ef7252e845caa4279ba6224579b006543ce6",
+      "size": 6605
+    },
+    {
+      "path": "archify/test/relationship-pulse.test.mjs",
+      "blob": "fd01a00d23af9926e6836b6abfa121137d701a2f",
+      "size": 6730
+    },
+    {
+      "path": "archify/test/release-identity.test.mjs",
+      "blob": "ca7232c4dc96c60a2e27e282d928c932cae57d90",
+      "size": 21361
+    },
+    {
+      "path": "archify/test/release-package-gates.test.mjs",
+      "blob": "8c6a98802fedbb0cfcc54ec69b28d53b649afe33",
+      "size": 37636
+    },
+    {
+      "path": "archify/test/render-output-checks.test.mjs",
+      "blob": "7b02ba37c716e0ad9a5f169e2ac5915350c2eeab",
+      "size": 32298
+    },
+    {
+      "path": "archify/test/renderer-diagnostic-boundary.test.mjs",
+      "blob": "15b79601176fcc1564ecee91740cba6b45e63009",
+      "size": 4479
+    },
+    {
+      "path": "archify/test/repair-receipt.test.mjs",
+      "blob": "faf4329379bd2100b402b613539f04ed51b3836e",
+      "size": 8065
+    },
+    {
+      "path": "archify/test/repository-evidence-replacement.test.mjs",
+      "blob": "bc58b943001032ca4fa707db23ad3d5d5cc3c549",
+      "size": 6960
+    },
+    {
+      "path": "archify/test/repository-evidence.test.mjs",
+      "blob": "0d548defb1beb95216d5b1fbc486ea88ce6c92bd",
+      "size": 32813
+    },
+    {
+      "path": "archify/test/repository-language-metadata.test.mjs",
+      "blob": "328b750889acf3672fdfa3a5ff7099c05b151f51",
+      "size": 2131
+    },
+    {
+      "path": "archify/test/route-journey.test.mjs",
+      "blob": "e84c5fe88c12ea34748a390986ad39d74d7800a1",
+      "size": 8330
+    },
+    {
+      "path": "archify/test/route-probe-browser.test.mjs",
+      "blob": "2438ba26747f0f3923fcf885fca594219db8ef20",
+      "size": 36516
+    },
+    {
+      "path": "archify/test/route-probe.test.mjs",
+      "blob": "1cb6fea3777d4fae5a949318d041701da19965b0",
+      "size": 6334
+    },
+    {
+      "path": "archify/test/route-share-card.test.mjs",
+      "blob": "b501112fcf5c5da427bba4179d72b2311bb2d037",
+      "size": 9588
+    },
+    {
+      "path": "archify/test/semantic-camera.test.mjs",
+      "blob": "0b5da3bdbb30d9219f5ff8f9ff8705af9eb69a1d",
+      "size": 4862
+    },
+    {
+      "path": "archify/test/semantic-flow.test.mjs",
+      "blob": "a71d476d3eb0654e140decc043e2bc8e6423af81",
+      "size": 4797
+    },
+    {
+      "path": "archify/test/semantic-legend-gateway.test.mjs",
+      "blob": "3d8a711fdcaff81b5bc86c10ebdd5662a44c5351",
+      "size": 7720
+    },
+    {
+      "path": "archify/test/semantic-lens-browser.test.mjs",
+      "blob": "a22af4a247da2cd77abc86dcf25960abb6c16695",
+      "size": 34053
+    },
+    {
+      "path": "archify/test/semantic-lens.test.mjs",
+      "blob": "5ec17ade2e0673ca176aabdb91f882d434837e1d",
+      "size": 5573
+    },
+    {
+      "path": "archify/test/semantic-passport.test.mjs",
+      "blob": "1e5c17ac0c1c861c00de9bb3faa99cb3ae5ef8f6",
+      "size": 5818
+    },
+    {
+      "path": "archify/test/semantic-radar.test.mjs",
+      "blob": "8149d14c9b70dbbc8aa93dd6e9c72d797b5eb5d3",
+      "size": 37147
+    },
+    {
+      "path": "archify/test/semantic-zoom.test.mjs",
+      "blob": "7cba629527255892865744789eda81d6842d5f44",
+      "size": 4439
+    },
+    {
+      "path": "archify/test/sequence-column-fit.test.mjs",
+      "blob": "e8917d87c81d690fdd09e7f0a121d2bb193186ca",
+      "size": 6033
+    },
+    {
+      "path": "archify/test/settled-flow.test.mjs",
+      "blob": "665456c8ef455e094da2140abb6136381c1450ee",
+      "size": 5297
+    },
+    {
+      "path": "archify/test/share-card-export.test.mjs",
+      "blob": "52977011c71c5ca026a8b8ea1a0aff459cbd564b",
+      "size": 7039
+    },
+    {
+      "path": "archify/test/site-language-continuity.test.mjs",
+      "blob": "eca5e52d9baab9f799d612e2d72ea12435770d67",
+      "size": 25614
+    },
+    {
+      "path": "archify/test/site-language-integration.mjs",
+      "blob": "50e6e404b922879368f37c0d49946da3e1b8a4e2",
+      "size": 377
+    },
+    {
+      "path": "archify/test/skill-metadata.test.mjs",
+      "blob": "589fdd4d836a9d56d224b986cda88bc345050120",
+      "size": 4862
+    },
+    {
+      "path": "archify/test/stable-update-manifest.test.mjs",
+      "blob": "3837ede6e4e70f177a48c4e87c94ad8049eaded0",
+      "size": 6634
+    },
+    {
+      "path": "archify/test/start-page.test.mjs",
+      "blob": "a774f4d81df9dc7780fefaf42d9757f31a62fb74",
+      "size": 14020
+    },
+    {
+      "path": "archify/test/story-beat-navigator.test.mjs",
+      "blob": "058e1e3f0b443856194df4ed0bf4a73b9f26905e",
+      "size": 6583
+    },
+    {
+      "path": "archify/test/story-carrier.test.mjs",
+      "blob": "73303feb3269f76597422f958d7855ebdf83ec37",
+      "size": 4838
+    },
+    {
+      "path": "archify/test/story-director-strip.test.mjs",
+      "blob": "87a4feb39cbef9a3566863a205bd82940a3a8569",
+      "size": 5099
+    },
+    {
+      "path": "archify/test/story-follow-camera.test.mjs",
+      "blob": "b33a717fa9464348e5f72caa8069fa148603f81d",
+      "size": 5952
+    },
+    {
+      "path": "archify/test/story-horizon.test.mjs",
+      "blob": "2b378875ec4ba04553a8f26e60966dcb0f6bf39f",
+      "size": 5473
+    },
+    {
+      "path": "archify/test/story-moment-link.test.mjs",
+      "blob": "345dfa275d87c350474efab751a9cf22e56c54c7",
+      "size": 5771
+    },
+    {
+      "path": "archify/test/story-shelf.test.mjs",
+      "blob": "d079cc3565e654ae964d3ad15c5241d7a511eeaa",
+      "size": 4836
+    },
+    {
+      "path": "archify/test/story-trail.test.mjs",
+      "blob": "e4ef0130e5d65aee8d51079c8bbf05d51259ff17",
+      "size": 4226
+    },
+    {
+      "path": "archify/test/toolbar-polish.test.mjs",
+      "blob": "34d8330ab0d022577be6b75af5e00c6111751ea2",
+      "size": 4060
+    },
+    {
+      "path": "archify/test/update-contract.test.mjs",
+      "blob": "2ddf539d1af36b4fe718324ed3b13c29b394cec9",
+      "size": 4862
+    },
+    {
+      "path": "archify/test/update-notifier.test.mjs",
+      "blob": "8d9b6781dba624c1223fd3fe5f10f2471789536e",
+      "size": 123824
+    },
+    {
+      "path": "archify/test/v1-compatibility.test.mjs",
+      "blob": "21c6f9cbda8410ffd542079f21dbf27eceabdf9c",
+      "size": 12765
+    },
+    {
+      "path": "archify/test/vertical-edge.test.mjs",
+      "blob": "ba13e3b226de5255af7aa2310ea6493a98c10c04",
+      "size": 2773
+    },
+    {
+      "path": "archify/test/viewer-camera-browser.test.mjs",
+      "blob": "f25fded7f6a528850da371a2ee0e35c4949c795e",
+      "size": 21236
+    },
+    {
+      "path": "archify/test/viewer-chrome-layout.test.mjs",
+      "blob": "310bd3dcccd2babb23a50549ea60b4e5d722b7c2",
+      "size": 53849
+    },
+    {
+      "path": "archify/test/viewer-identifiers-browser.test.mjs",
+      "blob": "a5a6f8b4ca00a00d7d65df2c6ffdf12ab8b0c70b",
+      "size": 8369
+    },
+    {
+      "path": "archify/test/visual-check.test.mjs",
+      "blob": "2f488144a465a7ab943614984125fc41b5586264",
+      "size": 16230
+    },
+    {
+      "path": "archify/test/webm-artifact.smoke.mjs",
+      "blob": "8b96b22abfea5bccdf2233f3bac050068d97b279",
+      "size": 100891
+    },
+    {
+      "path": "archify/test/workflow-compiler-hard-contract.test.mjs",
+      "blob": "4dc8e501614dd66bd55f44e6fde1679655184395",
+      "size": 87090
+    },
+    {
+      "path": "archify/test/workflow-compiler.test.mjs",
+      "blob": "5266aaa1fae13caae944cef4ed3b0c0367a0d432",
+      "size": 44138
+    },
+    {
+      "path": "archify/test/workflow-migration.test.mjs",
+      "blob": "5ac01096df45519cdc769b97186db76d55949817",
+      "size": 25724
+    },
+    {
+      "path": "archify/test/workflow-semantic-contract.test.mjs",
+      "blob": "0653e1b78aa2e07440f9fe88d42b025dbd9699bb",
+      "size": 4565
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/README.md",
+      "blob": "44cea4cc0cb889a16dd6a2d1e7c9d016ab6d7ed9",
+      "size": 8484
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/benchmark.mjs",
+      "blob": "ec47764c504f528bbebe3c0b0c76633834c1a3ef",
+      "size": 20058
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/cases/agent-run.lifecycle.case.json",
+      "blob": "08930a4b4b69693e28bacdc17f1772f62011df2c",
+      "size": 1589
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/cases/agent-tool-call.workflow.case.json",
+      "blob": "e9e0f9096cd30f9ad2295a9e9c0878b7226ec7b8",
+      "size": 1338
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/cases/cache-miss.sequence.case.json",
+      "blob": "40e5524e7fa6884dbcd289b576494d6718b7533c",
+      "size": 1244
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/cases/product-analytics.dataflow.case.json",
+      "blob": "49c09da62cd7161c745847dad3f844c61ba7d1e2",
+      "size": 1707
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/cases/web-runtime.architecture.case.json",
+      "blob": "ff2cc0c3f702e6bcd9ffb799accfb3bc309a01bf",
+      "size": 919
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/manifest.json",
+      "blob": "df305490ddffc301621c2b8a1dad58133b5c7937",
+      "size": 1160
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/prompts/agent-run.lifecycle.md",
+      "blob": "4aa0de4c8cef446a69c41d4e9a50c557ae3288ab",
+      "size": 1095
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/prompts/agent-tool-call.workflow.md",
+      "blob": "a43ebdd4c00c24a47297c8246e19b61c4feabbf4",
+      "size": 1088
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/prompts/cache-miss.sequence.md",
+      "blob": "814d3b0c9c9b33a7d148d5f6a0f7da61612d23f2",
+      "size": 1049
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/prompts/product-analytics.dataflow.md",
+      "blob": "f8462ea5f280fba4fc3123d2353a37b4164fff7f",
+      "size": 1081
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/prompts/web-runtime.architecture.md",
+      "blob": "b011fbb15516b46c9f0949495df232447545ba09",
+      "size": 1080
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/results/2026-07-26-pi-three-models-postfix.json",
+      "blob": "239668a4a8281e5e4b669c4a4d260fbc01985549",
+      "size": 174998
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/results/2026-07-26-pi-three-models-quality-first.json",
+      "blob": "7aa50632424ff3edf73b2d662efa64fcc2674734",
+      "size": 169515
+    },
+    {
+      "path": "benchmarks/ordinary-model-floor/results/2026-07-26-pi-three-models.json",
+      "blob": "4bd32ce6c0079bad00e99eacdd7d104a0b889576",
+      "size": 161782
+    },
+    {
+      "path": "docs/.nojekyll",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "docs/article-archify.md",
+      "blob": "5a0159fa1c416460fb7d8301f85a5dd8a318ab04",
+      "size": 12446
+    },
+    {
+      "path": "docs/article-cover.jpg",
+      "blob": "5ab1a2956939b07e349e5e972645a4fb29ec8f96",
+      "size": 221512
+    },
+    {
+      "path": "docs/article-experiment.jpg",
+      "blob": "2ca6b65f5e16ac280024e715b22b599bfd61b19e",
+      "size": 157193
+    },
+    {
+      "path": "docs/article-killed.jpg",
+      "blob": "f886d3737ebb37d7eb68c78c5a2599d8d31225fa",
+      "size": 157840
+    },
+    {
+      "path": "docs/article-layout-compare.jpg",
+      "blob": "7426d4edabfb0f4dbe15d1a501a5ef6e97751279",
+      "size": 108442
+    },
+    {
+      "path": "docs/article-pipeline.jpg",
+      "blob": "64e89747b6bf404dff3d76f1ee87be4aaeb66045",
+      "size": 191858
+    },
+    {
+      "path": "docs/artifact-install-v2-measurement.md",
+      "blob": "4d219bfa2a8dbd0038a824a621180a4fadd96181",
+      "size": 3523
+    },
+    {
+      "path": "docs/assets/archify-architecture.png",
+      "blob": "a02041b2992dbbf729842e5a0b613bdba384128c",
+      "size": 166782
+    },
+    {
+      "path": "docs/assets/archify-dark.png",
+      "blob": "481b67518e6464ef898aea4f2a80528f6574dce7",
+      "size": 81372
+    },
+    {
+      "path": "docs/assets/archify-dataflow.png",
+      "blob": "f327262898ff99c53401b8931f705e532a9a91df",
+      "size": 254871
+    },
+    {
+      "path": "docs/assets/archify-demo-lens.png",
+      "blob": "e69bfbe3c5df4e216555bf46342156e62a90cdd2",
+      "size": 168877
+    },
+    {
+      "path": "docs/assets/archify-demo-route.png",
+      "blob": "412bd28f58d14ce5a58a58ed023c496396a2acac",
+      "size": 168823
+    },
+    {
+      "path": "docs/assets/archify-demo-story.png",
+      "blob": "96cf9f40d89c344e3586f4d33a14ed4995628390",
+      "size": 258165
+    },
+    {
+      "path": "docs/assets/archify-lifecycle.png",
+      "blob": "76a6f8d4ba3a68b8e3cbb9728bcee00a9d725354",
+      "size": 259270
+    },
+    {
+      "path": "docs/assets/archify-light.png",
+      "blob": "dbf8d738d1f68144ff5357bc90e88fe7d4f95a4c",
+      "size": 81383
+    },
+    {
+      "path": "docs/assets/archify-live-proof.gif",
+      "blob": "45f9bd4ff65db28f8f212b56450c7fe141b3d58a",
+      "size": 1796065
+    },
+    {
+      "path": "docs/assets/archify-live-proof.json",
+      "blob": "70f447fae8b1f2dab4f63a4ed4ea7010f1f56f4c",
+      "size": 1460
+    },
+    {
+      "path": "docs/assets/archify-menu.png",
+      "blob": "9c60a8d1cef56e0e6d086b5bbdc37841da807723",
+      "size": 151539
+    },
+    {
+      "path": "docs/assets/archify-readme-hero.png",
+      "blob": "ae202d1f7ab1b64cbde536b40a8d48d73682ba38",
+      "size": 1057147
+    },
+    {
+      "path": "docs/assets/archify-route-share-card.png",
+      "blob": "ffcec13ae23b11b36177a77e53a9d9545faa2010",
+      "size": 84638
+    },
+    {
+      "path": "docs/assets/archify-sequence.png",
+      "blob": "7e4c3f9a73914a67ebfdbc4d6faaf1231c7cb557",
+      "size": 273571
+    },
+    {
+      "path": "docs/assets/archify-social-preview.png",
+      "blob": "a0967d7af59ffee386932d27867e7cec51c5b7ec",
+      "size": 630361
+    },
+    {
+      "path": "docs/assets/archify-workflow.png",
+      "blob": "141937e22b37aac7a18112a25fe68f98857a2ab7",
+      "size": 280967
+    },
+    {
+      "path": "docs/assets/architecture-delta-proof.jpg",
+      "blob": "ad7bfbdb05abbdbf14782a65cbca8b8ac1813a1a",
+      "size": 56109
+    },
+    {
+      "path": "docs/assets/claude-skills-settings.png",
+      "blob": "06984671e240e879ccdb735cdf2c0a68bed67dc0",
+      "size": 69596
+    },
+    {
+      "path": "docs/assets/mco-runtime-reach-share-card.png",
+      "blob": "590b267e0a57aff38001c5437be753d91d59fb5d",
+      "size": 116070
+    },
+    {
+      "path": "docs/assets/mco-runtime-share-card.png",
+      "blob": "7acc4fb15e64630d4432d445cc9fb9656b1e9287",
+      "size": 128236
+    },
+    {
+      "path": "docs/assets/site-language.js",
+      "blob": "5e12b7572be8cd92b68377b71b41c7e6e99742d6",
+      "size": 1573
+    },
+    {
+      "path": "docs/assets/site-navigation.css",
+      "blob": "4a0ef2e4848ae15882d6f2d98c6a485f7d96eda1",
+      "size": 2937
+    },
+    {
+      "path": "docs/assets/sponsors/apinebula-archify.jpg",
+      "blob": "f364d09d494a8a9ba8c78858e028122f8f522133",
+      "size": 146459
+    },
+    {
+      "path": "docs/assets/sponsors/evermind-archify-raven.png",
+      "blob": "e90c2f0995c24d58485297ab75cc8ea40b99a723",
+      "size": 64249
+    },
+    {
+      "path": "docs/authoring-cookbook.md",
+      "blob": "c680bf15d6a0e5cfb3337f595c22cea32101927a",
+      "size": 5220
+    },
+    {
+      "path": "docs/authoring-cookbook.zh-CN.md",
+      "blob": "f9a24988f796e5b23221c63a1fadd03696995a2f",
+      "size": 5075
+    },
+    {
+      "path": "docs/cases/mco-runtime.architecture.html",
+      "blob": "ff783503e5179124f0ced25cb7f9daa5250c80eb",
+      "size": 822769
+    },
+    {
+      "path": "docs/cases/mco-runtime.architecture.json",
+      "blob": "ea0b3eab0436addccc680f970e875751a7d3a337",
+      "size": 8959
+    },
+    {
+      "path": "docs/cursor-acceptance-2026-07.md",
+      "blob": "759d46bbb692bbc31fe9c81ce62160a96be943c4",
+      "size": 3575
+    },
+    {
+      "path": "docs/deployment-ownership-profile-acceptance-2026-07-23.md",
+      "blob": "1c091f50a6a3caf6634cbc2ed0f9ee6756de4257",
+      "size": 5218
+    },
+    {
+      "path": "docs/gallery.html",
+      "blob": "336d6620aa465815602556ef19a495ae45ceb15a",
+      "size": 94987
+    },
+    {
+      "path": "docs/gallery/artifacts/agent-run.lifecycle.html",
+      "blob": "37c84d2fd7fc92860544cc6ca107e2e36c4290d6",
+      "size": 810174
+    },
+    {
+      "path": "docs/gallery/artifacts/agent-tool-call.workflow.html",
+      "blob": "213061611eef203a2221ebdf904f299925b2b578",
+      "size": 819631
+    },
+    {
+      "path": "docs/gallery/artifacts/async-job-roundtrip.sequence.html",
+      "blob": "b0b2484714014530dfc749fe3ef654ac19322347",
+      "size": 813845
+    },
+    {
+      "path": "docs/gallery/artifacts/cache-miss.sequence.html",
+      "blob": "9fa75af288f8386ab880567f8910575ccb1e947c",
+      "size": 814754
+    },
+    {
+      "path": "docs/gallery/artifacts/deployment-release.lifecycle.html",
+      "blob": "c68f861833f587517abd16dfaacabf0f07830615",
+      "size": 811716
+    },
+    {
+      "path": "docs/gallery/artifacts/event-stream.dataflow.html",
+      "blob": "8a5d076a308d4a454bf073ca416055cc6734491f",
+      "size": 821052
+    },
+    {
+      "path": "docs/gallery/artifacts/incident-response.workflow.html",
+      "blob": "9d67203c1ee2bf2ccfd0a221d1a853fd357078f1",
+      "size": 813160
+    },
+    {
+      "path": "docs/gallery/artifacts/product-analytics.dataflow.html",
+      "blob": "5eacdc4a4056107b6677bf3e889823bd34e8c59a",
+      "size": 817071
+    },
+    {
+      "path": "docs/gallery/artifacts/production-deployment.architecture.html",
+      "blob": "fd058c7edf1ea858121848c5de73f45a708ae8d9",
+      "size": 821465
+    },
+    {
+      "path": "docs/gallery/artifacts/release-delivery.workflow.html",
+      "blob": "625e2e0715d8c8593a296dc1b12c83abc18d3720",
+      "size": 815831
+    },
+    {
+      "path": "docs/gallery/artifacts/web-app.architecture.html",
+      "blob": "0493a68429da4a04e02e6cafc2ba9e76a5d1d4e5",
+      "size": 811809
+    },
+    {
+      "path": "docs/gallery/manifest.json",
+      "blob": "e6accd1903b64ae2948b82ea53c88529a3c25183",
+      "size": 29748
+    },
+    {
+      "path": "docs/gallery/sources/agent-run.lifecycle.json",
+      "blob": "fc1deb87fbed22b817efa943b029868c97205d7f",
+      "size": 4044
+    },
+    {
+      "path": "docs/gallery/sources/agent-tool-call.workflow.json",
+      "blob": "c8c31995ab70ef0c570677dbaf8fb02c452f3250",
+      "size": 5687
+    },
+    {
+      "path": "docs/gallery/sources/async-job-roundtrip.sequence.json",
+      "blob": "351104966631e17a490c594c4d614b9547a65576",
+      "size": 4370
+    },
+    {
+      "path": "docs/gallery/sources/cache-miss-request.sequence.json",
+      "blob": "f3247780e3f337e2179a4cabee22f4794eaa94ca",
+      "size": 4374
+    },
+    {
+      "path": "docs/gallery/sources/deployment-release.lifecycle.json",
+      "blob": "ba87dc22eb3624b3d1ac4dd094b922d0fd20a436",
+      "size": 4274
+    },
+    {
+      "path": "docs/gallery/sources/event-stream.dataflow.json",
+      "blob": "e7cc500295908d715778c3587d994b40319e9cf2",
+      "size": 5433
+    },
+    {
+      "path": "docs/gallery/sources/incident-response.workflow.json",
+      "blob": "7446e55f29d73b1fceb1fc0b03a86b374fdb3db4",
+      "size": 5375
+    },
+    {
+      "path": "docs/gallery/sources/product-analytics.dataflow.json",
+      "blob": "62a50d914ec19a1830a5bc845cc50fbbdeb68d98",
+      "size": 5618
+    },
+    {
+      "path": "docs/gallery/sources/production-deployment.architecture.json",
+      "blob": "472cb83e5b92f7937c3e0a522fc90402d9e301bb",
+      "size": 5476
+    },
+    {
+      "path": "docs/gallery/sources/release-delivery.workflow.json",
+      "blob": "915e39c47e095b99cab59f9525071fdfa97d0914",
+      "size": 5164
+    },
+    {
+      "path": "docs/gallery/sources/web-app.architecture.json",
+      "blob": "9f6cb1404b005bd2feff1274cee73a1e94a2ae2c",
+      "size": 3793
+    },
+    {
+      "path": "docs/guide.html",
+      "blob": "77bbdbe65f0118972c5729e5065954746093bed0",
+      "size": 63403
+    },
+    {
+      "path": "docs/index.html",
+      "blob": "e76e773cc604bbd7d622245cb0bc88df0608ac5a",
+      "size": 83713
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/README.md",
+      "blob": "00a6d554cc07c74728d66ddeabbceb1dc495e08e",
+      "size": 2275
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/after-dataflow-dark.png",
+      "blob": "078a5bdfdaa9b9bcb56d23e5eadc502691f62e56",
+      "size": 57298
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/after-dataflow-light.png",
+      "blob": "fcd22ac7f2677809c571c8ae0a52813237730c16",
+      "size": 56912
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/after-lifecycle-dark.png",
+      "blob": "7f713c094c0cbaac4179cf023854f98e825fc811",
+      "size": 56640
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/after-lifecycle-light.png",
+      "blob": "6abe8f1d73c2c2df27ae4f241b249f3800574529",
+      "size": 56897
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/before-dataflow-dark.png",
+      "blob": "6a8882453b05331e2e7e41399425ae55eb6c5464",
+      "size": 61048
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/before-dataflow-light.png",
+      "blob": "9037ac9469c42c598f711ae5d444830a7374af3b",
+      "size": 60475
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/before-lifecycle-dark.png",
+      "blob": "c47ca77b54a7d2b90b28c71b832d1ebd5a821e0a",
+      "size": 58575
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/before-lifecycle-light.png",
+      "blob": "c202d713d54b6109eb2767c4ca5267a03665793b",
+      "size": 58716
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/browser-results.json",
+      "blob": "3c7b8903732b196df6799b6c6ccb0ab171bd21fe",
+      "size": 2942
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/contact-sheet.png",
+      "blob": "cd3263dc1a16763090036f717bd3b3e9b8db43c2",
+      "size": 156484
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/dataflow-repro.json",
+      "blob": "028e514ee9b2311c765d9b2ffac664335329f3dc",
+      "size": 441
+    },
+    {
+      "path": "docs/issue-52-visual-evidence/lifecycle-repro.json",
+      "blob": "482a0a585fbbc395b92c15fef9e46665376b78a6",
+      "size": 583
+    },
+    {
+      "path": "docs/research-architecture-delta-pr-proof-2026-07-23.md",
+      "blob": "2c3cac18efb494e8d192f31a2595f3ac75a0f71f",
+      "size": 26346
+    },
+    {
+      "path": "docs/research-authored-reachability-2026-07-23.md",
+      "blob": "902f91ff52474cdf1c5b9ea1654efa0cb6a7d1eb",
+      "size": 2847
+    },
+    {
+      "path": "docs/research-cursor-onboarding-2026-07.md",
+      "blob": "2b28e8cdf6a801bc850399505ae71595743f6cd1",
+      "size": 16436
+    },
+    {
+      "path": "docs/research-editorial-preset-2026-07-23.md",
+      "blob": "c0dbbf4785bb0fd2149a0f121e12141c060fe8a0",
+      "size": 4664
+    },
+    {
+      "path": "docs/research-evidence-beacons-2026-07-23.md",
+      "blob": "039b683ef9a7e426f4d47fc48ac4b550c1d464aa",
+      "size": 2694
+    },
+    {
+      "path": "docs/research-fireworks-tech-graph.md",
+      "blob": "b92c3b99cbd427b1bb6efb4125776511eae8599d",
+      "size": 10802
+    },
+    {
+      "path": "docs/research-next-delight-slice-2026-07-22.md",
+      "blob": "1a5c1d777d51a88cd42884ff2290049b15d830ff",
+      "size": 17519
+    },
+    {
+      "path": "docs/research-next-stability-delight-2026-07-23.md",
+      "blob": "8ca6ffc602f548cad6b7e4b4f278ad35c03f6f43",
+      "size": 17006
+    },
+    {
+      "path": "docs/research-next-stability-delight-slice-2026-07-23.md",
+      "blob": "f0c7d208f934c83a788dbfc793c9d1a62d417072",
+      "size": 25407
+    },
+    {
+      "path": "docs/research-next-stability-growth-slice-2026-07.md",
+      "blob": "583f81c8ff8e58ad956d32f64831d2649ab60789",
+      "size": 16043
+    },
+    {
+      "path": "docs/research-reach-share-card-2026-07-23.md",
+      "blob": "6f4726fad7c91bc8e434f524223571dba1436c6e",
+      "size": 3630
+    },
+    {
+      "path": "docs/research-repo-evidence-passport-2026-07-23.md",
+      "blob": "29951dca0f635bf6314d0ea767f19152c74eb6fc",
+      "size": 4101
+    },
+    {
+      "path": "docs/research-trustworthy-first-diagram-slice.md",
+      "blob": "30b22bffbb75d60abf38f994b52b76b24b71943e",
+      "size": 21301
+    },
+    {
+      "path": "docs/research-visual-evolution-round-10.md",
+      "blob": "abf5f2d8a14b25af56902a2beba4c62e2f2e8a9c",
+      "size": 2507
+    },
+    {
+      "path": "docs/research-visual-evolution-round-11.md",
+      "blob": "94205871c0a26858d1043df6c536d933d4cc8a0a",
+      "size": 2944
+    },
+    {
+      "path": "docs/research-visual-evolution-round-12.md",
+      "blob": "ebf803eaed0a1efa529a0e923af84ec280580c52",
+      "size": 3491
+    },
+    {
+      "path": "docs/research-visual-evolution-round-13.md",
+      "blob": "c45f1153ecce13b64c5d913953a98552a5ba4229",
+      "size": 4557
+    },
+    {
+      "path": "docs/research-visual-evolution-round-14.md",
+      "blob": "562a028f377e0fbebce04cfc10bc818d90b260af",
+      "size": 3486
+    },
+    {
+      "path": "docs/research-visual-evolution-round-15.md",
+      "blob": "80882b989c725fed90ae24c4742a4c79a5877fc7",
+      "size": 3868
+    },
+    {
+      "path": "docs/research-visual-evolution-round-16.md",
+      "blob": "b201619a4d93ed0aea9086908a4e4ad579baa41d",
+      "size": 4750
+    },
+    {
+      "path": "docs/research-visual-evolution-round-17.md",
+      "blob": "579150362b9a27147b7499f1576db533d38af31d",
+      "size": 4368
+    },
+    {
+      "path": "docs/research-visual-evolution-round-18.md",
+      "blob": "28302234a323751647bdfb4ac7563f464e66ef1a",
+      "size": 4040
+    },
+    {
+      "path": "docs/research-visual-evolution-round-19.md",
+      "blob": "84c7ecfb6e55b82843329b40539bd568423965aa",
+      "size": 5422
+    },
+    {
+      "path": "docs/research-visual-evolution-round-2.md",
+      "blob": "8066d69b42aca8e13c3c0012928b538c6d1f5e11",
+      "size": 27790
+    },
+    {
+      "path": "docs/research-visual-evolution-round-20.md",
+      "blob": "278fa714f448ef577091be118af107e3b8c0eb04",
+      "size": 4092
+    },
+    {
+      "path": "docs/research-visual-evolution-round-21.md",
+      "blob": "bcf424f20e2a2cb2c59d17916f46dbc8ebee1406",
+      "size": 4017
+    },
+    {
+      "path": "docs/research-visual-evolution-round-22.md",
+      "blob": "ba98e509e73dc05f419a81337dbf32544a5cb58d",
+      "size": 4014
+    },
+    {
+      "path": "docs/research-visual-evolution-round-23.md",
+      "blob": "a5427d591a799340750d1ca65645e76fe5c5b930",
+      "size": 6583
+    },
+    {
+      "path": "docs/research-visual-evolution-round-24.md",
+      "blob": "050488989e2b0d7b50ab2240c6412c7b12a6a75b",
+      "size": 11346
+    },
+    {
+      "path": "docs/research-visual-evolution-round-25.md",
+      "blob": "b13c1e8644c86a1c33510a142da29a19cd36e45e",
+      "size": 18182
+    },
+    {
+      "path": "docs/research-visual-evolution-round-26.md",
+      "blob": "5c2ccf742ba12e555cf5c879700b692e215c06de",
+      "size": 23526
+    },
+    {
+      "path": "docs/research-visual-evolution-round-27.md",
+      "blob": "d1f37bda4b582b8e483954df95f7fece86974d58",
+      "size": 25521
+    },
+    {
+      "path": "docs/research-visual-evolution-round-28.md",
+      "blob": "b81832a127e4f8df70b3e9b6fa5c47b4578679ad",
+      "size": 22122
+    },
+    {
+      "path": "docs/research-visual-evolution-round-29.md",
+      "blob": "3440311cb4b5c3cab87b3060cf76c2991f0e0e27",
+      "size": 36732
+    },
+    {
+      "path": "docs/research-visual-evolution-round-3.md",
+      "blob": "0e89f7596be8bd500470ed53b5f406c98ef7b2fd",
+      "size": 2752
+    },
+    {
+      "path": "docs/research-visual-evolution-round-30.md",
+      "blob": "4aec62400384fc478cf64e30a3e65f14aa6817f3",
+      "size": 11165
+    },
+    {
+      "path": "docs/research-visual-evolution-round-31.md",
+      "blob": "a1489b6679a768ab9f92f178228f757a95a1c2f4",
+      "size": 24053
+    },
+    {
+      "path": "docs/research-visual-evolution-round-32.md",
+      "blob": "4570905755133e414bc4396d4e9990c69531ddef",
+      "size": 28823
+    },
+    {
+      "path": "docs/research-visual-evolution-round-33.md",
+      "blob": "9662e51cee6537ee292bf169c53a834c349ae506",
+      "size": 35677
+    },
+    {
+      "path": "docs/research-visual-evolution-round-34.md",
+      "blob": "f5ace61ff1c4c90f92e6cda4cc2ffe05c8aff92a",
+      "size": 44456
+    },
+    {
+      "path": "docs/research-visual-evolution-round-35.md",
+      "blob": "698c41ed4be6a3a6501b235dfe033eb2ea0f708c",
+      "size": 46864
+    },
+    {
+      "path": "docs/research-visual-evolution-round-36.md",
+      "blob": "147b40fd5baaaf083c84fd22b1576a1c319bc24d",
+      "size": 5250
+    },
+    {
+      "path": "docs/research-visual-evolution-round-37.md",
+      "blob": "fe3f4b93cd77b955b1964f7b38a82085b3d34b8b",
+      "size": 25656
+    },
+    {
+      "path": "docs/research-visual-evolution-round-38.md",
+      "blob": "6bc072068abbbb0fc7f562b57643d0c2e9f6b23b",
+      "size": 20539
+    },
+    {
+      "path": "docs/research-visual-evolution-round-39.md",
+      "blob": "04d7dd510672f41c4fcd4ec44777ea9c57780398",
+      "size": 17388
+    },
+    {
+      "path": "docs/research-visual-evolution-round-4.md",
+      "blob": "daa738e6b10490c67ad980bcea2f3b580be5ca8c",
+      "size": 3788
+    },
+    {
+      "path": "docs/research-visual-evolution-round-40.md",
+      "blob": "fbbeffae3ba0ab68c08cd775152d2db9bd17e3b1",
+      "size": 21158
+    },
+    {
+      "path": "docs/research-visual-evolution-round-41.md",
+      "blob": "15fab80de4f51a0141a876fc51a0d62e744d5836",
+      "size": 14313
+    },
+    {
+      "path": "docs/research-visual-evolution-round-42.md",
+      "blob": "bb2a7ec38ee5fdb423733020cb0dcca7c356e80c",
+      "size": 18604
+    },
+    {
+      "path": "docs/research-visual-evolution-round-43.md",
+      "blob": "9b4949fbb310b521cf494126cd15e29c1e19658f",
+      "size": 20235
+    },
+    {
+      "path": "docs/research-visual-evolution-round-44.md",
+      "blob": "e0126102d7afc59828e9f5c7711af70f1a7269cd",
+      "size": 29481
+    },
+    {
+      "path": "docs/research-visual-evolution-round-45.md",
+      "blob": "77707916c0e0fc71ac3636d6e1ea6973e852ab07",
+      "size": 22854
+    },
+    {
+      "path": "docs/research-visual-evolution-round-46.md",
+      "blob": "1b20b199372f3253af094b57d4a3ba51a5175ee4",
+      "size": 34128
+    },
+    {
+      "path": "docs/research-visual-evolution-round-47.md",
+      "blob": "1f777001388f77313e508248d2ea58247508544b",
+      "size": 6899
+    },
+    {
+      "path": "docs/research-visual-evolution-round-48.md",
+      "blob": "8c960f13cfbdb54743c1b540e70c3f1161d5d903",
+      "size": 4719
+    },
+    {
+      "path": "docs/research-visual-evolution-round-49.md",
+      "blob": "d04bf4aa7380b199674ca856aa4a5a350743e586",
+      "size": 14639
+    },
+    {
+      "path": "docs/research-visual-evolution-round-5.md",
+      "blob": "998e5137465dc340692ee27f005bf0a51f41f5cd",
+      "size": 3051
+    },
+    {
+      "path": "docs/research-visual-evolution-round-6.md",
+      "blob": "b63011498225d18a7a9cd1786a04da5467d8657b",
+      "size": 2169
+    },
+    {
+      "path": "docs/research-visual-evolution-round-7.md",
+      "blob": "2e5f0f5b1f05f393c9db378191efa704ba117862",
+      "size": 2416
+    },
+    {
+      "path": "docs/research-visual-evolution-round-8.md",
+      "blob": "6ab5b84cb05186f79375b91130346702c6389745",
+      "size": 2601
+    },
+    {
+      "path": "docs/research-visual-evolution-round-9.md",
+      "blob": "cc8b575a8145e175e10356035187aaecac2d894d",
+      "size": 2642
+    },
+    {
+      "path": "docs/research-visual-style-picker-2026-07-23.md",
+      "blob": "df09e2b791f87d787ff54aad47c44abb9f99cd5a",
+      "size": 3202
+    },
+    {
+      "path": "docs/research/skill-plugin-update-reminder-market-design.md",
+      "blob": "044358757a2da98e8d5ca7e3b234ac6b35727f6e",
+      "size": 39943
+    },
+    {
+      "path": "docs/skill-embedded-optional-update-notifier-design.md",
+      "blob": "640752a4754867e8d5268b8adbf4824ec9dc61af",
+      "size": 44030
+    },
+    {
+      "path": "docs/skill-updates/archify/stable.json",
+      "blob": "8a14d1931b57aa6c36756470de5dce69aa2a2ee7",
+      "size": 653
+    },
+    {
+      "path": "docs/start.html",
+      "blob": "e33b46c9820c5515010a13e08f5634859f9a801b",
+      "size": 50100
+    },
+    {
+      "path": "examples/archify-repo-grid.architecture.json",
+      "blob": "9219935117738d921b9d7fc8a8801423133a713f",
+      "size": 2370
+    },
+    {
+      "path": "examples/archify-repo-grid.html",
+      "blob": "5b053f7c5fdcf8b2e9ca8dc9cf0e766c03088fd7",
+      "size": 804701
+    },
+    {
+      "path": "examples/archify-repo.architecture.json",
+      "blob": "bd9ac1d9b6c089a138f508c6e5e4f609d452a8c5",
+      "size": 4374
+    },
+    {
+      "path": "examples/archify-repo.html",
+      "blob": "7c6d936a89a993e5d855f78914037cabade127f5",
+      "size": 810181
+    },
+    {
+      "path": "examples/checkout-platform-delta.html",
+      "blob": "aecf2523a9fe7ed7795fdc428345ae18dff653bd",
+      "size": 2218492
+    },
+    {
+      "path": "examples/checkout-platform-delta.receipt.json",
+      "blob": "2ede654659ac45fccb181d91a1f5ea665d0b51fa",
+      "size": 5291
+    },
+    {
+      "path": "examples/dataflow-product-analytics.html",
+      "blob": "5eacdc4a4056107b6677bf3e889823bd34e8c59a",
+      "size": 817071
+    },
+    {
+      "path": "examples/lifecycle-agent-run.html",
+      "blob": "37c84d2fd7fc92860544cc6ca107e2e36c4290d6",
+      "size": 810174
+    },
+    {
+      "path": "examples/maka-architecture.architecture.json",
+      "blob": "df4beb4a44de7d740a25ee946a584530910ad37f",
+      "size": 5138
+    },
+    {
+      "path": "examples/maka-architecture.html",
+      "blob": "ffdabe3d8e2d413ed0417475702c981da1c19791",
+      "size": 813546
+    },
+    {
+      "path": "examples/rag-pipeline.architecture.json",
+      "blob": "29aeb29b31dee6fe079212c2ecbdada0b754c6e5",
+      "size": 5286
+    },
+    {
+      "path": "examples/rag-pipeline.html",
+      "blob": "1d99727a1a99e5aac5cb505d50868ea128a83fb1",
+      "size": 816574
+    },
+    {
+      "path": "examples/sequence-cache-miss-request.html",
+      "blob": "9fa75af288f8386ab880567f8910575ccb1e947c",
+      "size": 814754
+    },
+    {
+      "path": "examples/sequence-cache-miss.html",
+      "blob": "426fb4346ba6308cdde189d456031c8fd4dcb18f",
+      "size": 598
+    },
+    {
+      "path": "examples/web-app-rendered.html",
+      "blob": "0493a68429da4a04e02e6cafc2ba9e76a5d1d4e5",
+      "size": 811809
+    },
+    {
+      "path": "examples/web-app.html",
+      "blob": "0493a68429da4a04e02e6cafc2ba9e76a5d1d4e5",
+      "size": 811809
+    },
+    {
+      "path": "examples/workflow-agent-tool-call-rendered.html",
+      "blob": "213061611eef203a2221ebdf904f299925b2b578",
+      "size": 819631
+    },
+    {
+      "path": "examples/workflow-agent-tool-call.html",
+      "blob": "f014e92e199400a1230b4c16cc691e4ceeb5fa59",
+      "size": 628
+    },
+    {
+      "path": "experiments/mco-showcase/mco-runtime.architecture.json",
+      "blob": "62cd64c429a58b5bf0bbbc3bed5743f3b268914f",
+      "size": 7995
+    },
+    {
+      "path": "experiments/mco-showcase/mco-runtime.html",
+      "blob": "d9fde7229611041cb89d2e6b71a0a412ae684fc3",
+      "size": 728618
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/INDEX.md",
+      "blob": "52dca33d409f2c853f3e7a17ea0626a78d175098",
+      "size": 2761
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/RESULT.md",
+      "blob": "d9ebc456264b7098b5ccdfe9ab3e721b5cde24bb",
+      "size": 3854
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-A-stock/1.png",
+      "blob": "7a1534675e3ec40cc5a5685653758c2217a53a93",
+      "size": 14526
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-A-stock/2.png",
+      "blob": "f8e256246382e6cad4940304edc2bda0fdd8ab7b",
+      "size": 25064
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-A-stock/3.png",
+      "blob": "ca635a3c261685e160b3082cdee5361a9f2e2126",
+      "size": 113190
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-B-themed/1.png",
+      "blob": "5f12383b6aba788a90d6d5c554cd76f677649442",
+      "size": 15474
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-B-themed/2.png",
+      "blob": "161093ffdfa84253fbcbee81113faa93169cd164",
+      "size": 32817
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-B-themed/3.png",
+      "blob": "06a9673c6e419bf00d820fafef717942d178d345",
+      "size": 100759
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-C-archify/1.html",
+      "blob": "c2e08a5886a8b6e98c1c1bf4e54875afae6aeec0",
+      "size": 7137
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-C-archify/1.png",
+      "blob": "cb74b6f5066be02cb021c4d7ab87d318ec97a656",
+      "size": 50189
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-C-archify/2.html",
+      "blob": "2df86cefa3539f00ac1fbfff8518e80e647fbc54",
+      "size": 8650
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-C-archify/2.png",
+      "blob": "46b8d4e75b037d55c3c10b2a4815159dae6ab385",
+      "size": 69959
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-C-archify/3.html",
+      "blob": "e3cb07c7997dfb47f2115bd295d9c4bbb8a3db7b",
+      "size": 11968
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/output-C-archify/3.png",
+      "blob": "cd94466f6076f63616143262eede767e7f409dea",
+      "size": 125935
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/screenshots/img-04-12c2.png",
+      "blob": "cb74b6f5066be02cb021c4d7ab87d318ec97a656",
+      "size": 50189
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/screenshots/img-05-n1tw.png",
+      "blob": "cd94466f6076f63616143262eede767e7f409dea",
+      "size": 125935
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/screenshots/img-06-hkrq.png",
+      "blob": "ca635a3c261685e160b3082cdee5361a9f2e2126",
+      "size": 113190
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/screenshots/img-07-43uu.png",
+      "blob": "5f12383b6aba788a90d6d5c554cd76f677649442",
+      "size": 15474
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/screenshots/img-08-weo4.png",
+      "blob": "7a1534675e3ec40cc5a5685653758c2217a53a93",
+      "size": 14526
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/screenshots/img-10-rnix.png",
+      "blob": "06a9673c6e419bf00d820fafef717942d178d345",
+      "size": 100759
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/screenshots/img-12-nlmi.png",
+      "blob": "161093ffdfa84253fbcbee81113faa93169cd164",
+      "size": 32817
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/screenshots/img-13-5mj4.png",
+      "blob": "f8e256246382e6cad4940304edc2bda0fdd8ab7b",
+      "size": 25064
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/screenshots/img-15-05g2.png",
+      "blob": "46b8d4e75b037d55c3c10b2a4815159dae6ab385",
+      "size": 69959
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/screenshots/manifest.txt",
+      "blob": "130c5812472b59649fd62a89a188de1790a060da",
+      "size": 449
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/sources/1-mermaid-canonical.mmd",
+      "blob": "3e1658104afb89fe13150385df7db1efddd1fac8",
+      "size": 117
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/sources/2-k8s-observability.mmd",
+      "blob": "07cd81b4f0e089c46dee19b6c3d3eb9da32cf37b",
+      "size": 259
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/sources/3-moke-kit-stripped.mmd",
+      "blob": "47c55c2161b35e5fa173cbf23528c393c7961d80",
+      "size": 1388
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/sources/3-moke-kit.mmd",
+      "blob": "d10ed6da7b4575a58d97b0a5e9298990e36355ae",
+      "size": 2049
+    },
+    {
+      "path": "experiments/v3-mermaid-validation/theme/archify-mermaid-config.json",
+      "blob": "fa15ff99fe494403ee5a6256286c6b0bf0723313",
+      "size": 1489
+    },
+    {
+      "path": "experiments/visual-evolution/DECISION-MAP.md",
+      "blob": "4f198b7df07c5fe06ec510adec12c797ae2c4b00",
+      "size": 2624
+    },
+    {
+      "path": "experiments/visual-evolution/prototype.html",
+      "blob": "d3251dceee828eafaf30f2707a53cbea9dedac6a",
+      "size": 79647
+    },
+    {
+      "path": "experiments/visual-evolution/prototype.mjs",
+      "blob": "b5c7a56fe7ce0c703e08986dbe2d5146348c507a",
+      "size": 14363
+    },
+    {
+      "path": "experiments/visual-evolution/readme-motion-preview.html",
+      "blob": "226f62bc1837b4f9bfc1035be2133dfdefd2b508",
+      "size": 5677
+    },
+    {
+      "path": "generated/maka-regenerated.workflow.html",
+      "blob": "3954abbfd38dd0a0698f1c64a9f4da55e5ecef43",
+      "size": 720111
+    },
+    {
+      "path": "generated/maka-regenerated.workflow.json",
+      "blob": "749d7112154c6ad803e8074d7aa7e4a92008ed37",
+      "size": 7306
+    },
+    {
+      "path": "generated/maka-regenerated.workflow.visual-check.1440x900.dark.png",
+      "blob": "6f2753ad30dea95ae748031634786143f1acae23",
+      "size": 193665
+    },
+    {
+      "path": "generated/maka-regenerated.workflow.visual-check.1440x900.light.png",
+      "blob": "28be43707eef26b1d710d54cffc6f1ab01a01da4",
+      "size": 199027
+    },
+    {
+      "path": "generated/maka-regenerated.workflow.visual-check.2048x1320.dark.png",
+      "blob": "082dc478a1afbe28391fdd98e207d3979d1361eb",
+      "size": 275144
+    },
+    {
+      "path": "generated/maka-regenerated.workflow.visual-check.2048x1320.light.png",
+      "blob": "f97ff118a9d470c5c36a84b84bfe4710d74e72fb",
+      "size": 283350
+    },
+    {
+      "path": "generated/maka-regenerated.workflow.visual-check.html",
+      "blob": "5dab69d6883af6d72f0bc3e015754b53ed02b19c",
+      "size": 1960
+    },
+    {
+      "path": "generated/maka-regenerated.workflow.visual-check.json",
+      "blob": "c563d40662757fecf3366337173159d7c48ac630",
+      "size": 14731
+    },
+    {
+      "path": "integrations/deepseek-harness/.gitignore",
+      "blob": "e6f6d387d04b89a355797b13f2bb6194b5f5d2f3",
+      "size": 41
+    },
+    {
+      "path": "integrations/deepseek-harness/README.md",
+      "blob": "9f57537885e6a78e5843bdb1cf7f181a9a27465f",
+      "size": 5091
+    },
+    {
+      "path": "integrations/deepseek-harness/cordis.patch.yml",
+      "blob": "66bc422bb1d2e2a9905424b1b60bd6ab04d48282",
+      "size": 640
+    },
+    {
+      "path": "integrations/deepseek-harness/lib/index.js",
+      "blob": "953d5720b94c5e8315cbe289d916fcc22f8f8de2",
+      "size": 682
+    },
+    {
+      "path": "integrations/deepseek-harness/package.json",
+      "blob": "f5087aa0b4d931590ee5dbcf1a9c01f345549919",
+      "size": 1015
+    },
+    {
+      "path": "integrations/deepseek-harness/release.json",
+      "blob": "84b7b8d30609d836eb9c5ce18ec49ae21ff8851b",
+      "size": 129
+    },
+    {
+      "path": "integrations/deepseek-harness/scripts/distribution-acceptance.mjs",
+      "blob": "7dd9ed8cc79dbb9e7b2be0687fa4edd276a7fba3",
+      "size": 19176
+    },
+    {
+      "path": "integrations/deepseek-harness/scripts/pack.mjs",
+      "blob": "ebfa0a1baa763695ed90f672cc9d825d5668072b",
+      "size": 3279
+    },
+    {
+      "path": "integrations/deepseek-harness/scripts/release-source.mjs",
+      "blob": "9d80880c9de6ed1b4afb3fc3f5eb2dbdbb1e581f",
+      "size": 4571
+    },
+    {
+      "path": "integrations/deepseek-harness/scripts/resolve-cli.mjs",
+      "blob": "6d95499158047c599be6ee170b9382c4a5bc6a17",
+      "size": 3565
+    },
+    {
+      "path": "integrations/deepseek-harness/scripts/transient-retry.mjs",
+      "blob": "d1efa32a7cb8a8caebaad2eb0bcbeb9103d85c27",
+      "size": 817
+    },
+    {
+      "path": "integrations/deepseek-harness/test/adapter-security.test.mjs",
+      "blob": "9ccba8d7875c535dce26b04a7a84271f2091a4e9",
+      "size": 1483
+    },
+    {
+      "path": "integrations/deepseek-harness/test/adapter-staging.test.mjs",
+      "blob": "e9d58be822fc33f0b4fe16da44a2ec2102006b6d",
+      "size": 10041
+    },
+    {
+      "path": "integrations/deepseek-harness/test/docs-contract.test.mjs",
+      "blob": "07fc377813b26a1531e9efa43555bd0630b6c680",
+      "size": 4722
+    },
+    {
+      "path": "integrations/deepseek-harness/test/package-contract.test.mjs",
+      "blob": "f90b61c95de2020f6c76fd4319ffbc11c9d90140",
+      "size": 4531
+    },
+    {
+      "path": "integrations/deepseek-harness/test/probe-skills.mjs",
+      "blob": "8fe061320c4fb8437dcbe33038432c7f3972e32e",
+      "size": 1628
+    },
+    {
+      "path": "integrations/deepseek-harness/test/probe-skills.test.mjs",
+      "blob": "962b0c8b8b20d2b4318d319ee0f39c7fdcad893e",
+      "size": 636
+    },
+    {
+      "path": "integrations/deepseek-harness/test/resolve-cli.test.mjs",
+      "blob": "8a48fbfade83974298c7828720233a746154b88e",
+      "size": 2872
+    },
+    {
+      "path": "integrations/deepseek-harness/test/tarball-contract.test.mjs",
+      "blob": "3399e60ffbdf8f898acc8c975d330775a7adf97a",
+      "size": 4735
+    },
+    {
+      "path": "integrations/deepseek-harness/test/transient-retry.test.mjs",
+      "blob": "43df00d0eaa3f3af6a5d61f415188f1bc1c8983f",
+      "size": 1473
+    },
+    {
+      "path": "integrations/deepseek-harness/test/zero-regression.test.mjs",
+      "blob": "d1f74febf6c4eb74b5ecc81bc5f27162db2c4318",
+      "size": 2212
+    },
+    {
+      "path": "scripts/build-gallery.mjs",
+      "blob": "3bf89ffb6f1e4533f09146cafd2fb0b88c4bd4f4",
+      "size": 16525
+    },
+    {
+      "path": "scripts/build-guide.mjs",
+      "blob": "9520be23ecec9965eb05c7c93aef31bf2f63e42d",
+      "size": 1528
+    },
+    {
+      "path": "scripts/build-readme-showcase.mjs",
+      "blob": "6c78f6a3e1afab00915b7b52d0d15bc0de0b52e9",
+      "size": 15489
+    },
+    {
+      "path": "scripts/build-start.mjs",
+      "blob": "652af73f008c2b8c84f114968f6ebef4bd7b50dc",
+      "size": 2340
+    },
+    {
+      "path": "scripts/build-zip.sh",
+      "blob": "cc686bdf4c73c235ec2c543b42bb504ac05bb84f",
+      "size": 1899
+    },
+    {
+      "path": "scripts/check-release-identity.mjs",
+      "blob": "8aa7e0c8e305425aed89e32bac6f792c8933abff",
+      "size": 13724
+    },
+    {
+      "path": "scripts/check-stable-update-manifest.mjs",
+      "blob": "88f2bdf50c3dd12099299042c869c807c92d7010",
+      "size": 4480
+    },
+    {
+      "path": "scripts/copy-site-assets.mjs",
+      "blob": "91d5749a04e37350b569650c7d39f4b6625f6c54",
+      "size": 727
+    },
+    {
+      "path": "scripts/gallery-template.html",
+      "blob": "95418ab9bf9400fdce0820682ac2b41f6fadcf0e",
+      "size": 31687
+    },
+    {
+      "path": "scripts/generate-viewer.mjs",
+      "blob": "7415279de6c68e857a849da3d712fbef3b10a7c0",
+      "size": 2726
+    },
+    {
+      "path": "scripts/guide-template.html",
+      "blob": "a3580d79f919745b0c42ae0a87637e895bcde6a6",
+      "size": 32648
+    },
+    {
+      "path": "scripts/package-smoke.mjs",
+      "blob": "02654f4718975c91032436ad0f9e2cf81bf7e0fa",
+      "size": 17622
+    },
+    {
+      "path": "scripts/publish-star-history.sh",
+      "blob": "e03782482c96994d0c24158ae28e5ac255d34b8a",
+      "size": 1732
+    },
+    {
+      "path": "scripts/run-tests.mjs",
+      "blob": "9f87b8a4c0e98c3e1a9a380d121eef05b0ee53c7",
+      "size": 1059
+    },
+    {
+      "path": "scripts/site-copy.mjs",
+      "blob": "d80a0a0db1d4145d95ece80f6c38a5772223d029",
+      "size": 1020
+    },
+    {
+      "path": "scripts/stage-clean-skill.mjs",
+      "blob": "fc1fd16c0f2fc9f15f620218f1ee555e54ef4a26",
+      "size": 13437
+    },
+    {
+      "path": "scripts/start-template.html",
+      "blob": "70d7fab991e0c0004b56b908ac789ef760453efa",
+      "size": 35411
+    },
+    {
+      "path": "scripts/third-party-notices-contract.mjs",
+      "blob": "9ee1d234ae8a5b3e4a0272eedf6e9c555d144c0c",
+      "size": 3955
+    },
+    {
+      "path": "scripts/write-deterministic-zip.mjs",
+      "blob": "a42971444d9b3589b760f60cbcc5b6732267860e",
+      "size": 7871
+    },
+    {
+      "path": "viewer/README.md",
+      "blob": "002b994063f4aab022bd097acf3dad8c727c3216",
+      "size": 69289
+    },
+    {
+      "path": "viewer/export-cleanup.js",
+      "blob": "100d5efcefd8d9da8fabf2b8a3ce41b4b6a13c45",
+      "size": 12007
+    },
+    {
+      "path": "viewer/export.js",
+      "blob": "ea855d71ca1e8814fd313cc0e190e7b91b880853",
+      "size": 62290
+    },
+    {
+      "path": "viewer/focus.js",
+      "blob": "05dd331b1f14c8c932fb90981f720ce47fe08746",
+      "size": 73721
+    },
+    {
+      "path": "viewer/guided-views.js",
+      "blob": "ec36add962a6ebdcc985d3889e91951fa7d827d9",
+      "size": 82202
+    },
+    {
+      "path": "viewer/intent-trace.js",
+      "blob": "d8bddcf05654d2a3720eaf700eca8638f912ea2e",
+      "size": 9466
+    },
+    {
+      "path": "viewer/motion-governor.js",
+      "blob": "ebd5afc556cb1794b0cc17ba94af2e4330fa79fd",
+      "size": 11925
+    },
+    {
+      "path": "viewer/node-finder.js",
+      "blob": "8f9116bca1438f9a0fa79e97097fce4aea317047",
+      "size": 12306
+    },
+    {
+      "path": "viewer/reader-layout.js",
+      "blob": "d7f1a288d67b42e8f933bea46a7101112da243ea",
+      "size": 7505
+    },
+    {
+      "path": "viewer/route-probe.js",
+      "blob": "c1d47f662ab580952537ff38a94409b80dbee5a3",
+      "size": 48427
+    },
+    {
+      "path": "viewer/semantic-lens.js",
+      "blob": "acf1dac2aa2d484c29a8acbd2de7dc2b0ba5b4ca",
+      "size": 33418
+    },
+    {
+      "path": "viewer/semantic-radar.js",
+      "blob": "3c9f5a6148f425cfe62161ee12271ca5a236fae6",
+      "size": 29943
+    },
+    {
+      "path": "viewer/template.source.html",
+      "blob": "fbd4665244400bf433401c82c2e0d9031d41cef8",
+      "size": 353409
+    },
+    {
+      "path": "viewer/viewer-camera.js",
+      "blob": "72adc2416a97e6279786263608d5dd61683fd52a",
+      "size": 25285
+    },
+    {
+      "path": "viewer/viewer-chrome-layout.js",
+      "blob": "c57fd26a37975a34a04f43b4088a1fadf809cbe1",
+      "size": 13280
+    }
+  ]
+}

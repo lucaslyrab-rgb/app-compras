@@ -1,0 +1,2222 @@
+{
+  "repository": "vudovn/ag-kit",
+  "commit": "549ba3dc2eb1d40fccb5b6d792eba4101c80cd69",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".agents/ARCHITECTURE.md",
+      "blob": "2fa3f158fa09bc65ab650edccecec5d11e786672",
+      "size": 18407
+    },
+    {
+      "path": ".agents/CHANGELOG.md",
+      "blob": "763543c4c17f9274e8c35b6411756056b1cdea9b",
+      "size": 4597
+    },
+    {
+      "path": ".agents/DEPENDENCY_GRAPH.md",
+      "blob": "c8cd5ae7e7c9fc327a1eba11aee0d0f19329de5f",
+      "size": 8649
+    },
+    {
+      "path": ".agents/README.md",
+      "blob": "f9431544f189834bf4deb916a894196eeb655300",
+      "size": 4094
+    },
+    {
+      "path": ".agents/VERSION",
+      "blob": "496489940bfbd53261224c93c20586c39f9e0a7d",
+      "size": 10
+    },
+    {
+      "path": ".agents/agent/backend-specialist.md",
+      "blob": "c654d94bb21e29aed8d526b457a2f399bbc7e4bc",
+      "size": 8589
+    },
+    {
+      "path": ".agents/agent/code-archaeologist.md",
+      "blob": "126fd0318a6987e83f591531c9073c4a5e484e39",
+      "size": 3347
+    },
+    {
+      "path": ".agents/agent/database-architect.md",
+      "blob": "ea548769dcde3a04ffccfc6dd373b38c62f60361",
+      "size": 6850
+    },
+    {
+      "path": ".agents/agent/debugger.md",
+      "blob": "ffd2707f7f0816191baabd90408358b4b155450c",
+      "size": 7899
+    },
+    {
+      "path": ".agents/agent/devops-engineer.md",
+      "blob": "a0d876fdd4c99403a46263ee40f73bad52656eba",
+      "size": 6314
+    },
+    {
+      "path": ".agents/agent/documentation-writer.md",
+      "blob": "aedc5d50fc6ae86c8f3c74f369eaaa6910930ee5",
+      "size": 2560
+    },
+    {
+      "path": ".agents/agent/explorer-agent.md",
+      "blob": "2a400d0e870ee024de326814898fa0d8a23ccd09",
+      "size": 3966
+    },
+    {
+      "path": ".agents/agent/frontend-specialist.md",
+      "blob": "69ccf135339604fb14a7a29e606bafda0bd58c88",
+      "size": 25957
+    },
+    {
+      "path": ".agents/agent/game-developer.md",
+      "blob": "131b9e5856a55b13e625e798578993dd1633cca5",
+      "size": 4431
+    },
+    {
+      "path": ".agents/agent/mobile-developer.md",
+      "blob": "96f00b86efa75ba692053a2a173d3b493d1618f3",
+      "size": 12952
+    },
+    {
+      "path": ".agents/agent/orchestrator.md",
+      "blob": "f545c1c16250da85f26d2866388c174d6842602a",
+      "size": 8285
+    },
+    {
+      "path": ".agents/agent/penetration-tester.md",
+      "blob": "3332e55fc06e11a0f45fe70928838a5d3754d9f4",
+      "size": 4822
+    },
+    {
+      "path": ".agents/agent/performance-optimizer.md",
+      "blob": "e794bd5aa96fef14f3011a665c1dfacb4080b39a",
+      "size": 4392
+    },
+    {
+      "path": ".agents/agent/product-manager.md",
+      "blob": "589010215012ce165e47dd2ad5c59397da93ec19",
+      "size": 3169
+    },
+    {
+      "path": ".agents/agent/product-owner.md",
+      "blob": "950b1f4bd0383b335e1f55831c035256aa35fc27",
+      "size": 3904
+    },
+    {
+      "path": ".agents/agent/project-planner.md",
+      "blob": "959290a9b7fb036a684b3115253015593e71ad82",
+      "size": 14350
+    },
+    {
+      "path": ".agents/agent/qa-automation-engineer.md",
+      "blob": "c42e4e61a2a723ea7aa197d4edbfd92d97cefa79",
+      "size": 3217
+    },
+    {
+      "path": ".agents/agent/security-auditor.md",
+      "blob": "752c9044b1eac18d33ddaaee092e93141d26c631",
+      "size": 4682
+    },
+    {
+      "path": ".agents/agent/seo-specialist.md",
+      "blob": "4d314183d5a156c72dcf8ccab3d87d22277a68e5",
+      "size": 2744
+    },
+    {
+      "path": ".agents/agent/test-engineer.md",
+      "blob": "658d719ed753bb5864b55defb410efa8350db2e7",
+      "size": 3197
+    },
+    {
+      "path": ".agents/antigravity.json",
+      "blob": "f507f7768ee18b59bb6a512210c34258b5c1a026",
+      "size": 1168
+    },
+    {
+      "path": ".agents/hooks.json",
+      "blob": "101cffb94da25bb859360424d4cb6123b83b7d2c",
+      "size": 223
+    },
+    {
+      "path": ".agents/hooks/README.md",
+      "blob": "bb491072f7656e6344d52e752f92ebf5aa40d581",
+      "size": 5114
+    },
+    {
+      "path": ".agents/hooks/antigravity-contract.schema.json",
+      "blob": "2cc026ed6d4e9faf84fdbf545ec6b20bcddab748",
+      "size": 666
+    },
+    {
+      "path": ".agents/hooks/antigravity-doctor.mjs",
+      "blob": "1063e95ae7c675bb8afb660e710f6c219028f8ec",
+      "size": 11700
+    },
+    {
+      "path": ".agents/hooks/antigravity-hooks.schema.json",
+      "blob": "d8c943848b81c4999d81413f8eadf3b844f64e3f",
+      "size": 1165
+    },
+    {
+      "path": ".agents/hooks/build-plugin.mjs",
+      "blob": "0c12e731b4bcd7b310d388e3eb2868cbbe79331b",
+      "size": 4883
+    },
+    {
+      "path": ".agents/hooks/plugin/GEMINI.md",
+      "blob": "d77a8c2259104bd55b031fd7d11cb9660ad5aa00",
+      "size": 933
+    },
+    {
+      "path": ".agents/hooks/plugin/gemini-extension.template.json",
+      "blob": "05bd568d43c44225dd812ff0967709f98688e32f",
+      "size": 217
+    },
+    {
+      "path": ".agents/hooks/sync-mcp.mjs",
+      "blob": "01f9c4fa983322ae15075e149767d955293e56f0",
+      "size": 4187
+    },
+    {
+      "path": ".agents/hooks/tests/antigravity.test.mjs",
+      "blob": "ccfd98ffbf4eb881e97df740be72db7d1f808c58",
+      "size": 3564
+    },
+    {
+      "path": ".agents/hooks/validate-tool-call.mjs",
+      "blob": "b3219f239ee07197ec480e5449dc85b7f6c6782e",
+      "size": 2980
+    },
+    {
+      "path": ".agents/manifest.json",
+      "blob": "b3ae5508508ede48da3b40c5084804ce44da1c55",
+      "size": 29004
+    },
+    {
+      "path": ".agents/manifest.lock.json",
+      "blob": "1c232dfc38e59818680e113abf4698935a49e39c",
+      "size": 24294
+    },
+    {
+      "path": ".agents/mcp_config.json",
+      "blob": "ae3d863a82d7d78d497704efa229a1388073e645",
+      "size": 189
+    },
+    {
+      "path": ".agents/memory/MEMORY.md",
+      "blob": "29a124fe3ba45b88d02e4de76fcb7df9a123531a",
+      "size": 347
+    },
+    {
+      "path": ".agents/memory/feedback-history.md",
+      "blob": "271045de143406250d2769ed4571707e09c38cee",
+      "size": 138
+    },
+    {
+      "path": ".agents/memory/project-conventions.md",
+      "blob": "f6a5f02013f8fb63a65fae2a6eaef1e5f76b09ea",
+      "size": 619
+    },
+    {
+      "path": ".agents/memory/tech-decisions.md",
+      "blob": "f161c7eb38b93792d1bc146e1711eeb702436bca",
+      "size": 255
+    },
+    {
+      "path": ".agents/memory/user-preferences.md",
+      "blob": "6deed8ee4c4a7e08c06014f84100db94a127907a",
+      "size": 132
+    },
+    {
+      "path": ".agents/rules/code-rules.md",
+      "blob": "c615ae6dfd2932449cd57f95cba475952f9da491",
+      "size": 4600
+    },
+    {
+      "path": ".agents/rules/core-protocol.md",
+      "blob": "798c3f00bd45d9c4b8aa197e06429b0878157cb7",
+      "size": 3057
+    },
+    {
+      "path": ".agents/rules/design-rules.md",
+      "blob": "6ccdae03572bc65eed74031085418d4a4bb0f283",
+      "size": 1700
+    },
+    {
+      "path": ".agents/rules/quick-reference.md",
+      "blob": "d46334bec3b8e272c07f53c03c61d35a2c5ce2bc",
+      "size": 976
+    },
+    {
+      "path": ".agents/rules/request-routing.md",
+      "blob": "2bdddc4f4d7539dbc981e080c405b1ecd5443586",
+      "size": 4568
+    },
+    {
+      "path": ".agents/rules/universal-rules.md",
+      "blob": "717a374c7bcfddef971074a84c0dacb810a5f2b4",
+      "size": 825
+    },
+    {
+      "path": ".agents/schemas/component-frontmatter.schema.json",
+      "blob": "c43b46174cdd29b1a8ce5828874abfbae4c2ccf2",
+      "size": 615
+    },
+    {
+      "path": ".agents/schemas/manifest-lock.schema.json",
+      "blob": "0aee9ab2dbca949328da27d6932a56251fdc3ad4",
+      "size": 600
+    },
+    {
+      "path": ".agents/schemas/manifest.schema.json",
+      "blob": "ba01bf1e8a720a70466764513a10e56168032f6b",
+      "size": 1680
+    },
+    {
+      "path": ".agents/schemas/memory.schema.json",
+      "blob": "3edaf0642dd4a8cb95dfb22bdf375187719d0f5c",
+      "size": 453
+    },
+    {
+      "path": ".agents/scripts/README.md",
+      "blob": "f6b40e2d9d7b447ac32740f13430a4aad9232f9a",
+      "size": 3254
+    },
+    {
+      "path": ".agents/scripts/auto_preview.py",
+      "blob": "fadc2fc7e81594beea388da8f3e9affce5805342",
+      "size": 4075
+    },
+    {
+      "path": ".agents/scripts/checklist.py",
+      "blob": "415adb41bea6133936ee37848b1fa62e26c4a9d8",
+      "size": 3198
+    },
+    {
+      "path": ".agents/scripts/component_registry.py",
+      "blob": "9a0e614ff9a19b3173f008e09e04f1d0993252fe",
+      "size": 8305
+    },
+    {
+      "path": ".agents/scripts/dependency_graph.py",
+      "blob": "699970c31b441148c3bf2ea987f586ccdcc7627d",
+      "size": 2779
+    },
+    {
+      "path": ".agents/scripts/generate_manifest.py",
+      "blob": "a581896dc74d4319445394dddee99abdc8ba58c3",
+      "size": 1533
+    },
+    {
+      "path": ".agents/scripts/session_manager.py",
+      "blob": "b2e3e0ceef3629fac103ad7d64ca0dd3c84523c8",
+      "size": 4201
+    },
+    {
+      "path": ".agents/scripts/tests/test_toolkit.py",
+      "blob": "befdc8fee2b1ca714afe42bad8e49aac5948e14f",
+      "size": 11035
+    },
+    {
+      "path": ".agents/scripts/validate_kit.py",
+      "blob": "80023985e63037b3cf89fea4d9da30e4729fff1b",
+      "size": 17095
+    },
+    {
+      "path": ".agents/scripts/validation_runner.py",
+      "blob": "8baf8bec8167c64311a858062d2e0a2c21de4dc9",
+      "size": 7910
+    },
+    {
+      "path": ".agents/scripts/verify_all.py",
+      "blob": "d6a1bdebb54e2caef5b20b875936b63b22153f64",
+      "size": 4179
+    },
+    {
+      "path": ".agents/skills/api-patterns/SKILL.md",
+      "blob": "1f76eb1a7e4f1c8b7b9f51b701d9ad60052fe49d",
+      "size": 2600
+    },
+    {
+      "path": ".agents/skills/api-patterns/api-style.md",
+      "blob": "a1bf342473ccfac196d5ee4ad6e53a5d96c814a3",
+      "size": 1142
+    },
+    {
+      "path": ".agents/skills/api-patterns/auth.md",
+      "blob": "c04030d340d4792fd16b315bf885efefd67a6787",
+      "size": 576
+    },
+    {
+      "path": ".agents/skills/api-patterns/documentation.md",
+      "blob": "5e199da0a733f7897b867bfb6506d42a46be05e4",
+      "size": 549
+    },
+    {
+      "path": ".agents/skills/api-patterns/graphql.md",
+      "blob": "1e5632ce7a0f79c73b167f709f49094d05695b3b",
+      "size": 977
+    },
+    {
+      "path": ".agents/skills/api-patterns/rate-limiting.md",
+      "blob": "cffaa2903c5a05c59860f7cea45d50b63ebb41a0",
+      "size": 726
+    },
+    {
+      "path": ".agents/skills/api-patterns/response.md",
+      "blob": "3c6ab1412bc7052c95c2c7ec5a1f0c0356b3dc5f",
+      "size": 921
+    },
+    {
+      "path": ".agents/skills/api-patterns/rest.md",
+      "blob": "c04aa7ca758802a6f35a089d1bec375090d78a63",
+      "size": 1280
+    },
+    {
+      "path": ".agents/skills/api-patterns/scripts/api_validator.py",
+      "blob": "930db829ef4f2a74dad43c2f65370fbb5e8e386e",
+      "size": 7593
+    },
+    {
+      "path": ".agents/skills/api-patterns/security-testing.md",
+      "blob": "265023fa8f769c5e1dfb7ea4dcc58c2d717c1d33",
+      "size": 2892
+    },
+    {
+      "path": ".agents/skills/api-patterns/trpc.md",
+      "blob": "1097686601a35e0cc8ddcb85c2afe3dd24c96385",
+      "size": 801
+    },
+    {
+      "path": ".agents/skills/api-patterns/versioning.md",
+      "blob": "5ead01b246226f504bc3266ef94e7be88ac7b9a2",
+      "size": 651
+    },
+    {
+      "path": ".agents/skills/app-builder/SKILL.md",
+      "blob": "04f64ea882237d12d1ef8169a52207c5001c6a43",
+      "size": 3449
+    },
+    {
+      "path": ".agents/skills/app-builder/agent-coordination.md",
+      "blob": "96b6fcce66c55b06c49dc577b58018b57bfd84f4",
+      "size": 6826
+    },
+    {
+      "path": ".agents/skills/app-builder/feature-building.md",
+      "blob": "b70dc82e1a8d1c6a957490274a7cf4e71731ccf6",
+      "size": 1334
+    },
+    {
+      "path": ".agents/skills/app-builder/project-detection.md",
+      "blob": "487383cc28319aa10a42be32ec5d519fb8e79faa",
+      "size": 2466
+    },
+    {
+      "path": ".agents/skills/app-builder/scaffolding.md",
+      "blob": "4dfa8fc7efb2ee7707f71294a80f5e129da12dad",
+      "size": 3985
+    },
+    {
+      "path": ".agents/skills/app-builder/tech-stack.md",
+      "blob": "70086e4c178000e01f10e5b9751c50b3f0dbb868",
+      "size": 1765
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/SKILL.md",
+      "blob": "46cfd133ae2b8c9da59064e282629ea5662b4d48",
+      "size": 1660
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/astro-static/TEMPLATE.md",
+      "blob": "235133a5aa14f9d7645e86a4be13f5262b49d359",
+      "size": 2137
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/chrome-extension/TEMPLATE.md",
+      "blob": "69fb7b84222414fab2ce36ba7165c522f95a15ad",
+      "size": 2733
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/cli-tool/TEMPLATE.md",
+      "blob": "9161f792ac79c810829556769e422a9820e04c01",
+      "size": 2470
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/electron-desktop/TEMPLATE.md",
+      "blob": "5a0058f7de550f4a1f096f8ab96752e834821683",
+      "size": 2720
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/express-api/TEMPLATE.md",
+      "blob": "9c7db9d591d4f3942ca5d5f449daea73ef47663c",
+      "size": 2449
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/flutter-app/TEMPLATE.md",
+      "blob": "ccf801a579a86311a7b6778329083876358b7559",
+      "size": 2163
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/monorepo-turborepo/TEMPLATE.md",
+      "blob": "4eaefee02194aefde495cc569fda5ee4aeffa413",
+      "size": 2677
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/nextjs-fullstack/TEMPLATE.md",
+      "blob": "96c59bf2a114585d419880a3d4950276d84c77b0",
+      "size": 4449
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/nextjs-saas/TEMPLATE.md",
+      "blob": "84e449ae8d042576f44afc68fee39da9094789f9",
+      "size": 3664
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/nextjs-static/TEMPLATE.md",
+      "blob": "ce9d9e676b92e5f1c23c0c19be047e8a91ae50a4",
+      "size": 5861
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/nuxt-app/TEMPLATE.md",
+      "blob": "2ec5d46a8a6373d8893a06db183a65558bff25ef",
+      "size": 4032
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/python-fastapi/TEMPLATE.md",
+      "blob": "be4d053530e0545afb319512a2fef06eb0eec111",
+      "size": 2726
+    },
+    {
+      "path": ".agents/skills/app-builder/templates/react-native-app/TEMPLATE.md",
+      "blob": "a7a3d639858c8604e69bf5f6b8a28b54701b046c",
+      "size": 4741
+    },
+    {
+      "path": ".agents/skills/architecture/SKILL.md",
+      "blob": "77816b69e988a0399ecf4d12e16313721bf3a8d9",
+      "size": 1927
+    },
+    {
+      "path": ".agents/skills/architecture/context-discovery.md",
+      "blob": "cf4757a727c411aba260025dd1c2ff8f70b8b206",
+      "size": 1591
+    },
+    {
+      "path": ".agents/skills/architecture/examples.md",
+      "blob": "781d56ae94477a36e8bc6bca469be065cfd5e941",
+      "size": 2430
+    },
+    {
+      "path": ".agents/skills/architecture/pattern-selection.md",
+      "blob": "d5f16636b89ab8ff0daaf038ccc90012b11e417d",
+      "size": 2638
+    },
+    {
+      "path": ".agents/skills/architecture/patterns-reference.md",
+      "blob": "3aa3eb22efcf6fdb70ef657b6cbc993347cd0d59",
+      "size": 2307
+    },
+    {
+      "path": ".agents/skills/architecture/trade-off-analysis.md",
+      "blob": "e41da0b1d732228171d79104fcb05da463327740",
+      "size": 1579
+    },
+    {
+      "path": ".agents/skills/bash-linux/SKILL.md",
+      "blob": "66b940901faec5d95e34a18ac0c5511310b4123c",
+      "size": 4317
+    },
+    {
+      "path": ".agents/skills/batch-operations/SKILL.md",
+      "blob": "2b22c7843529302ce399049986fc357a8fec1d28",
+      "size": 3453
+    },
+    {
+      "path": ".agents/skills/behavioral-modes/SKILL.md",
+      "blob": "72f15fa587e724acd7da12bacd4bc10d259dec86",
+      "size": 6093
+    },
+    {
+      "path": ".agents/skills/brainstorming/SKILL.md",
+      "blob": "73573f50e226a098799221c0ae06ebc4682f55bc",
+      "size": 5374
+    },
+    {
+      "path": ".agents/skills/brainstorming/dynamic-questioning.md",
+      "blob": "17a6cfdafad225e3b14eef54988d76c80e49748d",
+      "size": 11665
+    },
+    {
+      "path": ".agents/skills/clean-code/SKILL.md",
+      "blob": "cf6bc7266f6c7a131ae97bb631742c90660185c3",
+      "size": 6793
+    },
+    {
+      "path": ".agents/skills/code-review-checklist/SKILL.md",
+      "blob": "6de3ccb30acc939097bd6d454e9c26148edaa2bb",
+      "size": 2716
+    },
+    {
+      "path": ".agents/skills/code-review-graph/SKILL.md",
+      "blob": "facda39b518ce77393c9e39545c9d640bd4f0bd8",
+      "size": 11122
+    },
+    {
+      "path": ".agents/skills/context-compression/SKILL.md",
+      "blob": "01775fe7f4e21cebdd46c52c6a9d40dd26912c33",
+      "size": 5034
+    },
+    {
+      "path": ".agents/skills/coordinator-mode/SKILL.md",
+      "blob": "df31aa70ef1fec6b5f3aa19b69605ce3cc73c579",
+      "size": 7892
+    },
+    {
+      "path": ".agents/skills/database-design/SKILL.md",
+      "blob": "32bab718fa2f9b73709dece8b2df7d2061ed5a9c",
+      "size": 1698
+    },
+    {
+      "path": ".agents/skills/database-design/database-selection.md",
+      "blob": "7bb6aa69a675e69a44650f0e7d7a6682dd2ac5fb",
+      "size": 1146
+    },
+    {
+      "path": ".agents/skills/database-design/indexing.md",
+      "blob": "a7ed9b82121383e91876be0cce5482c7352fda83",
+      "size": 892
+    },
+    {
+      "path": ".agents/skills/database-design/migrations.md",
+      "blob": "9fc791854aec33a4b38d20abf9e184ab8b6eb5f1",
+      "size": 1107
+    },
+    {
+      "path": ".agents/skills/database-design/optimization.md",
+      "blob": "17c99ac0de85e337cd34499f3faa129cbaff778a",
+      "size": 902
+    },
+    {
+      "path": ".agents/skills/database-design/orm-selection.md",
+      "blob": "1d906780cb939de5efa79ec00c6ff33fc3597047",
+      "size": 764
+    },
+    {
+      "path": ".agents/skills/database-design/schema-design.md",
+      "blob": "f1cdb3ca16ec7ffdc817b4c3fcb170a1f8b60e74",
+      "size": 1470
+    },
+    {
+      "path": ".agents/skills/database-design/scripts/schema_validator.py",
+      "blob": "587604ee110a46ed07dc4b84535c7b724fa7b1cc",
+      "size": 5375
+    },
+    {
+      "path": ".agents/skills/deployment-procedures/SKILL.md",
+      "blob": "a8242265e4bf36183d61891d97a741222fad3406",
+      "size": 5856
+    },
+    {
+      "path": ".agents/skills/design-spec/SKILL.md",
+      "blob": "483f7f5fc3f3ddd041a3a4ca96aa01e39fe9a894",
+      "size": 7373
+    },
+    {
+      "path": ".agents/skills/design-spec/collection.md",
+      "blob": "11e114c6aa1eb461a2c4a9bd5faff30b4f423e57",
+      "size": 13816
+    },
+    {
+      "path": ".agents/skills/documentation-templates/SKILL.md",
+      "blob": "4c8f8f8d06502b6d60395403629f1828624efd61",
+      "size": 3437
+    },
+    {
+      "path": ".agents/skills/frontend-architecture/SKILL.md",
+      "blob": "0b1a0cb38ad5aa6bc15c597d6426a0b3bb32bdec",
+      "size": 8021
+    },
+    {
+      "path": ".agents/skills/frontend-design/SKILL.md",
+      "blob": "42579e7c2cebda5928b56ed546146918c437fe31",
+      "size": 88430
+    },
+    {
+      "path": ".agents/skills/frontend-design/redesign.md",
+      "blob": "e812cafdecade5d30013565fa0625571e9ce4373",
+      "size": 14923
+    },
+    {
+      "path": ".agents/skills/frontend-design/scripts/accessibility_checker.py",
+      "blob": "d2e990aa2c513fcc376c3ee8116aca0d14fce029",
+      "size": 5595
+    },
+    {
+      "path": ".agents/skills/frontend-design/scripts/ux_audit.py",
+      "blob": "05c8a1ee8947d8f93fa52becedc8136542fad813",
+      "size": 39572
+    },
+    {
+      "path": ".agents/skills/frontend-design/style-brutalist.md",
+      "blob": "46e594ca0f870d48c1370d5c11fa01f9a7b4dedf",
+      "size": 8270
+    },
+    {
+      "path": ".agents/skills/frontend-design/style-minimalist.md",
+      "blob": "40a776313cf7fde7cbfad6d2dbbc028acf2f1c0a",
+      "size": 7860
+    },
+    {
+      "path": ".agents/skills/game-development/2d-games/SKILL.md",
+      "blob": "a3f8d24b4b328b27db5d0c415b57b252e007a118",
+      "size": 2190
+    },
+    {
+      "path": ".agents/skills/game-development/3d-games/SKILL.md",
+      "blob": "6f48930413b6b91a6f1abf5e5203b404f4822c02",
+      "size": 2563
+    },
+    {
+      "path": ".agents/skills/game-development/SKILL.md",
+      "blob": "20f8404695ed7086c4a1dbeebddb710ef44f8ae7",
+      "size": 4827
+    },
+    {
+      "path": ".agents/skills/game-development/game-art/SKILL.md",
+      "blob": "87a6ab3cf1447a6f54600550d078cc1a5135205b",
+      "size": 5049
+    },
+    {
+      "path": ".agents/skills/game-development/game-audio/SKILL.md",
+      "blob": "77ad3c257a12c7a88740161f3c086203fd2775db",
+      "size": 5361
+    },
+    {
+      "path": ".agents/skills/game-development/game-design/SKILL.md",
+      "blob": "4dea97a8c9759cb81a7541c504a2dbba9c4a3e64",
+      "size": 2645
+    },
+    {
+      "path": ".agents/skills/game-development/mobile-games/SKILL.md",
+      "blob": "f91d0065a6273a16425c3e4c54ad900bfe91a956",
+      "size": 2282
+    },
+    {
+      "path": ".agents/skills/game-development/multiplayer/SKILL.md",
+      "blob": "8fd8cf182a0118ae1b485a6e54e4296beed73ca9",
+      "size": 2813
+    },
+    {
+      "path": ".agents/skills/game-development/pc-games/SKILL.md",
+      "blob": "6be120e7769b76216f2dfb1f28b7e8727a3e8f03",
+      "size": 2973
+    },
+    {
+      "path": ".agents/skills/game-development/vr-ar/SKILL.md",
+      "blob": "bd42475e6672bb49969bba928575a775cb8ec76c",
+      "size": 2379
+    },
+    {
+      "path": ".agents/skills/game-development/web-games/SKILL.md",
+      "blob": "7860070ade0a63b22d934aa6d6df2fb4a5b9e1f7",
+      "size": 3059
+    },
+    {
+      "path": ".agents/skills/geo-fundamentals/SKILL.md",
+      "blob": "b452f3b8acbf0bb471ea9fc30c66fe9f17afeab8",
+      "size": 3590
+    },
+    {
+      "path": ".agents/skills/geo-fundamentals/scripts/geo_checker.py",
+      "blob": "01be6880fa11f820cc2d172577c10eb5fdd7bbbb",
+      "size": 10535
+    },
+    {
+      "path": ".agents/skills/i18n-localization/SKILL.md",
+      "blob": "640ab8dd0d309ab689083ae46e527ffd89ceaccd",
+      "size": 3258
+    },
+    {
+      "path": ".agents/skills/i18n-localization/scripts/i18n_checker.py",
+      "blob": "0795cbded14adfee23f0452890b0759a1612e537",
+      "size": 9043
+    },
+    {
+      "path": ".agents/skills/intelligent-routing/SKILL.md",
+      "blob": "b88ce5b89bf9f2bc2b5c5f2215bd70ee4861fdc3",
+      "size": 10872
+    },
+    {
+      "path": ".agents/skills/lint-and-validate/SKILL.md",
+      "blob": "05e173f34687bc109480a96c64078916c73ec369",
+      "size": 1870
+    },
+    {
+      "path": ".agents/skills/lint-and-validate/scripts/lint_runner.py",
+      "blob": "1dc79c629bc7fa853c5bf9b14aa71b96c052e9b1",
+      "size": 5421
+    },
+    {
+      "path": ".agents/skills/lint-and-validate/scripts/type_coverage.py",
+      "blob": "f1b06cf5137278855971815e601a04c5a53b913a",
+      "size": 9179
+    },
+    {
+      "path": ".agents/skills/mcp-builder/SKILL.md",
+      "blob": "bc0e100d41c29162d5c3e9e29ae0d79499eeaf43",
+      "size": 10637
+    },
+    {
+      "path": ".agents/skills/memory-system/SKILL.md",
+      "blob": "2dc96cebf2171a72eac05a89984d43b8deb9adee",
+      "size": 6357
+    },
+    {
+      "path": ".agents/skills/mobile-design/SKILL.md",
+      "blob": "dc6c2b78280d57868fe14d29770f0f513f56ec97",
+      "size": 15627
+    },
+    {
+      "path": ".agents/skills/mobile-design/decision-trees.md",
+      "blob": "69287bc4bc50cfb41af6cad572e3044faa37732b",
+      "size": 16320
+    },
+    {
+      "path": ".agents/skills/mobile-design/mobile-backend.md",
+      "blob": "89399890cd5309606078a65d9375616ddb0f969a",
+      "size": 14686
+    },
+    {
+      "path": ".agents/skills/mobile-design/mobile-color-system.md",
+      "blob": "22276bc33cd005e5f2252b26ec270bf4ac7f59ff",
+      "size": 10211
+    },
+    {
+      "path": ".agents/skills/mobile-design/mobile-debugging.md",
+      "blob": "66ad448f14ae8af7d2bdb37ac2bfb67141b7348f",
+      "size": 4321
+    },
+    {
+      "path": ".agents/skills/mobile-design/mobile-design-thinking.md",
+      "blob": "399d3b2a776e7c9cb44d6b5e35f181d3e9b32073",
+      "size": 17227
+    },
+    {
+      "path": ".agents/skills/mobile-design/mobile-navigation.md",
+      "blob": "ef907bfdd5f3612dcc5a927c5a7a546642fbfd47",
+      "size": 11855
+    },
+    {
+      "path": ".agents/skills/mobile-design/mobile-performance.md",
+      "blob": "9a5b946b9cb0cb01ff461b22617ac294652b7081",
+      "size": 19327
+    },
+    {
+      "path": ".agents/skills/mobile-design/mobile-testing.md",
+      "blob": "733f64a939fa2194a826ef75f17e596e2c4f4e66",
+      "size": 11027
+    },
+    {
+      "path": ".agents/skills/mobile-design/mobile-typography.md",
+      "blob": "d6cd4cb3424f9546a1e8acef5acaabd66aeb98fa",
+      "size": 10717
+    },
+    {
+      "path": ".agents/skills/mobile-design/platform-android.md",
+      "blob": "5aa83cc99141b6d92c8d9f2802fde995a66cb7a0",
+      "size": 19541
+    },
+    {
+      "path": ".agents/skills/mobile-design/platform-ios.md",
+      "blob": "352315766252596401e1014748c3962b73df8280",
+      "size": 17127
+    },
+    {
+      "path": ".agents/skills/mobile-design/scripts/mobile_audit.py",
+      "blob": "f1345239f924080020a849ca4e708326965c543f",
+      "size": 35976
+    },
+    {
+      "path": ".agents/skills/mobile-design/touch-psychology.md",
+      "blob": "59e78398ca09f00526eb485d91c2a0a198464b6a",
+      "size": 16848
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/1-async-eliminating-waterfalls.md",
+      "blob": "cd309244af46d5c14e27025733c111ed1935cbb5",
+      "size": 8823
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/2-bundle-bundle-size-optimization.md",
+      "blob": "b7c78aa52f611ef92f83deb1fcb711b6045c0362",
+      "size": 6295
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/3-server-server-side-performance.md",
+      "blob": "cff9b9bc286cd071cc6f0a9bb767f14132f7a834",
+      "size": 12860
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/4-client-client-side-data-fetching.md",
+      "blob": "b94d9e803127df43bb36799985ce31b1b811c069",
+      "size": 6818
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/5-rerender-re-render-optimization.md",
+      "blob": "5dbab316715155f65a27f4a90f5e2fe6cb5d124b",
+      "size": 15871
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/6-rendering-rendering-performance.md",
+      "blob": "122e9b25db8152754d38f2f7a27a9d0c678de73f",
+      "size": 10371
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/7-js-javascript-performance.md",
+      "blob": "7746fd6d86953bb2c7364e23cadcf7c112f661fe",
+      "size": 17360
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/8-advanced-advanced-patterns.md",
+      "blob": "70ec4ebd340bc31f7e296588bd8a1cf23abb7270",
+      "size": 3643
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/9-cache-components.md",
+      "blob": "d9859deb3738f60a0c37b4ce54dc5ecc31cee719",
+      "size": 2830
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/SKILL.md",
+      "blob": "4cde867eaf5cc06fb2973a430b3426e965667fc0",
+      "size": 10500
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/scripts/convert_rules.py",
+      "blob": "dbf711c2d4323f58747f5c8e72819cd9fc2a22f5",
+      "size": 6633
+    },
+    {
+      "path": ".agents/skills/nextjs-react-expert/scripts/react_performance_checker.py",
+      "blob": "c8c98f8fb76914ec919fedea736afe5110f49015",
+      "size": 11558
+    },
+    {
+      "path": ".agents/skills/nodejs-best-practices/SKILL.md",
+      "blob": "b5c96e8f2f4ca6ee460f0f333712368013382233",
+      "size": 8651
+    },
+    {
+      "path": ".agents/skills/parallel-agents/SKILL.md",
+      "blob": "da376b1d2c349dd51e51793f71918272e3682986",
+      "size": 6283
+    },
+    {
+      "path": ".agents/skills/performance-profiling/SKILL.md",
+      "blob": "cec10107f68a1b4e7f1c0aad9fdb8687afab27a4",
+      "size": 3248
+    },
+    {
+      "path": ".agents/skills/performance-profiling/scripts/bundle_analyzer.py",
+      "blob": "5dc70c7d8ed5a07633d2878e955e54a378b250ce",
+      "size": 5258
+    },
+    {
+      "path": ".agents/skills/performance-profiling/scripts/lighthouse_audit.py",
+      "blob": "eb6ae5b52c3f0fe89562006415e6b9d910d6634b",
+      "size": 4362
+    },
+    {
+      "path": ".agents/skills/plan-writing/SKILL.md",
+      "blob": "84a9fb8cdb1ebf4d3e85a97d4fd4d9c656a300d1",
+      "size": 4158
+    },
+    {
+      "path": ".agents/skills/powershell-windows/SKILL.md",
+      "blob": "44870dc6ac54da75046b7dc86defa91ce4b3121f",
+      "size": 3652
+    },
+    {
+      "path": ".agents/skills/python-patterns/SKILL.md",
+      "blob": "334b22caccf0a5bca6e77870d784f63a992b3920",
+      "size": 9596
+    },
+    {
+      "path": ".agents/skills/red-team-tactics/SKILL.md",
+      "blob": "e160d2e655d7c9946a8d58a3fab20bfd74845805",
+      "size": 4552
+    },
+    {
+      "path": ".agents/skills/rust-pro/SKILL.md",
+      "blob": "325227e7c5359656987a0b6411ddfda6a0395997",
+      "size": 7788
+    },
+    {
+      "path": ".agents/skills/seo-fundamentals/SKILL.md",
+      "blob": "74a5472974020c8c1e3685037267f58b598803b9",
+      "size": 2933
+    },
+    {
+      "path": ".agents/skills/seo-fundamentals/scripts/seo_checker.py",
+      "blob": "2ce9b223f1e80b705729abc71b15d6dad2834066",
+      "size": 6616
+    },
+    {
+      "path": ".agents/skills/server-management/SKILL.md",
+      "blob": "be885e88478f74060511c3c0402b0ed3d8e8e3ac",
+      "size": 3878
+    },
+    {
+      "path": ".agents/skills/simplify-code/SKILL.md",
+      "blob": "8fea845b0da6c0f7f70ec78a2317197a547eb999",
+      "size": 4017
+    },
+    {
+      "path": ".agents/skills/skillify/SKILL.md",
+      "blob": "c966797b413938d315f2085249f205992721373b",
+      "size": 3178
+    },
+    {
+      "path": ".agents/skills/systematic-debugging/SKILL.md",
+      "blob": "fb7bca9d7a1983e7099c6eb59a32dd2141cf152c",
+      "size": 2565
+    },
+    {
+      "path": ".agents/skills/tailwind-patterns/SKILL.md",
+      "blob": "1ebaf42d9693053135dd308fe5fb105d3698952b",
+      "size": 6979
+    },
+    {
+      "path": ".agents/skills/tdd-workflow/SKILL.md",
+      "blob": "eca24c0490f5f1d3214ae7ba9674df79069ad07d",
+      "size": 2960
+    },
+    {
+      "path": ".agents/skills/testing-patterns/SKILL.md",
+      "blob": "b47e99b448bfd3a92a17bac48ba65c8b9c6fd164",
+      "size": 3628
+    },
+    {
+      "path": ".agents/skills/testing-patterns/scripts/test_runner.py",
+      "blob": "41917943d927285d57ba4ed871cc29041ff211bf",
+      "size": 7078
+    },
+    {
+      "path": ".agents/skills/verify-changes/SKILL.md",
+      "blob": "e959b3d95254380f0592480e13a2a11ef608f426",
+      "size": 3954
+    },
+    {
+      "path": ".agents/skills/vulnerability-scanner/SKILL.md",
+      "blob": "a911c8e5e8e4d40ebe25235576f73baa042da8b3",
+      "size": 7726
+    },
+    {
+      "path": ".agents/skills/vulnerability-scanner/checklists.md",
+      "blob": "1b4c4102d9b7bee8223e3063a4bc2c247d90f183",
+      "size": 3039
+    },
+    {
+      "path": ".agents/skills/vulnerability-scanner/scripts/dependency_analyzer.py",
+      "blob": "74cda3baa65617f1cccbd7695c4e17e6089b4760",
+      "size": 6757
+    },
+    {
+      "path": ".agents/skills/vulnerability-scanner/scripts/security_scan.py",
+      "blob": "b9e031dc09a7ad1eca6232feee76c1653627864f",
+      "size": 18737
+    },
+    {
+      "path": ".agents/skills/web-design-guidelines/SKILL.md",
+      "blob": "a2526a867d33a834a2725bfad2a5dca31eddd44d",
+      "size": 1962
+    },
+    {
+      "path": ".agents/skills/webapp-testing/SKILL.md",
+      "blob": "a167572f56b33a3cf4f994f284d3983218cc4dab",
+      "size": 3965
+    },
+    {
+      "path": ".agents/skills/webapp-testing/scripts/playwright_runner.py",
+      "blob": "a6027576ad65f45a8f2863f63cafa8626d36054f",
+      "size": 6097
+    },
+    {
+      "path": ".agents/workflows/brainstorm.md",
+      "blob": "53756c05e18bce1469f8b4bd6a2705d4812bd76d",
+      "size": 1973
+    },
+    {
+      "path": ".agents/workflows/coordinate.md",
+      "blob": "a546844c5543f397027eb97ec6038dba759c3dad",
+      "size": 2116
+    },
+    {
+      "path": ".agents/workflows/create.md",
+      "blob": "40bdd2d8a29ca3ae7bedfa3e8178353e7c7a503e",
+      "size": 1827
+    },
+    {
+      "path": ".agents/workflows/debug.md",
+      "blob": "da5c73f173e1e6733d98827863960af1bcdfa77c",
+      "size": 1876
+    },
+    {
+      "path": ".agents/workflows/deploy.md",
+      "blob": "b61cf5abbf679742ad1a35584cb2960b10a30382",
+      "size": 3817
+    },
+    {
+      "path": ".agents/workflows/enhance.md",
+      "blob": "e6e319af79f4970cc14398d59e40bb76fc6858ac",
+      "size": 1442
+    },
+    {
+      "path": ".agents/workflows/orchestrate.md",
+      "blob": "5990a3f1c4f1bb7691839a5dc1a6a15eff340140",
+      "size": 7783
+    },
+    {
+      "path": ".agents/workflows/plan.md",
+      "blob": "8325986231f84db55f5a1663e92867e0b09cfd95",
+      "size": 2079
+    },
+    {
+      "path": ".agents/workflows/preview.md",
+      "blob": "d0e2ec04cce54885332a4c2d515e28c01ba438e6",
+      "size": 1316
+    },
+    {
+      "path": ".agents/workflows/remember.md",
+      "blob": "ef9250d6f424c30e3684e0ef64da4416a1c92b48",
+      "size": 1780
+    },
+    {
+      "path": ".agents/workflows/status.md",
+      "blob": "2b2c242c15cea043db3094997fcbcba41b4e505d",
+      "size": 1560
+    },
+    {
+      "path": ".agents/workflows/test.md",
+      "blob": "27aa622ca46b6c58c4530364484ec291d06e3505",
+      "size": 2800
+    },
+    {
+      "path": ".agents/workflows/verify.md",
+      "blob": "d8090ecd605a032449a5c6342be88131af08f9bd",
+      "size": 1736
+    },
+    {
+      "path": ".editorconfig",
+      "blob": "6659b428bbf08ca6fb905117e70aebbbe299ddcd",
+      "size": 339
+    },
+    {
+      "path": ".github/RELEASE_SETUP.md",
+      "blob": "38ff974f13af849c9ab6e78691f49f261e24068c",
+      "size": 3073
+    },
+    {
+      "path": ".github/dependabot.yml",
+      "blob": "ff5c46dfc621252a9044b8086da5042cddfbc4cd",
+      "size": 785
+    },
+    {
+      "path": ".github/workflows/antigravity.yml",
+      "blob": "a90debfb8150ded81c4a6cef0111d60cd3eef636",
+      "size": 1870
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "blob": "7f853e8d3ef8d2ba6a963e866ba9b528036514d1",
+      "size": 2815
+    },
+    {
+      "path": ".github/workflows/dependency-review.yml",
+      "blob": "5c9ba6546f132a795aae62f6c2ee67ac5dc92cd0",
+      "size": 510
+    },
+    {
+      "path": ".github/workflows/deploy.yml",
+      "blob": "fa312a9330d20540e6745c15156f285d00d6201c",
+      "size": 1031
+    },
+    {
+      "path": ".github/workflows/publish.yml",
+      "blob": "537b356be7c5a03b3d784a91720328e02463b962",
+      "size": 1538
+    },
+    {
+      "path": ".gitignore",
+      "blob": "218d5f65a403d469f0b8a785b964977993e9da64",
+      "size": 337
+    },
+    {
+      "path": "AGENT_FLOW.md",
+      "blob": "97630df91e4fb67526fac3737c2084cff77da9af",
+      "size": 36692
+    },
+    {
+      "path": "CHANGELOG.md",
+      "blob": "23b97f623508856de60ac5223c0d5abae2e8af4a",
+      "size": 33134
+    },
+    {
+      "path": "CLAUDE.md",
+      "blob": "80cbc0ef1c508f1234fe7d38d96289b80b9a6512",
+      "size": 4406
+    },
+    {
+      "path": "Dockerfile",
+      "blob": "909e3c258edff5d22fd9157afa94ae3604bf1dc1",
+      "size": 773
+    },
+    {
+      "path": "LICENSE",
+      "blob": "b9e27390981ba03d4842c1c2a045e18043044de9",
+      "size": 1063
+    },
+    {
+      "path": "MIGRATION.md",
+      "blob": "85ff7b618bad274753383092e97a79d0d284970b",
+      "size": 5330
+    },
+    {
+      "path": "README-VI.md",
+      "blob": "2e857a05112ebb58ec6ca156bc455ec5b55f9292",
+      "size": 11011
+    },
+    {
+      "path": "README.md",
+      "blob": "e3d9a76b9a6bb057d1a03056fec4f27ed636c059",
+      "size": 10397
+    },
+    {
+      "path": "SECURITY.md",
+      "blob": "05b137f4274e8c77d906e768c41775e82e79beec",
+      "size": 5183
+    },
+    {
+      "path": "cli/.gitignore",
+      "blob": "97b12c8dae2e92c769ddc607370822757e7ed48e",
+      "size": 28
+    },
+    {
+      "path": "cli/LICENSE",
+      "blob": "7cb633d114f5ac737afda4b3de3fdcb009ad8d9f",
+      "size": 1071
+    },
+    {
+      "path": "cli/README.md",
+      "blob": "1b198bccbed19c37a52a8dd98614476e01d5320e",
+      "size": 2372
+    },
+    {
+      "path": "cli/bin/index.js",
+      "blob": "d86b30441f48bc201fa723bdac4875bba696d175",
+      "size": 17364
+    },
+    {
+      "path": "cli/lib/managed-tree.js",
+      "blob": "cef8f74f030f57d2d1173182ea1f4f92a5346984",
+      "size": 15484
+    },
+    {
+      "path": "cli/package-lock.json",
+      "blob": "fd3d68767cb78c7579b969396927a22c3160acac",
+      "size": 11286
+    },
+    {
+      "path": "cli/package.json",
+      "blob": "61a1e2e9b7ce8b68f8c3d0745cf86749dd15e580",
+      "size": 869
+    },
+    {
+      "path": "cli/test/index.test.js",
+      "blob": "2fdf7a1cbbae1e22dc5611e84cf46cdec72ea346",
+      "size": 1502
+    },
+    {
+      "path": "cli/test/managed-tree.test.js",
+      "blob": "6096b650d4051556c2519c9f0d8f70834e312706",
+      "size": 7522
+    },
+    {
+      "path": "cli/test/release-safety.test.js",
+      "blob": "7d5b5abbfa3c192135fd65e73c4dbeff0f304b45",
+      "size": 3085
+    },
+    {
+      "path": "package-lock.json",
+      "blob": "bc24ce47d8329bfe15cfbcf334c4cf5438d7a3ac",
+      "size": 258
+    },
+    {
+      "path": "package.json",
+      "blob": "16e1f0493a0587098fd03c31719a23b02c4afcf2",
+      "size": 1548
+    },
+    {
+      "path": "web/.dockerignore",
+      "blob": "f6bc7fe52087dd1c37c5c72675b6c4cdd45bab76",
+      "size": 62
+    },
+    {
+      "path": "web/.gitignore",
+      "blob": "f3c09b556f5377e63e52757b9edba1e51604d149",
+      "size": 487
+    },
+    {
+      "path": "web/DESIGN.md",
+      "blob": "106a0c26316bb3a1c8ea00717610024f03f79d2a",
+      "size": 3215
+    },
+    {
+      "path": "web/README.md",
+      "blob": "2e22e898c5ebaec4ce9534fd81ee6d9badccddfb",
+      "size": 2510
+    },
+    {
+      "path": "web/components.json",
+      "blob": "c01246428ce9dd7007467ba90e314eaae788254b",
+      "size": 503
+    },
+    {
+      "path": "web/eslint.config.mjs",
+      "blob": "05e726d1b4201bc8c7716d2b058279676582e8c0",
+      "size": 465
+    },
+    {
+      "path": "web/next.config.ts",
+      "blob": "79ab50439e48694a21216fc3e6aa0c871d327e02",
+      "size": 1566
+    },
+    {
+      "path": "web/package-lock.json",
+      "blob": "bf089872b35d644d004a74c6bc57b7c47f61ea9c",
+      "size": 334121
+    },
+    {
+      "path": "web/package.json",
+      "blob": "bb1a45bf6b08e7484cf080f75458c5e213daef24",
+      "size": 1240
+    },
+    {
+      "path": "web/postcss.config.mjs",
+      "blob": "61e36849cf7cfa9f1f71b4a3964a4953e3e243d3",
+      "size": 94
+    },
+    {
+      "path": "web/public/favicon.ico",
+      "blob": "eb018c67b64b3e46786e88cfffe55e16bfd44568",
+      "size": 53298
+    },
+    {
+      "path": "web/public/flags/cn.svg",
+      "blob": "349cd00e2b275f21df06a584d12fd30b19ac2ce8",
+      "size": 557
+    },
+    {
+      "path": "web/public/flags/gb.svg",
+      "blob": "799138319d8446a6407a3448185559f20b9e3415",
+      "size": 504
+    },
+    {
+      "path": "web/public/flags/jp.svg",
+      "blob": "b0b1bd444243bf533a215f9ad69e40b6769f04d2",
+      "size": 163
+    },
+    {
+      "path": "web/public/flags/vn.svg",
+      "blob": "7e4bac8f4acf3a8dc4cda58e9a3696ca65f8e91e",
+      "size": 490
+    },
+    {
+      "path": "web/public/images/logo.png",
+      "blob": "69f708e9f962259f83d4bc6e81ef0a15aa828a55",
+      "size": 70878
+    },
+    {
+      "path": "web/public/images/logo.svg",
+      "blob": "1a567014916138f3b2546bcc9e29d9b2ab100c2e",
+      "size": 1462
+    },
+    {
+      "path": "web/public/images/og-image.png",
+      "blob": "cdb828b44a415dcd98cbdde8e44771832e43f67f",
+      "size": 72761
+    },
+    {
+      "path": "web/src/app/docs/agents/page.tsx",
+      "blob": "e606ea0a5ac47d0aa641e8350b516f57266a5b2b",
+      "size": 6314
+    },
+    {
+      "path": "web/src/app/docs/antigravity/content.en.mdx",
+      "blob": "7534ea477c87d6f997bca35539138dd7cb93c25f",
+      "size": 2469
+    },
+    {
+      "path": "web/src/app/docs/antigravity/content.vi.mdx",
+      "blob": "586df3d018dfd726c39547b0db054ca755a5eba6",
+      "size": 2640
+    },
+    {
+      "path": "web/src/app/docs/antigravity/page.tsx",
+      "blob": "8430524027edb793098a02d4808edf5a80c02517",
+      "size": 517
+    },
+    {
+      "path": "web/src/app/docs/changelog/page.tsx",
+      "blob": "b59cd30b971592d800e81bb063066cfbdadfd8fc",
+      "size": 4192
+    },
+    {
+      "path": "web/src/app/docs/cli/page.tsx",
+      "blob": "bf2fa9090e7e02a4033596b602e5c3f010373e56",
+      "size": 17400
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/brainstorm/content.en.mdx",
+      "blob": "bc507673b0e3c2c65af1681e10c7847f43752546",
+      "size": 2947
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/brainstorm/content.ja.mdx",
+      "blob": "1a934f20baa322db2aa4450312644c62455609e9",
+      "size": 3609
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/brainstorm/content.vi.mdx",
+      "blob": "70c8aa33e9d62049720167039645b7a48ff7d10a",
+      "size": 3428
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/brainstorm/content.zh.mdx",
+      "blob": "fb8f855abb364743b9c4d6531c2f4b7ae7e7be27",
+      "size": 2992
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/brainstorm/page.tsx",
+      "blob": "ece0461f6dc8527b7f11c80c58ca70363130366a",
+      "size": 586
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/create/content.en.mdx",
+      "blob": "1d84da294d14eb522b55f238e7075a24d9894be8",
+      "size": 2270
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/create/content.ja.mdx",
+      "blob": "2b35ec6c0c2cee9ccac5f6ddce0a8aeefb4b4bfe",
+      "size": 2754
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/create/content.vi.mdx",
+      "blob": "148b5a88154a9266dfefa3f777b86855daddcfe2",
+      "size": 2669
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/create/content.zh.mdx",
+      "blob": "64fdd91c9822bd7257e109e4d6feb9627afce387",
+      "size": 2258
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/create/page.tsx",
+      "blob": "53d09de92e7b84172951fe365e12f4d596e180f4",
+      "size": 576
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/debugging/content.en.mdx",
+      "blob": "6c7a4899b1180fa1ce7c632db0603ff5d5a9af67",
+      "size": 2389
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/debugging/content.ja.mdx",
+      "blob": "a7f9c434da587623ddc66c60c2760ebb46d32001",
+      "size": 2899
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/debugging/content.vi.mdx",
+      "blob": "a1889398e1b07cc55ea3c0cc29c4102e28d5fe16",
+      "size": 2856
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/debugging/content.zh.mdx",
+      "blob": "464a5e43f8869381f20a53671d8be1cd7beeb78b",
+      "size": 2395
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/debugging/page.tsx",
+      "blob": "cfe72f990b35cb2fa3a9d765411132c68180d856",
+      "size": 566
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/deployment/content.en.mdx",
+      "blob": "b81b3cc693f031858bf51f9a60b31235952c353a",
+      "size": 3009
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/deployment/content.ja.mdx",
+      "blob": "1143f72b124b1a04e59d27d9fdcc9a73cc87bc76",
+      "size": 3556
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/deployment/content.vi.mdx",
+      "blob": "1fc838c4b06aee46c37c4421f7b8d6e98e3e71a6",
+      "size": 3388
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/deployment/content.zh.mdx",
+      "blob": "136445678a5a6ec332fa2d411ddcda697b70187c",
+      "size": 2982
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/deployment/page.tsx",
+      "blob": "e5810db67806fe9ecbe2cb88f1aa33b45e9e4d70",
+      "size": 554
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/new-feature/content.en.mdx",
+      "blob": "ed607fba105d3ef1ae862a833937965a719d991a",
+      "size": 2576
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/new-feature/content.ja.mdx",
+      "blob": "3578c0f3888ed335c65c3c5e7f11c34f19139b6e",
+      "size": 3116
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/new-feature/content.vi.mdx",
+      "blob": "fdbf5eaa03ddf962adf5bfa3be1e6c0916c265f8",
+      "size": 2924
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/new-feature/content.zh.mdx",
+      "blob": "eb62af3fc2abdda0c2869fc997bd1f0e6761b5dd",
+      "size": 2551
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/new-feature/page.tsx",
+      "blob": "3c2662f6dd326d25089a87af96546510097efa7d",
+      "size": 562
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/orchestration/content.en.mdx",
+      "blob": "b63ad6ec4a474b73f72b75f95356340b69f73234",
+      "size": 3033
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/orchestration/content.ja.mdx",
+      "blob": "ae0bf22a119a6bd1968a18b6024d3afe23c89b48",
+      "size": 3767
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/orchestration/content.vi.mdx",
+      "blob": "c12263692c22d002b8e026c204e617c90ab19094",
+      "size": 3482
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/orchestration/content.zh.mdx",
+      "blob": "21d00b92a7799ec8c72cb08fe74599f39c79f883",
+      "size": 3072
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/orchestration/page.tsx",
+      "blob": "79cf8333cbc8efedb7debbe0ee4e4d3bb982f080",
+      "size": 582
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/plan/content.en.mdx",
+      "blob": "090efbbec185f37438a239c2974716eb9a17e265",
+      "size": 2082
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/plan/content.ja.mdx",
+      "blob": "1d3192635e1f427221ce028b0ed156a37e115b02",
+      "size": 2562
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/plan/content.vi.mdx",
+      "blob": "2ea9a5966993e93a8598d06fd0db1edb6c1259f4",
+      "size": 2421
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/plan/content.zh.mdx",
+      "blob": "61444922e5a9c4d50b1774b7fdf5c89ff9f38850",
+      "size": 2062
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/plan/page.tsx",
+      "blob": "085c2c71fbf2ed8124d575f5e1eb54f835f14fb7",
+      "size": 560
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/preview/content.en.mdx",
+      "blob": "5dc38c79f97efde5e458a5b66d08e750c232526b",
+      "size": 1731
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/preview/content.ja.mdx",
+      "blob": "0a9db02c889ebea3d81dc1b6ee909b6b48108661",
+      "size": 2059
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/preview/content.vi.mdx",
+      "blob": "bd7a72e75790c727f954df3d344c6055118c8711",
+      "size": 2027
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/preview/content.zh.mdx",
+      "blob": "6f1a33ba31828538f3ffc5a7586c63290473a7e8",
+      "size": 1766
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/preview/page.tsx",
+      "blob": "b89ecdd9d1ac8bb09395dba08c7fb6ce38cfea93",
+      "size": 550
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/status/content.en.mdx",
+      "blob": "81a28b9cfffcd57a3599940755ab34b6e0d37cc2",
+      "size": 2237
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/status/content.ja.mdx",
+      "blob": "a5d6e7c2dd7bdfbe7c5a64e165fbb55563c4afab",
+      "size": 2744
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/status/content.vi.mdx",
+      "blob": "075b6b0bc9e58b99cfcd3990b267ea1b8d9ff227",
+      "size": 2512
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/status/content.zh.mdx",
+      "blob": "f6bf8295f5ca40df6c105eb3b25b71360541d1c9",
+      "size": 2244
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/status/page.tsx",
+      "blob": "68a62209d43ef404c0b8f567c067e78b34beb67d",
+      "size": 555
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/test/content.en.mdx",
+      "blob": "449aae8e325c24e3b1515a2b8445d6c4ad74eff8",
+      "size": 1863
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/test/content.ja.mdx",
+      "blob": "3142b02ba1c28b51c0a280f02d0217312e39f33e",
+      "size": 2252
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/test/content.vi.mdx",
+      "blob": "c8f1f4b776e9f620807a58a40da33124b9bb0c8f",
+      "size": 2034
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/test/content.zh.mdx",
+      "blob": "4504493974102baee6d83597446985648eef5537",
+      "size": 1874
+    },
+    {
+      "path": "web/src/app/docs/guide/examples/test/page.tsx",
+      "blob": "22a63db5977393c49c73defbaeae0c4e12a11fc7",
+      "size": 556
+    },
+    {
+      "path": "web/src/app/docs/installation/content.tsx",
+      "blob": "042dc127d7b8ea52805b207b5fd01d389994e68e",
+      "size": 6132
+    },
+    {
+      "path": "web/src/app/docs/installation/page.tsx",
+      "blob": "74b27a34c0676f474f61847895b09009470801d5",
+      "size": 252
+    },
+    {
+      "path": "web/src/app/docs/layout.tsx",
+      "blob": "981f4ae95f9e5c5940cf4fbe0571732c160a3d51",
+      "size": 1826
+    },
+    {
+      "path": "web/src/app/docs/page.tsx",
+      "blob": "1bb539a647ac65a8d4fb9e46a45147e763b939ee",
+      "size": 5641
+    },
+    {
+      "path": "web/src/app/docs/skills/page.tsx",
+      "blob": "d1867b2af439825241f781db24649b9dab50d7b8",
+      "size": 7795
+    },
+    {
+      "path": "web/src/app/docs/updates/content.en.mdx",
+      "blob": "2d3eda5968cd856973cab476f790465fb8db7f3f",
+      "size": 2297
+    },
+    {
+      "path": "web/src/app/docs/updates/content.vi.mdx",
+      "blob": "8fd1e5807218b2521f652707d350052c55d65bcd",
+      "size": 2692
+    },
+    {
+      "path": "web/src/app/docs/updates/page.tsx",
+      "blob": "4f20744f5b3cbde839f79e0c73e4fffe4c2014e8",
+      "size": 498
+    },
+    {
+      "path": "web/src/app/docs/workflows/page.tsx",
+      "blob": "2c272100e909da6785b3cf61a3d4c9dd91b21b11",
+      "size": 6463
+    },
+    {
+      "path": "web/src/app/globals.css",
+      "blob": "b0a06165125c7251e1f302702a6509dea4b83e6a",
+      "size": 7390
+    },
+    {
+      "path": "web/src/app/layout.tsx",
+      "blob": "c992b73b1fe7e2d517c16f5a1c496cfb7516838b",
+      "size": 3763
+    },
+    {
+      "path": "web/src/app/manifest.ts",
+      "blob": "40a4e5534544effac948ff6705bf58879b30d8b4",
+      "size": 803
+    },
+    {
+      "path": "web/src/app/not-found.tsx",
+      "blob": "fcd1b3029c4632bcff799fa524f4deb5ac9dc10b",
+      "size": 1712
+    },
+    {
+      "path": "web/src/app/page.tsx",
+      "blob": "bfb856262e82cb0b9e054cc3ecebdcc5c6aaa925",
+      "size": 734
+    },
+    {
+      "path": "web/src/app/robots.ts",
+      "blob": "f8ced70d9a27bdd59bd9494a7fc923041c703d97",
+      "size": 228
+    },
+    {
+      "path": "web/src/app/sitemap.ts",
+      "blob": "5d72f929051e1ed7ba79f6ade6e35a628ce6dd0f",
+      "size": 896
+    },
+    {
+      "path": "web/src/components/docs/code-block.tsx",
+      "blob": "0308cb29e5036a18b226a5277e9f516876e6a053",
+      "size": 1466
+    },
+    {
+      "path": "web/src/components/docs/localized-doc.tsx",
+      "blob": "ed5f53892da0a1f3749157ca7b24412fcba4628e",
+      "size": 693
+    },
+    {
+      "path": "web/src/components/docs/mdx-pre.tsx",
+      "blob": "998c8e9d4beb398655531486b4195441e74a8250",
+      "size": 1256
+    },
+    {
+      "path": "web/src/components/docs/pager.tsx",
+      "blob": "7d6cc68e277c00ec4e1d55593d50c82716f1e326",
+      "size": 2087
+    },
+    {
+      "path": "web/src/components/docs/sidebar.tsx",
+      "blob": "51f962d6c525b84a233418377161826b3b70e9ed",
+      "size": 1789
+    },
+    {
+      "path": "web/src/components/docs/toc.tsx",
+      "blob": "b7cfabe1d9ec3fae398b8c00c28845ef8cad4357",
+      "size": 2998
+    },
+    {
+      "path": "web/src/components/github-star-button.tsx",
+      "blob": "4d4d5a073e080d089a3801508f167fbc53df61cc",
+      "size": 1670
+    },
+    {
+      "path": "web/src/components/landing/benefits.tsx",
+      "blob": "1dcbe0bf220b62e71f0636844654b983fe8aad3a",
+      "size": 2012
+    },
+    {
+      "path": "web/src/components/landing/contribute.tsx",
+      "blob": "0ab0cf55ebf68937981bb3e62d99e0a4fe9ae07a",
+      "size": 4222
+    },
+    {
+      "path": "web/src/components/landing/faq.tsx",
+      "blob": "fcf370a72609e76966edb53bf75b1ab5ed97a8b1",
+      "size": 1476
+    },
+    {
+      "path": "web/src/components/landing/features.tsx",
+      "blob": "a6f606f8f83a4542746d80435ff00b9c99b3f778",
+      "size": 1764
+    },
+    {
+      "path": "web/src/components/landing/footer.tsx",
+      "blob": "1d79b58b892975f2d8d69e1fc515cf0231c9240b",
+      "size": 4727
+    },
+    {
+      "path": "web/src/components/landing/hero.tsx",
+      "blob": "0348a1d2948569c5eb871ffe61e9ca6f8de07f20",
+      "size": 3840
+    },
+    {
+      "path": "web/src/components/landing/index.ts",
+      "blob": "d22e2d8a3facbd161d2dd7abc7b216e4e8af34e6",
+      "size": 496
+    },
+    {
+      "path": "web/src/components/landing/navbar.tsx",
+      "blob": "c0c993cdd42ce80e08a73a5c077757bc4edeb8b7",
+      "size": 6145
+    },
+    {
+      "path": "web/src/components/landing/sponsored.tsx",
+      "blob": "dd516919456ac13a5bc5de807a4c925ad612b36d",
+      "size": 5541
+    },
+    {
+      "path": "web/src/components/landing/sponsors.tsx",
+      "blob": "24ab82a21de537effd8f2e60d3e4a41f585e005a",
+      "size": 1211
+    },
+    {
+      "path": "web/src/components/landing/testimonials.tsx",
+      "blob": "112af425690f49548069ea5ddb01327298d5d6f1",
+      "size": 2907
+    },
+    {
+      "path": "web/src/components/landing/workflows.tsx",
+      "blob": "592b798792691bb1fe490f06c9735ab330d1dc0a",
+      "size": 2336
+    },
+    {
+      "path": "web/src/components/layout/footer/index.tsx",
+      "blob": "aa0d81a2b93436c2f08a57833f53a95ab6b90f2d",
+      "size": 9240
+    },
+    {
+      "path": "web/src/components/layout/header/components/donate-dialog.tsx",
+      "blob": "82bd6a44e30f225301917161c1f30a766755acd9",
+      "size": 5903
+    },
+    {
+      "path": "web/src/components/layout/header/components/follow-dialog.tsx",
+      "blob": "a72bcbfef40b47b3414ce52aae798640955880ae",
+      "size": 3299
+    },
+    {
+      "path": "web/src/components/layout/header/components/language-toggle.tsx",
+      "blob": "708364a25a8d0e69595810051813ff5db312c6dd",
+      "size": 2358
+    },
+    {
+      "path": "web/src/components/layout/header/components/mobile-menu.tsx",
+      "blob": "e9650da854f4a1229a74595e80767e52b1b06fce",
+      "size": 6151
+    },
+    {
+      "path": "web/src/components/layout/header/components/search-dialog.tsx",
+      "blob": "db50ef2b576d3d29878cabad8279f6a1a5319732",
+      "size": 7416
+    },
+    {
+      "path": "web/src/components/layout/header/components/theme-toggle.tsx",
+      "blob": "8bd0d86730d56ae521b5ffa1a0f2d6ce5a7be791",
+      "size": 3252
+    },
+    {
+      "path": "web/src/components/layout/header/index.tsx",
+      "blob": "e876c6437aadc4287ede251bfdae164c1a11cd53",
+      "size": 5308
+    },
+    {
+      "path": "web/src/components/layout/toc/index.tsx",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "web/src/components/mdx/Callout.tsx",
+      "blob": "f002fa1d0df2fa9a8baeff889826372776098e28",
+      "size": 1601
+    },
+    {
+      "path": "web/src/components/mdx/FeatureGrid.tsx",
+      "blob": "88b0d6c64687521580b741424996f72ce2f6fc5c",
+      "size": 1085
+    },
+    {
+      "path": "web/src/components/mdx/ProTips.tsx",
+      "blob": "233bc0822d5fde71eff7aaca4719a4dd121e922f",
+      "size": 859
+    },
+    {
+      "path": "web/src/components/mdx/StatusList.tsx",
+      "blob": "67436e6a6fac8eccd9f93df2f74194983158e359",
+      "size": 903
+    },
+    {
+      "path": "web/src/components/mdx/StepList.tsx",
+      "blob": "82b16bb90b708730efea9961764f08bf84b245c3",
+      "size": 1071
+    },
+    {
+      "path": "web/src/components/mdx/Terminal.tsx",
+      "blob": "54c059e0ac6032912b83bd614d56b2f9cb432b6e",
+      "size": 1912
+    },
+    {
+      "path": "web/src/components/mdx/index.ts",
+      "blob": "f6b10f646288a0473d1c64e30774b5d75a3fe49f",
+      "size": 301
+    },
+    {
+      "path": "web/src/components/theme-provider.tsx",
+      "blob": "256906c8ffa02b290a59de0bed15393b7cec4bff",
+      "size": 300
+    },
+    {
+      "path": "web/src/components/ui/accordion.tsx",
+      "blob": "7d3deb9b5bb84dd011608df3f2b82b7267116691",
+      "size": 2089
+    },
+    {
+      "path": "web/src/components/ui/alert-dialog.tsx",
+      "blob": "205bcbec2103cd4e8b62c3053b7a91942ea2fb7a",
+      "size": 4984
+    },
+    {
+      "path": "web/src/components/ui/alert.tsx",
+      "blob": "f0719a8299e991bdae1c0f650070010abcb79a6d",
+      "size": 2398
+    },
+    {
+      "path": "web/src/components/ui/autocomplete.tsx",
+      "blob": "5fd355f990b206a19791d424a408444a48627bea",
+      "size": 9396
+    },
+    {
+      "path": "web/src/components/ui/avatar.tsx",
+      "blob": "41d45b602a8a5aa3fa9db85e11e2a178af17c50d",
+      "size": 1090
+    },
+    {
+      "path": "web/src/components/ui/badge.tsx",
+      "blob": "b723927b08504e25689327807282770330103ec4",
+      "size": 2748
+    },
+    {
+      "path": "web/src/components/ui/breadcrumb.tsx",
+      "blob": "7ae20a1b9d89e4acf7c9478a40502589454a56c3",
+      "size": 2519
+    },
+    {
+      "path": "web/src/components/ui/button.tsx",
+      "blob": "d2a081a9d28f684b683a518a43c694fa677039c0",
+      "size": 4974
+    },
+    {
+      "path": "web/src/components/ui/card.tsx",
+      "blob": "16f1ee202d74f93d9ab1aa2ca87db799b99bb499",
+      "size": 3172
+    },
+    {
+      "path": "web/src/components/ui/checkbox-group.tsx",
+      "blob": "de400eda2bd693b8f801abbff68e67dc27895bb6",
+      "size": 384
+    },
+    {
+      "path": "web/src/components/ui/checkbox.tsx",
+      "blob": "4b5e0a5bc956c8f158e19b78b2a3c1569c1c9b8e",
+      "size": 2656
+    },
+    {
+      "path": "web/src/components/ui/collapsible.tsx",
+      "blob": "368a53bd9a1a947ff9ebc5b1a8199111b9268e93",
+      "size": 1040
+    },
+    {
+      "path": "web/src/components/ui/combobox.tsx",
+      "blob": "cf0d00da2f1626313937f054735a566513fbbf6d",
+      "size": 14171
+    },
+    {
+      "path": "web/src/components/ui/command.tsx",
+      "blob": "8fd5e783084504cf01855999852b4fa8fc5e810b",
+      "size": 7206
+    },
+    {
+      "path": "web/src/components/ui/dialog.tsx",
+      "blob": "23de0d1fa420627b2c4855ef5998146624a46d44",
+      "size": 5919
+    },
+    {
+      "path": "web/src/components/ui/empty.tsx",
+      "blob": "12ac1049bf9dc9ed4d4f1470844823a13fe7858f",
+      "size": 3347
+    },
+    {
+      "path": "web/src/components/ui/field.tsx",
+      "blob": "9f01404bfdb9645e21d085c3173de2a350952abc",
+      "size": 1577
+    },
+    {
+      "path": "web/src/components/ui/fieldset.tsx",
+      "blob": "a67610d094928f4d6355b3631d10738245426469",
+      "size": 647
+    },
+    {
+      "path": "web/src/components/ui/form.tsx",
+      "blob": "d58ab6154eb5f14b50162c13cfaee2c683fd427f",
+      "size": 338
+    },
+    {
+      "path": "web/src/components/ui/frame.tsx",
+      "blob": "125122b5594b8acf242f98a5bfeb71ebfd6c9987",
+      "size": 1927
+    },
+    {
+      "path": "web/src/components/ui/group.tsx",
+      "blob": "5e0d55db66e9b5dc9ea492ea04e59096030d8d1e",
+      "size": 4855
+    },
+    {
+      "path": "web/src/components/ui/input-group.tsx",
+      "blob": "95a63fd6c267d47dd7b2411320e3f25c6558c80b",
+      "size": 6190
+    },
+    {
+      "path": "web/src/components/ui/input.tsx",
+      "blob": "ca38f64d25ca16c05afab4dd59fdf1976245f864",
+      "size": 2710
+    },
+    {
+      "path": "web/src/components/ui/kbd.tsx",
+      "blob": "4feecd25bb2674c35907ff2cb967554c2c565fd7",
+      "size": 723
+    },
+    {
+      "path": "web/src/components/ui/label.tsx",
+      "blob": "be0275ebc2b1b0812e5875a2c89b04c6b8bea7a6",
+      "size": 575
+    },
+    {
+      "path": "web/src/components/ui/llms.txt",
+      "blob": "4bb324d087015ac8d716cdbcc4ea0a341c3ce443",
+      "size": 6569
+    },
+    {
+      "path": "web/src/components/ui/menu.tsx",
+      "blob": "501c74a139ea6f4d83b5638a598b4236855dc61c",
+      "size": 10651
+    },
+    {
+      "path": "web/src/components/ui/meter.tsx",
+      "blob": "416599c4b5dbe8b7df57421bba72fdc68aad4d92",
+      "size": 1528
+    },
+    {
+      "path": "web/src/components/ui/number-field.tsx",
+      "blob": "c47ce95c1188575dccce6149b13ce0b2f8bb4358",
+      "size": 5487
+    },
+    {
+      "path": "web/src/components/ui/pagination.tsx",
+      "blob": "232cb7b74f59da5280e8b3c865ad297f933857a8",
+      "size": 3061
+    },
+    {
+      "path": "web/src/components/ui/popover.tsx",
+      "blob": "1c6cf3e48c205b0c941dbb0dac94d10b148b2a88",
+      "size": 3997
+    },
+    {
+      "path": "web/src/components/ui/preview-card.tsx",
+      "blob": "ca2c4a321b586656c4364eeb51e575a18f2d8d4a",
+      "size": 1865
+    },
+    {
+      "path": "web/src/components/ui/progress.tsx",
+      "blob": "2faa6c3de3d7db5ed0c23825c134cf0e4253ebc0",
+      "size": 1705
+    },
+    {
+      "path": "web/src/components/ui/radio-group.tsx",
+      "blob": "1c2a00f5478f088b9510691b0ab7d86074894a5e",
+      "size": 1907
+    },
+    {
+      "path": "web/src/components/ui/scroll-area.tsx",
+      "blob": "ee6e37fa42197c01450658447d0887c797bca093",
+      "size": 2381
+    },
+    {
+      "path": "web/src/components/ui/select.tsx",
+      "blob": "6a08bc3e844b70e5786bf31b3537b375af0e3bf2",
+      "size": 7041
+    },
+    {
+      "path": "web/src/components/ui/separator.tsx",
+      "blob": "32edfefb089971ef14f2cbae0a486838927c6759",
+      "size": 632
+    },
+    {
+      "path": "web/src/components/ui/sheet.tsx",
+      "blob": "cba02f4063d05c4f0eefdc6e02e898b051b83c4c",
+      "size": 6003
+    },
+    {
+      "path": "web/src/components/ui/sidebar.tsx",
+      "blob": "9d58633e96b777491ad6efbe8699c32519fecbb5",
+      "size": 22367
+    },
+    {
+      "path": "web/src/components/ui/skeleton.tsx",
+      "blob": "8953df2b47b38b2e7ccb2e8e57998bd3637ea9bd",
+      "size": 545
+    },
+    {
+      "path": "web/src/components/ui/slider.tsx",
+      "blob": "dd20dd80bc5f24e5f31f2ab64ec6a2a4210c2fd1",
+      "size": 3158
+    },
+    {
+      "path": "web/src/components/ui/spinner.tsx",
+      "blob": "631fc015066ee0568d5a2a6b46581d652a6136df",
+      "size": 344
+    },
+    {
+      "path": "web/src/components/ui/switch.tsx",
+      "blob": "87e2a0a1e83db935e626ac9ae9318bae2c0261c1",
+      "size": 1481
+    },
+    {
+      "path": "web/src/components/ui/table.tsx",
+      "blob": "0353e9ad85c1bd709589009316f1198b53a5a43f",
+      "size": 4109
+    },
+    {
+      "path": "web/src/components/ui/tabs.tsx",
+      "blob": "2447c2e23bb11582ab8a356ba589e0d9bbe0bcb1",
+      "size": 2925
+    },
+    {
+      "path": "web/src/components/ui/textarea.tsx",
+      "blob": "baa9118eb0dccaf36fba05426dd75cb3ec043fe6",
+      "size": 2193
+    },
+    {
+      "path": "web/src/components/ui/toast.tsx",
+      "blob": "ecf2337d5d005900b1a9421eb4b440c175983161",
+      "size": 13040
+    },
+    {
+      "path": "web/src/components/ui/toggle-group.tsx",
+      "blob": "5e7d32370de52d705fefa221939a831e5fe4c576",
+      "size": 3486
+    },
+    {
+      "path": "web/src/components/ui/toggle.tsx",
+      "blob": "2efbb380fc7de4f77829f63e9beddbd85d79a4c6",
+      "size": 2279
+    },
+    {
+      "path": "web/src/components/ui/toolbar.tsx",
+      "blob": "b524b037ee847090aef0dffd95ad90003836e870",
+      "size": 1976
+    },
+    {
+      "path": "web/src/components/ui/tooltip.tsx",
+      "blob": "9e69469c7a99cf671eac0ec537b9058198d08dc3",
+      "size": 2929
+    },
+    {
+      "path": "web/src/hooks/use-github-stars.ts",
+      "blob": "6c246641fdb86e1cff66f3b4e4ca367f5b0dd65e",
+      "size": 884
+    },
+    {
+      "path": "web/src/hooks/use-mobile.ts",
+      "blob": "a93d58393804b4dcda698e6a6e475f65a6889356",
+      "size": 585
+    },
+    {
+      "path": "web/src/i18n/dictionaries.ts",
+      "blob": "19b96d134655f78fd2c2568974c4f67a2769310e",
+      "size": 78224
+    },
+    {
+      "path": "web/src/i18n/landing-dictionaries.ts",
+      "blob": "3693d0af451e1dd726e598b88edbf5458c5e7e78",
+      "size": 38988
+    },
+    {
+      "path": "web/src/i18n/locale-store.ts",
+      "blob": "6309ee36462cefad14771da3785a5c9b898e1d54",
+      "size": 1093
+    },
+    {
+      "path": "web/src/i18n/provider.tsx",
+      "blob": "a24413e1620dde64cc1373645278966f58c28638",
+      "size": 1322
+    },
+    {
+      "path": "web/src/lib/docs-nav.ts",
+      "blob": "bf7c8285a793fe995b44b9c62720b4b8e4ffa44f",
+      "size": 3640
+    },
+    {
+      "path": "web/src/lib/github.ts",
+      "blob": "b3e4f43eaa72eb45b948b40a9aeed9ea7ef9345c",
+      "size": 4230
+    },
+    {
+      "path": "web/src/lib/utils.ts",
+      "blob": "bd0c391ddd1088e9067844c48835bf4abcd61783",
+      "size": 166
+    },
+    {
+      "path": "web/src/mdx-components.tsx",
+      "blob": "1d941cbbcb31d522f5510959093cd138d25a1c1d",
+      "size": 3800
+    },
+    {
+      "path": "web/src/services/agents.json",
+      "blob": "6669968afdc41fa96926d50afe79cea112c38a8c",
+      "size": 3615
+    },
+    {
+      "path": "web/src/services/changelog.json",
+      "blob": "39830dfe332d73aedaa8456d38b3d9c81d9a5bcc",
+      "size": 18965
+    },
+    {
+      "path": "web/src/services/skills.json",
+      "blob": "f24e49bf48785f78d080e25ef5cff257e9aa0bf0",
+      "size": 6746
+    },
+    {
+      "path": "web/src/services/workflows.json",
+      "blob": "3b901834386f70745f97ce4e8d08a8bd1b673a48",
+      "size": 1169
+    },
+    {
+      "path": "web/tsconfig.json",
+      "blob": "cf9c65d3e0676a0169374d827f7abb97497789ef",
+      "size": 670
+    }
+  ]
+}

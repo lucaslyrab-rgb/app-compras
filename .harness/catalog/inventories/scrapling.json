@@ -1,0 +1,1322 @@
+{
+  "repository": "D4vinci/Scrapling",
+  "commit": "2b160ee18bfee79bb0115e2d9e9c746c8d9bf4c9",
+  "tree_truncated": false,
+  "files": [
+    {
+      "path": ".bandit.yml",
+      "blob": "bd06507f49dbd7031ea5b87ce861359dbc533cec",
+      "size": 526
+    },
+    {
+      "path": ".dockerignore",
+      "blob": "be64db50a741519bd138ab3be215433ac5a51a96",
+      "size": 936
+    },
+    {
+      "path": ".github/FUNDING.yml",
+      "blob": "361677ff637b5552eafe102132c13195fda9f7c6",
+      "size": 56
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/01-bug_report.yml",
+      "blob": "0340da12c74f8eb421977d808a0e070ef0f7a3b4",
+      "size": 2111
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/02-feature_request.yml",
+      "blob": "8d07e864375e97ce66088c4b6bf4b9c83218c4b8",
+      "size": 662
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/03-other.yml",
+      "blob": "697c1f4dc64f129a8ad43c32eff73bba54698cde",
+      "size": 556
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/04-docs_issue.yml",
+      "blob": "344537451e7deab333c1af33eba0af0f05f6a937",
+      "size": 1132
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "blob": "59525b7feb100992e37f396918e16ee89b820565",
+      "size": 302
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "blob": "b8eac74475b6ac545db423232b116dd2f0e45673",
+      "size": 2184
+    },
+    {
+      "path": ".github/workflows/code-quality.yml",
+      "blob": "efcf1182294ed7fe11ca6223bbb6c903242df0ce",
+      "size": 5948
+    },
+    {
+      "path": ".github/workflows/docker-build.yml",
+      "blob": "ca4d85f88377c719f882943f5ccd9f2b34b58960",
+      "size": 3719
+    },
+    {
+      "path": ".github/workflows/release-and-publish.yml",
+      "blob": "d4936cea3f6e8d55a9693760df857e05ba30aa7d",
+      "size": 2331
+    },
+    {
+      "path": ".github/workflows/tests.yml",
+      "blob": "4beedffa6d23d170cb4fd7dda73e03859ca198ad",
+      "size": 4004
+    },
+    {
+      "path": ".gitignore",
+      "blob": "8448f3ab7701bd306992466b2fa22a08b8f55150",
+      "size": 984
+    },
+    {
+      "path": ".pre-commit-config.yaml",
+      "blob": "205e3550af8e529058a2a214c603302c2f4ab638",
+      "size": 472
+    },
+    {
+      "path": ".readthedocs.yaml",
+      "blob": "8d5a8d52a7881b09df9293c049d402d5e2c993ec",
+      "size": 507
+    },
+    {
+      "path": "AI_POLICY.md",
+      "blob": "f4eade94c0c08c86ade766c9023b73600b808ed6",
+      "size": 2784
+    },
+    {
+      "path": "CHANGELOG.md",
+      "blob": "a608a82f506ce7ab1a28338bad29e53b629d1f44",
+      "size": 97405
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "blob": "5ae54c91972c63797115ea0aee63df524ac032f3",
+      "size": 5220
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "blob": "ec5342c58dd49f735b56cda6fd4b1222bff37333",
+      "size": 8282
+    },
+    {
+      "path": "Dockerfile",
+      "blob": "0dafe3347059a7d8dfe5fdb8b866e9bc9725ae20",
+      "size": 1158
+    },
+    {
+      "path": "LICENSE",
+      "blob": "41615aad07eb42df7f09997f207950098e853a68",
+      "size": 1499
+    },
+    {
+      "path": "MANIFEST.in",
+      "blob": "aa9bf232aeda83321c300908aa9475680da4ecf2",
+      "size": 296
+    },
+    {
+      "path": "README.md",
+      "blob": "6f8d8405b5691adb305aeae5d7a83f543ede1756",
+      "size": 37124
+    },
+    {
+      "path": "ROADMAP.md",
+      "blob": "a9db6d615a2ae8097b652ce43acd23d56e6b5223",
+      "size": 1097
+    },
+    {
+      "path": "agent-skill/README.md",
+      "blob": "41293dd02edff014ee2a11929b9df09b8c51e664",
+      "size": 1689
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill.zip",
+      "blob": "0fb268ad212d4bece592c591b582d8686e6347b2",
+      "size": 95355
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/LICENSE.txt",
+      "blob": "41615aad07eb42df7f09997f207950098e853a68",
+      "size": 1499
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/SKILL.md",
+      "blob": "d3545fdc5503fbce3d4a9779378541e7ed6c0e5e",
+      "size": 24886
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/examples/01_fetcher_session.py",
+      "blob": "d1b3ece1095fcb1e00a2e54b45daa2ec581e10cc",
+      "size": 853
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/examples/02_dynamic_session.py",
+      "blob": "64229fe1649091f8398c5ca7823e8bb88cb970cb",
+      "size": 951
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/examples/03_stealthy_session.py",
+      "blob": "c3c68eb306b95e54fab243d1827f868fab93f1b0",
+      "size": 952
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/examples/04_spider.py",
+      "blob": "c4640075c90c951b4eba9e9189bbd210f4eff789",
+      "size": 1941
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/examples/README.md",
+      "blob": "9439d439002d2f801aaebfdd761eff7da285ca40",
+      "size": 1742
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/building-rag-systems.md",
+      "blob": "92653b9db3a9fad791783b2b443fc1647a831dfc",
+      "size": 4862
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/fetching/choosing.md",
+      "blob": "d3fdf98943b73d3766f7ce7d184920472c8daed8",
+      "size": 6933
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/fetching/dynamic.md",
+      "blob": "53385f151aef469241f63b53a4845cde32ed1c4d",
+      "size": 24369
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/fetching/static.md",
+      "blob": "9d5b0577cfd6391f442c4579b802bb6c17cbb461",
+      "size": 17266
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/fetching/stealthy.md",
+      "blob": "9dfe14b2a53adaf5c7bf236adad802483c1592cc",
+      "size": 22575
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/integrations/scrapy.md",
+      "blob": "da12a4a3b841add13814d8ad61044fb219065cb4",
+      "size": 2975
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/mcp-server.md",
+      "blob": "fced8cbead95aeaf18a65e9d36a020e3c62d4e6b",
+      "size": 28494
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/migrating_from_beautifulsoup.md",
+      "blob": "367c028097ec2c3e1f92b880dcae5226ec3078ca",
+      "size": 11264
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/parsing/adaptive.md",
+      "blob": "25e2b79c077e61a44935835164e6166b8ad3e342",
+      "size": 10648
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/parsing/main_classes.md",
+      "blob": "0d54498176348c5ff84bfea20f64cf12302203be",
+      "size": 27300
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/parsing/selection.md",
+      "blob": "d82a8026cfba2f4dc192bb0e09070783d3f027b7",
+      "size": 22615
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/spiders/advanced.md",
+      "blob": "0d21e72ae0d8fa3303494dbb0d91bda5a7a0b965",
+      "size": 18210
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/spiders/architecture.md",
+      "blob": "68ea7b822d13fc14f1b371679047c3c85ef422ce",
+      "size": 7550
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/spiders/generic-templates.md",
+      "blob": "50187b2e1c95d5218b8d09f01cbce64c2a97ab96",
+      "size": 10911
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/spiders/getting-started.md",
+      "blob": "f18073e3b8435c849f58c662574d2ade221e1c4c",
+      "size": 6906
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/spiders/platform-templates.md",
+      "blob": "8f67f6798d2e58011e7536c60cc229a3fb712250",
+      "size": 3599
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/spiders/proxy-blocking.md",
+      "blob": "d9aa7d48287ebe97957b9ec8639732973f8642ed",
+      "size": 8947
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/spiders/requests-responses.md",
+      "blob": "c93a7e2357766df5cb7ce0e6495b9a3a568b9389",
+      "size": 9070
+    },
+    {
+      "path": "agent-skill/Scrapling-Skill/references/spiders/sessions.md",
+      "blob": "8d2c3447e410122c823c7bfe9a3938d4d77eaca0",
+      "size": 8701
+    },
+    {
+      "path": "benchmarks.py",
+      "blob": "fcb089c767eb1e9edcf90c51de8fc137a305cae3",
+      "size": 4454
+    },
+    {
+      "path": "cleanup.py",
+      "blob": "eced04e2df580f647a4a81868a659f32403c74a9",
+      "size": 1033
+    },
+    {
+      "path": "docs/README_AR.md",
+      "blob": "2005693c0d95891ad637610eea881fb6ad143b73",
+      "size": 42412
+    },
+    {
+      "path": "docs/README_CN.md",
+      "blob": "4d9b374d7ee4fdc91277ab738059fa1ae608d842",
+      "size": 34518
+    },
+    {
+      "path": "docs/README_DE.md",
+      "blob": "b37d6654c3c9f024c0efb72d50869d28a3005dc8",
+      "size": 37513
+    },
+    {
+      "path": "docs/README_ES.md",
+      "blob": "de1b89831ab0b4efe0fc83c682e2aa772c5905b6",
+      "size": 37830
+    },
+    {
+      "path": "docs/README_FR.md",
+      "blob": "6fa8afb7d391164f17528a952978367859c7fe36",
+      "size": 38621
+    },
+    {
+      "path": "docs/README_JP.md",
+      "blob": "010b73f065874c1ae5e6bc2e40fb49ab1159fa3c",
+      "size": 41235
+    },
+    {
+      "path": "docs/README_KR.md",
+      "blob": "cdf404418031b5f6b2f5f69cc88aca5d4664ba7e",
+      "size": 38292
+    },
+    {
+      "path": "docs/README_PT_BR.md",
+      "blob": "0d92ff29a5748d40f6736bac33a7b9dd9608e3c0",
+      "size": 37647
+    },
+    {
+      "path": "docs/README_RU.md",
+      "blob": "dea80d9b8eb251a9da46834b949747bdd2fb1bec",
+      "size": 48622
+    },
+    {
+      "path": "docs/ai/agent-skill.md",
+      "blob": "c10853931fbdffab094f6501f17b9adf2d2c637f",
+      "size": 2537
+    },
+    {
+      "path": "docs/ai/building-rag-systems.md",
+      "blob": "7cde70253a115ef83ffa8494051988f42746eeef",
+      "size": 4958
+    },
+    {
+      "path": "docs/ai/mcp-server.md",
+      "blob": "aa83feb947c267b362e39506c8bc31e24cbad92a",
+      "size": 27581
+    },
+    {
+      "path": "docs/api-reference/custom-types.md",
+      "blob": "805e0d4f1d260b6887d7160eae2bc6d2b553627e",
+      "size": 611
+    },
+    {
+      "path": "docs/api-reference/fetchers.md",
+      "blob": "cd3d90cb72c78a38506f1925776ed65018a8c450",
+      "size": 1198
+    },
+    {
+      "path": "docs/api-reference/mcp-server.md",
+      "blob": "fc50af877dfa82bd969d58ab9aaf0c78d88ee58e",
+      "size": 1423
+    },
+    {
+      "path": "docs/api-reference/proxy-rotation.md",
+      "blob": "61a8fad70c763bb548274cb83e18c042fe241a55",
+      "size": 338
+    },
+    {
+      "path": "docs/api-reference/response.md",
+      "blob": "26f6895453a96fd9b51a4c1405233933f9024f3b",
+      "size": 407
+    },
+    {
+      "path": "docs/api-reference/selector.md",
+      "blob": "a4be82b684851777519616d85703ca13a0d6b5ea",
+      "size": 544
+    },
+    {
+      "path": "docs/api-reference/spiders.md",
+      "blob": "0a69abbf8d696306718da67a57f99c45f822194c",
+      "size": 802
+    },
+    {
+      "path": "docs/assets/cover_dark.png",
+      "blob": "cac13a3d6578a302f8c376abf8e0eca19844dbce",
+      "size": 113787
+    },
+    {
+      "path": "docs/assets/cover_dark.svg",
+      "blob": "07479588fdd3612065534a885f16c8ddceb854a0",
+      "size": 175598
+    },
+    {
+      "path": "docs/assets/cover_light.png",
+      "blob": "7b8b61f0150b15a09b9044c03dfc5e7adf89998a",
+      "size": 51944
+    },
+    {
+      "path": "docs/assets/cover_light.svg",
+      "blob": "5ec513b51cbdb7fee49710943161b2dbc2eb9474",
+      "size": 70232
+    },
+    {
+      "path": "docs/assets/favicon.ico",
+      "blob": "5865afb58ee2568adc5c9dd6e44eb6d183052955",
+      "size": 267230
+    },
+    {
+      "path": "docs/assets/logo.png",
+      "blob": "3c4f0cd80119976493548fbd20049122a5a1d922",
+      "size": 58096
+    },
+    {
+      "path": "docs/assets/main_cover.png",
+      "blob": "1cc3f1f5ddb823d7b6d006c7b24f352bf1337a3d",
+      "size": 454701
+    },
+    {
+      "path": "docs/assets/scrapling_shell_curl.png",
+      "blob": "ad54ebb82eb4fd21e2f0f12796a043f478823150",
+      "size": 351213
+    },
+    {
+      "path": "docs/assets/spider_architecture.png",
+      "blob": "7368b7b25c3a54c9f63785e7df3be482317dea20",
+      "size": 129786
+    },
+    {
+      "path": "docs/assets/star-history.png",
+      "blob": "2125255711b19b56f8e8815b2f9ff9b95c8452b9",
+      "size": 138823
+    },
+    {
+      "path": "docs/benchmarks.md",
+      "blob": "c1a4df34397f6fb849f11a30a1a3a0822fd59aea",
+      "size": 1235
+    },
+    {
+      "path": "docs/cli/extract-commands.md",
+      "blob": "05b09979fa67fff50d5332c6496045e451ddd9da",
+      "size": 21604
+    },
+    {
+      "path": "docs/cli/interactive-shell.md",
+      "blob": "297aa354e775f6ef1aa6d087e24660f1f85d73d0",
+      "size": 8606
+    },
+    {
+      "path": "docs/cli/overview.md",
+      "blob": "dc4346ff87cf1e8426d8b9d380ab8151945d36e4",
+      "size": 1013
+    },
+    {
+      "path": "docs/development/adaptive_storage_system.md",
+      "blob": "788ad6e2bbd85bcb4da2908d09b09cca308ecc84",
+      "size": 3562
+    },
+    {
+      "path": "docs/development/scrapling_custom_types.md",
+      "blob": "ef67d2736caf245d5c56ee4e65a515e573d240f8",
+      "size": 1481
+    },
+    {
+      "path": "docs/donate.md",
+      "blob": "dbaab5a49566669b092011b1309a353793a46f54",
+      "size": 2672
+    },
+    {
+      "path": "docs/fetching/choosing.md",
+      "blob": "483aa5b235188a0ed42dbc737c2b1b2048adcc4e",
+      "size": 7436
+    },
+    {
+      "path": "docs/fetching/dynamic.md",
+      "blob": "d841f45c557456c45750d1478c8457483e292d01",
+      "size": 25704
+    },
+    {
+      "path": "docs/fetching/static.md",
+      "blob": "07df635c9c5b9c177ad00ce5a89697cb59a76eae",
+      "size": 18074
+    },
+    {
+      "path": "docs/fetching/stealthy.md",
+      "blob": "436413319079cc0cdaeebbc4e3438ec530954a61",
+      "size": 28430
+    },
+    {
+      "path": "docs/index.md",
+      "blob": "46978a94caa9a0e0d4842e4e095e27f956cf7609",
+      "size": 17126
+    },
+    {
+      "path": "docs/integrations/scrapy.md",
+      "blob": "1ecf35705388ebaab872e474099818303806aff0",
+      "size": 3013
+    },
+    {
+      "path": "docs/overrides/main.html",
+      "blob": "153f667c6b26db9ac9c142814fc473e0cb534608",
+      "size": 1479
+    },
+    {
+      "path": "docs/overview.md",
+      "blob": "895325565f408db03ab0515a8615412fd34dfe43",
+      "size": 17851
+    },
+    {
+      "path": "docs/parsing/adaptive.md",
+      "blob": "b2ba6cf0bec69ed3753cca0a1fb2a700f5c71c0c",
+      "size": 13857
+    },
+    {
+      "path": "docs/parsing/main_classes.md",
+      "blob": "d41ff40d2b5046c38f5eee004a74d60ebe42ec87",
+      "size": 32801
+    },
+    {
+      "path": "docs/parsing/selection.md",
+      "blob": "aef8f3b137d4bc4a73d1c80eed796572eb579ea3",
+      "size": 25434
+    },
+    {
+      "path": "docs/requirements.txt",
+      "blob": "582a5460adf707523e33d55125cd7119d9568014",
+      "size": 172
+    },
+    {
+      "path": "docs/spiders/advanced.md",
+      "blob": "49ff15adbe94ff7f975d42c50aa7fdcbab3f0020",
+      "size": 18588
+    },
+    {
+      "path": "docs/spiders/architecture.md",
+      "blob": "d6f6d659cae3e5d08330bd94528fd9948a72a662",
+      "size": 8279
+    },
+    {
+      "path": "docs/spiders/generic-templates.md",
+      "blob": "df18d98507269da2dcae6f5cbf874f39f6bf90b3",
+      "size": 11592
+    },
+    {
+      "path": "docs/spiders/getting-started.md",
+      "blob": "7f6b52304751e7d991e6648f13b802e19d835e7b",
+      "size": 8310
+    },
+    {
+      "path": "docs/spiders/platform-templates.md",
+      "blob": "8f67f6798d2e58011e7536c60cc229a3fb712250",
+      "size": 3599
+    },
+    {
+      "path": "docs/spiders/proxy-blocking.md",
+      "blob": "c63759292e17bd40e6dc1902f024b71aa1a682e3",
+      "size": 9521
+    },
+    {
+      "path": "docs/spiders/requests-responses.md",
+      "blob": "f49fd536b648971b2cdbe1745678b8b6d467b1ea",
+      "size": 9227
+    },
+    {
+      "path": "docs/spiders/sessions.md",
+      "blob": "d1b146efe009fb638dc4ce244562b56fd012df4c",
+      "size": 9836
+    },
+    {
+      "path": "docs/stylesheets/extra.css",
+      "blob": "1e8576031458d277f2dc52ec91f8d475832e1724",
+      "size": 685
+    },
+    {
+      "path": "docs/tutorials/migrating_from_beautifulsoup.md",
+      "blob": "9abda95c907307c1f6e1bb0a1375cc6fceb633aa",
+      "size": 12867
+    },
+    {
+      "path": "docs/tutorials/replacing_ai.md",
+      "blob": "fe84dbbe17788699de62bd11da7906ea69f5dcd8",
+      "size": 10614
+    },
+    {
+      "path": "images/BirdProxies.jpg",
+      "blob": "3a58d4ed2304c1fe13e4ab102f310f48c27ed993",
+      "size": 5588
+    },
+    {
+      "path": "images/DataImpulse.png",
+      "blob": "0c62c3b48c50936e0fc5b12ce42bdc1b221e553f",
+      "size": 55403
+    },
+    {
+      "path": "images/HyperSolutions.png",
+      "blob": "f16f5def2b7d91fbf349af50417b5600899b9702",
+      "size": 26495
+    },
+    {
+      "path": "images/NodeMaven.jpg",
+      "blob": "fed79f04050156bec064f934a8ba41f505fcaf67",
+      "size": 6387
+    },
+    {
+      "path": "images/ProxyEmpire.png",
+      "blob": "d407789373896faf0b775550151130ea92f042ad",
+      "size": 8765
+    },
+    {
+      "path": "images/SerpApi.png",
+      "blob": "ba12aea240b043d798efc54cf766b58d373a901c",
+      "size": 17779
+    },
+    {
+      "path": "images/SwiftProxy.png",
+      "blob": "6750ff26c9d6177df18891162e4bc9e666f06d94",
+      "size": 7786
+    },
+    {
+      "path": "images/TWSC.png",
+      "blob": "2cb796f9cd7994cd2166572230eaeef6f2e15ad2",
+      "size": 12199
+    },
+    {
+      "path": "images/TikHub.jpg",
+      "blob": "5078dacb607dbe6f186321547f3ce24d5ce220df",
+      "size": 6616
+    },
+    {
+      "path": "images/cloro.jpg",
+      "blob": "5e0e1c62782210611b559ffdb15ba9c922c01169",
+      "size": 3757
+    },
+    {
+      "path": "images/coldproxy.png",
+      "blob": "09e5b796c88cf4d8d75fa3c5a14820d7c483056a",
+      "size": 3335
+    },
+    {
+      "path": "images/decodo.png",
+      "blob": "e8beb2847825de5a6f75d1bbd25e42501b1e491e",
+      "size": 44890
+    },
+    {
+      "path": "images/evomi.png",
+      "blob": "8488993de288256b88a1a860cd9ae8dea4032a94",
+      "size": 28628
+    },
+    {
+      "path": "images/niuproxy.png",
+      "blob": "51f15b4969c6386aa6ad7d1afdb8075052ef0a17",
+      "size": 7329
+    },
+    {
+      "path": "images/novada.jpg",
+      "blob": "8502973480eb63a56b8d8e533af7dcdef8e8e8ab",
+      "size": 6968
+    },
+    {
+      "path": "images/petrosky.png",
+      "blob": "38fb4505cb21bef6c8472b4f9a3565838aef84aa",
+      "size": 26964
+    },
+    {
+      "path": "images/proxidize.png",
+      "blob": "d2e9b9bdd64e8e9f5cdf306f45905cae037dc8f2",
+      "size": 2405
+    },
+    {
+      "path": "images/proxiware.png",
+      "blob": "904c1f19c02d05fb1b8505ba274819a66505b6ad",
+      "size": 13319
+    },
+    {
+      "path": "images/voidmob.png",
+      "blob": "38d03eafa63ed66340cda8ccb3121baa513377a2",
+      "size": 17315
+    },
+    {
+      "path": "images/webshare.png",
+      "blob": "c37e4c9d129c571a0e76f5ccc9c0a75720dd2e13",
+      "size": 38898
+    },
+    {
+      "path": "pyproject.toml",
+      "blob": "3c818c2a5c7df998112d22a2424ff7b0666fa68c",
+      "size": 3846
+    },
+    {
+      "path": "pytest.ini",
+      "blob": "083e39a4a3c38718885b85825f7b2a0d4ef22676",
+      "size": 224
+    },
+    {
+      "path": "ruff.toml",
+      "blob": "405614adebe9aef5eb8b8c6da8bc153fc47c04e0",
+      "size": 390
+    },
+    {
+      "path": "scrapling/__init__.py",
+      "blob": "ecf257557e3da6687ee61e385a600a79565b13ed",
+      "size": 1523
+    },
+    {
+      "path": "scrapling/cli.py",
+      "blob": "8a4d905078ee10c2c0838d03f22483134265db33",
+      "size": 21719
+    },
+    {
+      "path": "scrapling/core/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "scrapling/core/_shell_signatures.py",
+      "blob": "00f1fe970d12df2d77e444cb3a6c1cf3d9600d6d",
+      "size": 3618
+    },
+    {
+      "path": "scrapling/core/_types.py",
+      "blob": "fc8a0754cd2598349bfd860a7d88a2edc92d314c",
+      "size": 1418
+    },
+    {
+      "path": "scrapling/core/ai.py",
+      "blob": "f98610822bdc08accfb710c36dac227869c652de",
+      "size": 67726
+    },
+    {
+      "path": "scrapling/core/custom_types.py",
+      "blob": "53255bec29df333ac96582ede2529ed64f92a18f",
+      "size": 13517
+    },
+    {
+      "path": "scrapling/core/mixins.py",
+      "blob": "868d620d0dce33d33627dd66e3fce071bda7788b",
+      "size": 3753
+    },
+    {
+      "path": "scrapling/core/shell.py",
+      "blob": "c9aa2cf7e8e213231a9299808cd522990c653f7f",
+      "size": 27499
+    },
+    {
+      "path": "scrapling/core/storage.py",
+      "blob": "1fccabeaef9579bbbd36a47fef2e63c4c0a5ee51",
+      "size": 6621
+    },
+    {
+      "path": "scrapling/core/translator.py",
+      "blob": "c34ed7dd7c7558cbbbefe01a0b6c8a0ed6a71a7d",
+      "size": 5358
+    },
+    {
+      "path": "scrapling/core/utils/__init__.py",
+      "blob": "77766c3c7bbaa9cc42237d1a31bde69ac9902972",
+      "size": 189
+    },
+    {
+      "path": "scrapling/core/utils/_shell.py",
+      "blob": "05420ae5c8f42015e7311f87d60a2136daf5189c",
+      "size": 1707
+    },
+    {
+      "path": "scrapling/core/utils/_utils.py",
+      "blob": "a2fa6cab9b8fe2683dd4e873ad778b47eaeb87aa",
+      "size": 3684
+    },
+    {
+      "path": "scrapling/engines/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "scrapling/engines/_browsers/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "scrapling/engines/_browsers/_base.py",
+      "blob": "aa4137965d30ab8c57fb001c27a92f3594426f2e",
+      "size": 25079
+    },
+    {
+      "path": "scrapling/engines/_browsers/_config_tools.py",
+      "blob": "5b9ee2e533cd2a1a36c4194217cfd32136cbeabf",
+      "size": 237
+    },
+    {
+      "path": "scrapling/engines/_browsers/_controllers.py",
+      "blob": "ba6f6db160812050e2925a11ec317b2bc23f6e43",
+      "size": 25262
+    },
+    {
+      "path": "scrapling/engines/_browsers/_page.py",
+      "blob": "2b32e3555e52e559dd9820279aeea9d0cbf0c80d",
+      "size": 3729
+    },
+    {
+      "path": "scrapling/engines/_browsers/_stealth.py",
+      "blob": "e97f15237c509a72b36d06300c278e36da57e2ee",
+      "size": 36806
+    },
+    {
+      "path": "scrapling/engines/_browsers/_types.py",
+      "blob": "b436c592987e1996129128ae2ddef943e7dc524f",
+      "size": 3485
+    },
+    {
+      "path": "scrapling/engines/_browsers/_validators.py",
+      "blob": "7f7e0bd0c64a960b16ff0b2c4f5f607bb81e03cd",
+      "size": 9197
+    },
+    {
+      "path": "scrapling/engines/constants.py",
+      "blob": "0fdc1ae19d15237f9dae8ca75b24b13fd1006d70",
+      "size": 3267
+    },
+    {
+      "path": "scrapling/engines/static.py",
+      "blob": "91b81efd1dbf4751afb7da83b122040bf90aba52",
+      "size": 40611
+    },
+    {
+      "path": "scrapling/engines/toolbelt/__init__.py",
+      "blob": "fea2781eb9204fd9f2eeb103e39fc96b033ec5c1",
+      "size": 139
+    },
+    {
+      "path": "scrapling/engines/toolbelt/ad_domains.py",
+      "blob": "026a936930bd6416630c92ecde97499bd4f2b55b",
+      "size": 97511
+    },
+    {
+      "path": "scrapling/engines/toolbelt/convertor.py",
+      "blob": "3552b26b5d1f695841701113b07694523ebc4756",
+      "size": 17021
+    },
+    {
+      "path": "scrapling/engines/toolbelt/custom.py",
+      "blob": "ea862338ff79132ab4fd3ba35aba66a882f4440e",
+      "size": 11989
+    },
+    {
+      "path": "scrapling/engines/toolbelt/fingerprints.py",
+      "blob": "80b004d624ea856b5bb795a20efdf68b0b782e10",
+      "size": 3638
+    },
+    {
+      "path": "scrapling/engines/toolbelt/navigation.py",
+      "blob": "01bee07d33e149496ce3f42de04105f125eaf250",
+      "size": 5111
+    },
+    {
+      "path": "scrapling/engines/toolbelt/proxy_rotation.py",
+      "blob": "e2703b84f47f570c5d6ac784e410d7ab84623639",
+      "size": 3729
+    },
+    {
+      "path": "scrapling/fetchers/__init__.py",
+      "blob": "7db355d5781e3cb10b2ccc74c1677b06366847a5",
+      "size": 1787
+    },
+    {
+      "path": "scrapling/fetchers/chrome.py",
+      "blob": "3c2efcf1a99ef43ce42cba4492885ddb864f7189",
+      "size": 8061
+    },
+    {
+      "path": "scrapling/fetchers/requests.py",
+      "blob": "ec629a45eff9df70897275dfc7b81e52c6f1e0fc",
+      "size": 2836
+    },
+    {
+      "path": "scrapling/fetchers/stealth_chrome.py",
+      "blob": "ad6e01f2a2b1cc8decd10b49c3bb0b804530d042",
+      "size": 10646
+    },
+    {
+      "path": "scrapling/integrations/__init__.py",
+      "blob": "2666955459e67f5b7a796ee2caf70c116b86c14b",
+      "size": 262
+    },
+    {
+      "path": "scrapling/integrations/scrapy.py",
+      "blob": "ab37a962ae0be8ef2cf47a9e76a20425301cfd29",
+      "size": 5712
+    },
+    {
+      "path": "scrapling/parser.py",
+      "blob": "abe77e28a148b6fc307783f8ec5ce2bf0c3b6d79",
+      "size": 59047
+    },
+    {
+      "path": "scrapling/py.typed",
+      "blob": "d3f5a12faa99758192ecc4ed3fc22c9249232e86",
+      "size": 2
+    },
+    {
+      "path": "scrapling/spiders/__init__.py",
+      "blob": "af7915c47e9236172b08e13e3c470db9799555be",
+      "size": 808
+    },
+    {
+      "path": "scrapling/spiders/cache.py",
+      "blob": "1aeb154da5c5ae913522525679f0a82d04d54ec0",
+      "size": 3921
+    },
+    {
+      "path": "scrapling/spiders/checkpoint.py",
+      "blob": "95515bf4ddc4712fe9c5b24499cb508db1b0aa18",
+      "size": 3169
+    },
+    {
+      "path": "scrapling/spiders/engine.py",
+      "blob": "5fa58f0cf05ba302582e13298db8355ce760893d",
+      "size": 20018
+    },
+    {
+      "path": "scrapling/spiders/links.py",
+      "blob": "255b2de65335e435bcfe230a189ddc47d7c38d2a",
+      "size": 8837
+    },
+    {
+      "path": "scrapling/spiders/request.py",
+      "blob": "ef766b2c824d870f545565a6cf68d42d7175235f",
+      "size": 6415
+    },
+    {
+      "path": "scrapling/spiders/result.py",
+      "blob": "29bda89e3707e1edb5f3feee3e4e8fc49b6a17af",
+      "size": 8707
+    },
+    {
+      "path": "scrapling/spiders/robotstxt.py",
+      "blob": "18f426333b9b7f884453f6f74f7a4ac7f093ce43",
+      "size": 2877
+    },
+    {
+      "path": "scrapling/spiders/scheduler.py",
+      "blob": "0484a68cfbcb18601553cf1a420b066ebe5d05f5",
+      "size": 3467
+    },
+    {
+      "path": "scrapling/spiders/session.py",
+      "blob": "5799e8ca26f891b862ef0a8aff6ac03400c64a29",
+      "size": 5455
+    },
+    {
+      "path": "scrapling/spiders/spider.py",
+      "blob": "48750772e0535f21252e4895b76c760249cdafb2",
+      "size": 12672
+    },
+    {
+      "path": "scrapling/spiders/templates/__init__.py",
+      "blob": "f90d054ece89818be4aa1f741b916cb9165c0cce",
+      "size": 375
+    },
+    {
+      "path": "scrapling/spiders/templates/_utils.py",
+      "blob": "1983ebff71d8de312b7c7a866470d8609ae37e44",
+      "size": 864
+    },
+    {
+      "path": "scrapling/spiders/templates/crawler.py",
+      "blob": "5c6aeaa26a5f620c2285bc1fed0feaf846b84bc4",
+      "size": 2429
+    },
+    {
+      "path": "scrapling/spiders/templates/feed.py",
+      "blob": "ee0e9393b76e93c87328c4a69a74eab9f869fdc3",
+      "size": 5724
+    },
+    {
+      "path": "scrapling/spiders/templates/shopify.py",
+      "blob": "ed6b361a7af8e10126e9ed1a182f0b5d0aa2b2ea",
+      "size": 4944
+    },
+    {
+      "path": "scrapling/spiders/templates/site_to_markdown.py",
+      "blob": "d2c55efb61e4ddc98a9918028f14a2ddcafae7bc",
+      "size": 3961
+    },
+    {
+      "path": "scrapling/spiders/templates/sitemap.py",
+      "blob": "e35918a32581a3e40c698ab3e47e1589bbed20dc",
+      "size": 6687
+    },
+    {
+      "path": "scrapling/spiders/throttle.py",
+      "blob": "6b39d69ab8b21ec79414483787f855f07a8bf3d7",
+      "size": 4333
+    },
+    {
+      "path": "server.json",
+      "blob": "7523d24e335373864d06a8637f699eaf13f3e4c5",
+      "size": 1279
+    },
+    {
+      "path": "setup.cfg",
+      "blob": "c0b466eaa276236e0f53a7b3ada87bdb879c9205",
+      "size": 320
+    },
+    {
+      "path": "tests/__init__.py",
+      "blob": "70e9a0f2fd4dfa4b33d696f0c10382b53ef1bcfb",
+      "size": 32
+    },
+    {
+      "path": "tests/ai/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "tests/ai/test_ai_mcp.py",
+      "blob": "adc3c997a7d6f5a08143730627413161fb351fa7",
+      "size": 43849
+    },
+    {
+      "path": "tests/cli/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "tests/cli/test_cli.py",
+      "blob": "dde4db62b6f5583e1f485ae0f4f67bcbdb087826",
+      "size": 15121
+    },
+    {
+      "path": "tests/cli/test_shell_functionality.py",
+      "blob": "d23fa223ce619dac2229d58052f10dd0f1ab8613",
+      "size": 6361
+    },
+    {
+      "path": "tests/core/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "tests/core/test_shell_core.py",
+      "blob": "4578406b6e41d4a7ffe6d3c30ccc80ad2c3b8ca7",
+      "size": 8749
+    },
+    {
+      "path": "tests/core/test_storage_core.py",
+      "blob": "5fb10a6bb133aa5a2ab7f4e878d221213b3e8276",
+      "size": 10270
+    },
+    {
+      "path": "tests/fetchers/__init__.py",
+      "blob": "10143609799dee25bc78ed64473c33de839ca606",
+      "size": 43
+    },
+    {
+      "path": "tests/fetchers/async/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "tests/fetchers/async/test_dynamic.py",
+      "blob": "3fe38ccf8c9165f44c72ea462a4db6dcb3aaf5ac",
+      "size": 3354
+    },
+    {
+      "path": "tests/fetchers/async/test_dynamic_session.py",
+      "blob": "9c8671aa42083ceef5eef3052a021026ff22ea04",
+      "size": 5821
+    },
+    {
+      "path": "tests/fetchers/async/test_requests.py",
+      "blob": "f9df33af23c98dc1a2e42993d6183fd155ab66c8",
+      "size": 6305
+    },
+    {
+      "path": "tests/fetchers/async/test_requests_session.py",
+      "blob": "05d891ce84b58dccafc37aa60f06b6cc7e95ef3a",
+      "size": 4210
+    },
+    {
+      "path": "tests/fetchers/async/test_stealth.py",
+      "blob": "bba39d8173b81793df45d7d67a0ed65b7ec89383",
+      "size": 2938
+    },
+    {
+      "path": "tests/fetchers/async/test_stealth_session.py",
+      "blob": "15ea981702f64d3078a5ad8f7a152a96e5ef5049",
+      "size": 5811
+    },
+    {
+      "path": "tests/fetchers/sync/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "tests/fetchers/sync/test_dynamic.py",
+      "blob": "cac8a73a6d34704c033710228c42ac3401fa31fa",
+      "size": 3450
+    },
+    {
+      "path": "tests/fetchers/sync/test_requests.py",
+      "blob": "5f9c03b597a5d5a05a75c534e4948b84d38e1d44",
+      "size": 5842
+    },
+    {
+      "path": "tests/fetchers/sync/test_requests_session.py",
+      "blob": "fde37a39cfb761d6e0335d0556b89d76fb597bfd",
+      "size": 4605
+    },
+    {
+      "path": "tests/fetchers/sync/test_stealth_session.py",
+      "blob": "5d86bfc5158d96984f404e41deeddee6329187b5",
+      "size": 3717
+    },
+    {
+      "path": "tests/fetchers/test_base.py",
+      "blob": "32db09df60dec0361223b4fab771d667db0d9d18",
+      "size": 2601
+    },
+    {
+      "path": "tests/fetchers/test_cloudflare_solver.py",
+      "blob": "e9915c72d981e56304b6138db3170ee266c84d15",
+      "size": 7728
+    },
+    {
+      "path": "tests/fetchers/test_constants.py",
+      "blob": "91afd4cc1ac2b49e6f0b20eb12f3114aa62a4be5",
+      "size": 854
+    },
+    {
+      "path": "tests/fetchers/test_impersonate_list.py",
+      "blob": "d79a06b5801f6c7675f6ab97be2f06be61971eb8",
+      "size": 6416
+    },
+    {
+      "path": "tests/fetchers/test_merge_request_args.py",
+      "blob": "6b1e101bca28030f3595b205ff2a0f9d8f0376bc",
+      "size": 1760
+    },
+    {
+      "path": "tests/fetchers/test_page_reuse.py",
+      "blob": "f7241495d8d8a25d5fd6be36a9d36ce98dcc8ecf",
+      "size": 4913
+    },
+    {
+      "path": "tests/fetchers/test_pages.py",
+      "blob": "d061e5612392911c74adba62c8da4bdde71f50a3",
+      "size": 4216
+    },
+    {
+      "path": "tests/fetchers/test_proxy_rotation.py",
+      "blob": "e08104db4a20680c3022e33f713386dfc42e2594",
+      "size": 11083
+    },
+    {
+      "path": "tests/fetchers/test_response_handling.py",
+      "blob": "b422ead617d02f78e5c0b9b95f5324c015c81c18",
+      "size": 6928
+    },
+    {
+      "path": "tests/fetchers/test_response_markdown.py",
+      "blob": "c72518324c295b728fd7cb4b45947434c7b1fcee",
+      "size": 1955
+    },
+    {
+      "path": "tests/fetchers/test_utils.py",
+      "blob": "35eeb85577a83a943bbea935e181169088581c79",
+      "size": 22960
+    },
+    {
+      "path": "tests/fetchers/test_validator.py",
+      "blob": "86ecf4573a5fa4a257fec095a002d658c5478135",
+      "size": 3626
+    },
+    {
+      "path": "tests/integrations/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "tests/integrations/test_scrapy.py",
+      "blob": "cd038b2da898debb8e88aea9e1174239af0190c7",
+      "size": 6341
+    },
+    {
+      "path": "tests/parser/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "tests/parser/test_adaptive.py",
+      "blob": "85881d13524bd55e39b79f1052ce287cae7459b5",
+      "size": 6146
+    },
+    {
+      "path": "tests/parser/test_ancestor_navigation.py",
+      "blob": "1814ec5d5d6906f5698b88d85499d3d3941b9078",
+      "size": 2783
+    },
+    {
+      "path": "tests/parser/test_attributes_handler.py",
+      "blob": "6827a95d8adbc776eb779f772fe5c9c488d3d6a6",
+      "size": 12025
+    },
+    {
+      "path": "tests/parser/test_find_similar_advanced.py",
+      "blob": "95e1e6943143564e1b96e6cf37f8c2aed7e94dfd",
+      "size": 4995
+    },
+    {
+      "path": "tests/parser/test_general.py",
+      "blob": "cc57d338e96f8c9bd1b69dfd116f47e1f5569fba",
+      "size": 15688
+    },
+    {
+      "path": "tests/parser/test_parser_advanced.py",
+      "blob": "050d89c9c419af2dfc54020c2abba0daaef4fb21",
+      "size": 14237
+    },
+    {
+      "path": "tests/parser/test_selectors_filter.py",
+      "blob": "dbddf03e8de66badfac29c72dcf00b9c2788211c",
+      "size": 2413
+    },
+    {
+      "path": "tests/requirements.txt",
+      "blob": "d39798635f1b1d5ce4062b1b9607d965d9429acd",
+      "size": 135
+    },
+    {
+      "path": "tests/spiders/__init__.py",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0
+    },
+    {
+      "path": "tests/spiders/test_cache.py",
+      "blob": "b47e4aa71e862ca39def49f5dc7db9d078a3ddc3",
+      "size": 13121
+    },
+    {
+      "path": "tests/spiders/test_checkpoint.py",
+      "blob": "fc35f43595cf130370301640f776ef62f6bc9442",
+      "size": 11557
+    },
+    {
+      "path": "tests/spiders/test_engine.py",
+      "blob": "8e4bac2fa1488bc022a1cadaeff58fdb72e91ca1",
+      "size": 34707
+    },
+    {
+      "path": "tests/spiders/test_feed.py",
+      "blob": "a2dae37892aa92211704f15d65c35ffc010803e5",
+      "size": 8832
+    },
+    {
+      "path": "tests/spiders/test_force_stop_checkpoint.py",
+      "blob": "41b8d8f617a8c919087f9c11c38f645deb17049e",
+      "size": 10739
+    },
+    {
+      "path": "tests/spiders/test_links.py",
+      "blob": "cb81afaac4c96a4c6e42eeec033a9573ddf5da9b",
+      "size": 9940
+    },
+    {
+      "path": "tests/spiders/test_request.py",
+      "blob": "00f6c49c1e480fb82b8daab06dc5228bc41852cf",
+      "size": 14908
+    },
+    {
+      "path": "tests/spiders/test_result.py",
+      "blob": "cd8da61c836e5b2eb1b5a77ed75f34cf649e9016",
+      "size": 16755
+    },
+    {
+      "path": "tests/spiders/test_robotstxt.py",
+      "blob": "6a14ce7026a986b4e9015d72f617080361f9af8a",
+      "size": 17709
+    },
+    {
+      "path": "tests/spiders/test_scheduler.py",
+      "blob": "3646f5997c4c2ea1684a51cb1944e7c766f2a944",
+      "size": 15792
+    },
+    {
+      "path": "tests/spiders/test_session.py",
+      "blob": "0c422ef7960d6f2fb791c66bc596bb30805b18c6",
+      "size": 12564
+    },
+    {
+      "path": "tests/spiders/test_shopify.py",
+      "blob": "bfb69e96ef5953e01344f785bdcdf125c0f7d428",
+      "size": 7521
+    },
+    {
+      "path": "tests/spiders/test_site_to_markdown.py",
+      "blob": "87b7f85cb2ece47899489b4c2271e2d6b92a05c7",
+      "size": 5437
+    },
+    {
+      "path": "tests/spiders/test_sitemap.py",
+      "blob": "17c760d1c987e08426af520c522620fcb944bf78",
+      "size": 8753
+    },
+    {
+      "path": "tests/spiders/test_spider.py",
+      "blob": "a95f75d08d950f948f1d0e5f86c27fa5625c4e29",
+      "size": 18380
+    },
+    {
+      "path": "tests/spiders/test_templates.py",
+      "blob": "95f3e219ccc599879c0a62954d0069a4f1169336",
+      "size": 8071
+    },
+    {
+      "path": "tests/spiders/test_throttle.py",
+      "blob": "770519962cf0f16839a2ca8c900d841d4105e541",
+      "size": 14978
+    },
+    {
+      "path": "tox.ini",
+      "blob": "0e911785b792371ceed4936957e144d1db9f52a0",
+      "size": 1168
+    },
+    {
+      "path": "zensical.toml",
+      "blob": "66c571d3826caeb85943a2e8096f7b78879624ea",
+      "size": 7765
+    }
+  ]
+}
