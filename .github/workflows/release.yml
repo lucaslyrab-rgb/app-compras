@@ -81,13 +81,13 @@ jobs:
           tags: app-compras:scan
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
-        with:
-          image-ref: app-compras:scan
-          format: table
-          exit-code: "1"
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
+      - name: Scan image for HIGH/CRITICAL vulnerabilities
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$RUNNER_TEMP/trivy-cache:/root/.cache" \
+            aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
+            image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL app-compras:scan
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
