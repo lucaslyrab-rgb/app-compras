@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { unzipSync, strFromU8 } from "fflate";
 import postgres from "postgres";
 import { normalizeProduct, type ProductInput } from "../src/modules/catalog/domain";
+import { databaseUrlFromEnv } from "./database-url";
 
 export async function readProducts(file: string): Promise<ProductInput[]> {
   const archive = unzipSync(new Uint8Array(await readFile(file)));
@@ -68,8 +69,7 @@ export async function persistProducts(url: string, products: ProductInput[]) {
 }
 
 export async function importProducts(file = "base_produtos_atual.xlsx") {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL não configurada");
+  const url = databaseUrlFromEnv();
   const result = await persistProducts(url, await readProducts(file));
   console.log(JSON.stringify(result));
   return result;

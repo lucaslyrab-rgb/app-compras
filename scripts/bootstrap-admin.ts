@@ -1,8 +1,9 @@
 import "dotenv/config";
 import postgres from "postgres";
 import { hashPassword } from "../src/modules/identity/domain";
+import { databaseUrlFromEnv } from "./database-url";
 
-const url = process.env.DATABASE_URL;
+const url = process.env.DATABASE_URL || process.env.DATABASE_URL_FILE ? databaseUrlFromEnv() : undefined;
 const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
 const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
 export async function bootstrapAdmin(databaseUrl: string, adminEmail: string, adminPassword: string) {

@@ -2,9 +2,9 @@ import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import postgres from "postgres";
+import { databaseUrlFromEnv } from "./database-url";
 
-const url = process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL não configurada");
+const url = databaseUrlFromEnv();
 const sql = postgres(url, { max: 1 });
 try {
   const migration = await readFile(path.resolve("migrations/0001_foundation.sql"), "utf8");
