@@ -12,6 +12,8 @@
 docker stack config -c infra/stack.yml
 ```
 
+A primeira implantação foi validada no Swarm como `app-compras_web`, com uma réplica saudável e healthcheck HTTPS. O stack ainda deve ser adotado/configurado no Portainer para habilitar o webhook GitOps; não mantenha dois stacks com o mesmo domínio.
+
 ## Migração
 
 Migrações não executam automaticamente em cada réplica. Antes de promover uma imagem, rode `npm run db:migrate` em job one-shot com a mesma credencial (os scripts aceitam `DATABASE_URL` ou `DATABASE_URL_FILE`), depois `npm run db:import-products` no primeiro deploy.

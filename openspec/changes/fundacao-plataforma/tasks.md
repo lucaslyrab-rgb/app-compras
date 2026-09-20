@@ -34,7 +34,7 @@
 ## 6. Container, CI/CD e operação
 
 - [x] 6.1 Criar Dockerfile multi-stage não-root, `.dockerignore` e healthcheck; verificar imagem local, usuário, tamanho e resposta saudável.
-- [ ] 6.2 Criar stack Swarm com imagem imutável, rede `externa`, secrets, limites, update/rollback e conexão ao PostgreSQL 18.6 compartilhado; validar sintaxe e deploy em homologação.
+- [x] 6.2 Criar stack Swarm com imagem imutável, rede `externa`, secrets, limites, update/rollback e conexão ao PostgreSQL 18.6 compartilhado; validar sintaxe e deploy em homologação.
 - [x] 6.3 Criar workflow com actions fixadas por SHA, permissões mínimas, build multiarch/scan/publicação GHCR e webhook pós-sucesso; verificar que falha não publica nem chama deploy.
 - [ ] 6.4 Criar backup PostgreSQL cifrado off-host e runbooks de deploy/rollback/restauração; verificar restauração em ambiente isolado e rollback para SHA anterior.
 - [x] 6.5 Validar OpenSpec estritamente, executar checklist Wittemberg de frontend/release e atualizar `docs/estado-atual.md` com evidências reais.
