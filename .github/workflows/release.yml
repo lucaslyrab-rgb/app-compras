@@ -4,11 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "openspec/**"
-      - ".harness/**"
-      - "AGENTS.md"
 
 concurrency:
   group: production

@@ -5,7 +5,7 @@ Procedimento proposto para `lucaslyrab-rgb/app-compras`. Segredos nunca devem se
 ## Fluxo
 
 ```text
-push protegido em main
+push protegido em main (inclusive commit vazio de validação)
   → lint/tipos/testes/build/scan
   → GitHub Actions autentica no GHCR com GITHUB_TOKEN
   → publica ghcr.io/lucaslyrab-rgb/app-compras:sha-<commit>
