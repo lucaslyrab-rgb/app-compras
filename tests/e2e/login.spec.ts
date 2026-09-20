@@ -13,6 +13,29 @@ test("login é acessível e não causa overflow horizontal", async ({ page }) =>
   expect(accessibility.violations).toEqual([]);
 });
 
+test("Enter percorre estoque e pedido sem enviar no último campo", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "Fluxo operacional móvel");
+  const email = process.env.E2E_EMAIL;
+  const password = process.env.E2E_PASSWORD;
+  if (!email || !password) throw new Error("E2E_EMAIL e E2E_PASSWORD são obrigatórios");
+  await page.goto("/login");
+  await page.getByLabel("E-mail").fill(email);
+  await page.getByLabel("Senha").fill(password);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Pedido de hoje" })).toBeVisible();
+  const stock = page.locator('input[name="stock"]');
+  const quantity = page.locator('input[name="quantity"]');
+  await stock.first().focus();
+  await expect(stock.first()).toHaveJSProperty("selectionStart", 0);
+  await stock.first().press("Enter");
+  await expect(quantity.first()).toBeFocused();
+  await quantity.first().press("Enter");
+  await expect(stock.nth(1)).toBeFocused();
+  await quantity.last().focus();
+  await quantity.last().press("Enter");
+  await expect(page.getByText(/Pedido enviado/)).toHaveCount(0);
+});
+
 test("login permanece legível com zoom de 200%", async ({ page }) => {
   await page.goto("/login");
   const cdp = await page.context().newCDPSession(page);

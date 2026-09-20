@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 import { logoutAction } from "@/app/login/actions";
 import { saveDraftAction, submitOrderAction } from "./actions";
 import Link from "next/link";
@@ -12,13 +12,25 @@ export function OrderWorkspace({ products, storeId, initialDraft, date }: { prod
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [values, setValues] = useState<Record<string, { stock: string; quantity: string }>>(() => Object.fromEntries(initialDraft.items.map((item) => [item.productId, { stock: String(item.stock), quantity: String(item.quantity) }])));
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [state, saveAction, pending] = useActionState(saveDraftAction, {});
   const [submitState, submitAction, submitting] = useActionState(submitOrderAction, {});
-  const visibleIds = useMemo(() => new Set(products.filter((product) => {
+  const visibleProducts = useMemo(() => products.filter((product) => {
     const value = values[product.id];
     const filled = Number(value?.quantity ?? 0) > 0;
     return product.name.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR")) && (filter === "all" || (filter === "filled" ? filled : !filled));
-  }).map((product) => product.id)), [filter, products, query, values]);
+  }), [filter, products, query, values]);
+  const visibleIds = useMemo(() => new Set(visibleProducts.map((product) => product.id)), [visibleProducts]);
+  const inputOrder = useMemo(() => visibleProducts.flatMap((product) => [`${product.id}:stock`, `${product.id}:quantity`]), [visibleProducts]);
+  function handleEnter(inputKey: string) {
+    return (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      const nextKey = inputOrder[inputOrder.indexOf(inputKey) + 1];
+      if (nextKey) requestAnimationFrame(() => inputRefs.current[nextKey]?.focus());
+      else event.currentTarget.blur();
+    };
+  }
   const feedback = submitState.message ? submitState : state;
   const currentVersion = submitState.version ?? state.version ?? initialDraft.version;
 
@@ -38,15 +50,16 @@ export function OrderWorkspace({ products, storeId, initialDraft, date }: { prod
               {(["all", "empty", "filled"] as const).map((value) => <button key={value} className="filter" type="button" aria-pressed={filter === value} onClick={() => setFilter(value)}>{value === "all" ? "Todos" : value === "empty" ? "Sem pedido" : "Com pedido"}</button>)}
             </div>
           </section>
-          <section className="product-grid" aria-live="polite">
+          <section className="product-list" aria-live="polite">
+            <div className="product-list__header" aria-hidden="true"><span>Produto</span><span>Estoque atual</span><span>Pedido</span></div>
             {products.map((product) => {
               const value = values[product.id] ?? { stock: "", quantity: "" };
               return <article className="product-card" data-filled={Number(value.quantity) > 0} key={product.id} hidden={!visibleIds.has(product.id)}>
-                <h2>{product.name}</h2>
+                <div className="product-name"><h2>{product.name}</h2><span className="product-unit">{product.unit}</span></div>
                 <input type="hidden" name="productId" value={product.id} />
                 <div className="product-fields">
-                  <label className="field"><span>Estoque atual ({product.unit})</span><input name="stock" inputMode="decimal" type="number" min="0" step="0.01" value={value.stock} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, stock: event.target.value } }))} /></label>
-                  <label className="field"><span>Pedido ({product.unit})</span><input name="quantity" inputMode="decimal" type="number" min="0" step="0.01" value={value.quantity} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, quantity: event.target.value } }))} /></label>
+                  <label className="field"><span>Estoque atual ({product.unit})</span><input ref={(element) => { inputRefs.current[`${product.id}:stock`] = element; }} name="stock" inputMode="decimal" type="number" min="0" step="0.01" value={value.stock} onFocus={(event) => event.currentTarget.select()} onKeyDown={handleEnter(`${product.id}:stock`)} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, stock: event.target.value } }))} /></label>
+                  <label className="field"><span>Pedido ({product.unit})</span><input ref={(element) => { inputRefs.current[`${product.id}:quantity`] = element; }} name="quantity" inputMode="decimal" type="number" min="0" step="0.01" value={value.quantity} onFocus={(event) => event.currentTarget.select()} onKeyDown={handleEnter(`${product.id}:quantity`)} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, quantity: event.target.value } }))} /></label>
                 </div>
               </article>;
             })}
