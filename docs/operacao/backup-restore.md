@@ -6,7 +6,7 @@ O backup deve sair do volume e do host. A implementação usa `pg_dump` custom, 
 
 - Variáveis: `DATABASE_URL`, `AGE_RECIPIENT`, `BACKUP_BUCKET` e opcionalmente `AWS_REGION` (padrão `us-east-1`).
 - Comando: `scripts/backup-postgres.sh`.
-- Pré-requisitos do executor: `pg_dump`, `age`, `aws` (AWS CLI), `jq` e acesso de rede ao PostgreSQL. No host atual esses binários não estão instalados; use um executor/container operacional versionado ou instale-os por procedimento de mudança aprovado, sem colocar credenciais na imagem.
+- Pré-requisitos do executor: `pg_dump`, `age`, `aws` (AWS CLI), `jq` e acesso ao PostgreSQL. No host estão instalados AWS CLI `2.36.49`, age `1.1.1` e clientes PostgreSQL `16.15`; como o host não alcança diretamente a rede overlay, o dump foi executado dentro do container PostgreSQL e cifrado/enviado pelo host.
 - Configuração recebida para este projeto: `BACKUP_BUCKET=s3://compras-bkp` e `AWS_REGION=us-east-1`.
 - O script envia o dump já cifrado com `age` e um arquivo `.sha256` separado; credenciais AWS devem vir do ambiente/secret do job, nunca de arquivo versionado.
 - Se `SES_FROM_EMAIL` e `SES_TO_EMAIL` estiverem configuradas, o script envia uma notificação SES de `SUCESSO` ou `FALHA` para cada execução. Falha no SES é registrada como aviso e não apaga o resultado do backup.
@@ -25,6 +25,15 @@ O backup deve sair do volume e do host. A implementação usa `pg_dump` custom, 
 
 Nunca aponte `RESTORE_DATABASE_URL` para produção. O script exige um nome contendo `app_compras_restore` e usa `--clean --if-exists`, sendo destrutivo no database alvo.
 
-### Evidência local (2026-09-20)
+### Evidência validada (2026-09-20)
 
-Foi executado um ensaio isolado com `pg_dump --format=custom`, criptografia `age` e restauração em `app_compras_restore_test`. As contagens restauradas foram `3` lojas, `74` produtos e `21` exclusivos; o database temporário foi removido ao final. O ensaio efetivo S3/off-host e o rollback operacional da stack continuam pendentes até o executor versionado, a identidade `age`, as credenciais rotacionadas e a janela de mudança estarem definidos.
+Foi executado o primeiro backup oficial cifrado no S3:
+
+- artefato: `s3://compras-bkp/app-compras-20260920T205933Z.dump.age`;
+- checksum: arquivo `.sha256` enviado e validado após download;
+- criptografia: AGE com identidade privada em `/var/lib/app-compras/backup/age-identity.txt`, modo `600`;
+- notificação: SES enviada com status `SUCESSO`;
+- restauração: banco isolado `app_compras_restore_test`, removido ao final;
+- contagens restauradas: `3` lojas, `74` produtos e `21` exclusivos.
+
+O backup foi produzido com `pg_dump --format=custom --no-owner --no-acl` dentro do container PostgreSQL, pois o host não possui rota direta para o endereço overlay do serviço. Nenhum dump em claro foi mantido após a execução.
