@@ -31,6 +31,10 @@ Todos os serviços estão na rede overlay `externa`; somente Traefik publica 80/
 2. **Tags `latest`:** dificultam reprodução/rollback apesar de o serviço atual registrar digest. Fixar versão/digest nos próximos ciclos de manutenção.
 3. **Swarm single-node:** manager, aplicação e dados compartilham falha. Backup off-host e restauração ensaiada são gates de produção; HA futura exige outro nó/host.
 4. **Recursos:** 4 GiB pedem limites/reservas e monitoramento; a reutilização do PostgreSQL 18.6 evita um segundo processo de banco.
+
+## Verificação posterior
+
+Em 2026-09-20, a verificação direta no container `postgres_postgres` confirmou `SHOW server_version = 18.6 (Debian 18.6-1.pgdg13+2)` e a existência do database `app_compras`.
 5. **Traefik DEBUG:** log detalhado permanente pode aumentar disco e exposição operacional. Migrar para INFO após diagnóstico e configurar rotação em mudança separada.
 6. **Docker socket:** Traefik acessa o socket do manager; é risco conhecido de alto privilégio. Não ampliar esse padrão para a aplicação.
 7. **Swarm autolock:** desativado. Avaliar ativação apenas com procedimento seguro de guarda/recuperação da unlock key.
