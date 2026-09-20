@@ -1,6 +1,6 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { database } from "@/db/client";
-import { orderDraftItems, orderDrafts, orderItems, orders, products } from "@/db/schema";
+import { orderDraftItems, orderDrafts, orderItems, orders, products, stores } from "@/db/schema";
 import type { Principal } from "@/modules/identity";
 import { assertStoreAccess } from "@/modules/identity";
 import { DraftConflictError, validateDraft, type DraftItem } from "./domain";
@@ -46,22 +46,55 @@ export async function submitDraft(principal: Principal, storeId: string, date: s
     const [{ maxRevision }] = await tx.select({ maxRevision: sql<number>`coalesce(max(${orders.revision}), 0)::int` }).from(orders).where(and(eq(orders.storeId, storeId), eq(orders.orderDate, date)));
     const [order] = await tx.insert(orders).values({ storeId, orderDate: date, revision: (maxRevision ?? 0) + 1, submittedBy: principal.userId }).returning();
     if (!order) throw new Error("Falha ao enviar pedido");
-    if (items.length) await tx.insert(orderItems).values(items.map((item) => ({ orderId: order.id, productId: item.productId, stock: item.stock, quantity: item.quantity })));
+    if (items.length) {
+      const productRows = await tx.select({ id: products.id, erpCode: products.erpCode, name: products.name, unit: products.unit }).from(products).where(inArray(products.id, items.map((item) => item.productId)));
+      const byId = new Map(productRows.map((product) => [product.id, product]));
+      await tx.insert(orderItems).values(items.map((item) => {
+        const product = byId.get(item.productId);
+        if (!product) throw new Error("Produto não encontrado");
+        return { orderId: order.id, productId: item.productId, stock: item.stock, quantity: item.quantity, snapshotErpCode: product.erpCode, snapshotName: product.name, snapshotUnit: product.unit };
+      }));
+    }
     return order;
   });
 }
 
 export async function listStoreHistory(principal: Principal, storeId: string) {
   assertStoreAccess(principal, storeId);
-  return database().db.select().from(orders).where(eq(orders.storeId, storeId)).orderBy(desc(orders.submittedAt));
+  return database().db.select({
+    id: orders.id, storeId: orders.storeId, orderDate: orders.orderDate, revision: orders.revision,
+    submittedAt: orders.submittedAt, cancelledAt: orders.cancelledAt, cancelledBy: orders.cancelledBy,
+    cancellationReason: orders.cancellationReason,
+    itemCount: sql<number>`coalesce((select count(*) from order_items oi where oi.order_id = ${orders.id} and oi.quantity > 0), 0)::int`
+  }).from(orders).where(eq(orders.storeId, storeId)).orderBy(desc(orders.submittedAt));
 }
 
-export async function getConferenceOrder(principal: Principal, storeId: string, orderId: string) {
+export async function getHistoricalOrder(principal: Principal, storeId: string, orderId: string, showAll = false) {
   assertStoreAccess(principal, storeId);
   const [order] = await database().db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.storeId, storeId)));
   if (!order) throw new Error("Pedido não encontrado");
-  const items = await database().db.select({ erpCode: products.erpCode, name: products.name, unit: products.unit, quantity: orderItems.quantity })
-    .from(orderItems).innerJoin(products, eq(products.id, orderItems.productId))
-    .where(and(eq(orderItems.orderId, orderId), sql`${orderItems.quantity} > 0`));
+  const items = await database().db.select({ erpCode: orderItems.snapshotErpCode, name: orderItems.snapshotName, unit: orderItems.snapshotUnit, stock: orderItems.stock, quantity: orderItems.quantity })
+    .from(orderItems).where(and(eq(orderItems.orderId, orderId), showAll ? sql`true` : sql`${orderItems.quantity} > 0`));
   return { order, items };
+}
+
+export async function getConferenceOrder(principal: Principal, storeId: string, orderId: string) {
+  const result = await getHistoricalOrder(principal, storeId, orderId, false);
+  if (result.order.cancelledAt) throw new Error("Pedido cancelado");
+  return result;
+}
+
+export async function getStoreName(storeId: string) {
+  const [store] = await database().db.select({ name: stores.name }).from(stores).where(eq(stores.id, storeId));
+  return store?.name ?? "Loja";
+}
+
+export async function cancelOrder(principal: Principal, orderId: string, reason?: string) {
+  if (principal.role !== "LOJA" || !principal.storeId) throw new Error("Acesso negado");
+  const [order] = await database().db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.storeId, principal.storeId)));
+  if (!order) throw new Error("Pedido não encontrado");
+  if (order.cancelledAt) throw new Error("Pedido já cancelado");
+  const [updated] = await database().db.update(orders).set({ cancelledAt: new Date(), cancelledBy: principal.userId, cancellationReason: reason?.trim() || null }).where(and(eq(orders.id, orderId), eq(orders.storeId, principal.storeId))).returning();
+  if (!updated) throw new Error("Não foi possível cancelar o pedido");
+  return updated;
 }

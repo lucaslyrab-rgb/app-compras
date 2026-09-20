@@ -2,7 +2,7 @@ import { logoutAction } from "./login/actions";
 import { requirePrincipal } from "@/modules/identity/session";
 import { listActiveProducts } from "@/modules/catalog/repository";
 import { OrderWorkspace } from "@/modules/ordering/order-workspace";
-import { loadDraft } from "@/modules/ordering/repository";
+import { getStoreName, loadDraft } from "@/modules/ordering/repository";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -18,8 +18,9 @@ export default async function HomePage() {
     );
   }
   const data = await listActiveProducts();
-  const products = data.map((product) => ({ id: product.id, name: product.name, unit: product.unit }));
+  const products = data.map((product) => ({ id: product.id, erpCode: product.erpCode, name: product.name, unit: product.unit }));
   const date = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
   const draft = await loadDraft(principal, principal.storeId, date);
-  return <OrderWorkspace products={products} storeId={principal.storeId} initialDraft={draft} date={date} />;
+  const storeName = await getStoreName(principal.storeId);
+  return <OrderWorkspace products={products} storeId={principal.storeId} storeName={storeName} initialDraft={draft} date={date} />;
 }

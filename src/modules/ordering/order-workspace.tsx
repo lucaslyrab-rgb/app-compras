@@ -5,10 +5,10 @@ import { logoutAction } from "@/app/login/actions";
 import { saveDraftAction, submitOrderAction } from "./actions";
 import Link from "next/link";
 
-type Product = { id: string; name: string; unit: string };
+type Product = { id: string; erpCode: number; name: string; unit: string };
 type Filter = "all" | "empty" | "filled";
 
-export function OrderWorkspace({ products, storeId, initialDraft, date }: { products: Product[]; storeId: string; initialDraft: { version: number; items: Array<{ productId: string; stock: number; quantity: number }> }; date: string }) {
+export function OrderWorkspace({ products, storeId, storeName, initialDraft, date }: { products: Product[]; storeId: string; storeName: string; initialDraft: { version: number; items: Array<{ productId: string; stock: number; quantity: number }> }; date: string }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [values, setValues] = useState<Record<string, { stock: string; quantity: string }>>(() => Object.fromEntries(initialDraft.items.map((item) => [item.productId, { stock: String(item.stock), quantity: String(item.quantity) }])));
@@ -18,7 +18,8 @@ export function OrderWorkspace({ products, storeId, initialDraft, date }: { prod
   const visibleProducts = useMemo(() => products.filter((product) => {
     const value = values[product.id];
     const filled = Number(value?.quantity ?? 0) > 0;
-    return product.name.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR")) && (filter === "all" || (filter === "filled" ? filled : !filled));
+    const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
+    return (!normalizedQuery || product.name.toLocaleLowerCase("pt-BR").includes(normalizedQuery) || String(product.erpCode).includes(normalizedQuery)) && (filter === "all" || (filter === "filled" ? filled : !filled));
   }), [filter, products, query, values]);
   const visibleIds = useMemo(() => new Set(visibleProducts.map((product) => product.id)), [visibleProducts]);
   const inputOrder = useMemo(() => visibleProducts.flatMap((product) => [`${product.id}:stock`, `${product.id}:quantity`]), [visibleProducts]);
@@ -36,14 +37,14 @@ export function OrderWorkspace({ products, storeId, initialDraft, date }: { prod
 
   return (
     <div className="shell">
-      <header className="topbar no-print"><div className="topbar__inner"><div className="brand"><span className="brand__icon">🏪</span><div><h1>MultiShow FLV</h1><p>Pedido da loja</p></div></div><form action={logoutAction}><button className="btn btn--secondary">Sair</button></form></div></header>
+      <header className="topbar no-print"><div className="topbar__inner"><div className="brand"><span className="brand__icon">🏪</span><div><h1>MultiShow FLV</h1><p>{storeName} · Pedido da loja</p></div></div><form action={logoutAction}><button className="btn btn--secondary">Sair</button></form></div></header>
       <form action={saveAction}>
         <input type="hidden" name="storeId" value={storeId} />
         <input type="hidden" name="orderDate" value={date} />
         <input type="hidden" name="version" value={currentVersion} />
         <main className="page stack">
           <section className="panel stack no-print">
-            <div className="row"><div><h2>Pedido de hoje</h2><p className="muted">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(`${date}T12:00:00`))}</p></div><Link href="/historico">Ver histórico</Link></div>
+            <div className="row"><div><h2>Pedido de hoje</h2><p className="muted">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(`${date}T12:00:00`))}</p></div><div className="row"><Link href="/contagem" className="btn btn--secondary">Imprimir Contagem de Estoque</Link><Link href="/historico">Ver histórico</Link></div></div>
             {feedback.message ? <p className={feedback.status === "error" ? "error" : "success"} role="status">{feedback.message}</p> : null}
             <label className="field"><span className="visually-hidden">Buscar produto</span><input className="search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar produto…" /></label>
             <div className="filters" aria-label="Filtrar produtos">

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requirePrincipal } from "@/modules/identity/session";
-import { saveDraft, submitDraft } from "./repository";
+import { cancelOrder, saveDraft, submitDraft } from "./repository";
 import { DraftConflictError } from "./domain";
 import { recordAudit } from "@/modules/identity/audit";
 
@@ -41,5 +41,17 @@ export async function submitOrderAction(_state: State, formData: FormData): Prom
     return { status: "success", message: `Pedido enviado — revisão ${order.revision}.`, version: saved.version };
   } catch (error) {
     return { status: "error", message: error instanceof DraftConflictError ? error.message : "Não foi possível enviar o pedido." };
+  }
+}
+
+export async function cancelOrderAction(_state: State, formData: FormData): Promise<State> {
+  const principal = await requirePrincipal();
+  try {
+    await cancelOrder(principal, String(formData.get("orderId")), String(formData.get("reason") ?? ""));
+    revalidatePath("/historico");
+    revalidatePath("/");
+    return { status: "success", message: "Pedido cancelado." };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Não foi possível cancelar o pedido." };
   }
 }

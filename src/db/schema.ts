@@ -75,14 +75,20 @@ export const orders = pgTable("orders", {
   orderDate: date("order_date").notNull(),
   revision: integer("revision").notNull(),
   submittedBy: uuid("submitted_by").notNull().references(() => users.id, { onDelete: "restrict" }),
-  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow()
+  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  cancelledBy: uuid("cancelled_by").references(() => users.id, { onDelete: "set null" }),
+  cancellationReason: text("cancellation_reason")
 }, (table) => [uniqueIndex("order_revision_unique").on(table.storeId, table.orderDate, table.revision)]);
 
 export const orderItems = pgTable("order_items", {
   orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
   productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
   stock: numeric("stock", { precision: 12, scale: 2 }).notNull(),
-  quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull()
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
+  snapshotErpCode: integer("snapshot_erp_code").notNull(),
+  snapshotName: text("snapshot_name").notNull(),
+  snapshotUnit: text("snapshot_unit").notNull()
 }, (table) => [
   uniqueIndex("order_item_unique").on(table.orderId, table.productId),
   check("order_item_nonnegative", sql`${table.stock} >= 0 AND ${table.quantity} >= 0`)
