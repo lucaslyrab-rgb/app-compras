@@ -9,4 +9,5 @@
 - **Credenciais iniciais:** nenhum Gestor de produção foi confirmado nesta sessão. Os valores em `.env.example` (`gestor@example.com` / `change-me-with-16-or-more-characters`) são apenas placeholders e não devem ser usados. Crie um Gestor único via job de bootstrap, com senha aleatória forte, e remova os valores após a execução.
 - **Backup:** bucket S3 `compras-bkp`, região `us-east-1`, informado pelo operador; ainda falta executar backup cifrado fora do host e restauração/rollback comprovados.
 - **Pendências externas:** cadastrar Registry/Webhook no Portainer e secret `PORTAINER_WEBHOOK_URL`; executar deploy homologado, ensaio de backup/restauração/rollback e UAT dos papéis Loja/Comprador/Gestor em aparelhos reais.
+- **Roteiro UAT:** [docs/operacao/uat.md](operacao/uat.md) foi preparado para registrar evidência por aparelho e papel; a aprovação real ainda não foi registrada.
 - **Próxima ação autorizada:** concluir os itens OpenSpec que exigem esses recursos operacionais, sem marcar evidência ausente como concluída; PostgreSQL compartilhado confirmado na versão 18.6.
