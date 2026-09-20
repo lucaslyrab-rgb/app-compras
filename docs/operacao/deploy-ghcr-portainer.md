@@ -166,6 +166,10 @@ O GitOps foi validado ponta a ponta no repositório `lucaslyrab-rgb/app-compras`
 
 O primeiro reteste (`94fe059`) também confirmou a publicação, mas encontrou uma corrida de concorrência na promoção do manifesto: dois workflows tentaram atualizar `main` simultaneamente. O terceiro commit foi executado somente após a fila estabilizar e comprovou o fluxo completo.
 
+### Rollback operacional validado — 2026-09-20
+
+Foi executado um rollback controlado da task `app-compras_web` para `sha-7d5948ca0c4e579c2349f23bdb748f5ed9877f2f`. A réplica convergiu para `1/1`, o endpoint HTTPS retornou `status=ok` e a imagem atual foi restaurada. Em seguida, o commit de documentação `a6bae30` passou pelo workflow `35538733242` com verify, build, scan, promoção e webhook Portainer bem-sucedidos; o serviço convergiu novamente para `sha-a6bae300854d90a8e1dc899fa9925fc26b878b94`, `1/1`, com health `ok`.
+
 Antes de produção:
 
 1. Publicar imagem de teste e confirmar visibilidade no GHCR.
