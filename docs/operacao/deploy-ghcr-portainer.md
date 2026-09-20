@@ -76,6 +76,19 @@ Nunca reutilize o token de publicação no Portainer. Para rotação, crie o nov
 
 ## 4. Stack GitOps no Portainer
 
+### Adoção de uma stack criada fora do Portainer
+
+O ambiente atual possui `app-compras` criada diretamente por `docker stack deploy`; ela não aparece em **Stacks** no Portainer e não pode ser adotada apenas informando o mesmo nome. A migração controlada deve ocorrer em uma janela de mudança:
+
+1. Confirmar healthcheck, digest ativo, database/secret e backup recente.
+2. Registrar o SHA atualmente saudável e o manifesto Git que será usado.
+3. Remover somente a stack Docker `app-compras` (não remover database, volume ou secret).
+4. Criar imediatamente a stack **Swarm → Git Repository** no Portainer com o mesmo nome, repositório e `infra/stack.yml`.
+5. Habilitar GitOps/Webhook, selecionar a Registry GHCR e aguardar `1/1` saudável.
+6. Validar HTTPS, `/api/health`, sessão e logs sem segredo antes de encerrar a janela.
+
+Esta operação causa uma indisponibilidade breve e exige autorização explícita do responsável. Não execute `docker stack rm app-compras` fora da janela aprovada.
+
 1. **Stacks → Add stack → Git Repository**.
 2. Nome: `app-compras`.
 3. Repository URL: `git@github.com:lucaslyrab-rgb/app-compras.git` ou HTTPS com credencial de leitura.
