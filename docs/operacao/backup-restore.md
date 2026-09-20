@@ -8,6 +8,7 @@ O backup deve sair do volume e do host. A implementação usa `pg_dump` custom, 
 - Comando: `scripts/backup-postgres.sh`.
 - Configuração recebida para este projeto: `BACKUP_BUCKET=s3://compras-bkp` e `AWS_REGION=us-east-1`.
 - O script envia o dump já cifrado com `age` e um arquivo `.sha256` separado; credenciais AWS devem vir do ambiente/secret do job, nunca de arquivo versionado.
+- Se `SES_FROM_EMAIL` e `SES_TO_EMAIL` estiverem configuradas, o script envia uma notificação SES de `SUCESSO` ou `FALHA` para cada execução. Falha no SES é registrada como aviso e não apaga o resultado do backup.
 - Retenção inicial: 7 diários, 4 semanais e 6 mensais; a política no bucket deve ser configurada e auditada.
 - Não guarde chave privada `age` no host produtor junto do backup.
 
