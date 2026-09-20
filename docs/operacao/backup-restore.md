@@ -19,3 +19,7 @@ O backup deve sair do volume e do host. A implementação usa `pg_dump` custom, 
 6. Registre data, backup, duração, resultado e responsável.
 
 Nunca aponte `RESTORE_DATABASE_URL` para produção. O script usa `--clean --if-exists` e é destrutivo no database alvo.
+
+### Evidência local (2026-09-20)
+
+Foi executado um ensaio isolado com `pg_dump --format=custom`, criptografia `age` e restauração em `app_compras_restore_test`. As contagens restauradas foram `3` lojas, `74` produtos e `21` exclusivos; o database temporário foi removido ao final. O ensaio S3/off-host e o rollback operacional da stack continuam pendentes até o destino externo e a janela de mudança serem definidos.
