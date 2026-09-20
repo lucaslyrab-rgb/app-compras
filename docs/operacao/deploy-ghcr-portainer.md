@@ -107,6 +107,22 @@ No repositório:
 
 Não é necessário cadastrar `GHCR_TOKEN` nem `GHCR_USERNAME` para publicar. `GITHUB_TOKEN` e `github.actor` são fornecidos na execução. Caso o deploy use GitHub Environment `production`, prefira secret de ambiente e required reviewer; o repositório pessoal precisa permitir esse recurso no plano/configuração vigente.
 
+## 5.1 Notificação de release por Amazon SES
+
+O workflow envia uma mensagem após cada release, inclusive quando `verify` ou `image/deploy` falha. O remetente e o destinatário padrão são `lucaslyrab@hotmail.com`, que deve permanecer verificado no SES. A região padrão é `us-east-1`.
+
+Em **Settings → Secrets and variables → Actions → Repository secrets**, cadastre:
+
+| Secret | Valor |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | Access key rotacionada com permissão mínima `ses:SendEmail`/`ses:SendRawEmail` na região usada |
+| `AWS_SECRET_ACCESS_KEY` | Secret key correspondente; nunca comitar ou imprimir |
+| `AWS_REGION` | `us-east-1` (opcional; esse é o padrão) |
+| `SES_FROM_EMAIL` | `lucaslyrab@hotmail.com` (opcional; esse é o padrão) |
+| `SES_TO_EMAIL` | `lucaslyrab@hotmail.com` (opcional; esse é o padrão) |
+
+Recomenda-se usar um usuário IAM exclusivo para notificações, com política restrita ao envio SES e, se possível, credenciais de curta duração/OIDC. Se a conta SES estiver em sandbox, o destinatário também precisa estar verificado. A action AWS é fixada por SHA e o corpo do e-mail contém apenas status, commit, resultados dos jobs e link do workflow.
+
 ## 6. Proteções recomendadas
 
 - Branch protection/ruleset em `main`: PR, checks obrigatórios e bloqueio de force-push.

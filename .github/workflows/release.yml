@@ -124,3 +124,60 @@ jobs:
         run: |
           test -n "$PORTAINER_WEBHOOK_URL"
           curl --fail-with-body --silent --show-error --max-time 30 --retry 2 --request POST "$PORTAINER_WEBHOOK_URL"
+
+  notify:
+    name: Notify release by email
+    if: always()
+    needs: [verify, image]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Configure AWS credentials for SES
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      - name: Send success or failure notification
+        env:
+          SES_FROM_EMAIL: ${{ secrets.SES_FROM_EMAIL || 'lucaslyrab@hotmail.com' }}
+          SES_TO_EMAIL: ${{ secrets.SES_TO_EMAIL || 'lucaslyrab@hotmail.com' }}
+          VERIFY_RESULT: ${{ needs.verify.result }}
+          IMAGE_RESULT: ${{ needs.image.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          REF_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${AWS_ACCESS_KEY_ID:-}"
+          test -n "${AWS_SECRET_ACCESS_KEY:-}"
+          test -n "$SES_FROM_EMAIL"
+          test -n "$SES_TO_EMAIL"
+
+          if [[ "$VERIFY_RESULT" == "success" && "$IMAGE_RESULT" == "success" ]]; then
+            status="SUCESSO"
+            summary="Build, testes, scan, publicação GHCR, promoção do manifesto e webhook concluídos."
+          else
+            status="FALHA"
+            summary="Uma etapa do release falhou ou foi ignorada; consulte os resultados abaixo."
+          fi
+
+          body="Release app-compras: $status
+
+          $summary
+
+          Commit: $COMMIT_SHA
+          Branch: $REF_NAME
+          Resultado verify: $VERIFY_RESULT
+          Resultado image/deploy: $IMAGE_RESULT
+          Workflow: $RUN_URL"
+
+          jq -n \
+            --arg from "$SES_FROM_EMAIL" \
+            --arg to "$SES_TO_EMAIL" \
+            --arg subject "[app-compras] Release $status — ${COMMIT_SHA:0:12}" \
+            --arg body "$body" \
+            '{Source:$from,Destination:{ToAddresses:[$to]},Message:{Subject:{Data:$subject,Charset:"UTF-8"},Body:{Text:{Data:$body,Charset:"UTF-8"}}}}' \
+            > "$RUNNER_TEMP/ses-email.json"
+          aws ses send-email --cli-input-json "file://$RUNNER_TEMP/ses-email.json"
