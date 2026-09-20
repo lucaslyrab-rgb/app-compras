@@ -147,6 +147,25 @@ Recomenda-se usar um usuário IAM exclusivo para notificações, com política r
 
 ## 7. Validação e rollback
 
+### Evidência de validação em produção — 2026-09-20
+
+O GitOps foi validado ponta a ponta no repositório `lucaslyrab-rgb/app-compras`:
+
+| Etapa | Evidência |
+|---|---|
+| Commit disparador | `afd2b7c63e0d6eb6cc965f115267a68dc0a1808d` (`chore(test): verify Portainer webhook after secret update`) |
+| Workflow | `35535084939` — `Build, scan and deploy` |
+| Verificação | concluída com sucesso |
+| Build/scan/publicação | concluídos com sucesso; imagem publicada no GHCR |
+| Promoção GitOps | concluída com sucesso em `infra/stack.yml` |
+| Webhook Portainer | concluído com sucesso |
+| Notificação | job SES concluído com sucesso |
+| Imagem ativa | `ghcr.io/lucaslyrab-rgb/app-compras:sha-afd2b7c63e0d6eb6cc965f115267a68dc0a1808d` |
+| Swarm | `app-compras_web` em `1/1` |
+| Smoke test | `https://compras.muitomaisatacado.com/api/health` retornou `{"status":"ok","service":"app-compras"}` |
+
+O primeiro reteste (`94fe059`) também confirmou a publicação, mas encontrou uma corrida de concorrência na promoção do manifesto: dois workflows tentaram atualizar `main` simultaneamente. O terceiro commit foi executado somente após a fila estabilizar e comprovou o fluxo completo.
+
 Antes de produção:
 
 1. Publicar imagem de teste e confirmar visibilidade no GHCR.
