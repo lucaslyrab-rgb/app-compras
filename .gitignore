@@ -19,6 +19,7 @@ __pycache__/
 .vscode/
 .DS_Store
 *.log
+*.tsbuildinfo
 
 # Local database/backups
 *.dump

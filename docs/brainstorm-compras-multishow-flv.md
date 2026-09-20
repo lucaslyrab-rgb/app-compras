@@ -43,7 +43,7 @@ O fluxo diário de FLV depende de WhatsApp e planilhas, fragmenta o histórico e
 | 74 produtos / 21 exclusivos | Verificado | XLSX e protótipo local | 2026-09-19 |
 | Swarm/Traefik/Portainer/PostgreSQL | Verificado | inspeção somente-leitura do host | 2026-09-19 |
 | Next.js 16.3.3 e Node 24 LTS | Verificado | documentação oficial; versões em 2026-09-19 | 2026-09-19 |
-| PostgreSQL dedicado 16+ | Inferido | 14 entra em EOL em 2026-11-12; evita acoplamento ao cluster legado | 2026-09-19 |
+| PostgreSQL compartilhado 18.6 | Verificado | imagem e container do serviço Swarm inspecionados | 2026-09-19 |
 | Metas de SLA/RPO/RTO | Inferido | operação pequena em nó único | 2026-09-19 |
 | Usuário inicial e política de senha | Em aberto | exige definição antes da homologação | 2026-09-19 |
 
@@ -52,7 +52,7 @@ O fluxo diário de FLV depende de WhatsApp e planilhas, fragmenta o histórico e
 - **Evoluir o HTML/localStorage:** não oferece multiusuário, isolamento ou persistência confiável.
 - **Supabase/Cloudflare:** tecnicamente viável, mas contraria a decisão atual de operar via stack local e adiciona dependência externa.
 - **Microserviços:** custo operacional injustificado para escala e equipe atuais.
-- **Reutilizar PostgreSQL 14 sem plano:** versão perto do EOL e blast radius compartilhado.
+- **Criar segundo PostgreSQL sem necessidade:** após upgrade do compartilhado para 18.6, o custo de memória supera o ganho inicial; usar isolamento lógico.
 - **Webhook armazenado no Git:** URL é credencial de deploy; deve ser secret.
 
 ## Pendências
@@ -60,4 +60,4 @@ O fluxo diário de FLV depende de WhatsApp e planilhas, fragmenta o histórico e
 - Confirmar SLA/RPO/RTO e volume de retenção antes da produção.
 - Confirmar se imagens de produto entram no primeiro release ou no seguinte; a especificação contém sinais conflitantes (direção futura, mas prioridade 13).
 - Definir responsáveis nominais por homologação, operação e resposta a incidentes.
-- Validar estratégia de banco dedicado versus upgrade planejado do PostgreSQL compartilhado.
+- Confirmar destino e retenção do backup externo do database da aplicação.

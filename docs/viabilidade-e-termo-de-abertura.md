@@ -8,7 +8,7 @@ O projeto é tecnicamente exequível no servidor atual e tem forte aderência op
 
 | Dimensão | Avaliação | Condição |
 |---|---|---|
-| Técnica | Viável com ressalvas | 4 vCPU/4 GiB e Swarm single-node atendem início; banco 14 requer plano de upgrade/dedicação |
+| Técnica | Viável com ressalvas | 4 vCPU/4 GiB e Swarm single-node atendem início; PostgreSQL 18.6 foi confirmado |
 | Operacional | Viável | UX móvel deve ser validada em campo com Loja e Comprador |
 | Financeira | Provavelmente viável | Sem estimativa monetária autorizada; medir operação, backup e manutenção |
 | Segurança | Viável com controles | RBAC no servidor, TLS, secrets, backup, logs e atualização de dependências |
@@ -33,7 +33,7 @@ Criar uma fonte única e rastreável para o ciclo diário de FLV, reduzindo retr
 | Risco | Probabilidade | Impacto | Tratamento |
 |---|---|---|---|
 | Nó único indisponível | Média | Alto | backup externo, runbook e futura réplica/host alternativo |
-| PostgreSQL 14 EOL | Alta | Alto | banco dedicado suportado ou upgrade antes da produção |
+| Falha no PostgreSQL compartilhado | Média | Alto | database/role próprios, backup e restauração testados |
 | Credencial de webhook vazada | Baixa | Alto | GitHub secret, rotação e nunca registrar URL em logs |
 | Imagens `latest` em stacks atuais | Média | Médio | fixar versões/digests em mudanças futuras |
 | Adoção móvel insuficiente | Média | Alto | UAT em aparelhos reais e preservação das referências aprovadas |

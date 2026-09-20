@@ -9,12 +9,13 @@ push protegido em main
   → lint/tipos/testes/build/scan
   → GitHub Actions autentica no GHCR com GITHUB_TOKEN
   → publica ghcr.io/lucaslyrab-rgb/app-compras:sha-<commit>
+  → promove essa tag imutável em infra/stack.yml
   → chama PORTAINER_WEBHOOK_URL
   → Portainer busca a stack Git e força pull/redeploy
   → Swarm atualiza com healthcheck e política de rollback
 ```
 
-O Portainer documenta webhook como mecanismo de GitOps para disparar atualização sob demanda, inclusive por GitHub Actions. A opção “force redeployment” é necessária quando o arquivo da stack não muda, mas a tag rastreada aponta a nova imagem. Preferência mais auditável: promover no Git uma tag/digest imutável; nessa modalidade, o webhook observa alteração real da stack.
+O Portainer documenta webhook como mecanismo de GitOps para disparar atualização sob demanda, inclusive por GitHub Actions. Este projeto promove no Git uma tag `sha-<commit>` imutável antes do webhook; assim o Portainer observa alteração real da stack e o rollback permanece auditável.
 
 ## 1. Publicação pelo GitHub Actions
 
@@ -22,7 +23,7 @@ Não crie PAT para o workflow publicar a imagem. No próprio repositório, `GITH
 
 ```yaml
 permissions:
-  contents: read
+  contents: write
   packages: write
 ```
 
@@ -34,7 +35,7 @@ username: ${{ github.actor }}
 password: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Fixe actions de terceiros por SHA, gere tag por commit e só invoque deploy depois de testes e push concluídos. Configure em **Settings → Actions → General → Workflow permissions** a opção de leitura/escrita apenas se o workflow não receber `packages: write` via YAML/política.
+Fixe actions de terceiros por SHA, gere tag por commit e só invoque deploy depois de testes, publicação e promoção do manifesto concluídos. O job de imagem recebe `packages: write` para o GHCR e `contents: write` exclusivamente para atualizar `infra/stack.yml`; os demais jobs permanecem somente leitura. Em **Settings → Actions → General → Workflow permissions**, permita leitura/escrita e configure o ruleset de `main` para que GitHub Actions possa criar apenas essa promoção automatizada. Se o push for recusado, o webhook não é chamado.
 
 ## 2. Token de leitura para o Portainer
 
@@ -82,14 +83,14 @@ Nunca reutilize o token de publicação no Portainer. Para rotação, crie o nov
 5. Compose path: `infra/stack.yml`.
 6. Habilite autenticação do repositório se ele for privado. A chave de deploy de leitura do repositório é preferível a PAT amplo.
 7. Habilite **GitOps updates → Webhook**.
-8. Habilite pull da imagem mais recente/force redeployment apenas se usar tag mutável de ambiente.
+8. Não habilite tag mutável: o workflow altera a referência `sha-<commit>` no manifesto antes de acionar o webhook.
 9. Copie a URL gerada e trate-a como segredo.
 10. Selecione a registry `ghcr-lucaslyrab-rgb`, configure os secrets/variáveis não sensíveis e faça primeiro deploy manual em homologação.
 
 Configuração esperada da stack:
 
 - rede externa `externa` para Traefik;
-- imagem `ghcr.io/lucaslyrab-rgb/app-compras:<sha-ou-release>`;
+- imagem `ghcr.io/lucaslyrab-rgb/app-compras:sha-<commit>` promovida automaticamente no Git;
 - labels Traefik para `compras.muitomaisatacado.com`, entrypoint `websecure` e resolver existente `letsencryptresolver`;
 - banco não publicado; volume dedicado; secrets do Swarm;
 - `healthcheck`, limites/reservas, `update_config` com monitoramento e `rollback_config`.

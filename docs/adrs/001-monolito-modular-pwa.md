@@ -1,6 +1,6 @@
 ---
 adr_number: "001"
-status: proposto
+status: aceito
 created: 2026-09-19
 supersedes: ""
 superseded_by: ""
@@ -20,7 +20,7 @@ O produto tem vários módulos, mas baixa escala inicial e será operado por equ
 
 ## Decisão
 
-Propor Next.js 16.3.3 sobre Node.js 24 LTS, em monólito modular e PWA responsiva. A decisão deve ser ratificada antes da primeira implementação.
+Adotar Next.js 16.3.5 sobre Node.js 24 LTS, em monólito modular e PWA responsiva.
 
 ## Consequências
 

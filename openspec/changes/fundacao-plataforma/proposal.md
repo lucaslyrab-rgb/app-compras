@@ -27,4 +27,4 @@ Nenhuma; o projeto ainda não possui specs consolidadas.
 
 ## Impact
 
-Cria a base de código, schema/migrações, testes e infraestrutura do novo produto. Adiciona serviços web e PostgreSQL dedicado à rede overlay `externa`, uma imagem privada no GHCR e uma stack GitOps no Portainer. Não altera as stacks existentes nem seus dados.
+Cria a base de código, schema/migrações, testes e infraestrutura do novo produto. Adiciona o serviço web à rede overlay `externa`, conecta-o ao PostgreSQL 18.6 compartilhado com database/role próprios, publica imagem privada no GHCR e cria stack GitOps no Portainer. Não altera dados de outras aplicações.

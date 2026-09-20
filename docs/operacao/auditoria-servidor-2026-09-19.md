@@ -19,7 +19,7 @@ Levantamento somente-leitura; nenhum serviço foi alterado.
 |---|---|---:|---|
 | traefik | `traefik:v3.5.3` fixada por digest | 1 | `volume_swarm_certificates` |
 | portainer | `portainer/portainer-ee:latest` resolvida por digest | 1 + agent global | `portainer_data` |
-| postgres | `postgres:14` resolvida por digest | 1 | `postgres_data` |
+| postgres | `postgres:18.6` fixada por digest `86c951…3666ae` | 1 | `postgres_data` |
 | pgadmin | `dpage/pgadmin4:latest` resolvida por digest | 1 | `pgadmin_data` |
 | quepasa | `codeleaks/quepasa:latest` resolvida por digest | 1 | `quepasa_volume` |
 
@@ -27,10 +27,10 @@ Todos os serviços estão na rede overlay `externa`; somente Traefik publica 80/
 
 ## Achados e recomendações
 
-1. **PostgreSQL 14:** suporte termina em 12/11/2026. Não criar dependência nova sem plano; proposta: PostgreSQL 16 dedicado inicialmente.
+1. **PostgreSQL 18.6:** upgrade confirmado no serviço e no container. Criar database/role exclusivos, validar extensões, backup e restore antes de conectar produção.
 2. **Tags `latest`:** dificultam reprodução/rollback apesar de o serviço atual registrar digest. Fixar versão/digest nos próximos ciclos de manutenção.
 3. **Swarm single-node:** manager, aplicação e dados compartilham falha. Backup off-host e restauração ensaiada são gates de produção; HA futura exige outro nó/host.
-4. **Recursos:** 4 GiB pedem limites/reservas e monitoramento; evitar microserviços e bancos redundantes sem medição.
+4. **Recursos:** 4 GiB pedem limites/reservas e monitoramento; a reutilização do PostgreSQL 18.6 evita um segundo processo de banco.
 5. **Traefik DEBUG:** log detalhado permanente pode aumentar disco e exposição operacional. Migrar para INFO após diagnóstico e configurar rotação em mudança separada.
 6. **Docker socket:** Traefik acessa o socket do manager; é risco conhecido de alto privilégio. Não ampliar esse padrão para a aplicação.
 7. **Swarm autolock:** desativado. Avaliar ativação apenas com procedimento seguro de guarda/recuperação da unlock key.

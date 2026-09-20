@@ -2,7 +2,7 @@
 
 ## Context
 
-Veja [proposal.md](proposal.md). O host é Swarm single-node (4 vCPU/4 GiB), com Traefik 3.5.3 na rede overlay externa `externa`, Portainer EE e PostgreSQL 14 compartilhado próximo do EOL. O repositório contém somente especificação, planilha e protótipo `localStorage`.
+Veja [proposal.md](proposal.md). O host é Swarm single-node (4 vCPU/4 GiB), com Traefik 3.5.3 na rede overlay externa `externa`, Portainer EE e PostgreSQL 18.6 compartilhado. A implementação inicial está em Next.js 16.3.5/Node 24.21.0, com código modular, migrations e pipeline no próprio repositório; o protótipo `localStorage` permanece apenas como referência.
 
 ## Goals / Non-Goals
 
@@ -25,7 +25,7 @@ Uma aplicação Next.js separa módulos de identidade, catálogo e pedidos por c
 
 ### Dados e concorrência
 
-PostgreSQL 16 dedicado, migrations versionadas e constraints únicas. `orders` representa uma versão enviada; `order_items` é imutável após envio. Rascunho é separado e atualizável. Importação usa código ERP como chave natural, valida tudo antes da transação e produz resumo 74/21.
+PostgreSQL 18.6 compartilhado, com database/role exclusivos, migrations versionadas e constraints únicas. `orders` representa uma versão enviada; `order_items` é imutável após envio. Rascunho é separado e atualizável. Importação usa código ERP como chave natural, valida tudo antes da transação e produz resumo 74/21.
 
 ### Sessões
 
@@ -41,7 +41,7 @@ Logs JSON em stdout, correlation ID e endpoints de liveness/readiness. Backup l�
 
 ## Risks / Trade-offs
 
-- [Dois PostgreSQL consomem memória] → limites de recurso, medição e possibilidade de migrar após upgrade do serviço comum.
+- [PostgreSQL é compartilhado] → credencial/database próprios, permissões mínimas, backup e restauração isolados.
 - [Nó único continua SPOF] → backup externo e RTO explícito; HA futura não é fingida.
 - [Webhook permite deploy] → secret de ambiente, proteção da branch, rotação e logs redigidos.
 - [Rascunho concorrente em dois aparelhos] → controle otimista por versão e mensagem de conflito.

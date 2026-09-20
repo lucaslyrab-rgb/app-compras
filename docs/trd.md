@@ -8,8 +8,8 @@
 |---|---|
 | Linguagem principal | TypeScript estrito |
 | Runtime / plataforma | Node.js 24 LTS; container Linux OCI |
-| Framework principal | Next.js 16.3.3, App Router, PWA responsiva |
-| Banco de dados | PostgreSQL 16 dedicado *(proposto; ADR 002)* |
+| Framework principal | Next.js 16.3.5, App Router, PWA responsiva |
+| Banco de dados | PostgreSQL 18.6 compartilhado, com database/role exclusivos *(ADR 002)* |
 | Acesso a dados | ORM/migrações TypeScript a selecionar na mudança ativa |
 | Ferramentas de build | Next.js, Docker BuildKit |
 | Gerenciador de pacotes | npm com lockfile e `npm ci` |
@@ -64,7 +64,7 @@ infra/                   # stack Swarm e runbooks
 | GHCR | registry OCI | Actions publica com `GITHUB_TOKEN`; Portainer lê com PAT clássico `read:packages` | GitHub |
 | Portainer EE | GitOps/Swarm | webhook é secreto; stack Git é fonte de verdade | infraestrutura |
 | Traefik 3.5.3 | proxy/TLS | rede overlay externa `externa`; HTTPS via Let's Encrypt | infraestrutura |
-| PostgreSQL | persistência | 14 atual termina suporte em 12/11/2026; usar serviço suportado | infraestrutura |
+| PostgreSQL 18.6 | persistência | serviço compartilhado; database, owner, credencial, migrations e backup exclusivos | infraestrutura |
 | DNS | CNAME/A | `compras.muitomaisatacado.com` resolve para `177.136.234.214` em 2026-09-19 | DNS local |
 
 ## Padrões
@@ -106,7 +106,7 @@ Baseline Wittemberg adotada: UI aprovada é congelada; alterações cirúrgicas;
 
 | # | Título | Data | Status | Link |
 |---|---|---|---|---|
-| 001 | Monólito modular PWA em Next.js | 2026-09-19 | proposto | [ADR 001](adrs/001-monolito-modular-pwa.md) |
-| 002 | PostgreSQL suportado e isolado | 2026-09-19 | proposto | [ADR 002](adrs/002-postgresql-dedicado.md) |
+| 001 | Monólito modular PWA em Next.js | 2026-09-19 | aceito | [ADR 001](adrs/001-monolito-modular-pwa.md) |
+| 002 | PostgreSQL 18.6 compartilhado com isolamento lógico | 2026-09-19 | aceito | [ADR 002](adrs/002-postgresql-dedicado.md) |
 | 003 | Sessões server-side e RBAC | 2026-09-19 | proposto | [ADR 003](adrs/003-sessoes-rbac.md) |
 | 004 | Entrega por GHCR, stack Git e webhook Portainer | 2026-09-19 | aceito | [ADR 004](adrs/004-entrega-ghcr-portainer.md) |
