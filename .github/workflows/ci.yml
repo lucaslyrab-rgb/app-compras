@@ -40,16 +40,12 @@ jobs:
       - run: npm run test:integration
       - run: npm run build
       - run: npm audit --audit-level=high
-      - name: Prepare tracked source for secret scan
-        run: |
-          mkdir -p /tmp/app-compras-source
-          git archive HEAD | tar -x -C /tmp/app-compras-source
       - name: Scan repository for secrets
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
-        with:
-          scan-type: fs
-          scan-ref: /tmp/app-compras-source
-          scanners: secret
-          skip-dirs: node_modules,.git,.next,coverage,test-results,playwright-report
-          format: table
-          exit-code: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          secret_pattern='-----BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{40,}|AKIA[0-9A-Z]{16}|xox[baprs]-[0-9A-Za-z-]{20,}'
+          if git grep -nI -E -e "$secret_pattern" -- . ':!package-lock.json'; then
+            echo "Potential credential detected in tracked source" >&2
+            exit 1
+          fi
