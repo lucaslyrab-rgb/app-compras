@@ -76,6 +76,14 @@ button, a, input { min-height: 44px; }
 .success-badge { color: var(--brand-700); letter-spacing: .03em; font-size: .82rem; }
 .btn--danger { background: var(--danger); }
 .cancel-form { max-width: 480px; }
+.dialog-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: rgb(16 35 63 / 55%); }
+.confirm-dialog { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 24px; border-radius: var(--radius); background: var(--surface); box-shadow: 0 18px 60px rgb(16 35 63 / 28%); }
+.confirm-dialog h2 { margin: 0 0 16px; }
+.confirm-dialog p { margin: 8px 0; }
+.dialog-actions { justify-content: flex-end; margin-top: 20px; }
+.floating-feedback { position: fixed; top: 16px; left: 50%; z-index: 90; width: min(560px, calc(100% - 24px)); transform: translateX(-50%); padding: 12px 16px; border-radius: 10px; box-shadow: var(--shadow); font-weight: 700; }
+.floating-feedback--success { color: var(--brand-900); background: var(--brand-100); border: 1px solid var(--brand-600); }
+.floating-feedback--error { color: #8f101a; background: #fff0f1; border: 1px solid #f0a8ae; }
 .count-report { width: 100%; max-width: 1100px; margin: 0 auto; padding: 18px; color: #000; background: #fff; }
 .count-report__actions { display: flex; justify-content: space-between; margin-bottom: 18px; }
 .count-report__header { margin-bottom: 12px; }
@@ -100,6 +108,8 @@ button, a, input { min-height: 44px; }
   .product-fields .field > span { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
   .filters { font-size: .86rem; }
   .sticky-actions__inner .btn { flex: 1; }
+  .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .dialog-actions .btn { width: 100%; }
 }
 
 @media print {

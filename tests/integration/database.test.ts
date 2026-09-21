@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { database } from "@/db/client";
 import { createSessionToken, hashToken, type Principal } from "@/modules/identity/domain";
 import { findPrincipal, revokeSession } from "@/modules/identity/repository";
-import { loadDraft, saveDraft, submitDraft } from "@/modules/ordering/repository";
+import { ExistingOrderError, loadDraft, saveDraft, submitDraft } from "@/modules/ordering/repository";
 import { persistProducts } from "../../scripts/import-products";
 import type { ProductInput } from "@/modules/catalog/domain";
 import { bootstrapAdmin } from "../../scripts/bootstrap-admin";
@@ -91,6 +91,7 @@ integration("PostgreSQL 18.6", () => {
     await expect(loadDraft({ ...principal, storeId: "00000000-0000-0000-0000-000000000000" }, principal.storeId!, orderDate)).rejects.toThrow(/Acesso negado/);
     const order = await submitDraft(principal, principal.storeId!, orderDate);
     await saveDraft(principal, principal.storeId!, orderDate, 1, [{ productId, stock: 2, quantity: 4 }]);
+    await expect(submitDraft(principal, principal.storeId!, orderDate)).rejects.toBeInstanceOf(ExistingOrderError);
     const secondOrder = await submitDraft(principal, principal.storeId!, orderDate, true);
     expect(secondOrder.revision).toBe(2);
     await database().sql`UPDATE products SET active = false WHERE id = ${productId}`;
