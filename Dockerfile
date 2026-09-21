@@ -25,6 +25,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/postgres ./node_modules/postgres
 COPY --from=builder --chown=nextjs:nodejs /app/migrations/0002_store_order_snapshots_cancel.sql ./migrations/0002_store_order_snapshots_cancel.sql
+COPY --from=builder --chown=nextjs:nodejs /app/migrations/0003_purchase_cycles.sql ./migrations/0003_purchase_cycles.sql
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/entrypoint.mjs ./entrypoint.mjs
 USER nextjs
 EXPOSE 3000

@@ -56,10 +56,10 @@ test("Loja salva, recupera e envia pedido móvel", async ({ page }, testInfo) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   await page.getByRole("button", { name: "Enviar pedido" }).click();
   await expect(page.getByText(/Pedido enviado/)).toBeVisible();
-  await page.getByRole("link", { name: "Ver histórico" }).click();
+  await page.getByRole("link", { name: "Histórico" }).click();
   await expect(page.getByText(/Revisão 1/)).toBeVisible();
-  await page.getByRole("link", { name: "Abrir conferência" }).click();
-  await expect(page.getByRole("heading", { name: "Conferência de recebimento" })).toBeVisible();
+  await page.getByRole("link", { name: "Ver pedido" }).first().click();
+  await expect(page.getByRole("heading", { name: /Pedido/ })).toBeVisible();
   await expect(page.locator("tbody tr")).toHaveCount(1);
 });
 
@@ -84,4 +84,26 @@ test("Enter percorre estoque e pedido sem enviar no último campo", async ({ pag
   await quantity.last().focus();
   await quantity.last().press("Enter");
   await expect(page.getByText(/Pedido enviado/)).toHaveCount(0);
+});
+
+test("busca e filtros alteram a coleção realmente renderizada", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "Fluxo operacional móvel");
+  const email = process.env.E2E_EMAIL;
+  const password = process.env.E2E_PASSWORD;
+  if (!email || !password) throw new Error("E2E_EMAIL e E2E_PASSWORD são obrigatórios");
+  await page.goto("/login");
+  await page.getByLabel("E-mail").fill(email);
+  await page.getByLabel("Senha").fill(password);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  const first = page.locator(".product-card").first();
+  const name = (await first.locator("h2").textContent()) ?? "";
+  await page.getByPlaceholder("Buscar produto…").fill(name.slice(0, 5));
+  expect(await page.locator(".product-card").count()).toBeGreaterThan(0);
+  await first.getByLabel(/Pedido/).fill("7");
+  await page.getByRole("button", { name: "Com pedido" }).click();
+  await expect(page.locator(".product-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "Sem pedido" }).click();
+  await expect(page.locator(".product-card")).toHaveCount(0);
+  await page.getByRole("button", { name: "Todos" }).click();
+  await expect(first.getByLabel(/Pedido/)).toHaveValue("7");
 });

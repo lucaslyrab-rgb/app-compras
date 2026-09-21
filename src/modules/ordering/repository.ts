@@ -5,6 +5,33 @@ import type { Principal } from "@/modules/identity";
 import { assertStoreAccess } from "@/modules/identity";
 import { DraftConflictError, validateDraft, type DraftItem } from "./domain";
 
+export class ExistingOrderError extends Error {
+  constructor(public readonly submittedAt: Date, public readonly purchaseCycleDate: string) {
+    super("Já existe um pedido válido neste ciclo de compra.");
+  }
+}
+
+function localParts(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(now);
+  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  const hour = get("hour");
+  return { date: `${get("year")}-${String(get("month")).padStart(2, "0")}-${String(get("day")).padStart(2, "0")}`, hour: hour === 24 ? 0 : hour, minute: get("minute") };
+}
+
+function plusDays(date: string, days: number) {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+export function purchaseCycle(now = new Date()) {
+  const local = localParts(now);
+  const afterCutoff = local.hour >= 19;
+  const cycleDate = plusDays(local.date, afterCutoff ? 2 : 1);
+  const cutoffDate = afterCutoff ? plusDays(local.date, 1) : local.date;
+  return { cycleDate, cutoffAt: new Date(`${cutoffDate}T19:00:00-03:00`), afterCutoff };
+}
+
 export async function saveDraft(principal: Principal, storeId: string, date: string, expectedVersion: number, items: DraftItem[]) {
   assertStoreAccess(principal, storeId);
   const parsed = validateDraft(items);
@@ -37,14 +64,18 @@ export async function loadDraft(principal: Principal, storeId: string, date: str
   return { version: draft.version, items: items.map((item) => ({ productId: item.productId, stock: Number(item.stock), quantity: Number(item.quantity) })) };
 }
 
-export async function submitDraft(principal: Principal, storeId: string, date: string) {
+export async function submitDraft(principal: Principal, storeId: string, date: string, allowRevision = false) {
   assertStoreAccess(principal, storeId);
   return database().db.transaction(async (tx) => {
     const draft = await tx.query.orderDrafts.findFirst({ where: and(eq(orderDrafts.storeId, storeId), eq(orderDrafts.orderDate, date)) });
     if (!draft) throw new Error("Rascunho não encontrado");
     const items = await tx.select().from(orderDraftItems).where(eq(orderDraftItems.draftId, draft.id));
-    const [{ maxRevision }] = await tx.select({ maxRevision: sql<number>`coalesce(max(${orders.revision}), 0)::int` }).from(orders).where(and(eq(orders.storeId, storeId), eq(orders.orderDate, date)));
-    const [order] = await tx.insert(orders).values({ storeId, orderDate: date, revision: (maxRevision ?? 0) + 1, submittedBy: principal.userId }).returning();
+    const cycle = purchaseCycle();
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${storeId}:${cycle.cycleDate}`}, 0))`);
+    const [existing] = await tx.select({ submittedAt: orders.submittedAt }).from(orders).where(and(eq(orders.storeId, storeId), eq(orders.purchaseCycleDate, cycle.cycleDate), sql`${orders.cancelledAt} is null`)).orderBy(desc(orders.revision)).limit(1);
+    if (existing && !allowRevision) throw new ExistingOrderError(existing.submittedAt, cycle.cycleDate);
+    const [{ maxRevision }] = await tx.select({ maxRevision: sql<number>`coalesce(max(${orders.revision}), 0)::int` }).from(orders).where(and(eq(orders.storeId, storeId), eq(orders.purchaseCycleDate, cycle.cycleDate)));
+    const [order] = await tx.insert(orders).values({ storeId, orderDate: date, purchaseCycleDate: cycle.cycleDate, cutoffAt: cycle.cutoffAt, revision: (maxRevision ?? 0) + 1, submittedBy: principal.userId }).returning();
     if (!order) throw new Error("Falha ao enviar pedido");
     if (items.length) {
       const productRows = await tx.select({ id: products.id, erpCode: products.erpCode, name: products.name, unit: products.unit }).from(products).where(inArray(products.id, items.map((item) => item.productId)));
@@ -62,7 +93,7 @@ export async function submitDraft(principal: Principal, storeId: string, date: s
 export async function listStoreHistory(principal: Principal, storeId: string) {
   assertStoreAccess(principal, storeId);
   return database().db.select({
-    id: orders.id, storeId: orders.storeId, orderDate: orders.orderDate, revision: orders.revision,
+    id: orders.id, storeId: orders.storeId, orderDate: orders.orderDate, purchaseCycleDate: orders.purchaseCycleDate, cutoffAt: orders.cutoffAt, revision: orders.revision,
     submittedAt: orders.submittedAt, cancelledAt: orders.cancelledAt, cancelledBy: orders.cancelledBy,
     cancellationReason: orders.cancellationReason,
     itemCount: sql<number>`coalesce((select count(*) from order_items oi where oi.order_id = ${orders.id} and oi.quantity > 0), 0)::int`

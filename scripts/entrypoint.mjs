@@ -6,8 +6,10 @@ const databaseUrl = process.env.DATABASE_URL ?? (process.env.DATABASE_URL_FILE ?
 if (!databaseUrl) throw new Error("DATABASE_URL ou DATABASE_URL_FILE não configurada");
 const sql = postgres(databaseUrl, { max: 1, connect_timeout: 15 });
 try {
-  await sql.unsafe(readFileSync("/app/migrations/0002_store_order_snapshots_cancel.sql", "utf8"));
-  console.log("Migration 0002 aplicada/verificada.");
+  for (const file of ["0002_store_order_snapshots_cancel.sql", "0003_purchase_cycles.sql"]) {
+    await sql.unsafe(readFileSync(`/app/migrations/${file}`, "utf8"));
+    console.log(`Migration ${file} aplicada/verificada.`);
+  }
 } finally {
   await sql.end();
 }

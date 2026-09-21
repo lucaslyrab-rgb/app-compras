@@ -2,7 +2,7 @@ import { logoutAction } from "./login/actions";
 import { requirePrincipal } from "@/modules/identity/session";
 import { listActiveProducts } from "@/modules/catalog/repository";
 import { OrderWorkspace } from "@/modules/ordering/order-workspace";
-import { getStoreName, loadDraft } from "@/modules/ordering/repository";
+import { getStoreName, loadDraft, purchaseCycle } from "@/modules/ordering/repository";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -22,5 +22,6 @@ export default async function HomePage() {
   const date = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
   const draft = await loadDraft(principal, principal.storeId, date);
   const storeName = await getStoreName(principal.storeId);
-  return <OrderWorkspace products={products} storeId={principal.storeId} storeName={storeName} initialDraft={draft} date={date} />;
+  const cycle = purchaseCycle();
+  return <OrderWorkspace products={products} storeId={principal.storeId} storeName={storeName} initialDraft={draft} date={date} cycleDate={cycle.cycleDate} cutoffAt={cycle.cutoffAt.toISOString()} />;
 }

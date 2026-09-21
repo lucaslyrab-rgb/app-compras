@@ -73,6 +73,8 @@ export const orders = pgTable("orders", {
   id: uuid("id").primaryKey().defaultRandom(),
   storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "restrict" }),
   orderDate: date("order_date").notNull(),
+  purchaseCycleDate: date("purchase_cycle_date").notNull(),
+  cutoffAt: timestamp("cutoff_at", { withTimezone: true }).notNull(),
   revision: integer("revision").notNull(),
   submittedBy: uuid("submitted_by").notNull().references(() => users.id, { onDelete: "restrict" }),
   submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),

@@ -2,26 +2,26 @@
 
 import { useActionState, useMemo, useRef, useState } from "react";
 import { logoutAction } from "@/app/login/actions";
-import { saveDraftAction, submitOrderAction } from "./actions";
+import { saveDraftAction, submitOrderAction, type State } from "./actions";
 import Link from "next/link";
 
 type Product = { id: string; erpCode: number; name: string; unit: string };
 type Filter = "all" | "empty" | "filled";
 
-export function OrderWorkspace({ products, storeId, storeName, initialDraft, date }: { products: Product[]; storeId: string; storeName: string; initialDraft: { version: number; items: Array<{ productId: string; stock: number; quantity: number }> }; date: string }) {
+export function OrderWorkspace({ products, storeId, storeName, initialDraft, date, cycleDate, cutoffAt }: { products: Product[]; storeId: string; storeName: string; initialDraft: { version: number; items: Array<{ productId: string; stock: number; quantity: number }> }; date: string; cycleDate: string; cutoffAt: string }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [values, setValues] = useState<Record<string, { stock: string; quantity: string }>>(() => Object.fromEntries(initialDraft.items.map((item) => [item.productId, { stock: String(item.stock), quantity: String(item.quantity) }])));
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [state, saveAction, pending] = useActionState(saveDraftAction, {});
   const [submitState, submitAction, submitting] = useActionState(submitOrderAction, {});
+  const [allowRevision, setAllowRevision] = useState(false);
   const visibleProducts = useMemo(() => products.filter((product) => {
     const value = values[product.id];
     const filled = Number(value?.quantity ?? 0) > 0;
     const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
     return (!normalizedQuery || product.name.toLocaleLowerCase("pt-BR").includes(normalizedQuery) || String(product.erpCode).includes(normalizedQuery)) && (filter === "all" || (filter === "filled" ? filled : !filled));
   }), [filter, products, query, values]);
-  const visibleIds = useMemo(() => new Set(visibleProducts.map((product) => product.id)), [visibleProducts]);
   const inputOrder = useMemo(() => visibleProducts.flatMap((product) => [`${product.id}:stock`, `${product.id}:quantity`]), [visibleProducts]);
   function handleEnter(inputKey: string) {
     return (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -32,7 +32,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
       else event.currentTarget.blur();
     };
   }
-  const feedback = submitState.message ? submitState : state;
+  const feedback: State = submitState.message ? submitState : state;
   const currentVersion = submitState.version ?? state.version ?? initialDraft.version;
 
   return (
@@ -42,10 +42,11 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
         <input type="hidden" name="storeId" value={storeId} />
         <input type="hidden" name="orderDate" value={date} />
         <input type="hidden" name="version" value={currentVersion} />
+        <input type="hidden" name="allowRevision" value={allowRevision ? "1" : "0"} />
         <main className="page stack">
           <section className="panel stack no-print">
-            <div className="row"><div><h2>Pedido de hoje</h2><p className="muted">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(`${date}T12:00:00`))}</p></div><div className="row"><Link href="/contagem" className="btn btn--secondary">Imprimir Contagem de Estoque</Link><Link href="/historico">Ver histórico</Link></div></div>
-            {feedback.message ? <p className={feedback.status === "error" ? "error" : "success"} role="status">{feedback.message}</p> : null}
+            <div className="row"><div><h2>Pedido de hoje</h2><p className="muted">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(`${date}T12:00:00`))}</p><p className="muted">Compra: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(`${cycleDate}T12:00:00`))} · prazo para alterações: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(cutoffAt))}</p></div><div className="row"><Link href="/contagem" className="btn btn--secondary">Imprimir contagem</Link><Link href="/historico" className="btn btn--secondary">Histórico</Link></div></div>
+            {feedback.message ? <p className={feedback.status === "error" ? "error" : feedback.status === "confirm" ? "warning" : "success"} role="status">{feedback.message}{feedback.status === "confirm" && feedback.existingSubmittedAt ? <><br />Enviado em {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(feedback.existingSubmittedAt))}. Compra: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(`${feedback.purchaseCycleDate}T12:00:00`))}. <button className="btn btn--secondary btn--small" type="button" onClick={() => setAllowRevision(true)}>Alterar pedido</button></> : null}</p> : null}
             <label className="field"><span className="visually-hidden">Buscar produto</span><input className="search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar produto…" /></label>
             <div className="filters" aria-label="Filtrar produtos">
               {(["all", "empty", "filled"] as const).map((value) => <button key={value} className="filter" type="button" aria-pressed={filter === value} onClick={() => setFilter(value)}>{value === "all" ? "Todos" : value === "empty" ? "Sem pedido" : "Com pedido"}</button>)}
@@ -53,9 +54,10 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
           </section>
           <section className="product-list" aria-live="polite">
             <div className="product-list__header" aria-hidden="true"><span>Produto</span><span>Estoque atual</span><span>Pedido</span></div>
-            {products.map((product) => {
+            {visibleProducts.length === 0 ? <p className="muted empty-list">Nenhum produto encontrado para a busca/filtro atual.</p> : null}
+            {visibleProducts.map((product) => {
               const value = values[product.id] ?? { stock: "", quantity: "" };
-              return <article className="product-card" data-filled={Number(value.quantity) > 0} key={product.id} hidden={!visibleIds.has(product.id)}>
+              return <article className="product-card" data-filled={Number(value.quantity) > 0} key={product.id}>
                 <div className="product-name"><h2>{product.name}</h2><span className="product-unit">{product.unit}</span></div>
                 <input type="hidden" name="productId" value={product.id} />
                 <div className="product-fields">
