@@ -16,7 +16,9 @@ integration("PostgreSQL 18.6", () => {
 
   beforeAll(async () => {
     const db = database();
-    const [store] = await db.sql<{ id: string }[]>`SELECT id FROM stores ORDER BY slug LIMIT 1`;
+    const [store] = await db.sql<{ id: string }[]>`
+      INSERT INTO stores(slug, name) VALUES (${`integration-${Date.now()}`}, 'Loja de Integração') RETURNING id
+    `;
     const products = await db.sql<{ id: string }[]>`SELECT id FROM products ORDER BY erp_code LIMIT 2`;
     const [product, secondProduct] = products;
     if (!store || !product) throw new Error("Execute migração e importação antes dos testes de integração");
