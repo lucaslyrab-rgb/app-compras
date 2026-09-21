@@ -43,9 +43,13 @@ BEGIN
   IF TG_TABLE_NAME = 'orders' AND TG_OP = 'UPDATE'
      AND (to_jsonb(OLD)->>'cancelled_at') IS NULL
      AND (to_jsonb(NEW)->>'cancelled_at') IS NOT NULL
-     AND NEW.id = OLD.id AND NEW.store_id = OLD.store_id AND NEW.order_date = OLD.order_date
-     AND NEW.revision = OLD.revision AND NEW.submitted_by = OLD.submitted_by
-     AND NEW.submitted_at = OLD.submitted_at AND (to_jsonb(NEW)->>'cancelled_by') IS NOT NULL
+     AND (to_jsonb(NEW)->>'id') = (to_jsonb(OLD)->>'id')
+     AND (to_jsonb(NEW)->>'store_id') = (to_jsonb(OLD)->>'store_id')
+     AND (to_jsonb(NEW)->>'order_date') = (to_jsonb(OLD)->>'order_date')
+     AND (to_jsonb(NEW)->>'revision') = (to_jsonb(OLD)->>'revision')
+     AND (to_jsonb(NEW)->>'submitted_by') = (to_jsonb(OLD)->>'submitted_by')
+     AND (to_jsonb(NEW)->>'submitted_at') = (to_jsonb(OLD)->>'submitted_at')
+     AND (to_jsonb(NEW)->>'cancelled_by') IS NOT NULL
   THEN RETURN NEW; END IF;
   RAISE EXCEPTION 'Pedidos enviados são imutáveis';
 END $$;
