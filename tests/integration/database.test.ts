@@ -12,11 +12,13 @@ const integration = process.env.DATABASE_URL ? describe : describe.skip;
 integration("PostgreSQL 18.6", () => {
   const principal: Principal = { userId: "", role: "LOJA", storeId: "" };
   let productId = "";
+  let secondProductId = "";
 
   beforeAll(async () => {
     const db = database();
     const [store] = await db.sql<{ id: string }[]>`SELECT id FROM stores ORDER BY slug LIMIT 1`;
-    const [product] = await db.sql<{ id: string }[]>`SELECT id FROM products ORDER BY erp_code LIMIT 1`;
+    const products = await db.sql<{ id: string }[]>`SELECT id FROM products ORDER BY erp_code LIMIT 2`;
+    const [product, secondProduct] = products;
     if (!store || !product) throw new Error("Execute migração e importação antes dos testes de integração");
     const [user] = await db.sql<{ id: string }[]>`
       INSERT INTO users(email, name, password_hash, role, store_id)
@@ -27,6 +29,7 @@ integration("PostgreSQL 18.6", () => {
     principal.userId = user.id;
     principal.storeId = store.id;
     productId = product.id;
+    secondProductId = secondProduct?.id ?? product.id;
   });
 
   afterAll(async () => {
@@ -85,15 +88,38 @@ integration("PostgreSQL 18.6", () => {
 
   it("detecta conflito de rascunho e preserva pedido enviado", async () => {
     const orderDate = "2099-01-01";
-    const first = await saveDraft(principal, principal.storeId!, orderDate, 0, [{ productId, stock: 1, quantity: 2 }]);
+    const first = await saveDraft(principal, principal.storeId!, orderDate, 0, [
+      { productId, stock: 2, quantity: 2 },
+      { productId: secondProductId, stock: 2, quantity: 2 }
+    ]);
     expect(first.version).toBe(1);
     await expect(saveDraft(principal, principal.storeId!, orderDate, 0, [{ productId, stock: 1, quantity: 3 }])).rejects.toThrow(/outra sessão/);
     await expect(loadDraft({ ...principal, storeId: "00000000-0000-0000-0000-000000000000" }, principal.storeId!, orderDate)).rejects.toThrow(/Acesso negado/);
     const order = await submitDraft(principal, principal.storeId!, orderDate);
-    await saveDraft(principal, principal.storeId!, orderDate, 1, [{ productId, stock: 2, quantity: 4 }]);
+    await saveDraft(principal, principal.storeId!, orderDate, 1, [
+      { productId, stock: 11, quantity: 13 },
+      { productId: secondProductId, stock: 22, quantity: 27 }
+    ]);
     await expect(submitDraft(principal, principal.storeId!, orderDate)).rejects.toBeInstanceOf(ExistingOrderError);
     const secondOrder = await submitDraft(principal, principal.storeId!, orderDate, true);
     expect(secondOrder.revision).toBe(2);
+    const persisted = await database().sql<{ order_id: string; product_id: string; stock: string; quantity: string }[]>`
+      SELECT order_id, product_id, stock, quantity FROM order_items
+      WHERE order_id IN (${order.id}, ${secondOrder.id}) ORDER BY order_id, product_id
+    `;
+    expect(persisted).toHaveLength(4);
+    expect(persisted.filter((item) => item.order_id === order.id).map(({ product_id, stock, quantity }) => ({ product_id, stock, quantity }))).toEqual([
+      { product_id: productId, stock: "2", quantity: "2" },
+      { product_id: secondProductId, stock: "2", quantity: "2" }
+    ]);
+    expect(persisted.filter((item) => item.order_id === secondOrder.id).map(({ product_id, stock, quantity }) => ({ product_id, stock, quantity }))).toEqual([
+      { product_id: productId, stock: "11", quantity: "13" },
+      { product_id: secondProductId, stock: "22", quantity: "27" }
+    ]);
+    const [revisionCount] = await database().sql<{ count: number }[]>`
+      SELECT count(*)::int AS count FROM orders WHERE store_id = ${principal.storeId} AND purchase_cycle_date = (SELECT purchase_cycle_date FROM orders WHERE id = ${secondOrder.id}) AND cancelled_at IS NULL
+    `;
+    expect(revisionCount?.count).toBe(2);
     await database().sql`UPDATE products SET active = false WHERE id = ${productId}`;
     const [history] = await database().sql<{ count: number }[]>`
       SELECT count(*)::int AS count FROM order_items WHERE order_id IN (${order.id}, ${secondOrder.id}) AND product_id = ${productId}

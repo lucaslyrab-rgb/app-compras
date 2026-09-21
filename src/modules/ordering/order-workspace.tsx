@@ -14,9 +14,6 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
   const [filter, setFilter] = useState<Filter>("all");
   const [values, setValues] = useState<Record<string, { stock: string; quantity: string }>>(() => Object.fromEntries(initialDraft.items.map((item) => [item.productId, { stock: String(item.stock), quantity: String(item.quantity) }])));
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const formRef = useRef<HTMLFormElement | null>(null);
-  const submitButtonRef = useRef<HTMLButtonElement | null>(null);
-  const allowRevisionRef = useRef<HTMLInputElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
   const [state, saveAction, pending] = useActionState(saveDraftAction, {});
@@ -45,7 +42,6 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
   const closeRevisionDialog = useCallback(() => {
     if (revisionSubmitting) return;
     setRevisionDialogOpen(false);
-    if (allowRevisionRef.current) allowRevisionRef.current.value = "0";
     requestAnimationFrame(() => lastFocusedRef.current?.focus());
   }, [revisionSubmitting]);
 
@@ -64,7 +60,6 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
         if (!cancelled) {
           setRevisionDialogOpen(false);
           setRevisionSubmitting(false);
-          if (allowRevisionRef.current) allowRevisionRef.current.value = "0";
         }
       });
     }
@@ -76,19 +71,6 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
     dialogRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !revisionSubmitting) closeRevisionDialog();
-      if (event.key === "Tab") {
-        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])");
-        if (!focusable?.length) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -97,20 +79,30 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
   function confirmRevision() {
     if (revisionSubmitting || submitting) return;
     setRevisionSubmitting(true);
-    if (allowRevisionRef.current) allowRevisionRef.current.value = "1";
     setRevisionDialogOpen(false);
-    requestAnimationFrame(() => formRef.current?.requestSubmit(submitButtonRef.current ?? undefined));
+    const formData = new FormData();
+    formData.set("storeId", storeId);
+    formData.set("orderDate", date);
+    formData.set("version", String(currentVersion));
+    formData.set("allowRevision", "1");
+    for (const product of products) {
+      const value = values[product.id] ?? { stock: "", quantity: "" };
+      formData.append("productId", product.id);
+      formData.append("stock", value.stock);
+      formData.append("quantity", value.quantity);
+    }
+    submitAction(formData);
   }
 
   return (
     <div className="shell">
       <header className="topbar no-print"><div className="topbar__inner"><div className="brand"><Image className="brand__logo" src="/brand/MS-H.png" alt="MultiShow FLV" width={170} height={43} priority /><div><h1>MultiShow FLV</h1><p>{storeName} · Pedido da loja</p></div></div><form action={logoutAction}><button className="btn btn--secondary">Sair</button></form></div></header>
       {submitState.status === "success" || submitState.status === "error" ? <div className={`floating-feedback floating-feedback--${submitState.status}`} role="status" aria-live="polite">{submitState.message}</div> : null}
-      <form action={saveAction} ref={formRef}>
+      <form action={saveAction}>
         <input type="hidden" name="storeId" value={storeId} />
         <input type="hidden" name="orderDate" value={date} />
         <input type="hidden" name="version" value={currentVersion} />
-        <input ref={allowRevisionRef} type="hidden" name="allowRevision" value="0" />
+        <input type="hidden" name="allowRevision" value="0" />
         <main className="page stack">
           <section className="panel stack no-print">
             <div className="row"><div><h2>Pedido de hoje</h2><p className="muted">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(`${date}T12:00:00`))}</p><p className="muted">Compra: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(`${cycleDate}T12:00:00`))} · prazo para alterações: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(cutoffAt))}</p></div><div className="row"><Link href="/contagem" className="btn btn--secondary">Imprimir contagem</Link><Link href="/historico" className="btn btn--secondary">Histórico</Link></div></div>
@@ -136,7 +128,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
             })}
           </section>
         </main>
-        <footer className="sticky-actions no-print"><div className="sticky-actions__inner"><button className="btn btn--secondary" type="button" onClick={() => setValues({})}>Limpar</button><button className="btn" type="submit" disabled={pending || submitting}>{pending ? "Salvando…" : "Salvar rascunho"}</button><button ref={submitButtonRef} className="btn" formAction={submitAction} disabled={pending || submitting}>{submitting ? "Enviando…" : "Enviar pedido"}</button></div></footer>
+        <footer className="sticky-actions no-print"><div className="sticky-actions__inner"><button className="btn btn--secondary" type="button" onClick={() => setValues({})}>Limpar</button><button className="btn" type="submit" disabled={pending || submitting}>{pending ? "Salvando…" : "Salvar rascunho"}</button><button className="btn" formAction={submitAction} disabled={pending || submitting}>{submitting ? "Enviando…" : "Enviar pedido"}</button></div></footer>
       </form>
       {revisionDialogOpen && submitState.status === "confirm" ? <div className="dialog-backdrop" role="presentation"><section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="revision-dialog-title" ref={dialogRef} tabIndex={-1}>
         <h2 id="revision-dialog-title">Já existe um pedido para esta compra</h2>

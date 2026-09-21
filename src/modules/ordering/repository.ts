@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { database } from "@/db/client";
 import { orderDraftItems, orderDrafts, orderItems, orders, products, stores } from "@/db/schema";
 import type { Principal } from "@/modules/identity";
@@ -105,7 +105,7 @@ export async function getHistoricalOrder(principal: Principal, storeId: string, 
   const [order] = await database().db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.storeId, storeId)));
   if (!order) throw new Error("Pedido não encontrado");
   const items = await database().db.select({ erpCode: orderItems.snapshotErpCode, name: orderItems.snapshotName, unit: orderItems.snapshotUnit, stock: orderItems.stock, quantity: orderItems.quantity })
-    .from(orderItems).where(and(eq(orderItems.orderId, orderId), showAll ? sql`true` : sql`${orderItems.quantity} > 0`));
+    .from(orderItems).where(and(eq(orderItems.orderId, orderId), showAll ? sql`true` : sql`${orderItems.quantity} > 0`)).orderBy(asc(orderItems.snapshotName));
   return { order, items };
 }
 
