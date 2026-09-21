@@ -91,7 +91,7 @@ integration("PostgreSQL 18.6", () => {
     await expect(loadDraft({ ...principal, storeId: "00000000-0000-0000-0000-000000000000" }, principal.storeId!, orderDate)).rejects.toThrow(/Acesso negado/);
     const order = await submitDraft(principal, principal.storeId!, orderDate);
     await saveDraft(principal, principal.storeId!, orderDate, 1, [{ productId, stock: 2, quantity: 4 }]);
-    const secondOrder = await submitDraft(principal, principal.storeId!, orderDate);
+    const secondOrder = await submitDraft(principal, principal.storeId!, orderDate, true);
     expect(secondOrder.revision).toBe(2);
     await database().sql`UPDATE products SET active = false WHERE id = ${productId}`;
     const [history] = await database().sql<{ count: number }[]>`
