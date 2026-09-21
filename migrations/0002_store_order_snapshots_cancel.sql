@@ -41,10 +41,11 @@ CREATE INDEX IF NOT EXISTS orders_store_valid_idx ON orders(store_id, submitted_
 CREATE OR REPLACE FUNCTION prevent_order_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF TG_TABLE_NAME = 'orders' AND TG_OP = 'UPDATE'
-     AND OLD.cancelled_at IS NULL AND NEW.cancelled_at IS NOT NULL
+     AND (to_jsonb(OLD)->>'cancelled_at') IS NULL
+     AND (to_jsonb(NEW)->>'cancelled_at') IS NOT NULL
      AND NEW.id = OLD.id AND NEW.store_id = OLD.store_id AND NEW.order_date = OLD.order_date
      AND NEW.revision = OLD.revision AND NEW.submitted_by = OLD.submitted_by
-     AND NEW.submitted_at = OLD.submitted_at AND NEW.cancelled_by IS NOT NULL
+     AND NEW.submitted_at = OLD.submitted_at AND (to_jsonb(NEW)->>'cancelled_by') IS NOT NULL
   THEN RETURN NEW; END IF;
   RAISE EXCEPTION 'Pedidos enviados são imutáveis';
 END $$;
