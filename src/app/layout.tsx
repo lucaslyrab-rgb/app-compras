@@ -4,7 +4,8 @@ import "./styles.css";
 export const metadata: Metadata = {
   title: "MultiShow FLV",
   description: "Compras e pedidos de FLV da rede MultiShow",
-  manifest: "/manifest.webmanifest"
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/brand/ICON.png", apple: "/brand/ICON.png" }
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#006b4f" };

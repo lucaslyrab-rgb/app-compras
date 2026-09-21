@@ -2,12 +2,13 @@
 
 import { useActionState } from "react";
 import { loginAction } from "./actions";
+import Image from "next/image";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, { error: undefined });
   return (
     <form action={action} className="panel stack" aria-describedby={state.error ? "login-error" : undefined}>
-      <div>
+      <div className="login-brand"><Image src="/brand/MS-V.png" alt="MultiShow FLV" width={260} height={138} priority />
         <h1>Entrar no MultiShow FLV</h1>
         <p className="muted">Use as credenciais fornecidas pelo Gestor.</p>
       </div>

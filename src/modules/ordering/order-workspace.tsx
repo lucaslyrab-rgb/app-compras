@@ -4,6 +4,7 @@ import { useActionState, useMemo, useRef, useState } from "react";
 import { logoutAction } from "@/app/login/actions";
 import { saveDraftAction, submitOrderAction, type State } from "./actions";
 import Link from "next/link";
+import Image from "next/image";
 
 type Product = { id: string; erpCode: number; name: string; unit: string };
 type Filter = "all" | "empty" | "filled";
@@ -37,7 +38,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
 
   return (
     <div className="shell">
-      <header className="topbar no-print"><div className="topbar__inner"><div className="brand"><span className="brand__icon">🏪</span><div><h1>MultiShow FLV</h1><p>{storeName} · Pedido da loja</p></div></div><form action={logoutAction}><button className="btn btn--secondary">Sair</button></form></div></header>
+      <header className="topbar no-print"><div className="topbar__inner"><div className="brand"><Image className="brand__logo" src="/brand/MS-H.png" alt="MultiShow FLV" width={170} height={43} priority /><div><h1>MultiShow FLV</h1><p>{storeName} · Pedido da loja</p></div></div><form action={logoutAction}><button className="btn btn--secondary">Sair</button></form></div></header>
       <form action={saveAction}>
         <input type="hidden" name="storeId" value={storeId} />
         <input type="hidden" name="orderDate" value={date} />
