@@ -119,6 +119,42 @@ jobs:
         run: |
           test -n "$PORTAINER_WEBHOOK_URL"
           curl --fail-with-body --silent --show-error --max-time 30 --retry 2 --request POST "$PORTAINER_WEBHOOK_URL"
+      - name: Verify live Swarm deployment
+        env:
+          PORTAINER_API_URL: ${{ secrets.PORTAINER_API_URL || 'https://portainer.muitomaisatacado.com' }}
+          PORTAINER_API_KEY: ${{ secrets.PORTAINER_API_KEY }}
+          EXPECTED_IMAGE: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+          EXPECTED_DIGEST: ${{ steps.push.outputs.digest }}
+          APP_URL: https://compras.muitomaisatacado.com
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PORTAINER_API_KEY"
+          api="$PORTAINER_API_URL/api/endpoints/1/docker"
+          for attempt in $(seq 1 30); do
+            services=$(curl --fail-with-body --silent --show-error --max-time 20 -H "X-API-Key: $PORTAINER_API_KEY" "$api/services")
+            service=$(jq -c '.[] | select(.Spec.Name == "app-compras_web")' <<<"$services")
+            image=$(jq -r '.Spec.TaskTemplate.ContainerSpec.Image // empty' <<<"$service")
+            update_state=$(jq -r '.UpdateStatus.State // ""' <<<"$service")
+            if [[ "$update_state" == "rollback_completed" || "$update_state" == "rollback_started" || "$update_state" == "paused" ]]; then
+              echo "Swarm rollback/update failure: $update_state" >&2
+              exit 1
+            fi
+            if [[ "$image" == "$EXPECTED_IMAGE"* && ( -z "$EXPECTED_DIGEST" || "$image" == "$EXPECTED_IMAGE@$EXPECTED_DIGEST" ) ]]; then
+              service_id=$(jq -r '.ID' <<<"$service")
+              tasks=$(curl --fail-with-body --silent --show-error --max-time 20 -H "X-API-Key: $PORTAINER_API_KEY" "$api/tasks?service=$service_id")
+              running=$(jq '[.[] | select(.Status.State == "running")] | length' <<<"$tasks")
+              failed=$(jq '[.[] | select(.Status.State == "failed" or .Status.State == "rejected")] | length' <<<"$tasks")
+              health=$(curl --fail-with-body --silent --show-error --max-time 15 "$APP_URL/api/health")
+              [[ "$running" -ge 1 && "$failed" -eq 0 ]]
+              [[ "$(jq -r '.status' <<<"$health")" == "ok" ]]
+              echo "Live deployment verified: $image"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "Timed out waiting for live service image $EXPECTED_IMAGE" >&2
+          exit 1
 
   notify:
     name: Notify release by email
