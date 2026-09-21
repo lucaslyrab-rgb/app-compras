@@ -114,13 +114,13 @@ integration("PostgreSQL 18.6", () => {
     const secondItems = persisted.filter((item) => item.order_id === secondOrder.id).map(({ product_id, stock, quantity }) => ({ product_id, stock, quantity }));
     expect(firstItems).toHaveLength(2);
     expect(firstItems).toEqual(expect.arrayContaining([
-      { product_id: productId, stock: "2", quantity: "2" },
-      { product_id: secondProductId, stock: "2", quantity: "2" }
+      { product_id: productId, stock: "2.00", quantity: "2.00" },
+      { product_id: secondProductId, stock: "2.00", quantity: "2.00" }
     ]));
     expect(secondItems).toHaveLength(2);
     expect(secondItems).toEqual(expect.arrayContaining([
-      { product_id: productId, stock: "11", quantity: "13" },
-      { product_id: secondProductId, stock: "22", quantity: "27" }
+      { product_id: productId, stock: "11.00", quantity: "13.00" },
+      { product_id: secondProductId, stock: "22.00", quantity: "27.00" }
     ]));
     const [revisionCount] = await database().sql<{ count: number }[]>`
       SELECT count(*)::int AS count FROM orders WHERE store_id = ${principal.storeId} AND purchase_cycle_date = (SELECT purchase_cycle_date FROM orders WHERE id = ${secondOrder.id}) AND cancelled_at IS NULL
