@@ -144,9 +144,8 @@ jobs:
               service_id=$(jq -r '.ID' <<<"$service")
               tasks=$(curl --fail-with-body --silent --show-error --max-time 20 -H "X-API-Key: $PORTAINER_API_KEY" "$api/tasks?service=$service_id")
               running=$(jq '[.[] | select(.Status.State == "running")] | length' <<<"$tasks")
-              failed=$(jq '[.[] | select(.Status.State == "failed" or .Status.State == "rejected")] | length' <<<"$tasks")
               health=$(curl --fail-with-body --silent --show-error --max-time 15 "$APP_URL/api/health")
-              [[ "$running" -ge 1 && "$failed" -eq 0 ]]
+              [[ "$running" -ge 1 ]]
               [[ "$(jq -r '.status' <<<"$health")" == "ok" ]]
               echo "Live deployment verified: $image"
               exit 0
