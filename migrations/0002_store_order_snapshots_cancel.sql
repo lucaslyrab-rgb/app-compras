@@ -40,7 +40,7 @@ CREATE INDEX IF NOT EXISTS orders_store_valid_idx ON orders(store_id, submitted_
 
 CREATE OR REPLACE FUNCTION prevent_order_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF TG_OP = 'UPDATE'
+  IF TG_TABLE_NAME = 'orders' AND TG_OP = 'UPDATE'
      AND OLD.cancelled_at IS NULL AND NEW.cancelled_at IS NOT NULL
      AND NEW.id = OLD.id AND NEW.store_id = OLD.store_id AND NEW.order_date = OLD.order_date
      AND NEW.revision = OLD.revision AND NEW.submitted_by = OLD.submitted_by
