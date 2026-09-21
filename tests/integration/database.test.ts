@@ -108,14 +108,18 @@ integration("PostgreSQL 18.6", () => {
       WHERE order_id IN (${order.id}, ${secondOrder.id}) ORDER BY order_id, product_id
     `;
     expect(persisted).toHaveLength(4);
-    expect(persisted.filter((item) => item.order_id === order.id).map(({ product_id, stock, quantity }) => ({ product_id, stock, quantity }))).toEqual([
+    const firstItems = persisted.filter((item) => item.order_id === order.id).map(({ product_id, stock, quantity }) => ({ product_id, stock, quantity }));
+    const secondItems = persisted.filter((item) => item.order_id === secondOrder.id).map(({ product_id, stock, quantity }) => ({ product_id, stock, quantity }));
+    expect(firstItems).toHaveLength(2);
+    expect(firstItems).toEqual(expect.arrayContaining([
       { product_id: productId, stock: "2", quantity: "2" },
       { product_id: secondProductId, stock: "2", quantity: "2" }
-    ]);
-    expect(persisted.filter((item) => item.order_id === secondOrder.id).map(({ product_id, stock, quantity }) => ({ product_id, stock, quantity }))).toEqual([
+    ]));
+    expect(secondItems).toHaveLength(2);
+    expect(secondItems).toEqual(expect.arrayContaining([
       { product_id: productId, stock: "11", quantity: "13" },
       { product_id: secondProductId, stock: "22", quantity: "27" }
-    ]);
+    ]));
     const [revisionCount] = await database().sql<{ count: number }[]>`
       SELECT count(*)::int AS count FROM orders WHERE store_id = ${principal.storeId} AND purchase_cycle_date = (SELECT purchase_cycle_date FROM orders WHERE id = ${secondOrder.id}) AND cancelled_at IS NULL
     `;
