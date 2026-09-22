@@ -38,14 +38,17 @@ for (const [width, height] of [
       mobile ? ".buyer-card" : ".buyer-table tbody > tr",
     );
     await expect(rows).toHaveCount(74);
+    await expect(
+      page.getByText(/Estoque é informativo\. Total pedido soma/),
+    ).toHaveCount(0);
+    await expect(page.getByText(/revisão \d/i)).toHaveCount(0);
+    await expect(page.locator(".buyer-updated")).toHaveText(
+      /^74 produtos • Atualizado às \d{2}:\d{2}$/,
+    );
     const storeNames = mobile
       ? await rows.first().locator("tbody th").allTextContents()
       : await page.locator(".buyer-table .store-heading").allTextContents();
-    expect(storeNames).toEqual([
-      "Ponta da Fruta",
-      "Balneário",
-      "Santa Mônica",
-    ]);
+    expect(storeNames).toEqual(["Ponta da Fruta", "Balneário", "Santa Mônica"]);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -88,11 +91,26 @@ for (const [width, height] of [
       page.getByRole("button", { name: /Carregar mais|Próxima página/ }),
     ).toHaveCount(0);
     if (!mobile) {
+      await expect(page.locator(".buyer-metrics")).toBeVisible();
       await rows.nth(30).scrollIntoViewIfNeeded();
       const head = (await page.locator(".buyer-table thead").boundingBox())!;
       expect(head.y).toBeGreaterThanOrEqual(-1);
       expect(head.y).toBeLessThanOrEqual(2);
     } else {
+      await expect(page.locator(".buyer-metrics")).toBeHidden();
+      const statusBoxes = page.locator(".buyer-status li");
+      await expect(statusBoxes).toHaveCount(3);
+      const statusTops = await statusBoxes.evaluateAll((elements) =>
+        elements.map((element) =>
+          Math.round(element.getBoundingClientRect().top),
+        ),
+      );
+      expect(new Set(statusTops).size).toBe(1);
+      for (const statusBox of await statusBoxes.all()) {
+        await expect(statusBox.locator(".store-time--mobile")).toHaveText(
+          /^\d{2}\/\d{2} \d{2}:\d{2}$/,
+        );
+      }
       const first = rows.first();
       await first.scrollIntoViewIfNeeded();
       await expect(first.locator("tbody tr")).toHaveCount(3);
@@ -110,6 +128,30 @@ for (const [width, height] of [
     });
   });
 }
+
+test("mobile identifica lado a lado a loja que não enviou", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await page.goto("/comprador/consolidado?ciclo=2097-09-23");
+  await expect(
+    page.getByText("2 de 3 lojas enviaram", { exact: true }),
+  ).toBeVisible();
+  const boxes = page.locator(".buyer-status li");
+  await expect(boxes).toHaveCount(3);
+  await expect(boxes.nth(2)).toContainText("Santa Mônica");
+  await expect(boxes.nth(2)).toContainText("Não enviado");
+  const tops = await boxes.evaluateAll((elements) =>
+    elements.map((element) => Math.round(element.getBoundingClientRect().top)),
+  );
+  expect(new Set(tops).size).toBe(1);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
 
 test("ciclos parciais, cancelado, zero e permissões reais", async ({
   page,

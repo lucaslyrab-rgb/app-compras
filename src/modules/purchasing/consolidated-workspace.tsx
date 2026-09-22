@@ -22,6 +22,20 @@ const timestampFormat = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short",
   timeStyle: "short",
 });
+const compactTimestampFormat = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const updatedTimeFormat = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
 function quantity(value: string) {
   return quantityFormat.format(Number(value));
 }
@@ -30,6 +44,12 @@ function dateLabel(value: string) {
     timeZone: "America/Sao_Paulo",
     dateStyle: "long",
   }).format(new Date(`${value}T12:00:00Z`));
+}
+function compactTimestamp(value: string) {
+  const parts = compactTimestampFormat.formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("day")}/${part("month")} ${part("hour")}:${part("minute")}`;
 }
 
 function Thumbnail({ product }: { product: ConsolidatedProduct }) {
@@ -197,12 +217,20 @@ export function ConsolidatedWorkspace({ data }: { data: ConsolidatedData }) {
               <span>
                 {store.order ? (
                   <>
-                    <time dateTime={store.order.submittedAt}>
+                    <time
+                      className="store-time store-time--desktop"
+                      dateTime={store.order.submittedAt}
+                    >
                       {timestampFormat.format(
                         new Date(store.order.submittedAt),
                       )}
-                    </time>{" "}
-                    · revisão {store.order.revision}
+                    </time>
+                    <time
+                      className="store-time store-time--mobile"
+                      dateTime={store.order.submittedAt}
+                    >
+                      {compactTimestamp(store.order.submittedAt)}
+                    </time>
                   </>
                 ) : (
                   "Não enviado"
@@ -269,15 +297,9 @@ export function ConsolidatedWorkspace({ data }: { data: ConsolidatedData }) {
           {refreshing ? "Atualizando…" : "Atualizar"}
         </button>
       </div>
-      <p className="buyer-hint">
-        Estoque é informativo. Total pedido soma somente pedidos, no formato
-        cadastrado, sem conversão. — = loja sem envio válido ou produto não
-        informado; 0 = zero informado.
-      </p>
       <p className="buyer-updated" role="status">
-        {visible.length} produtos exibidos · Consulta:{" "}
-        {timestampFormat.format(new Date(data.loadedAt))}. Atualização
-        automática a cada 30 segundos.
+        {visible.length} produtos • Atualizado às{" "}
+        {updatedTimeFormat.format(new Date(data.loadedAt))}
       </p>
       {!visible.length ? (
         <p className="panel">
