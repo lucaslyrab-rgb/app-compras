@@ -5,7 +5,7 @@ O ciclo operacional é calculado no fuso `America/Sao_Paulo`, com corte às 19:0
 - Envio antes das 19:00: ciclo da data local seguinte.
 - Envio às 19:00 ou depois: ciclo da segunda data local seguinte.
 - `orders.purchase_cycle_date` e `orders.cutoff_at` são persistidos no pedido.
-- A revisão operacional é a maior `revision` não cancelada da combinação loja + ciclo.
+- A revisão operacional é o último envio da combinação loja + ciclo, desde que não cancelado. Primeiro identifica-se o último envio (`submitted_at`), depois verifica-se `cancelled_at`. Cancelar o último NÃO reativa o anterior. O Consolidado segue o critério já usado no Histórico da Loja; em empates utiliza `revision` e `id` para resultado determinístico.
 
 Uma nova tentativa no mesmo ciclo não cria silenciosamente um pedido independente. O servidor exige confirmação explícita (`allowRevision`) e cria uma nova revisão, preservando o registro anterior.
 

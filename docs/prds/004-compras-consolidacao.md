@@ -1,11 +1,11 @@
 ---
 prd_number: "004"
-status: rascunho
+status: em implementação
 priority: crítica
 created: 2026-09-19
 issue: ""
 depends_on: ["003"]
-references: ["../../MULTISHOW_FLV_ESPECIFICACAO_CODEX.md", "../../referencias_visuais/01_consolidado_boxes_lojas.png", "../../referencias_visuais/02_comprador_custos_mobile.png"]
+references: ["../../MULTISHOW_FLV_ESPECIFICACAO_CODEX.md", "../../referencias_visuais/Comprador-Consolidado.png", "../../referencias_visuais/02_comprador_custos_mobile.png"]
 ---
 
 # PRD 004: Consolidação e compras
@@ -20,7 +20,7 @@ O Comprador precisa saber se o consolidado está completo e usar pendências com
 
 - Consolidado por produto com estoque/pedido por loja e total.
 - Loja pendente em vermelho-claro.
-- Registro de custo histórico e estado Comprado/Falta comprar por ciclo.
+- Registro de custo histórico e estado Comprado/Falta comprar por ciclo, em etapa posterior.
 
 ### Decisões de produto
 
@@ -37,8 +37,8 @@ O Comprador precisa saber se o consolidado está completo e usar pendências com
 
 Como Comprador, quero comparar lojas e total, para planejar a compra.
 
-**Rules:** boxes distinguem lojas; ausência de envio é explícita.
-**Edge cases:** revisão após abertura → indicar atualização e recarregar dados *(premissa)*.
+**Rules:** somente a última revisão operacional participa; cancelamento da última não reativa revisão anterior; cores distinguem lojas; ausência de envio (`—`) é diferente de zero informado; estoque é apenas informativo; total soma somente pedido no formato cadastrado, sem conversão.
+**Edge cases:** revisão após abertura → horário da consulta visível, atualização manual, ao retornar à janela e automática a cada 30 segundos; ciclos parciais não bloqueiam a leitura.
 
 ### US02: Registrar custo e compra
 
@@ -69,7 +69,7 @@ Como Comprador, quero lançar custo e marcar comprado, para zerar pendências.
 
 **Por que é um marco:** entrega a lista operacional do Comprador.
 **Funcionalidades:** US01, US02
-**Checklist:** [ ] consolidado; [ ] alerta; [ ] filtros; [ ] histórico.
+**Checklist:** [x] consolidado somente leitura; [x] alerta de envio parcial; [x] filtros/busca; [x] ciclos e revisão vigente; [ ] custos/histórico de custo (outra etapa).
 **Aprovador:** Comprador.
 
 ## 7. Riscos e Dependências
@@ -83,9 +83,10 @@ Como Comprador, quero lançar custo e marcar comprado, para zerar pendências.
 ## 8. Referências
 
 - [Especificação](../../MULTISHOW_FLV_ESPECIFICACAO_CODEX.md)
-- [Consolidado](../../referencias_visuais/01_consolidado_boxes_lojas.png)
+- [Consolidado](../../referencias_visuais/Comprador-Consolidado.png)
 - [Custos mobile](../../referencias_visuais/02_comprador_custos_mobile.png)
 
 ## 9. Registro de Decisões
 
 - **2026-09-19:** quantidade comprada e conversões continuam excluídas.
+- **2026-09-22:** Consolidado implementado sem paginação, ações de produto, custos ou conversões; decisão técnica em [ADR 005](../adrs/005-consolidado-leitura.md).
