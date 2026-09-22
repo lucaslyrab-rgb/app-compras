@@ -6,7 +6,7 @@ import { saveDraftAction, submitOrderAction, type State } from "./actions";
 import Link from "next/link";
 import Image from "next/image";
 
-type Product = { id: string; erpCode: number; name: string; unit: string };
+type Product = { id: string; erpCode: number; name: string; unit: string; imageUrl?: string | null };
 type Filter = "all" | "empty" | "filled";
 
 export function OrderWorkspace({ products, storeId, storeName, initialDraft, date, cycleDate, cutoffAt }: { products: Product[]; storeId: string; storeName: string; initialDraft: { version: number; items: Array<{ productId: string; stock: number; quantity: number }> }; date: string; cycleDate: string; cutoffAt: string }) {
@@ -95,7 +95,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
   }
 
   return (
-    <div className="shell">
+    <div className="shell order-workspace">
       <header className="topbar no-print"><div className="topbar__inner"><div className="brand"><Image className="brand__logo" src="/brand/MS-H.png" alt="MultiShow FLV" width={170} height={43} priority /><div><h1>MultiShow FLV</h1><p>{storeName} · Pedido da loja</p></div></div><form action={logoutAction}><button className="btn btn--secondary">Sair</button></form></div></header>
       {submitState.status === "success" || submitState.status === "error" ? <div className={`floating-feedback floating-feedback--${submitState.status}`} role="status" aria-live="polite">{submitState.message}</div> : null}
       <form action={saveAction}>
@@ -118,11 +118,16 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
             {visibleProducts.map((product) => {
               const value = values[product.id] ?? { stock: "", quantity: "" };
               return <article className="product-card" data-filled={Number(value.quantity) > 0} key={product.id}>
-                <div className="product-name"><h2>{product.name}</h2><span className="product-unit">{product.unit}</span></div>
+                <div className="product-name">
+                  <span className="product-thumbnail" aria-hidden="true">
+                    {product.imageUrl ? <Image src={product.imageUrl} alt="" width={40} height={40} unoptimized /> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8" cy="8" r="1.5" /><path d="m4 17 5-5 4 4 3-3 4 4" /></svg>}
+                  </span>
+                  <div className="product-description"><h2>{product.name}</h2><span className="product-unit">{product.unit}</span></div>
+                </div>
                 <input type="hidden" name="productId" value={product.id} />
                 <div className="product-fields">
-                  <label className="field"><span>Estoque atual ({product.unit})</span><input ref={(element) => { inputRefs.current[`${product.id}:stock`] = element; }} name="stock" inputMode="decimal" type="text" value={value.stock} onFocus={(event) => event.currentTarget.select()} onKeyDown={handleEnter(`${product.id}:stock`)} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, stock: event.target.value } }))} /></label>
-                  <label className="field"><span>Pedido ({product.unit})</span><input ref={(element) => { inputRefs.current[`${product.id}:quantity`] = element; }} name="quantity" inputMode="decimal" type="text" value={value.quantity} onFocus={(event) => event.currentTarget.select()} onKeyDown={handleEnter(`${product.id}:quantity`)} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, quantity: event.target.value } }))} /></label>
+                  <label className="field"><span aria-hidden="true">Est.</span><input ref={(element) => { inputRefs.current[`${product.id}:stock`] = element; }} aria-label={`Estoque atual de ${product.name}`} name="stock" inputMode="decimal" type="text" value={value.stock} onFocus={(event) => event.currentTarget.select()} onKeyDown={handleEnter(`${product.id}:stock`)} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, stock: event.target.value } }))} /></label>
+                  <label className="field"><span aria-hidden="true">Pedido</span><input ref={(element) => { inputRefs.current[`${product.id}:quantity`] = element; }} aria-label={`Pedido de ${product.name}`} name="quantity" inputMode="decimal" type="text" value={value.quantity} onFocus={(event) => event.currentTarget.select()} onKeyDown={handleEnter(`${product.id}:quantity`)} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, quantity: event.target.value } }))} /></label>
                 </div>
               </article>;
             })}
