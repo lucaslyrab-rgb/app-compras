@@ -96,6 +96,27 @@ export const orderItems = pgTable("order_items", {
   check("order_item_nonnegative", sql`${table.stock} >= 0 AND ${table.quantity} >= 0`)
 ]);
 
+export const purchaseCycleProductCosts = pgTable("purchase_cycle_product_costs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  purchaseCycleDate: date("purchase_cycle_date").notNull(),
+  cost: numeric("cost", { precision: 12, scale: 2 }),
+  purchased: boolean("purchased").notNull().default(false),
+  purchasedAt: timestamp("purchased_at", { withTimezone: true }),
+  updatedBy: uuid("updated_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("purchase_cycle_product_costs_product_cycle_unique").on(table.productId, table.purchaseCycleDate),
+  index("purchase_cycle_product_costs_official_idx").on(table.productId, table.purchaseCycleDate).where(sql`${table.purchased} = true`),
+  index("purchase_cycle_product_costs_cycle_idx").on(table.purchaseCycleDate, table.purchased),
+  check("purchase_cycle_product_costs_cost_check", sql`${table.cost} IS NULL OR (${table.cost} > 0 AND ${table.cost} <= 99999999.99)`),
+  check("purchase_cycle_product_costs_purchased_cost_check", sql`NOT ${table.purchased} OR ${table.cost} IS NOT NULL`),
+  check("purchase_cycle_product_costs_purchased_at_check", sql`(${table.purchased} AND ${table.purchasedAt} IS NOT NULL) OR (NOT ${table.purchased} AND ${table.purchasedAt} IS NULL)`),
+  check("purchase_cycle_product_costs_version_check", sql`${table.version} > 0`)
+]);
+
 export const auditEvents = pgTable("audit_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),

@@ -110,3 +110,5 @@ Baseline Wittemberg adotada: UI aprovada é congelada; alterações cirúrgicas;
 | 002 | PostgreSQL 18.6 compartilhado com isolamento lógico | 2026-09-19 | aceito | [ADR 002](adrs/002-postgresql-dedicado.md) |
 | 003 | Sessões server-side e RBAC | 2026-09-19 | proposto | [ADR 003](adrs/003-sessoes-rbac.md) |
 | 004 | Entrega por GHCR, stack Git e webhook Portainer | 2026-09-19 | aceito | [ADR 004](adrs/004-entrega-ghcr-portainer.md) |
+| 005 | Consolidado como leitura consistente dos pedidos | 2026-09-22 | aceito | [ADR 005](adrs/005-consolidado-leitura.md) |
+| 006 | Custo operacional por produto e ciclo | 2026-09-23 | aceito | [ADR 006](adrs/006-custos-por-produto-ciclo.md) |

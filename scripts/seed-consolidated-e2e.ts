@@ -35,7 +35,7 @@ try {
   const products = await sql<
     { id: string; erp_code: number; name: string; unit: string }[]
   >`SELECT id,erp_code,name,unit FROM products ORDER BY erp_code`;
-  await sql`UPDATE products SET name='BANANA TESTE',purchase_format='CX' WHERE id=${products[0].id}`;
+  await sql`UPDATE products SET name='BANANA TESTE',purchase_format='CX',exclusive_supplier=true WHERE id=${products[0].id}`;
   await sql`UPDATE products SET name='PRODUTO COM NOME EXTREMAMENTE LONGO PARA CONFERIR LEGIBILIDADE SEM OVERFLOW',purchase_format='SC' WHERE id=${products[1].id}`;
   await sql`UPDATE products SET purchase_format='UND' WHERE id=${products[2].id}`;
   for (const cycle of ["2097-09-22", "2097-09-23", "2097-09-24"]) {
@@ -52,8 +52,15 @@ try {
       }
     }
   }
+  await sql`
+    INSERT INTO purchase_cycle_product_costs(
+      product_id, purchase_cycle_date, cost, purchased, purchased_at, updated_by
+    ) VALUES
+      (${products[0].id}, '2097-09-23', 72, true, '2097-09-23T18:00:00Z', ${users.COMPRADOR}),
+      (${products[1].id}, '2097-09-23', 55, false, NULL, ${users.COMPRADOR})
+  `;
   console.log(
-    "Fixture de Consolidado criada no banco local descartável (3 ciclos, 74 produtos, 3 perfis).",
+    "Fixture de Consolidado/Custos criada no banco local descartável (3 ciclos, 74 produtos, 3 perfis).",
   );
 } finally {
   await sql.end();

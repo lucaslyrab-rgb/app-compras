@@ -44,8 +44,8 @@ Como Comprador, quero comparar lojas e total, para planejar a compra.
 
 Como Comprador, quero lançar custo e marcar comprado, para zerar pendências.
 
-**Rules:** custo fica histórico por produto/data/autor; filtros Todos/Faltam/Comprados.
-**Edge cases:** marcar comprado sem custo → impedir e focar o campo *(premissa)*.
+**Rules:** custo fica histórico por produto/ciclo/autor; somente custo marcado Comprado é referência oficial futura; estado de trabalho não comprado permanece salvo; filtros Todos/Faltam/Comprados usam o checkbox.
+**Edge cases:** marcar comprado sem custo → impedir e focar o campo; desmarcar preserva custo; correção após compra atualiza o estado único produto/ciclo; autosave usa versão otimista.
 
 ## 5. Critérios de Aceite
 
@@ -69,7 +69,7 @@ Como Comprador, quero lançar custo e marcar comprado, para zerar pendências.
 
 **Por que é um marco:** entrega a lista operacional do Comprador.
 **Funcionalidades:** US01, US02
-**Checklist:** [x] consolidado somente leitura; [x] alerta de envio parcial; [x] filtros/busca; [x] ciclos e revisão vigente; [ ] custos/histórico de custo (outra etapa).
+**Checklist:** [x] consolidado somente leitura; [x] alerta de envio parcial; [x] filtros/busca; [x] ciclos e revisão vigente; [x] custos/histórico de custo V1.
 **Aprovador:** Comprador.
 
 ## 7. Riscos e Dependências
@@ -90,3 +90,4 @@ Como Comprador, quero lançar custo e marcar comprado, para zerar pendências.
 
 - **2026-09-19:** quantidade comprada e conversões continuam excluídas.
 - **2026-09-22:** Consolidado implementado sem paginação, ações de produto, custos ou conversões; decisão técnica em [ADR 005](../adrs/005-consolidado-leitura.md).
+- **2026-09-23:** Lançamento de Custos V1 mantém estado por produto/ciclo, custo oficial condicionado a Comprado e concorrência otimista; decisão em [ADR 006](../adrs/006-custos-por-produto-ciclo.md).
