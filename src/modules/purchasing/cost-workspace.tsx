@@ -347,7 +347,12 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
             togglePurchased(product.id, event.currentTarget.checked)
           }
         />
-        <span>{row.purchased ? "Comprado" : "Falta comprar"}</span>
+        <span className="purchase-toggle__desktop-label">
+          {row.purchased ? "Comprado" : "Falta comprar"}
+        </span>
+        <span className="purchase-toggle__mobile-label">
+          {row.purchased ? "Comprado" : "Comprar"}
+        </span>
       </label>
     );
   }
@@ -545,44 +550,50 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
           <div className="cost-mobile-list">
             {visible.map((product) => (
               <article className="cost-card" key={product.id}>
-                <header>
+                <div className="cost-card-summary">
                   <Thumbnail product={product} />
-                  <div>
-                    <small>{product.erpCode}</small>
-                    <h2>{product.name}</h2>
-                    {product.exclusiveSupplier ? (
-                      <span className="exclusive-badge">EXCLUSIVO</span>
-                    ) : null}
+                  <header className="cost-card-product">
+                    <div>
+                      <div className="cost-product-meta">
+                        <small>{product.erpCode}</small>
+                        {renderRowStatus(product.id, "mobile")}
+                      </div>
+                      <h2>
+                        {product.name}
+                        {product.exclusiveSupplier ? (
+                          <span className="exclusive-badge">EXCLUSIVO</span>
+                        ) : null}
+                      </h2>
+                    </div>
+                    <strong>{product.purchaseFormat}</strong>
+                  </header>
+                  <div className="cost-store-quantities">
+                    {data.stores.map((store) => (
+                      <span
+                        key={store.id}
+                        className={`store-${storeColor(store.slug)}`}
+                        title={shortStoreName(store.name)}
+                      >
+                        <b>{storeLetter(store.slug, store.name)}</b>{" "}
+                        {quantity(storeQuantity(product, store))}
+                      </span>
+                    ))}
+                    <strong>
+                      Total {quantity(product.total)} {product.purchaseFormat}
+                    </strong>
                   </div>
-                  <strong>{product.purchaseFormat}</strong>
-                </header>
-                <div className="cost-store-quantities">
-                  {data.stores.map((store) => (
-                    <span
-                      key={store.id}
-                      className={`store-${storeColor(store.slug)}`}
-                      title={shortStoreName(store.name)}
-                    >
-                      <b>{storeLetter(store.slug, store.name)}</b>{" "}
-                      {quantity(storeQuantity(product, store))}
-                    </span>
-                  ))}
-                  <strong>
-                    Total {quantity(product.total)} {product.purchaseFormat}
-                  </strong>
                 </div>
                 <div className="cost-card-fields">
-                  <div>
-                    <span>Anterior</span>
+                  <div className="cost-previous-field">
+                    <span>Ant.</span>
                     <strong>{formatCurrency(product.previousCost)}</strong>
                   </div>
-                  <label>
+                  <label className="cost-current-field">
                     <span>Atual</span>
                     {renderCostInput(product, "mobile")}
                   </label>
                   {renderPurchaseToggle(product)}
                 </div>
-                {renderRowStatus(product.id, "mobile")}
               </article>
             ))}
           </div>

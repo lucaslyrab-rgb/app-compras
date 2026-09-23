@@ -70,15 +70,18 @@ for (const [width, height] of [
     await expect(rows).toHaveCount(0);
     await page.getByRole("button", { name: "Com pedido", exact: true }).click();
     await expect(rows).toHaveCount(1);
+    await search.fill("");
+    await expect(rows).toHaveCount(6);
+    const maxQuantityRow = rows.filter({ hasText: "PRODUTO 999 TESTE" });
     const erp = mobile
-      ? await rows.first().locator("header small").innerText()
-      : await rows.first().locator("td").first().innerText();
+      ? await maxQuantityRow.locator("header small").innerText()
+      : await maxQuantityRow.locator("td").first().innerText();
     await search.fill(erp);
     await expect(rows).toHaveCount(1);
     await search.fill("");
-    await expect(rows).toHaveCount(3);
+    await expect(rows).toHaveCount(6);
     await page.getByRole("button", { name: "Sem pedido", exact: true }).click();
-    await expect(rows).toHaveCount(71);
+    await expect(rows).toHaveCount(68);
     await page.getByRole("button", { name: "Todos", exact: true }).click();
     await expect(rows).toHaveCount(74);
     expect(

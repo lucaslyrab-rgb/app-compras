@@ -36,8 +36,19 @@ try {
     { id: string; erp_code: number; name: string; unit: string }[]
   >`SELECT id,erp_code,name,unit FROM products ORDER BY erp_code`;
   await sql`UPDATE products SET name='BANANA TESTE',purchase_format='CX',exclusive_supplier=true WHERE id=${products[0].id}`;
-  await sql`UPDATE products SET name='PRODUTO COM NOME EXTREMAMENTE LONGO PARA CONFERIR LEGIBILIDADE SEM OVERFLOW',purchase_format='SC' WHERE id=${products[1].id}`;
-  await sql`UPDATE products SET purchase_format='UND' WHERE id=${products[2].id}`;
+  await sql`UPDATE products SET name='PRODUTO NORMAL COM NOME EXTREMAMENTE LONGO PARA CONFERIR LEGIBILIDADE SEM OVERFLOW',purchase_format='CX' WHERE id=${products[1].id}`;
+  await sql`UPDATE products SET name='CEBOLA TESTE',purchase_format='UND' WHERE id=${products[2].id}`;
+  await sql`UPDATE products SET name='ABACAXI UN',purchase_format='UND' WHERE id=${products[3].id}`;
+  await sql`UPDATE products SET name='PRODUTO AUSÊNCIA TESTE',purchase_format='UND' WHERE id=${products[4].id}`;
+  await sql`UPDATE products SET name='PRODUTO 999 TESTE',purchase_format='CX' WHERE id=${products[5].id}`;
+  const mobileScenarioQuantities = [
+    [10, 5, 8],
+    [2, 1, 2],
+    [1, 1, 1],
+    [1, 1, 1],
+    [null, 1, null],
+    [999, 999, 999],
+  ];
   for (const cycle of ["2097-09-22", "2097-09-23", "2097-09-24"]) {
     const number = cycle === "2097-09-24" ? 3 : cycle === "2097-09-23" ? 2 : 1;
     for (let s = 0; s < number; s++) {
@@ -46,7 +57,31 @@ try {
           { id: string }[]
         >`INSERT INTO orders(store_id,order_date,purchase_cycle_date,cutoff_at,revision,submitted_by,submitted_at)
           VALUES (${stores[s].id},${cycle},${cycle},${`${cycle}T22:00:00Z`},${rev},${users.COMPRADOR},${`${cycle}T${16 + rev}:00:00Z`}) RETURNING id`;
-        await sql`INSERT INTO order_items ${sql(products.map((p, i) => ({ order_id: order.id, product_id: p.id, stock: 20 + s, quantity: i === 0 ? [10, 5, 8][s] : i === 1 ? [2, 3, 1][s] : i === 2 ? [6, 10, 4][s] : 0, snapshot_erp_code: p.erp_code, snapshot_name: p.name, snapshot_unit: p.unit })))}`;
+        const orderItems = products.flatMap((p, i) => {
+          const mobileQuantity = mobileScenarioQuantities[i]?.[s];
+          if (cycle === "2097-09-24" && mobileQuantity === null) return [];
+          return [
+            {
+              order_id: order.id,
+              product_id: p.id,
+              stock: 20 + s,
+              quantity:
+                cycle === "2097-09-24" && mobileQuantity !== undefined
+                  ? mobileQuantity
+                  : i === 0
+                    ? [10, 5, 8][s]
+                    : i === 1
+                      ? [2, 3, 1][s]
+                      : i === 2
+                        ? [6, 10, 4][s]
+                        : 0,
+              snapshot_erp_code: p.erp_code,
+              snapshot_name: p.name,
+              snapshot_unit: p.unit,
+            },
+          ];
+        });
+        await sql`INSERT INTO order_items ${sql(orderItems)}`;
         if (cycle === "2097-09-22" && rev === 2)
           await sql`UPDATE orders SET cancelled_at=now(),cancelled_by=${users.COMPRADOR} WHERE id=${order.id}`;
       }
@@ -57,7 +92,12 @@ try {
       product_id, purchase_cycle_date, cost, purchased, purchased_at, updated_by
     ) VALUES
       (${products[0].id}, '2097-09-23', 72, true, '2097-09-23T18:00:00Z', ${users.COMPRADOR}),
-      (${products[1].id}, '2097-09-23', 55, false, NULL, ${users.COMPRADOR})
+      (${products[1].id}, '2097-09-23', 55, false, NULL, ${users.COMPRADOR}),
+      (${products[1].id}, '2097-09-24', 5, false, NULL, ${users.COMPRADOR}),
+      (${products[2].id}, '2097-09-24', 7.5, true, '2097-09-24T18:00:00Z', ${users.COMPRADOR}),
+      (${products[3].id}, '2097-09-23', 7.5, true, '2097-09-23T18:00:00Z', ${users.COMPRADOR}),
+      (${products[3].id}, '2097-09-24', 8, true, '2097-09-24T18:30:00Z', ${users.COMPRADOR}),
+      (${products[5].id}, '2097-09-24', 999.99, false, NULL, ${users.COMPRADOR})
   `;
   console.log(
     "Fixture de Consolidado/Custos criada no banco local descartável (3 ciclos, 74 produtos, 3 perfis).",
