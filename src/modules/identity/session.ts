@@ -16,3 +16,9 @@ export async function requirePrincipal() {
   if (!principal) redirect("/login");
   return principal;
 }
+
+export async function requireManagerPrincipal() {
+  const principal = await requirePrincipal();
+  if (principal.role !== "GESTOR") redirect("/");
+  return principal;
+}

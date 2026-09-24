@@ -14,6 +14,7 @@ const inputSchema = z.object({
   productId: z.uuid(),
   cycleDate: z.iso.date(),
   costInput: z.string().max(32),
+  costIsUnit: z.boolean(),
   purchased: z.boolean(),
   expectedVersion: z.number().int().nonnegative(),
 });

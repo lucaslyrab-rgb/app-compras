@@ -13,6 +13,7 @@ export type PurchaseCostState = {
   productId: string;
   exclusiveSupplier: boolean;
   currentCost: string | null;
+  costIsUnit: boolean;
   purchased: boolean;
   version: number;
   updatedAt: string | null;
@@ -26,6 +27,7 @@ export type PurchaseCostProduct = ConsolidatedProduct & {
   previousCycleDate: string | null;
   currentCost: string | null;
   inheritedCost: boolean;
+  costIsUnit: boolean;
   purchased: boolean;
   version: number;
   updatedAt: string | null;
@@ -43,6 +45,7 @@ export type SavedPurchaseCost = {
   productId: string;
   cycleDate: string;
   cost: string | null;
+  costIsUnit: boolean;
   purchased: boolean;
   version: number;
   updatedAt: string;
@@ -156,6 +159,7 @@ export function buildPurchaseCostProducts(
           ? (state?.previousCost ?? null)
           : (state?.currentCost ?? null),
         inheritedCost,
+        costIsUnit: state?.costIsUnit ?? false,
         purchased: state?.purchased ?? false,
         version: state?.version ?? 0,
         updatedAt: state?.updatedAt ?? null,

@@ -187,14 +187,16 @@ test("ciclos parciais, cancelado, zero e permissões reais", async ({
   await expect(
     page.getByText("0 de 3 lojas enviaram", { exact: true }),
   ).toBeVisible();
+  if (await page.getByLabel("Abrir menu").isVisible()) await page.getByLabel("Abrir menu").click();
   await page.getByRole("button", { name: "Sair", exact: true }).click();
   await login(page, "gestor");
   await page.goto("/comprador/consolidado");
   await expect(
     page.getByRole("heading", { name: "Consolidado de pedidos" }),
   ).toBeVisible();
+  if (await page.getByLabel("Abrir menu").isVisible()) await page.getByLabel("Abrir menu").click();
   await expect(
-    page.getByRole("link", { name: "Administrar produtos" }),
+    page.getByRole("link", { name: "Produtos", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Sair", exact: true }).click();
   await login(page, "loja");

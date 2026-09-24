@@ -282,6 +282,27 @@
   display: none;
 }
 
+.cost-basis-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 32px;
+  margin-top: 2px;
+  cursor: pointer;
+  color: var(--ink-600);
+  font-size: 0.65rem;
+  line-height: 1.15;
+}
+
+.cost-basis-toggle input {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  flex: 0 0 20px;
+  accent-color: var(--brand-700);
+}
+
 .cost-shell .store-blue { background: #edf4fd; }
 .cost-shell .store-green { background: #ecf7ef; }
 .cost-shell .store-orange { background: #fff3e8; }
@@ -513,6 +534,12 @@
     min-height: 44px;
     align-content: center;
   }
+
+  .cost-card-fields .cost-basis-toggle {
+    min-height: 44px;
+    justify-content: flex-start;
+    font-size: 0.65rem;
+  }
 }
 
 @media (max-width: 600px) {
@@ -733,7 +760,7 @@
 
   .cost-card-fields {
     grid-template-columns: minmax(60px, 1fr) 106px 88px;
-    align-items: center;
+    align-items: start;
     gap: 4px;
     min-height: 44px;
     margin-top: 3px;
@@ -760,7 +787,7 @@
     position: relative;
     display: block;
     width: 106px;
-    height: 44px;
+    min-height: 90px;
   }
 
   .cost-card-fields .cost-current-field > span {
@@ -804,6 +831,18 @@
     font-size: 0.52rem;
     line-height: 1;
     pointer-events: none;
+  }
+
+  .cost-card-fields .cost-basis-toggle {
+    min-height: 44px;
+    margin-top: 2px;
+    padding-block: 1px;
+  }
+
+  .cost-card-fields .cost-basis-toggle input {
+    width: 22px;
+    height: 22px;
+    flex-basis: 22px;
   }
 
   .cost-card-fields .purchase-toggle {

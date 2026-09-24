@@ -1,6 +1,7 @@
 // Disposable local E2E database only. Never run this against the application database.
 import postgres from "postgres";
 import { hashPassword } from "../src/modules/identity/domain";
+import { purchaseCycle } from "../src/modules/ordering/repository";
 
 const url = process.env.DATABASE_URL;
 const password = process.env.CONSOLIDATED_E2E_PASSWORD;
@@ -41,6 +42,22 @@ try {
   await sql`UPDATE products SET name='ABACAXI UN',purchase_format='UND' WHERE id=${products[3].id}`;
   await sql`UPDATE products SET name='PRODUTO AUSÊNCIA TESTE',purchase_format='UND' WHERE id=${products[4].id}`;
   await sql`UPDATE products SET name='PRODUTO 999 TESTE',purchase_format='CX' WHERE id=${products[5].id}`;
+  await sql`
+    UPDATE product_pricing_parameters pp
+    SET sale_unit = configured.sale_unit,
+        conversion_quantity = configured.conversion_quantity,
+        conversion_origin = configured.conversion_origin,
+        beneficiation_loss_percent = configured.loss
+    FROM (VALUES
+      (${products[0].id}::uuid, 'KG', 20::numeric, 'PROVISIONAL', 0::numeric),
+      (${products[1].id}::uuid, 'KG', 20::numeric, 'PROVISIONAL', 0::numeric),
+      (${products[2].id}::uuid, 'UND', 1::numeric, 'UNIT', 0::numeric),
+      (${products[3].id}::uuid, 'UND', 1::numeric, 'UNIT', 0::numeric),
+      (${products[4].id}::uuid, 'UND', 1::numeric, 'UNIT', 0::numeric),
+      (${products[5].id}::uuid, 'KG', 20::numeric, 'PROVISIONAL', 0::numeric)
+    ) AS configured(product_id, sale_unit, conversion_quantity, conversion_origin, loss)
+    WHERE pp.product_id = configured.product_id
+  `;
   const mobileScenarioQuantities = [
     [10, 5, 8],
     [2, 1, 2],
@@ -89,15 +106,52 @@ try {
   }
   await sql`
     INSERT INTO purchase_cycle_product_costs(
-      product_id, purchase_cycle_date, cost, purchased, purchased_at, updated_by
+      product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by
     ) VALUES
-      (${products[0].id}, '2097-09-23', 72, true, '2097-09-23T18:00:00Z', ${users.COMPRADOR}),
-      (${products[1].id}, '2097-09-23', 55, false, NULL, ${users.COMPRADOR}),
-      (${products[1].id}, '2097-09-24', 5, false, NULL, ${users.COMPRADOR}),
-      (${products[2].id}, '2097-09-24', 7.5, true, '2097-09-24T18:00:00Z', ${users.COMPRADOR}),
-      (${products[3].id}, '2097-09-23', 7.5, true, '2097-09-23T18:00:00Z', ${users.COMPRADOR}),
-      (${products[3].id}, '2097-09-24', 8, true, '2097-09-24T18:30:00Z', ${users.COMPRADOR}),
-      (${products[5].id}, '2097-09-24', 999.99, false, NULL, ${users.COMPRADOR})
+      (${products[0].id}, '2097-09-23', 72, false, true, '2097-09-23T18:00:00Z', ${users.COMPRADOR}),
+      (${products[1].id}, '2097-09-23', 55, false, false, NULL, ${users.COMPRADOR}),
+      (${products[1].id}, '2097-09-24', 5, false, false, NULL, ${users.COMPRADOR}),
+      (${products[2].id}, '2097-09-24', 7.5, true, true, '2097-09-24T18:00:00Z', ${users.COMPRADOR}),
+      (${products[3].id}, '2097-09-23', 7.5, false, true, '2097-09-23T18:00:00Z', ${users.COMPRADOR}),
+      (${products[3].id}, '2097-09-24', 8, false, true, '2097-09-24T18:30:00Z', ${users.COMPRADOR}),
+      (${products[5].id}, '2097-09-24', 999.99, false, false, NULL, ${users.COMPRADOR})
+  `;
+  const currentCycle = purchaseCycle().cycleDate;
+  const previousCycleDate = new Date(`${currentCycle}T12:00:00Z`);
+  previousCycleDate.setUTCDate(previousCycleDate.getUTCDate() - 1);
+  const previousCycle = previousCycleDate.toISOString().slice(0, 10);
+  await sql`
+    INSERT INTO purchase_cycle_product_costs(
+      product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by
+    ) VALUES
+      (${products[0].id}, ${currentCycle}, 100, false, true, now(), ${users.COMPRADOR}),
+      (${products[6].id}, ${previousCycle}, 50, false, true, now() - interval '1 day', ${users.COMPRADOR}),
+      (${products[2].id}, ${currentCycle}, 7.5, true, true, now(), ${users.COMPRADOR})
+  `;
+  const [reviewedCost] = await sql<{ id: string }[]>`
+    INSERT INTO purchase_cycle_product_costs(
+      product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by
+    ) VALUES (${products[3].id}, ${currentCycle}, 7.5, false, true, now(), ${users.COMPRADOR})
+    RETURNING id
+  `;
+  const fingerprint = `${reviewedCost.id}|1|7.50|0|UND|1.000000|0.0000|23.0000|20.0000`;
+  await sql`
+    INSERT INTO pricing_reviews(
+      product_id, official_cost_id, official_cost_version, official_purchase_cycle_date,
+      official_cost, cost_is_unit, sale_unit, conversion_quantity, conversion_origin,
+      beneficiation_loss_percent, parameter_version, operating_cost_percent,
+      desired_margin_percent, margin_origin, settings_version, gross_unit_cost,
+      effective_unit_cost, calculated_price, suggested_price, input_fingerprint, reviewed_by
+    ) VALUES (
+      ${products[3].id}, ${reviewedCost.id}, 1, ${currentCycle}, 7.5, false,
+      'UND', 1, 'UNIT', 0, 1, 23, 20, 'DEFAULT', 1, 7.5, 7.5,
+      13.157895, 12.99, ${fingerprint}, ${users.GESTOR}
+    )
+  `;
+  await sql`
+    UPDATE purchase_cycle_product_costs
+    SET cost = 8, version = 2, updated_at = now()
+    WHERE id = ${reviewedCost.id}
   `;
   console.log(
     "Fixture de Consolidado/Custos criada no banco local descartável (3 ciclos, 74 produtos, 3 perfis).",

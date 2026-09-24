@@ -101,6 +101,7 @@ export const purchaseCycleProductCosts = pgTable("purchase_cycle_product_costs",
   productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
   purchaseCycleDate: date("purchase_cycle_date").notNull(),
   cost: numeric("cost", { precision: 12, scale: 2 }),
+  costIsUnit: boolean("cost_is_unit").notNull().default(false),
   purchased: boolean("purchased").notNull().default(false),
   purchasedAt: timestamp("purchased_at", { withTimezone: true }),
   updatedBy: uuid("updated_by").notNull().references(() => users.id, { onDelete: "restrict" }),
@@ -115,6 +116,78 @@ export const purchaseCycleProductCosts = pgTable("purchase_cycle_product_costs",
   check("purchase_cycle_product_costs_purchased_cost_check", sql`NOT ${table.purchased} OR ${table.cost} IS NOT NULL`),
   check("purchase_cycle_product_costs_purchased_at_check", sql`(${table.purchased} AND ${table.purchasedAt} IS NOT NULL) OR (NOT ${table.purchased} AND ${table.purchasedAt} IS NULL)`),
   check("purchase_cycle_product_costs_version_check", sql`${table.version} > 0`)
+]);
+
+export const productPricingParameters = pgTable("product_pricing_parameters", {
+  productId: uuid("product_id").primaryKey().references(() => products.id, { onDelete: "restrict" }),
+  saleUnit: text("sale_unit").notNull(),
+  conversionQuantity: numeric("conversion_quantity", { precision: 14, scale: 6 }).notNull(),
+  conversionOrigin: text("conversion_origin").notNull(),
+  beneficiationLossPercent: numeric("beneficiation_loss_percent", { precision: 7, scale: 4 }).notNull().default("0"),
+  specificMarginPercent: numeric("specific_margin_percent", { precision: 7, scale: 4 }),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  index("product_pricing_parameters_origin_idx").on(table.conversionOrigin),
+  check("product_pricing_parameters_sale_unit_check", sql`btrim(${table.saleUnit}) <> ''`),
+  check("product_pricing_parameters_conversion_check", sql`${table.conversionQuantity} > 0`),
+  check("product_pricing_parameters_origin_check", sql`${table.conversionOrigin} IN ('PROVISIONAL', 'UNIT', 'MANUAL')`),
+  check("product_pricing_parameters_loss_check", sql`${table.beneficiationLossPercent} >= 0 AND ${table.beneficiationLossPercent} < 100`),
+  check("product_pricing_parameters_margin_check", sql`${table.specificMarginPercent} IS NULL OR (${table.specificMarginPercent} >= 0 AND ${table.specificMarginPercent} < 100)`),
+  check("product_pricing_parameters_version_check", sql`${table.version} > 0`)
+]);
+
+export const pricingSettings = pgTable("pricing_settings", {
+  id: text("id").primaryKey(),
+  operatingCostPercent: numeric("operating_cost_percent", { precision: 7, scale: 4 }).notNull(),
+  defaultMarginPercent: numeric("default_margin_percent", { precision: 7, scale: 4 }).notNull(),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  check("pricing_settings_singleton_check", sql`${table.id} = 'FLV'`),
+  check("pricing_settings_operating_check", sql`${table.operatingCostPercent} >= 0 AND ${table.operatingCostPercent} < 100`),
+  check("pricing_settings_margin_check", sql`${table.defaultMarginPercent} >= 0 AND ${table.defaultMarginPercent} < 100`),
+  check("pricing_settings_denominator_check", sql`${table.operatingCostPercent} + ${table.defaultMarginPercent} < 100`),
+  check("pricing_settings_version_check", sql`${table.version} > 0`)
+]);
+
+export const pricingReviews = pgTable("pricing_reviews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  officialCostId: uuid("official_cost_id").notNull().references(() => purchaseCycleProductCosts.id, { onDelete: "restrict" }),
+  officialCostVersion: integer("official_cost_version").notNull(),
+  officialPurchaseCycleDate: date("official_purchase_cycle_date").notNull(),
+  officialCost: numeric("official_cost", { precision: 12, scale: 2 }).notNull(),
+  costIsUnit: boolean("cost_is_unit").notNull(),
+  saleUnit: text("sale_unit").notNull(),
+  conversionQuantity: numeric("conversion_quantity", { precision: 14, scale: 6 }).notNull(),
+  conversionOrigin: text("conversion_origin").notNull(),
+  beneficiationLossPercent: numeric("beneficiation_loss_percent", { precision: 7, scale: 4 }).notNull(),
+  parameterVersion: integer("parameter_version").notNull(),
+  operatingCostPercent: numeric("operating_cost_percent", { precision: 7, scale: 4 }).notNull(),
+  desiredMarginPercent: numeric("desired_margin_percent", { precision: 7, scale: 4 }).notNull(),
+  marginOrigin: text("margin_origin").notNull(),
+  settingsVersion: integer("settings_version").notNull(),
+  grossUnitCost: numeric("gross_unit_cost", { precision: 18, scale: 6 }).notNull(),
+  effectiveUnitCost: numeric("effective_unit_cost", { precision: 18, scale: 6 }).notNull(),
+  calculatedPrice: numeric("calculated_price", { precision: 18, scale: 6 }).notNull(),
+  suggestedPrice: numeric("suggested_price", { precision: 18, scale: 2 }).notNull(),
+  inputFingerprint: text("input_fingerprint").notNull(),
+  reviewedBy: uuid("reviewed_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  index("pricing_reviews_product_date_idx").on(table.productId, table.reviewedAt, table.id),
+  index("pricing_reviews_official_cost_idx").on(table.officialCostId),
+  check("pricing_reviews_cost_check", sql`${table.officialCost} > 0`),
+  check("pricing_reviews_conversion_check", sql`${table.conversionQuantity} > 0`),
+  check("pricing_reviews_origin_check", sql`${table.conversionOrigin} IN ('PROVISIONAL', 'UNIT', 'MANUAL')`),
+  check("pricing_reviews_loss_check", sql`${table.beneficiationLossPercent} >= 0 AND ${table.beneficiationLossPercent} < 100`),
+  check("pricing_reviews_margin_origin_check", sql`${table.marginOrigin} IN ('DEFAULT', 'SPECIFIC')`),
+  check("pricing_reviews_percentages_check", sql`${table.operatingCostPercent} >= 0 AND ${table.desiredMarginPercent} >= 0 AND ${table.operatingCostPercent} + ${table.desiredMarginPercent} < 100`),
+  check("pricing_reviews_versions_check", sql`${table.officialCostVersion} > 0 AND ${table.parameterVersion} > 0 AND ${table.settingsVersion} > 0`),
+  check("pricing_reviews_derived_values_check", sql`${table.grossUnitCost} > 0 AND ${table.effectiveUnitCost} > 0 AND ${table.calculatedPrice} > 0 AND ${table.suggestedPrice} > 0`)
 ]);
 
 export const auditEvents = pgTable("audit_events", {

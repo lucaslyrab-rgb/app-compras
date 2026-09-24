@@ -5,6 +5,20 @@ import postgres from "postgres";
 import { normalizeProduct, type ProductInput } from "../src/modules/catalog/domain";
 import { databaseUrlFromEnv } from "./database-url";
 
+export type InitialPricingParameters = {
+  saleUnit: "KG" | "UND";
+  conversionQuantity: "20" | "1";
+  conversionOrigin: "PROVISIONAL" | "UNIT";
+};
+
+export function initialPricingParameters(purchaseFormat: string): InitialPricingParameters {
+  if (purchaseFormat === "CX" || purchaseFormat === "SC")
+    return { saleUnit: "KG", conversionQuantity: "20", conversionOrigin: "PROVISIONAL" };
+  if (purchaseFormat === "UND" || purchaseFormat === "PCT" || purchaseFormat === "BDJ")
+    return { saleUnit: "UND", conversionQuantity: "1", conversionOrigin: "UNIT" };
+  throw new Error(`Formato de compra sem conversão inicial suportada: ${purchaseFormat}`);
+}
+
 export async function readProducts(file: string): Promise<ProductInput[]> {
   const archive = unzipSync(new Uint8Array(await readFile(file)));
   const sharedXml = archive["xl/sharedStrings.xml"];
@@ -42,11 +56,15 @@ export async function readProducts(file: string): Promise<ProductInput[]> {
 }
 
 export async function persistProducts(url: string, products: ProductInput[]) {
+  const prepared = products.map((product) => ({
+    product,
+    pricing: initialPricingParameters(product.purchaseFormat),
+  }));
   const sql = postgres(url, { max: 1 });
   try {
     await sql.begin(async (tx) => {
-      for (const product of products) {
-        await tx`
+      for (const { product, pricing } of prepared) {
+        const [saved] = await tx<{ id: string }[]>`
           INSERT INTO products (erp_code, name, unit, purchase_format, markup, exclusive_supplier, active)
           VALUES (${product.erpCode}, ${product.name}, ${product.unit}, ${product.purchaseFormat}, ${product.markup}, ${product.exclusiveSupplier}, true)
           ON CONFLICT (erp_code) DO UPDATE SET
@@ -56,6 +74,18 @@ export async function persistProducts(url: string, products: ProductInput[]) {
             markup = EXCLUDED.markup,
             exclusive_supplier = EXCLUDED.exclusive_supplier,
             updated_at = now()
+          RETURNING id
+        `;
+        await tx`
+          INSERT INTO product_pricing_parameters (
+            product_id, sale_unit, conversion_quantity, conversion_origin,
+            beneficiation_loss_percent, specific_margin_percent
+          )
+          VALUES (
+            ${saved.id}, ${pricing.saleUnit}, ${pricing.conversionQuantity},
+            ${pricing.conversionOrigin}, 0, NULL
+          )
+          ON CONFLICT (product_id) DO NOTHING
         `;
       }
     });

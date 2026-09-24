@@ -1,0 +1,30 @@
+.ops-shell { min-height: 100vh; }
+.ops-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 40; display: flex; flex-direction: column; width: 224px; padding: 20px 12px 14px; color: #fff; background: linear-gradient(180deg, #064c3b 0%, #003e31 100%); box-shadow: 8px 0 28px rgb(0 47 37 / 10%); }
+.ops-brand { display: flex; align-items: center; justify-content: space-between; min-height: 54px; padding: 0 8px 14px; }
+.ops-brand img { width: 156px; height: auto; filter: brightness(0) invert(1); object-fit: contain; }
+.ops-close { display: none; border: 0; background: transparent; color: white; font-size: 1.8rem; cursor: pointer; }
+.ops-nav { display: grid; gap: 4px; }
+.ops-nav-section { margin-top: 12px; }
+.ops-nav-section summary { min-height: 32px; padding: 8px 10px 5px; color: #bfe0d7; cursor: pointer; font-size: .69rem; font-weight: 800; letter-spacing: .1em; }
+.ops-nav-section summary::marker { color: #8ce3c6; }
+.ops-nav-link { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 8px 11px; border-radius: 8px; color: #edf8f5; text-decoration: none; font-size: .86rem; }
+.ops-nav-link > span { display: grid; place-items: center; width: 20px; color: #d8f4e9; font-size: 1.05rem; }
+.ops-nav-link:hover, .ops-nav-link[aria-current="page"] { background: rgb(36 143 109 / 48%); color: #fff; }
+.ops-nav-link[aria-current="page"] { font-weight: 800; box-shadow: inset 3px 0 #8ce3c6; }
+.ops-logout { margin-top: auto; }
+.ops-logout button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; border-radius: 8px; padding: 9px 11px; background: transparent; color: #fff; text-align: left; cursor: pointer; }
+.ops-content { min-height: 100vh; margin-left: 224px; }
+.ops-mobile-header, .ops-backdrop { display: none; }
+
+@media (max-width: 900px) {
+  .ops-content { margin-left: 0; padding-top: 56px; }
+  .ops-mobile-header { position: fixed; inset: 0 0 auto 0; z-index: 35; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; height: 56px; padding: 6px 10px; background: #064c3b; color: white; box-shadow: 0 3px 12px rgb(0 47 37 / 18%); }
+  .ops-mobile-header img { width: 116px; height: auto; filter: brightness(0) invert(1); }
+  .ops-mobile-header > span { font-size: .78rem; font-weight: 700; }
+  .ops-menu-button { width: 44px; padding: 0; border: 0; background: transparent; color: white; font-size: 1.45rem; cursor: pointer; }
+  .ops-sidebar { width: min(292px, calc(100vw - 42px)); transform: translateX(-105%); transition: transform .2s ease; }
+  .ops-sidebar--open { transform: translateX(0); }
+  .ops-nav-section summary, .ops-nav-link { min-height: 44px; }
+  .ops-close { display: block; }
+  .ops-backdrop { position: fixed; inset: 0; z-index: 39; display: block; width: 100%; height: 100%; border: 0; background: rgb(8 28 34 / 48%); }
+}

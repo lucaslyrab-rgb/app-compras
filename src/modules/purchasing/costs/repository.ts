@@ -11,6 +11,7 @@ type CostProjectionRow = {
   productId: string;
   exclusiveSupplier: boolean;
   currentCost: string | null;
+  costIsUnit: boolean | null;
   purchased: boolean | null;
   version: number | null;
   updatedAt: string | null;
@@ -22,6 +23,7 @@ type SavedRow = {
   productId: string;
   cycleDate: string;
   cost: string | null;
+  costIsUnit: boolean;
   purchased: boolean;
   version: number;
   updatedAt: string;
@@ -45,7 +47,8 @@ export async function readPurchaseCostStates(
   const sql = database().sql;
   const rows = await sql<CostProjectionRow[]>`
     SELECT p.id AS "productId", p.exclusive_supplier AS "exclusiveSupplier",
-           current_cost.cost::text AS "currentCost", current_cost.purchased,
+           current_cost.cost::text AS "currentCost",
+           current_cost.cost_is_unit AS "costIsUnit", current_cost.purchased,
            current_cost.version, current_cost.updated_at AS "updatedAt",
            previous.cost::text AS "previousCost",
            previous.purchase_cycle_date::text AS "previousCycleDate"
@@ -72,6 +75,7 @@ export async function readPurchaseCostStates(
     productId: row.productId,
     exclusiveSupplier: row.exclusiveSupplier,
     currentCost: row.currentCost,
+    costIsUnit: row.costIsUnit ?? false,
     purchased: row.purchased ?? false,
     version: row.version ?? 0,
     updatedAt: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
@@ -86,6 +90,7 @@ export async function persistPurchaseCost(
     productId: string;
     cycleDate: string;
     cost: string | null;
+    costIsUnit?: boolean;
     purchased: boolean;
     expectedVersion: number;
   },
@@ -96,17 +101,18 @@ export async function persistPurchaseCost(
   return sql.begin(async (transaction) => {
     const rows = await transaction<SavedRow[]>`
       INSERT INTO purchase_cycle_product_costs(
-        product_id, purchase_cycle_date, cost, purchased, purchased_at,
+        product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at,
         updated_by, version, created_at, updated_at
       )
       VALUES (
-        ${input.productId}, ${input.cycleDate}::date, ${input.cost},
+        ${input.productId}, ${input.cycleDate}::date, ${input.cost}, ${input.costIsUnit ?? false},
         ${input.purchased},
         CASE WHEN ${input.purchased} THEN now() ELSE NULL END,
         ${principal.userId}, 1, now(), now()
       )
       ON CONFLICT (product_id, purchase_cycle_date) DO UPDATE
       SET cost = EXCLUDED.cost,
+          cost_is_unit = EXCLUDED.cost_is_unit,
           purchased = EXCLUDED.purchased,
           purchased_at = CASE
             WHEN EXCLUDED.purchased AND NOT purchase_cycle_product_costs.purchased THEN now()
@@ -119,12 +125,14 @@ export async function persistPurchaseCost(
       WHERE purchase_cycle_product_costs.version = ${input.expectedVersion}
       RETURNING product_id AS "productId",
                 purchase_cycle_date::text AS "cycleDate", cost::text,
+                cost_is_unit AS "costIsUnit",
                 purchased, version, updated_at AS "updatedAt"
     `;
     if (rows[0]) return saved(rows[0]);
     const [current] = await transaction<SavedRow[]>`
       SELECT product_id AS "productId",
              purchase_cycle_date::text AS "cycleDate", cost::text,
+             cost_is_unit AS "costIsUnit",
              purchased, version, updated_at AS "updatedAt"
       FROM purchase_cycle_product_costs
       WHERE product_id = ${input.productId}

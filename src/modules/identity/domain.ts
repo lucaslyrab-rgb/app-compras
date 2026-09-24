@@ -11,6 +11,10 @@ export function canManageProducts(principal: Principal) {
   return principal.role === "GESTOR";
 }
 
+export function canManagePricing(principal: Principal) {
+  return principal.role === "GESTOR";
+}
+
 export function assertStoreAccess(principal: Principal, requestedStoreId: string) {
   if (principal.role === "LOJA" && principal.storeId !== requestedStoreId) {
     throw new AuthorizationError("Acesso negado");

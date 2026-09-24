@@ -82,6 +82,7 @@ describe("orquestração de custos", () => {
       productId: consolidated.products[0].id,
       cycleDate: consolidated.cycleDate,
       cost: "75.50",
+      costIsUnit: false,
       purchased: true,
       version: 1,
       updatedAt: "2026-09-22T18:01:00.000Z",
@@ -120,6 +121,7 @@ describe("orquestração de custos", () => {
       productId: consolidated.products[0].id,
       cycleDate: consolidated.cycleDate,
       cost: "75.50",
+      costIsUnit: false,
       purchased: true,
       expectedVersion: 0,
     });

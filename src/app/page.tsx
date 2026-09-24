@@ -1,9 +1,7 @@
-import { logoutAction } from "./login/actions";
 import { requirePrincipal } from "@/modules/identity/session";
 import { listActiveProducts } from "@/modules/catalog/repository";
 import { OrderWorkspace } from "@/modules/ordering/order-workspace";
 import { getStoreName, loadDraft, purchaseCycle } from "@/modules/ordering/repository";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -11,13 +9,9 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const principal = await requirePrincipal();
   if (principal.role === "COMPRADOR") redirect("/comprador/consolidado");
+  if (principal.role === "GESTOR") redirect("/gestor/produtos");
   if (principal.role !== "LOJA" || !principal.storeId) {
-    return (
-      <div className="shell">
-        <header className="topbar"><div className="topbar__inner"><div className="brand"><span className="brand__icon">🛒</span><div><h1>MultiShow FLV</h1><p>{principal.role}</p></div></div><form action={logoutAction}><button className="btn btn--secondary">Sair</button></form></div></header>
-        <main className="page"><section className="panel"><h2>Fundação pronta</h2><p>Os módulos operacionais do Comprador e Gestor entram nos próximos PRDs.</p>{principal.role === "GESTOR" ? <><Link className="btn" href="/comprador/consolidado">Consolidado de pedidos</Link> <Link className="btn" href="/produtos">Administrar produtos</Link></> : null}</section></main>
-      </div>
-    );
+    redirect("/login");
   }
   const data = await listActiveProducts();
   const products = data.map((product) => ({ id: product.id, erpCode: product.erpCode, name: product.name, unit: product.unit }));

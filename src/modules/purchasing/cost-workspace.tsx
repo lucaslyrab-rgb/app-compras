@@ -21,6 +21,7 @@ import { shortStoreName, storeColor } from "./domain";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type EditableRow = {
   costInput: string;
+  costIsUnit: boolean;
   purchased: boolean;
   version: number;
   status: SaveStatus;
@@ -91,6 +92,7 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
       product.id,
       {
         costInput: formatCostInput(product.currentCost),
+        costIsUnit: product.costIsUnit,
         purchased: product.purchased,
         version: product.version,
         status: "idle" as const,
@@ -146,6 +148,7 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
             productId,
             cycleDate: data.cycleDate,
             costInput: target.costInput,
+            costIsUnit: target.costIsUnit,
             purchased: target.purchased,
             expectedVersion: target.version,
           });
@@ -190,6 +193,9 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
             purchased: hasNewerChange
               ? current.purchased
               : result.value.purchased,
+            costIsUnit: hasNewerChange
+              ? current.costIsUnit
+              : result.value.costIsUnit,
             version: result.value.version,
             savedMutation: targetMutation,
             dirty: hasNewerChange ? current.dirty : false,
@@ -208,7 +214,7 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
 
   function queueSave(
     productId: string,
-    patch: Partial<Pick<EditableRow, "costInput" | "purchased">>,
+    patch: Partial<Pick<EditableRow, "costInput" | "costIsUnit" | "purchased">>,
   ) {
     replaceRow(productId, (current) => ({
       ...current,
@@ -353,6 +359,22 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
         <span className="purchase-toggle__mobile-label">
           {row.purchased ? "Comprado" : "Comprar"}
         </span>
+      </label>
+    );
+  }
+
+  function renderUnitCostToggle(product: PurchaseCostProduct) {
+    const row = rows[product.id];
+    return (
+      <label className="cost-basis-toggle">
+        <input
+          type="checkbox"
+          checked={row.costIsUnit}
+          onChange={(event) =>
+            queueSave(product.id, { costIsUnit: event.currentTarget.checked })
+          }
+        />
+        <span>Custo informado é unitário</span>
       </label>
     );
   }
@@ -537,6 +559,7 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
                   <td>{formatCurrency(product.previousCost)}</td>
                   <td>
                     {renderCostInput(product, "desktop")}
+                    {renderUnitCostToggle(product)}
                     {renderRowStatus(product.id, "desktop")}
                   </td>
                   <td>
@@ -588,10 +611,11 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
                     <span>Ant.</span>
                     <strong>{formatCurrency(product.previousCost)}</strong>
                   </div>
-                  <label className="cost-current-field">
+                  <div className="cost-current-field">
                     <span>Atual</span>
                     {renderCostInput(product, "mobile")}
-                  </label>
+                    {renderUnitCostToggle(product)}
+                  </div>
                   {renderPurchaseToggle(product)}
                 </div>
               </article>

@@ -42,6 +42,7 @@ export async function savePurchaseCost(
     productId: string;
     cycleDate: string;
     costInput: string;
+    costIsUnit?: boolean;
     purchased: boolean;
     expectedVersion: number;
   },
@@ -61,6 +62,7 @@ export async function savePurchaseCost(
     productId: input.productId,
     cycleDate: input.cycleDate,
     cost,
+    costIsUnit: input.costIsUnit ?? false,
     purchased: input.purchased,
     expectedVersion: input.expectedVersion,
   });

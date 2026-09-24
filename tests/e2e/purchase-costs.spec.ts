@@ -43,9 +43,9 @@ test("Comprador lança, compra, corrige e desmarca com autosave persistente", as
   await cost.blur();
   await expect(banana.getByText("Alterado", { exact: true })).toBeVisible();
   await expect(banana.getByText("Salvo", { exact: true })).toBeVisible();
-  await banana.getByRole("checkbox").check();
+  await banana.locator(".purchase-toggle input").check();
   await expect(banana.getByText("Salvo", { exact: true })).toBeVisible();
-  await expect(banana.getByRole("checkbox")).toBeChecked();
+  await expect(banana.locator(".purchase-toggle input")).toBeChecked();
   await page.reload();
   const persisted = page
     .locator(".cost-card")
@@ -53,18 +53,18 @@ test("Comprador lança, compra, corrige e desmarca com autosave persistente", as
   await expect(persisted.getByLabel("Custo atual de BANANA TESTE")).toHaveValue(
     "75,00",
   );
-  await expect(persisted.getByRole("checkbox")).toBeChecked();
+  await expect(persisted.locator(".purchase-toggle input")).toBeChecked();
 
   await persisted.getByLabel("Custo atual de BANANA TESTE").fill("78,00");
   await persisted.getByLabel("Custo atual de BANANA TESTE").blur();
   await expect(persisted.getByText("Salvo", { exact: true })).toBeVisible();
-  await persisted.getByRole("checkbox").uncheck();
+  await persisted.locator(".purchase-toggle input").uncheck();
   await expect(persisted.getByText("Salvo", { exact: true })).toBeVisible();
   await page.reload();
   const reloadedBanana = page
     .locator(".cost-card")
     .filter({ hasText: "BANANA TESTE" });
-  await expect(reloadedBanana.getByRole("checkbox")).not.toBeChecked();
+  await expect(reloadedBanana.locator(".purchase-toggle input")).not.toBeChecked();
   await expect(
     reloadedBanana.getByLabel("Custo atual de BANANA TESTE"),
   ).toHaveValue("78,00");
@@ -115,7 +115,7 @@ test("cards mobile compactos preservam os cenários operacionais A–F", async (
   await expect(
     scenarioA.getByLabel(/Custo atual de PRODUTO NORMAL/),
   ).toHaveValue("5,00");
-  await expect(scenarioA.getByRole("checkbox")).not.toBeChecked();
+  await expect(scenarioA.locator(".purchase-toggle input")).not.toBeChecked();
 
   const scenarioB = cards.filter({ hasText: "CEBOLA TESTE" });
   await expect(scenarioB.locator(".cost-store-quantities > span")).toHaveText([
@@ -127,7 +127,7 @@ test("cards mobile compactos preservam os cenários operacionais A–F", async (
   await expect(scenarioB.getByLabel("Custo atual de CEBOLA TESTE")).toHaveValue(
     "7,50",
   );
-  await expect(scenarioB.getByRole("checkbox")).toBeChecked();
+  await expect(scenarioB.locator(".purchase-toggle input")).toBeChecked();
 
   const scenarioC = cards.filter({ hasText: "ABACAXI UN" });
   await expect(scenarioC.locator(".cost-previous-field strong")).toHaveText(
@@ -137,7 +137,7 @@ test("cards mobile compactos preservam os cenários operacionais A–F", async (
     "8,00",
   );
   await expect(scenarioC.getByText("Alterado", { exact: true })).toBeVisible();
-  await expect(scenarioC.getByRole("checkbox")).toBeChecked();
+  await expect(scenarioC.locator(".purchase-toggle input")).toBeChecked();
 
   const scenarioD = cards.filter({ hasText: "PRODUTO AUSÊNCIA TESTE" });
   await expect(scenarioD.locator(".cost-store-quantities > span")).toHaveText([
@@ -243,7 +243,7 @@ test("primeiro custo valida inline e Enter avança no desktop", async ({
   const noHistoryRow = page
     .locator(".cost-table tbody tr")
     .filter({ hasText: "PRODUTO AUSÊNCIA TESTE" });
-  const checkbox = noHistoryRow.getByRole("checkbox");
+  const checkbox = noHistoryRow.locator(".purchase-toggle input");
   await checkbox.click();
   await expect(checkbox).not.toBeChecked();
   await expect(noHistoryRow).toContainText(
@@ -294,6 +294,7 @@ test("Gestor acessa e Loja é bloqueada", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Lançamento de custos" }),
   ).toBeVisible();
+  if (await page.getByLabel("Abrir menu").isVisible()) await page.getByLabel("Abrir menu").click();
   await page.getByRole("button", { name: "Sair", exact: true }).click();
   await login(page, "loja");
   await page.goto("/comprador/custos");
