@@ -14,6 +14,7 @@ try {
     "0004_purchase_cycle_product_costs.sql",
     "0005_pricing_parameters_and_cost_basis.sql",
     "0006_pricing_reviews.sql",
+    "0007_pricing_object_ownership.sql",
   ]) {
     const migration = await readFile(path.resolve("migrations", file), "utf8");
     await sql.unsafe(migration);
