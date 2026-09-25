@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { randomUUID } from "node:crypto";
 import { database } from "@/db/client";
 import { createSessionToken, hashToken, type Principal } from "@/modules/identity/domain";
 import { findPrincipal, revokeSession } from "@/modules/identity/repository";
@@ -8,6 +9,20 @@ import type { ProductInput } from "@/modules/catalog/domain";
 import { bootstrapAdmin } from "../../scripts/bootstrap-admin";
 
 const integration = process.env.DATABASE_URL ? describe : describe.skip;
+
+async function withIsolatedBootstrapSchema(run: (databaseUrl: string) => Promise<void>) {
+  const schema = `bootstrap_test_${randomUUID().replaceAll("-", "")}`;
+  const sql = database().sql;
+  await sql.unsafe(`CREATE SCHEMA "${schema}"`);
+  try {
+    await sql.unsafe(`CREATE TABLE "${schema}".users (LIKE public.users INCLUDING ALL)`);
+    const isolatedUrl = new URL(process.env.DATABASE_URL!);
+    isolatedUrl.searchParams.set("options", `-csearch_path=${schema},public`);
+    await run(isolatedUrl.toString());
+  } finally {
+    await sql.unsafe(`DROP SCHEMA "${schema}" CASCADE`);
+  }
+}
 
 integration("PostgreSQL 18.6", () => {
   const principal: Principal = { userId: "", role: "LOJA", storeId: "" };
@@ -83,9 +98,11 @@ integration("PostgreSQL 18.6", () => {
   });
 
   it("aceita bootstrap de Gestor apenas uma vez", async () => {
-    const email = `bootstrap-${Date.now()}@example.com`;
-    await bootstrapAdmin(process.env.DATABASE_URL!, email, "senha-de-bootstrap-com-16");
-    await expect(bootstrapAdmin(process.env.DATABASE_URL!, `${email}-outro`, "senha-de-bootstrap-com-16")).rejects.toThrow(/Gestor ativo/);
+    await withIsolatedBootstrapSchema(async (databaseUrl) => {
+      const email = `bootstrap-${Date.now()}@example.com`;
+      await bootstrapAdmin(databaseUrl, email, "senha-de-bootstrap-com-16");
+      await expect(bootstrapAdmin(databaseUrl, `${email}-outro`, "senha-de-bootstrap-com-16")).rejects.toThrow(/Gestor ativo/);
+    });
   });
 
   it("detecta conflito de rascunho e preserva pedido enviado", async () => {
