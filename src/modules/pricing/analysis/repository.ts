@@ -31,9 +31,10 @@ type AnalysisRow = {
   reviewOfficialCostId: string | null;
   reviewOfficialCostVersion: number | null;
   reviewedAt: string | null;
+  referenceCycleDate: string | null;
 };
 
-function source(row: AnalysisRow, currentCycleDate: string): PricingAnalysisSource {
+function source(row: AnalysisRow): PricingAnalysisSource {
   return {
     id: row.id,
     erpCode: row.erpCode,
@@ -67,13 +68,19 @@ function source(row: AnalysisRow, currentCycleDate: string): PricingAnalysisSour
       officialCostVersion: row.reviewOfficialCostVersion!,
       reviewedAt: new Date(row.reviewedAt!).toISOString(),
     } : null,
-    currentCycleDate,
+    referenceCycleDate: row.referenceCycleDate,
   };
 }
 
-export async function readPricingAnalysisSources(principal: Principal, currentCycleDate: string) {
+export async function readPricingAnalysisSources(principal: Principal, operationalDate: string) {
   authorizePricingManagement(principal);
   const rows = await database().sql<AnalysisRow[]>`
+    WITH pricing_reference AS (
+      SELECT max(c.purchase_cycle_date) AS cycle_date
+      FROM purchase_cycle_product_costs c
+      WHERE c.purchased AND c.cost IS NOT NULL
+        AND c.purchase_cycle_date <= ${operationalDate}::date
+    )
     SELECT p.id, p.erp_code AS "erpCode", p.name,
            p.purchase_format AS "purchaseFormat",
            pp.sale_unit AS "saleUnit",
@@ -94,14 +101,16 @@ export async function readPricingAnalysisSources(principal: Principal, currentCy
            review.id AS "reviewId", review.input_fingerprint AS "reviewFingerprint",
            review.official_cost_id AS "reviewOfficialCostId",
            review.official_cost_version AS "reviewOfficialCostVersion",
-           review.reviewed_at AS "reviewedAt"
+           review.reviewed_at AS "reviewedAt",
+           pricing_reference.cycle_date::text AS "referenceCycleDate"
     FROM products p
     JOIN product_pricing_parameters pp ON pp.product_id = p.id
     CROSS JOIN pricing_settings settings
+    CROSS JOIN pricing_reference
     LEFT JOIN LATERAL (
       SELECT c.* FROM purchase_cycle_product_costs c
       WHERE c.product_id = p.id AND c.purchased AND c.cost IS NOT NULL
-        AND c.purchase_cycle_date <= ${currentCycleDate}::date
+        AND c.purchase_cycle_date <= pricing_reference.cycle_date
       ORDER BY c.purchase_cycle_date DESC, c.purchased_at DESC NULLS LAST,
                c.updated_at DESC, c.id DESC
       LIMIT 1
@@ -115,7 +124,7 @@ export async function readPricingAnalysisSources(principal: Principal, currentCy
     WHERE p.active AND settings.id = 'FLV'
     ORDER BY p.name, p.erp_code
   `;
-  return rows.map((row) => source(row, currentCycleDate));
+  return rows.map(source);
 }
 
 type ReviewInputRow = {
@@ -142,7 +151,7 @@ type OfficialRow = {
 
 export async function persistPricingReview(
   principal: Principal,
-  input: { productId: string; currentCycleDate: string; expectedFingerprint: string },
+  input: { productId: string; operationalDate: string; expectedFingerprint: string },
 ) {
   authorizePricingManagement(principal);
   return database().sql.begin(async (sql) => {
@@ -164,11 +173,17 @@ export async function persistPricingReview(
     `;
     if (!parameters) throw new PricingReviewError("Produto não encontrado.");
     const [official] = await sql<OfficialRow[]>`
+      WITH pricing_reference AS (
+        SELECT max(purchase_cycle_date) AS cycle_date
+        FROM purchase_cycle_product_costs
+        WHERE purchased AND cost IS NOT NULL
+          AND purchase_cycle_date <= ${input.operationalDate}::date
+      )
       SELECT id, cost::text, cost_is_unit AS "costIsUnit", version,
              purchase_cycle_date::text AS "cycleDate", purchased_at AS "purchasedAt"
       FROM purchase_cycle_product_costs
       WHERE product_id = ${input.productId} AND purchased AND cost IS NOT NULL
-        AND purchase_cycle_date <= ${input.currentCycleDate}::date
+        AND purchase_cycle_date <= (SELECT cycle_date FROM pricing_reference)
       ORDER BY purchase_cycle_date DESC, purchased_at DESC NULLS LAST,
                updated_at DESC, id DESC
       LIMIT 1

@@ -82,10 +82,10 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
     ? page.locator(".manager-mobile-cards")
     : page.locator(".manager-table-wrap");
   await expect(pricingList.getByText("Custo alterado", { exact: true }).first()).toBeVisible();
-  await expect(pricingList.getByText(/Sem compra recente/).first()).toBeVisible();
+  await expect(pricingList.getByText(/Sem compra no ciclo .* usando custo oficial do ciclo/).first()).toBeVisible();
   await expect(pricingList.getByText("Sem custo", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: /^Sem compra recente/ }).click();
-  await expect(pricingList.getByText(/Sem compra recente/).first()).toBeVisible();
+  await expect(pricingList.getByText(/Sem compra no ciclo .* usando custo oficial do ciclo/).first()).toBeVisible();
   await page.getByRole("button", { name: /^Não revisados/ }).click();
   await expect(pricingList.getByText(/Não revisado|Custo alterado|Parâmetros alterados/, { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: /^Todos/ }).click();

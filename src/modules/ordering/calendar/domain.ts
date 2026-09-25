@@ -123,6 +123,12 @@ function localDate(parts: LocalParts) {
   return `${String(parts.year).padStart(4, "0")}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
 }
 
+export function operationalLocalDate(now: Date, timezone: string) {
+  if (!Number.isFinite(now.getTime()))
+    throw new PurchaseCalendarValidationError("Instante operacional inválido.");
+  return localDate(localParts(now, timezone));
+}
+
 function localDateTimeToInstant(date: string, time: string, timezone: string) {
   const { year, month, day } = dateParts(date);
   const [hour, minute] = time.split(":").map(Number);

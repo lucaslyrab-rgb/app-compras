@@ -50,13 +50,17 @@ describe("fronteiras dos módulos", () => {
     expect(migration).not.toMatch(/UPDATE\s+(?:orders|purchase_cycle_product_costs|pricing_reviews)\b/i);
   });
 
-  it("preserva a seleção oficial e apresenta o ciclo do custo utilizado", async () => {
+  it("preserva a seleção oficial e usa a referência efetivamente comprada", async () => {
     const repository = await readFile("src/modules/pricing/analysis/repository.ts", "utf8");
+    const service = await readFile("src/modules/pricing/analysis/service.ts", "utf8");
     const detail = await readFile("src/modules/pricing/analysis/pricing-detail.tsx", "utf8");
     expect(repository).toContain("c.purchased AND c.cost IS NOT NULL");
-    expect(repository).toContain("c.purchase_cycle_date <= ${currentCycleDate}::date");
-    expect(detail).toContain("usando custo oficial do ciclo");
-    expect(detail).toContain("analysis.officialCost.cycleDate");
+    expect(repository).toContain("max(c.purchase_cycle_date) AS cycle_date");
+    expect(repository).toContain("c.purchase_cycle_date <= ${operationalDate}::date");
+    expect(repository).toContain("c.purchase_cycle_date <= pricing_reference.cycle_date");
+    expect(service).toContain("operationalLocalDate");
+    expect(service).not.toContain("currentPurchaseCycle");
+    expect(detail).toContain("pricingStalePurchaseMessage(analysis)");
     expect(detail).not.toContain("dateLabel(analysis.officialCost.purchasedAt)");
   });
 });

@@ -43,3 +43,10 @@
 - [x] 7.2 Executar lint, typecheck, unitários, integrações, E2E relevantes, regressões de Loja/Consolidado/Custos/Precificação, build e `git diff --check`; reportar qualquer falha preexistente separadamente
 - [x] 7.3 Revisar o diff para excluir logo, sticky, paginação, cadastro, Separação/Embarque, arquivos locais preexistentes e qualquer alteração de migrations 0001–0007
 - [x] 7.4 Se todas as validações passarem, criar commit local isolado sem push/deploy e informar SHA, arquivos, resultados e passos futuros de rollout da 0008
+
+## 8. Correção da referência de recência da Precificação
+
+- [x] 8.1 Corrigir spec e design para definir a referência como o ciclo oficial efetivamente comprado mais recente até a data operacional local, sem usar o ciclo destinado a novos pedidos
+- [x] 8.2 Adaptar service/repository/domínio da Precificação preservando seleção oficial, fingerprints, revisões, cálculos e filtros; verificar proteção contra custo futuro
+- [x] 8.3 Tornar o fallback inequívoco com ciclo de referência e ciclo do custo utilizado; verificar contadores e apresentação desktop/mobile
+- [x] 8.4 Cobrir 25/09 com pedido novo para 28/09, dia sem compra, produto com custo anterior, produto sem custo e custo futuro; executar validações completas sem push/deploy

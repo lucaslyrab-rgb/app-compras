@@ -15,6 +15,7 @@ integration("precificação no PostgreSQL", () => {
   const store: Principal = { userId: "", role: "LOJA", storeId: "00000000-0000-0000-0000-000000000000" };
   let productId = "";
   let secondProductId = "";
+  let noCostProductId = "";
   const stamp = Date.now();
 
   beforeAll(async () => {
@@ -38,10 +39,17 @@ integration("precificação no PostgreSQL", () => {
       RETURNING id
     `;
     secondProductId = secondProduct.id;
+    const [noCostProduct] = await database().sql<{ id: string }[]>`
+      INSERT INTO products(erp_code, name, unit, purchase_format, markup, active)
+      VALUES (${950000 + (stamp % 10000)}, 'BETERRABA PRECIFICAÇÃO', 'KG', 'CX', 0, true)
+      RETURNING id
+    `;
+    noCostProductId = noCostProduct.id;
     await database().sql`
       INSERT INTO product_pricing_parameters(product_id, sale_unit, conversion_quantity, conversion_origin, beneficiation_loss_percent)
       VALUES (${productId}, 'KG', 20, 'PROVISIONAL', 40),
-             (${secondProductId}, 'UND', 1, 'UNIT', 0)
+             (${secondProductId}, 'UND', 1, 'UNIT', 0),
+             (${noCostProductId}, 'KG', 20, 'PROVISIONAL', 0)
     `;
   });
 
@@ -79,7 +87,8 @@ integration("precificação no PostgreSQL", () => {
   });
 
   it("persiste cost_is_unit atomicamente com o custo", async () => {
-    const cycleDate = (await currentPurchaseCycle()).cycleDate;
+    const cycleDate = (await currentPurchaseCycle(new Date("2026-09-25T18:00:00.000Z"))).cycleDate;
+    expect(cycleDate).toBe("2026-09-28");
     const saved = await persistPurchaseCost(buyer, { productId, cycleDate, cost: "5.00", costIsUnit: true, purchased: false, expectedVersion: 0 });
     expect(saved).toMatchObject({ cost: "5.00", costIsUnit: true, purchased: false, version: 1 });
     const [state] = await readPurchaseCostStates(buyer, [productId], cycleDate);
@@ -87,45 +96,81 @@ integration("precificação no PostgreSQL", () => {
   });
 
   it("mantém o custo oficial anterior diante de draft e troca somente após a compra", async () => {
-    const cycleDate = (await currentPurchaseCycle()).cycleDate;
+    const friday = new Date("2026-09-25T18:00:00.000Z");
+    const saturday = new Date("2026-09-26T18:00:00.000Z");
+    const monday = new Date("2026-09-28T18:00:00.000Z");
+    const cycleDate = (await currentPurchaseCycle(friday)).cycleDate;
+    expect(cycleDate).toBe("2026-09-28");
     const [draft] = await database().sql<{ version: number }[]>`
       SELECT version FROM purchase_cycle_product_costs WHERE product_id = ${productId} AND purchase_cycle_date = ${cycleDate}::date
     `;
     await database().sql`
       INSERT INTO purchase_cycle_product_costs(product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by)
-      VALUES (${productId}, ${cycleDate}::date - 1, 40, false, true, now() - interval '1 day', ${manager.userId})
+      VALUES (${productId}, '2026-09-25', 40, false, true, now() - interval '1 day', ${manager.userId})
     `;
-    const analysis = await loadPricingAnalysis(manager, productId);
-    expect(analysis).toMatchObject({ stalePurchase: true, status: "NOT_REVIEWED", officialCost: { cost: "40.00", costIsUnit: false } });
+    const analysis = await loadPricingAnalysis(manager, productId, friday);
+    expect(analysis).toMatchObject({
+      referenceCycleDate: "2026-09-25",
+      stalePurchase: false,
+      status: "NOT_REVIEWED",
+      officialCost: { cost: "40.00", costIsUnit: false, cycleDate: "2026-09-25" },
+    });
     expect(analysis?.calculation).toBeTruthy();
-    const review = await reviewPricingProduct(manager, { productId, expectedFingerprint: analysis!.fingerprint! });
+    const review = await reviewPricingProduct(manager, { productId, expectedFingerprint: analysis!.fingerprint! }, friday);
     expect(review.id).toBeTruthy();
-    expect((await loadPricingAnalysis(manager, productId))?.status).toBe("REVIEWED");
+    expect((await loadPricingAnalysis(manager, productId, friday))?.status).toBe("REVIEWED");
     await expect(database().sql`UPDATE pricing_reviews SET suggested_price = 99.99 WHERE id = ${review.id}`).rejects.toThrow(/imutáveis/);
     await expect(database().sql`DELETE FROM pricing_reviews WHERE id = ${review.id}`).rejects.toThrow(/imutáveis/);
     const draftUpdated = await persistPurchaseCost(buyer, { productId, cycleDate, cost: "8.00", costIsUnit: true, purchased: false, expectedVersion: draft.version });
-    const stillHistorical = await loadPricingAnalysis(manager, productId);
-    expect(stillHistorical).toMatchObject({ status: "REVIEWED", stalePurchase: true, officialCost: { cost: "40.00" } });
+    const stillCurrent = await loadPricingAnalysis(manager, productId, saturday);
+    expect(stillCurrent).toMatchObject({
+      referenceCycleDate: "2026-09-25",
+      status: "REVIEWED",
+      stalePurchase: false,
+      officialCost: { cost: "40.00", cycleDate: "2026-09-25" },
+    });
 
     await database().sql`
       INSERT INTO purchase_cycle_product_costs(product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by)
-      VALUES (${secondProductId}, ${cycleDate}::date - 2, 3, true, true, now() - interval '2 days', ${manager.userId}),
-             (${secondProductId}, ${cycleDate}::date + 1, 999, true, true, now(), ${manager.userId})
+      VALUES (${secondProductId}, '2026-09-24', 3, true, true, now() - interval '2 days', ${manager.userId}),
+             (${secondProductId}, '2026-09-29', 999, true, true, now(), ${manager.userId})
     `;
-    const beforePurchase = await loadPricingAnalyses(manager);
-    expect(beforePurchase.find((item) => item.id === productId)?.officialCost?.cycleDate).not.toBe(cycleDate);
-    expect(beforePurchase.find((item) => item.id === secondProductId)?.officialCost?.cycleDate).not.toBe(cycleDate);
+    const beforePurchase = await loadPricingAnalyses(manager, friday);
+    expect(beforePurchase.find((item) => item.id === productId)).toMatchObject({
+      referenceCycleDate: "2026-09-25",
+      stalePurchase: false,
+      officialCost: { cycleDate: "2026-09-25" },
+    });
+    expect(beforePurchase.find((item) => item.id === secondProductId)).toMatchObject({
+      referenceCycleDate: "2026-09-25",
+      stalePurchase: true,
+      officialCost: { cost: "3.00", cycleDate: "2026-09-24" },
+    });
+    expect(beforePurchase.find((item) => item.id === noCostProductId)).toMatchObject({
+      referenceCycleDate: "2026-09-25",
+      stalePurchase: false,
+      status: "NO_COST",
+      officialCost: null,
+    });
 
     await persistPurchaseCost(buyer, { productId, cycleDate, cost: "8.00", costIsUnit: true, purchased: true, expectedVersion: draftUpdated.version });
-    const afterPurchase = await loadPricingAnalyses(manager);
+    expect(await loadPricingAnalysis(manager, productId, friday)).toMatchObject({
+      referenceCycleDate: "2026-09-25",
+      stalePurchase: false,
+      officialCost: { cost: "40.00", cycleDate: "2026-09-25" },
+    });
+
+    const afterPurchase = await loadPricingAnalyses(manager, monday);
     expect(afterPurchase.find((item) => item.id === productId)).toMatchObject({
       status: "COST_CHANGED",
+      referenceCycleDate: "2026-09-28",
       stalePurchase: false,
       officialCost: { cost: "8.00", costIsUnit: true, cycleDate },
     });
     expect(afterPurchase.find((item) => item.id === secondProductId)).toMatchObject({
+      referenceCycleDate: "2026-09-28",
       stalePurchase: true,
-      officialCost: { cost: "3.00", costIsUnit: true },
+      officialCost: { cost: "3.00", costIsUnit: true, cycleDate: "2026-09-24" },
     });
   });
 });

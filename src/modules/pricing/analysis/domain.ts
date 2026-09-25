@@ -29,7 +29,7 @@ export type PricingAnalysisSource = PricingProduct & {
   settings: PricingSettings;
   officialCost: OfficialCost | null;
   latestReview: LatestReview;
-  currentCycleDate: string;
+  referenceCycleDate: string | null;
 };
 
 export type PricingAnalysis = PricingAnalysisSource & {
@@ -66,7 +66,11 @@ export function pricingFingerprint(input: {
 export function buildPricingAnalysis(source: PricingAnalysisSource): PricingAnalysis {
   const desiredMarginPercent = source.specificMarginPercent ?? source.settings.defaultMarginPercent;
   const marginOrigin = source.specificMarginPercent === null ? "DEFAULT" : "SPECIFIC";
-  const stalePurchase = Boolean(source.officialCost && source.officialCost.cycleDate !== source.currentCycleDate);
+  const stalePurchase = Boolean(
+    source.officialCost &&
+    source.referenceCycleDate &&
+    source.officialCost.cycleDate < source.referenceCycleDate
+  );
   if (!source.officialCost) return {
     ...source,
     desiredMarginPercent,
@@ -146,6 +150,12 @@ export function pricingMetrics(analyses: PricingAnalysis[]) {
     stalePurchase: analyses.filter((analysis) => analysis.stalePurchase).length,
     reviewed: analyses.filter((analysis) => analysis.status === "REVIEWED").length,
   };
+}
+
+export function pricingStalePurchaseMessage(analysis: PricingAnalysis) {
+  if (!analysis.stalePurchase || !analysis.referenceCycleDate || !analysis.officialCost) return null;
+  const cycleLabel = (value: string) => value.split("-").reverse().join("/");
+  return `Sem compra no ciclo ${cycleLabel(analysis.referenceCycleDate)} — usando custo oficial do ciclo ${cycleLabel(analysis.officialCost.cycleDate)}.`;
 }
 
 export function formatPricingCurrency(value: string | null) {

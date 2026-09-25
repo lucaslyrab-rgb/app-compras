@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   authorizePurchaseCalendarManagement,
   calculatePurchaseCycle,
+  operationalLocalDate,
   validatePurchaseCalendar,
   validatePurchaseCalendarVersion,
 } from "@/modules/ordering/calendar/domain";
@@ -57,6 +58,11 @@ describe("ciclo de compra", () => {
     expect(calculatePurchaseCycle(atSaoPaulo("2026-09-21T19:00:00"), multishowCalendar).cutoffAt.toISOString()).toBe(
       "2026-09-22T22:00:00.000Z",
     );
+  });
+
+  it("expõe a data operacional local sem calcular o próximo ciclo", () => {
+    expect(operationalLocalDate(new Date("2026-09-26T01:30:00.000Z"), "America/Sao_Paulo")).toBe("2026-09-25");
+    expect(operationalLocalDate(new Date("2026-09-26T01:30:00.000Z"), "UTC")).toBe("2026-09-26");
   });
 
   it("atravessa mudança de mês", () => {

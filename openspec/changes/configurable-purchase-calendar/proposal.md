@@ -11,7 +11,7 @@ O cálculo atual do ciclo usa apenas “dia local + 1/+2” e cria ciclos em dia
 - Calcular novos ciclos pelo próximo dia de compra habilitado; no corte ou depois dele, pular o primeiro dia habilitado e selecionar o seguinte.
 - Usar a configuração persistida na apresentação da Loja e na gravação de novos pedidos, sem recalcular ou atualizar pedidos históricos.
 - Permitir que somente GESTOR visualize e altere o calendário em uma nova seção da tela existente de Configurações, com validação server-side e concorrência otimista.
-- Manter a seleção da Precificação baseada no último custo oficial por produto (`purchased = true` e custo não nulo) e tornar explícita a data/ciclo do custo histórico efetivamente utilizado.
+- Manter a seleção da Precificação baseada no último custo oficial por produto (`purchased = true` e custo não nulo), definir a recência pelo último ciclo efetivamente comprado até a data operacional local e tornar explícitos o ciclo de referência e o ciclo histórico utilizado.
 - Criar a migration aditiva 0008 já alinhando o ownership dos novos objetos com o papel proprietário do database, inclusive quando executada por administrador.
 - Documentar os oito pedidos recentes identificados que divergiriam do novo calendário, sem corrigi-los ou alterá-los neste change.
 - Permanecem fora do escopo: exceções/feriados, recálculo histórico, correção de logo, sticky, paginação, cadastro de produtos, mudanças de layout e Separação/Embarque.
@@ -32,5 +32,5 @@ Nenhuma capability publicada em `openspec/specs/` existe atualmente; os contrato
 - Banco: nova tabela operacional e migration `0008`, sem `UPDATE` em `orders`, custos ou revisões.
 - Backend: cálculo de ciclo deixa de ser constante síncrona e passa a consumir configuração persistida; envio de pedido continua persistindo o ciclo calculado no momento da criação.
 - Frontend: seção adicional em GESTOR → Configurações, sem redesenho da página.
-- Precificação: consulta oficial permanece restrita a custos comprados e válidos; texto de fallback passa a referenciar o ciclo oficial utilizado.
+- Precificação: consulta oficial permanece restrita a custos comprados e válidos; a referência deixa de ser o próximo ciclo de pedidos e o fallback passa a informar o ciclo efetivamente comprado de referência e o ciclo oficial utilizado.
 - Testes: unitários de calendário/timezone, integração de pedidos/RBAC/Precificação, migration descartável, E2E gerencial e regressões homologadas.

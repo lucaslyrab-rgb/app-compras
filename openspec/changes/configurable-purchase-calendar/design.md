@@ -2,9 +2,9 @@
 
 ## Context
 
-Ver `proposal.md` — Why. Hoje `purchaseCycle()` em `src/modules/ordering/repository.ts` converte o instante para `America/Sao_Paulo`, usa corte fixo às 19h e soma um ou dois dias corridos. A mesma função define o ciclo mostrado à Loja, o ciclo persistido no envio e o “ciclo atual” usado pela Precificação.
+Ver `proposal.md` — Why. Hoje `purchaseCycle()` em `src/modules/ordering/repository.ts` converte o instante para `America/Sao_Paulo`, usa corte fixo às 19h e soma um ou dois dias corridos. A mesma função define o ciclo mostrado à Loja, o ciclo persistido no envio e, antes desta correção complementar, também alimentava indevidamente a referência de recência da Precificação.
 
-A consulta da Precificação já filtra por produto, `purchased`, custo não nulo e `purchase_cycle_date <= currentCycleDate`, ordenando o custo oficial mais recente. Portanto, um draft posterior não substitui o custo oficial. O efeito observado decorre do `currentCycleDate` produzido pela regra antiga — inclusive quarta/sábado/domingo — e do texto de fallback usar `purchasedAt` enquanto a área também mostra `cycleDate`, criando percepção de avanço ou datas conflitantes.
+A consulta da Precificação já filtra por produto, `purchased`, custo não nulo e ordena o custo oficial mais recente. Portanto, um draft posterior não substitui o custo oficial. O problema remanescente era conceitual: o próximo ciclo destinado a novos pedidos era usado como referência de recência e fazia uma compra oficial do próprio dia parecer histórica. A referência correta é o ciclo mais recente que possua ao menos um custo oficial comprado e válido, limitado à data operacional local; o texto de fallback deve mostrar essa referência e o ciclo do custo selecionado.
 
 A auditoria somente leitura de 25/09/2026 encontrou 27 pedidos nos 30 dias anteriores: 8 ciclos divergiriam do calendário novo, todos em dias desabilitados; 6 registros estão ativos e 2 cancelados. Eles não serão alterados por este change.
 
@@ -57,11 +57,13 @@ Adicionar um subdomínio de calendário em `src/modules/ordering/calendar` com d
 
 A action exige principal autenticado, mas o service/repository executa autorização GESTOR antes de leitura gerencial ou escrita. A atualização usa `expectedVersion`, auditoria própria e retorno de conflito com o estado vigente.
 
-### 6. Precificação: consulta preservada, apresentação corrigida
+### 6. Precificação: seleção oficial preservada e recência efetiva
 
-`readPricingAnalysisSources` e `persistPricingReview` manterão os filtros `purchased AND cost IS NOT NULL` e o limite do ciclo operacional. Testes de integração serão ampliados para provar que draft/pedido posterior não substitui oficial e que produtos podem usar ciclos diferentes.
+`readPricingAnalysisSources` e `persistPricingReview` manterão os filtros `purchased AND cost IS NOT NULL`, a ordenação oficial e os critérios de desempate. O limite de aplicabilidade será a data operacional local no timezone configurado. A referência de recência será calculada por `MAX(purchase_cycle_date)` entre custos oficiais aplicáveis; o custo de cada produto continuará sendo o seu oficial mais recente até essa referência.
 
-O serviço de Precificação obterá o ciclo atual pelo novo calendário assíncrono. A nota “Sem compra recente” exibirá o `officialCost.cycleDate`, não `purchasedAt`, e usará texto explícito como “usando custo oficial do ciclo DD/MM/AAAA”.
+O serviço de Precificação lerá somente o timezone do calendário para determinar a data operacional local, sem chamar o cálculo do próximo ciclo de pedidos. A nota de fallback exibirá “Sem compra no ciclo DD/MM/AAAA — usando custo oficial do ciclo DD/MM/AAAA”, usando respectivamente a referência efetiva e `officialCost.cycleDate`. Fingerprints, revisões, cálculos financeiros e status primários permanecem inalterados.
+
+Um custo oficial com data futura não participa da referência nem da seleção antes da sua data operacional. Em dias sem compra oficial nova, a referência permanece no último ciclo efetivamente comprado, evitando que a mera passagem do calendário torne todos os produtos históricos.
 
 ## Risks / Trade-offs
 

@@ -1,7 +1,8 @@
 // Disposable local E2E database only. Never run this against the application database.
 import postgres from "postgres";
 import { hashPassword } from "../src/modules/identity/domain";
-import { currentPurchaseCycle } from "../src/modules/ordering/calendar/service";
+import { operationalLocalDate } from "../src/modules/ordering/calendar/domain";
+import { readOperationalPurchaseCalendar } from "../src/modules/ordering/calendar/service";
 
 const url = process.env.DATABASE_URL;
 const password = process.env.CONSOLIDATED_E2E_PASSWORD;
@@ -116,22 +117,23 @@ try {
       (${products[3].id}, '2097-09-24', 8, false, true, '2097-09-24T18:30:00Z', ${users.COMPRADOR}),
       (${products[5].id}, '2097-09-24', 999.99, false, false, NULL, ${users.COMPRADOR})
   `;
-  const currentCycle = (await currentPurchaseCycle()).cycleDate;
-  const previousCycleDate = new Date(`${currentCycle}T12:00:00Z`);
+  const calendar = await readOperationalPurchaseCalendar();
+  const referenceCycle = operationalLocalDate(new Date(), calendar.timezone);
+  const previousCycleDate = new Date(`${referenceCycle}T12:00:00Z`);
   previousCycleDate.setUTCDate(previousCycleDate.getUTCDate() - 1);
   const previousCycle = previousCycleDate.toISOString().slice(0, 10);
   await sql`
     INSERT INTO purchase_cycle_product_costs(
       product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by
     ) VALUES
-      (${products[0].id}, ${currentCycle}, 100, false, true, now(), ${users.COMPRADOR}),
+      (${products[0].id}, ${referenceCycle}, 100, false, true, now(), ${users.COMPRADOR}),
       (${products[6].id}, ${previousCycle}, 50, false, true, now() - interval '1 day', ${users.COMPRADOR}),
-      (${products[2].id}, ${currentCycle}, 7.5, true, true, now(), ${users.COMPRADOR})
+      (${products[2].id}, ${referenceCycle}, 7.5, true, true, now(), ${users.COMPRADOR})
   `;
   const [reviewedCost] = await sql<{ id: string }[]>`
     INSERT INTO purchase_cycle_product_costs(
       product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by
-    ) VALUES (${products[3].id}, ${currentCycle}, 7.5, false, true, now(), ${users.COMPRADOR})
+    ) VALUES (${products[3].id}, ${referenceCycle}, 7.5, false, true, now(), ${users.COMPRADOR})
     RETURNING id
   `;
   const fingerprint = `${reviewedCost.id}|1|7.50|0|UND|1.000000|0.0000|23.0000|20.0000`;
@@ -143,7 +145,7 @@ try {
       desired_margin_percent, margin_origin, settings_version, gross_unit_cost,
       effective_unit_cost, calculated_price, suggested_price, input_fingerprint, reviewed_by
     ) VALUES (
-      ${products[3].id}, ${reviewedCost.id}, 1, ${currentCycle}, 7.5, false,
+      ${products[3].id}, ${reviewedCost.id}, 1, ${referenceCycle}, 7.5, false,
       'UND', 1, 'UNIT', 0, 1, 23, 20, 'DEFAULT', 1, 7.5, 7.5,
       13.157895, 12.99, ${fingerprint}, ${users.GESTOR}
     )

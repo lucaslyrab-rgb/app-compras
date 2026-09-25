@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPricingAnalysis, filterPricingAnalyses, pricingMetrics, type PricingAnalysisSource } from "@/modules/pricing/analysis/domain";
+import { buildPricingAnalysis, filterPricingAnalyses, pricingMetrics, pricingStalePurchaseMessage, type PricingAnalysisSource } from "@/modules/pricing/analysis/domain";
 
 function source(overrides: Partial<PricingAnalysisSource> = {}): PricingAnalysisSource {
   return {
@@ -17,17 +17,36 @@ function source(overrides: Partial<PricingAnalysisSource> = {}): PricingAnalysis
     settings: { operatingCostPercent: "23.0000", defaultMarginPercent: "20.0000", version: 1, updatedAt: "2026-09-23T10:00:00.000Z" },
     officialCost: { id: "22222222-2222-4222-8222-222222222222", cost: "40.00", costIsUnit: false, version: 1, cycleDate: "2026-09-23", purchasedAt: "2026-09-23T10:00:00.000Z" },
     latestReview: null,
-    currentCycleDate: "2026-09-23",
+    referenceCycleDate: "2026-09-23",
     ...overrides,
   };
 }
 
 describe("análise de precificação", () => {
-  it("distingue sem custo e sem compra recente", () => {
+  it("distingue sem custo e custo anterior ao ciclo oficial de referência", () => {
     expect(buildPricingAnalysis(source({ officialCost: null })).status).toBe("NO_COST");
     const stale = buildPricingAnalysis(source({ officialCost: { ...source().officialCost!, cycleDate: "2026-09-22" } }));
     expect(stale.stalePurchase).toBe(true);
     expect(stale.status).toBe("NOT_REVIEWED");
+    expect(pricingStalePurchaseMessage(stale)).toBe(
+      "Sem compra no ciclo 23/09/2026 — usando custo oficial do ciclo 22/09/2026.",
+    );
+  });
+
+  it("não torna histórico o custo do ciclo de referência nem depende do próximo pedido", () => {
+    const current = buildPricingAnalysis(source({
+      referenceCycleDate: "2026-09-25",
+      officialCost: { ...source().officialCost!, cycleDate: "2026-09-25" },
+    }));
+    expect(current.stalePurchase).toBe(false);
+    expect(pricingStalePurchaseMessage(current)).toBeNull();
+  });
+
+  it("não marca recência quando ainda não existe ciclo oficial de referência", () => {
+    expect(buildPricingAnalysis(source({ officialCost: null, referenceCycleDate: null }))).toMatchObject({
+      status: "NO_COST",
+      stalePurchase: false,
+    });
   });
 
   it("ignora a margem global quando há margem específica", () => {
