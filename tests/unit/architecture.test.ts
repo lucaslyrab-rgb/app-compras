@@ -31,6 +31,16 @@ describe("fronteiras dos módulos", () => {
       "0007_pricing_object_ownership.sql",
       "0008_purchase_calendar_settings.sql",
     ]);
+    const migrationFiles = (await readdir("migrations"))
+      .filter((file) => /^\d{4}_.+\.sql$/.test(file))
+      .sort();
+    expect(migrations).toEqual(migrationFiles);
+  });
+
+  it("empacota todas as migrations versionadas na imagem runtime", async () => {
+    const dockerfile = await readFile("Dockerfile", "utf8");
+    expect(dockerfile).toContain("/app/migrations ./migrations");
+    expect(dockerfile).not.toMatch(/\/app\/migrations\/\d{4}_.+\.sql/);
   });
 
   it("mantém a 0008 aditiva, sem recalcular histórico e com ownership explícito", async () => {
