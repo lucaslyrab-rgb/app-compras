@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { database } from "@/db/client";
 import type { Principal } from "@/modules/identity";
-import { purchaseCycle } from "@/modules/ordering/repository";
+import { currentPurchaseCycle } from "@/modules/ordering/calendar/service";
 import { persistPurchaseCost, readPurchaseCostStates } from "@/modules/purchasing/costs/repository";
-import { loadPricingAnalysis, reviewPricingProduct } from "@/modules/pricing/analysis/service";
+import { loadPricingAnalyses, loadPricingAnalysis, reviewPricingProduct } from "@/modules/pricing/analysis/service";
 import { listPricingProducts, readPricingSettings, savePricingSettings, saveProductPricing } from "@/modules/pricing/parameters/service";
 import { persistProducts } from "../../scripts/import-products";
 
@@ -14,6 +14,7 @@ integration("precificação no PostgreSQL", () => {
   const buyer: Principal = { userId: "", role: "COMPRADOR", storeId: null };
   const store: Principal = { userId: "", role: "LOJA", storeId: "00000000-0000-0000-0000-000000000000" };
   let productId = "";
+  let secondProductId = "";
   const stamp = Date.now();
 
   beforeAll(async () => {
@@ -31,9 +32,16 @@ integration("precificação no PostgreSQL", () => {
       RETURNING id
     `;
     productId = product.id;
+    const [secondProduct] = await database().sql<{ id: string }[]>`
+      INSERT INTO products(erp_code, name, unit, purchase_format, markup, active)
+      VALUES (${940000 + (stamp % 10000)}, 'ALFACE PRECIFICAÇÃO', 'UND', 'UND', 0, true)
+      RETURNING id
+    `;
+    secondProductId = secondProduct.id;
     await database().sql`
       INSERT INTO product_pricing_parameters(product_id, sale_unit, conversion_quantity, conversion_origin, beneficiation_loss_percent)
-      VALUES (${productId}, 'KG', 20, 'PROVISIONAL', 40)
+      VALUES (${productId}, 'KG', 20, 'PROVISIONAL', 40),
+             (${secondProductId}, 'UND', 1, 'UNIT', 0)
     `;
   });
 
@@ -71,15 +79,15 @@ integration("precificação no PostgreSQL", () => {
   });
 
   it("persiste cost_is_unit atomicamente com o custo", async () => {
-    const cycleDate = purchaseCycle().cycleDate;
+    const cycleDate = (await currentPurchaseCycle()).cycleDate;
     const saved = await persistPurchaseCost(buyer, { productId, cycleDate, cost: "5.00", costIsUnit: true, purchased: false, expectedVersion: 0 });
     expect(saved).toMatchObject({ cost: "5.00", costIsUnit: true, purchased: false, version: 1 });
     const [state] = await readPurchaseCostStates(buyer, [productId], cycleDate);
     expect(state).toMatchObject({ currentCost: "5.00", costIsUnit: true, purchased: false, version: 1 });
   });
 
-  it("ignora draft, usa último custo oficial e registra revisão imutável", async () => {
-    const cycleDate = purchaseCycle().cycleDate;
+  it("mantém o custo oficial anterior diante de draft e troca somente após a compra", async () => {
+    const cycleDate = (await currentPurchaseCycle()).cycleDate;
     const [draft] = await database().sql<{ version: number }[]>`
       SELECT version FROM purchase_cycle_product_costs WHERE product_id = ${productId} AND purchase_cycle_date = ${cycleDate}::date
     `;
@@ -95,13 +103,29 @@ integration("precificação no PostgreSQL", () => {
     expect((await loadPricingAnalysis(manager, productId))?.status).toBe("REVIEWED");
     await expect(database().sql`UPDATE pricing_reviews SET suggested_price = 99.99 WHERE id = ${review.id}`).rejects.toThrow(/imutáveis/);
     await expect(database().sql`DELETE FROM pricing_reviews WHERE id = ${review.id}`).rejects.toThrow(/imutáveis/);
-    await persistPurchaseCost(buyer, { productId, cycleDate, cost: "8.00", costIsUnit: true, purchased: false, expectedVersion: draft.version });
-    expect((await loadPricingAnalysis(manager, productId))?.status).toBe("REVIEWED");
-    const historical = await database().sql<{ cycleDate: string; version: number }[]>`
-      SELECT purchase_cycle_date::text AS "cycleDate", version FROM purchase_cycle_product_costs
-      WHERE product_id = ${productId} AND purchased ORDER BY purchase_cycle_date DESC LIMIT 1
+    const draftUpdated = await persistPurchaseCost(buyer, { productId, cycleDate, cost: "8.00", costIsUnit: true, purchased: false, expectedVersion: draft.version });
+    const stillHistorical = await loadPricingAnalysis(manager, productId);
+    expect(stillHistorical).toMatchObject({ status: "REVIEWED", stalePurchase: true, officialCost: { cost: "40.00" } });
+
+    await database().sql`
+      INSERT INTO purchase_cycle_product_costs(product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by)
+      VALUES (${secondProductId}, ${cycleDate}::date - 2, 3, true, true, now() - interval '2 days', ${manager.userId}),
+             (${secondProductId}, ${cycleDate}::date + 1, 999, true, true, now(), ${manager.userId})
     `;
-    await persistPurchaseCost(buyer, { productId, cycleDate: historical[0].cycleDate, cost: "45.00", costIsUnit: false, purchased: true, expectedVersion: historical[0].version });
-    expect((await loadPricingAnalysis(manager, productId))?.status).toBe("COST_CHANGED");
+    const beforePurchase = await loadPricingAnalyses(manager);
+    expect(beforePurchase.find((item) => item.id === productId)?.officialCost?.cycleDate).not.toBe(cycleDate);
+    expect(beforePurchase.find((item) => item.id === secondProductId)?.officialCost?.cycleDate).not.toBe(cycleDate);
+
+    await persistPurchaseCost(buyer, { productId, cycleDate, cost: "8.00", costIsUnit: true, purchased: true, expectedVersion: draftUpdated.version });
+    const afterPurchase = await loadPricingAnalyses(manager);
+    expect(afterPurchase.find((item) => item.id === productId)).toMatchObject({
+      status: "COST_CHANGED",
+      stalePurchase: false,
+      officialCost: { cost: "8.00", costIsUnit: true, cycleDate },
+    });
+    expect(afterPurchase.find((item) => item.id === secondProductId)).toMatchObject({
+      stalePurchase: true,
+      officialCost: { cost: "3.00", costIsUnit: true },
+    });
   });
 });

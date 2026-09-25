@@ -3,33 +3,13 @@ import { database } from "@/db/client";
 import { orderDraftItems, orderDrafts, orderItems, orders, products, stores } from "@/db/schema";
 import type { Principal } from "@/modules/identity";
 import { assertStoreAccess } from "@/modules/identity";
+import { currentPurchaseCycle } from "./calendar/service";
 import { DraftConflictError, validateDraft, type DraftItem } from "./domain";
 
 export class ExistingOrderError extends Error {
   constructor(public readonly submittedAt: Date, public readonly purchaseCycleDate: string) {
     super("Já existe um pedido válido neste ciclo de compra.");
   }
-}
-
-function localParts(now = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(now);
-  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
-  const hour = get("hour");
-  return { date: `${get("year")}-${String(get("month")).padStart(2, "0")}-${String(get("day")).padStart(2, "0")}`, hour: hour === 24 ? 0 : hour, minute: get("minute") };
-}
-
-function plusDays(date: string, days: number) {
-  const value = new Date(`${date}T12:00:00Z`);
-  value.setUTCDate(value.getUTCDate() + days);
-  return value.toISOString().slice(0, 10);
-}
-
-export function purchaseCycle(now = new Date()) {
-  const local = localParts(now);
-  const afterCutoff = local.hour >= 19;
-  const cycleDate = plusDays(local.date, afterCutoff ? 2 : 1);
-  const cutoffDate = afterCutoff ? plusDays(local.date, 1) : local.date;
-  return { cycleDate, cutoffAt: new Date(`${cutoffDate}T19:00:00-03:00`), afterCutoff };
 }
 
 export async function saveDraft(principal: Principal, storeId: string, date: string, expectedVersion: number, items: DraftItem[]) {
@@ -64,13 +44,13 @@ export async function loadDraft(principal: Principal, storeId: string, date: str
   return { version: draft.version, items: items.map((item) => ({ productId: item.productId, stock: Number(item.stock), quantity: Number(item.quantity) })) };
 }
 
-export async function submitDraft(principal: Principal, storeId: string, date: string, allowRevision = false) {
+export async function submitDraft(principal: Principal, storeId: string, date: string, allowRevision = false, now = new Date()) {
   assertStoreAccess(principal, storeId);
+  const cycle = await currentPurchaseCycle(now);
   return database().db.transaction(async (tx) => {
     const draft = await tx.query.orderDrafts.findFirst({ where: and(eq(orderDrafts.storeId, storeId), eq(orderDrafts.orderDate, date)) });
     if (!draft) throw new Error("Rascunho não encontrado");
     const items = await tx.select().from(orderDraftItems).where(eq(orderDraftItems.draftId, draft.id));
-    const cycle = purchaseCycle();
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${storeId}:${cycle.cycleDate}`}, 0))`);
     const [existing] = await tx.select({ submittedAt: orders.submittedAt }).from(orders).where(and(eq(orders.storeId, storeId), eq(orders.purchaseCycleDate, cycle.cycleDate), sql`${orders.cancelledAt} is null`)).orderBy(desc(orders.revision)).limit(1);
     if (existing && !allowRevision) throw new ExistingOrderError(existing.submittedAt, cycle.cycleDate);

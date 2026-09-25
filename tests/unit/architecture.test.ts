@@ -29,6 +29,24 @@ describe("fronteiras dos módulos", () => {
       "0005_pricing_parameters_and_cost_basis.sql",
       "0006_pricing_reviews.sql",
       "0007_pricing_object_ownership.sql",
+      "0008_purchase_calendar_settings.sql",
     ]);
+  });
+
+  it("mantém a 0008 aditiva, sem recalcular histórico e com ownership explícito", async () => {
+    const migration = await readFile("migrations/0008_purchase_calendar_settings.sql", "utf8");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_calendar_settings");
+    expect(migration).toContain("ALTER TABLE public.purchase_calendar_settings OWNER TO");
+    expect(migration).not.toMatch(/UPDATE\s+(?:orders|purchase_cycle_product_costs|pricing_reviews)\b/i);
+  });
+
+  it("preserva a seleção oficial e apresenta o ciclo do custo utilizado", async () => {
+    const repository = await readFile("src/modules/pricing/analysis/repository.ts", "utf8");
+    const detail = await readFile("src/modules/pricing/analysis/pricing-detail.tsx", "utf8");
+    expect(repository).toContain("c.purchased AND c.cost IS NOT NULL");
+    expect(repository).toContain("c.purchase_cycle_date <= ${currentCycleDate}::date");
+    expect(detail).toContain("usando custo oficial do ciclo");
+    expect(detail).toContain("analysis.officialCost.cycleDate");
+    expect(detail).not.toContain("dateLabel(analysis.officialCost.purchasedAt)");
   });
 });

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { database } from "@/db/client";
 import { createSessionToken, hashToken, type Principal } from "@/modules/identity/domain";
 import { findPrincipal, revokeSession } from "@/modules/identity/repository";
-import { ExistingOrderError, loadDraft, saveDraft, submitDraft } from "@/modules/ordering/repository";
+import { cancelOrder, ExistingOrderError, listStoreHistory, loadDraft, saveDraft, submitDraft } from "@/modules/ordering/repository";
 import { persistProducts } from "../../scripts/import-products";
 import type { ProductInput } from "@/modules/catalog/domain";
 import { bootstrapAdmin } from "../../scripts/bootstrap-admin";
@@ -132,5 +132,44 @@ integration("PostgreSQL 18.6", () => {
     `;
     expect(history?.count).toBe(2);
     await expect(database().sql`UPDATE orders SET revision = 2 WHERE id = ${order.id}`).rejects.toThrow(/imutáveis/);
+  });
+
+  it("aplica o calendário vigente somente a novos pedidos e preserva o histórico", async () => {
+    const cases = [
+      { orderDate: "2099-02-01", now: new Date("2026-09-21T18:59:00-03:00"), cycleDate: "2026-09-22", allowRevision: false },
+      { orderDate: "2099-02-02", now: new Date("2026-09-21T19:00:00-03:00"), cycleDate: "2026-09-24", allowRevision: false },
+      { orderDate: "2099-02-03", now: new Date("2026-09-21T20:00:00-03:00"), cycleDate: "2026-09-24", allowRevision: true },
+    ];
+    const created: { id: string; purchaseCycleDate: string }[] = [];
+    for (const scenario of cases) {
+      await saveDraft(principal, principal.storeId!, scenario.orderDate, 0, [{ productId, stock: 1, quantity: 1 }]);
+      const order = await submitDraft(principal, principal.storeId!, scenario.orderDate, scenario.allowRevision, scenario.now);
+      expect(order.purchaseCycleDate).toBe(scenario.cycleDate);
+      created.push(order);
+    }
+
+    try {
+      await database().sql`
+        UPDATE purchase_calendar_settings
+        SET enabled_iso_weekdays = ARRAY[3]::smallint[], version = version + 1, updated_at = now()
+        WHERE id = 'OPERATIONAL'
+      `;
+      const history = await listStoreHistory(principal, principal.storeId!);
+      for (const order of created) {
+        expect(history.find((item) => item.id === order.id)?.purchaseCycleDate).toBe(order.purchaseCycleDate);
+      }
+      await cancelOrder(principal, created[0].id, "Cancelamento controlado de integração");
+      const cancelled = (await listStoreHistory(principal, principal.storeId!)).find((item) => item.id === created[0].id);
+      expect(cancelled).toMatchObject({ purchaseCycleDate: "2026-09-22" });
+      expect(cancelled?.cancelledAt).toBeInstanceOf(Date);
+    } finally {
+      await database().sql`
+        UPDATE purchase_calendar_settings
+        SET timezone = 'America/Sao_Paulo', cutoff_time = time '19:00',
+            enabled_iso_weekdays = ARRAY[1, 2, 4, 5]::smallint[],
+            version = version + 1, updated_at = now()
+        WHERE id = 'OPERATIONAL'
+      `;
+    }
   });
 });

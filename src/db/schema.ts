@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgTable, smallint, text, time, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const userRole = pgEnum("user_role", ["LOJA", "COMPRADOR", "GESTOR"]);
 
@@ -82,6 +82,22 @@ export const orders = pgTable("orders", {
   cancelledBy: uuid("cancelled_by").references(() => users.id, { onDelete: "set null" }),
   cancellationReason: text("cancellation_reason")
 }, (table) => [uniqueIndex("order_revision_unique").on(table.storeId, table.orderDate, table.revision)]);
+
+export const purchaseCalendarSettings = pgTable("purchase_calendar_settings", {
+  id: text("id").primaryKey(),
+  timezone: text("timezone").notNull(),
+  cutoffTime: time("cutoff_time").notNull(),
+  enabledIsoWeekdays: smallint("enabled_iso_weekdays").array().notNull(),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  check("purchase_calendar_settings_singleton_check", sql`${table.id} = 'OPERATIONAL'`),
+  check("purchase_calendar_settings_timezone_check", sql`btrim(${table.timezone}) <> ''`),
+  check("purchase_calendar_settings_weekdays_nonempty_check", sql`cardinality(${table.enabledIsoWeekdays}) > 0`),
+  check("purchase_calendar_settings_weekdays_range_check", sql`${table.enabledIsoWeekdays} <@ ARRAY[1, 2, 3, 4, 5, 6, 7]::smallint[]`),
+  check("purchase_calendar_settings_version_check", sql`${table.version} > 0`)
+]);
 
 export const orderItems = pgTable("order_items", {
   orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),

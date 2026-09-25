@@ -1,10 +1,10 @@
 import type { Principal } from "@/modules/identity";
-import { purchaseCycle } from "@/modules/ordering/repository";
+import { currentPurchaseCycle } from "@/modules/ordering/calendar/service";
 import { buildPricingAnalysis } from "./domain";
 import { persistPricingReview, readPricingAnalysisSources } from "./repository";
 
 export async function loadPricingAnalyses(principal: Principal) {
-  const currentCycleDate = purchaseCycle().cycleDate;
+  const currentCycleDate = (await currentPurchaseCycle()).cycleDate;
   return (await readPricingAnalysisSources(principal, currentCycleDate)).map(buildPricingAnalysis);
 }
 
@@ -18,6 +18,6 @@ export async function reviewPricingProduct(
 ) {
   return persistPricingReview(principal, {
     ...input,
-    currentCycleDate: purchaseCycle().cycleDate,
+    currentCycleDate: (await currentPurchaseCycle()).cycleDate,
   });
 }

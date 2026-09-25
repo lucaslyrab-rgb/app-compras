@@ -1,7 +1,7 @@
 // Disposable local E2E database only. Never run this against the application database.
 import postgres from "postgres";
 import { hashPassword } from "../src/modules/identity/domain";
-import { purchaseCycle } from "../src/modules/ordering/repository";
+import { currentPurchaseCycle } from "../src/modules/ordering/calendar/service";
 
 const url = process.env.DATABASE_URL;
 const password = process.env.CONSOLIDATED_E2E_PASSWORD;
@@ -116,7 +116,7 @@ try {
       (${products[3].id}, '2097-09-24', 8, false, true, '2097-09-24T18:30:00Z', ${users.COMPRADOR}),
       (${products[5].id}, '2097-09-24', 999.99, false, false, NULL, ${users.COMPRADOR})
   `;
-  const currentCycle = purchaseCycle().cycleDate;
+  const currentCycle = (await currentPurchaseCycle()).cycleDate;
   const previousCycleDate = new Date(`${currentCycle}T12:00:00Z`);
   previousCycleDate.setUTCDate(previousCycleDate.getUTCDate() - 1);
   const previousCycle = previousCycleDate.toISOString().slice(0, 10);

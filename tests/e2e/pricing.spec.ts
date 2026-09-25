@@ -51,6 +51,27 @@ test("Gestor administra produtos e configurações em layout responsivo", async 
   await expect(page.getByText("Configurações salvas.")).toBeVisible();
   await page.reload();
   await expect(operating).toHaveValue("23,00");
+  await expect(page.getByLabel("Horário de corte")).toHaveValue("19:00");
+  await expect(page.getByLabel("Timezone operacional")).toHaveValue("America/Sao_Paulo");
+  await expect(page.getByLabel("Segunda")).toBeChecked();
+  await expect(page.getByLabel("Terça")).toBeChecked();
+  await expect(page.getByLabel("Quarta")).not.toBeChecked();
+  await expect(page.getByLabel("Quinta")).toBeChecked();
+  await expect(page.getByLabel("Sexta")).toBeChecked();
+  await expect(page.getByLabel("Sábado")).not.toBeChecked();
+  await expect(page.getByLabel("Domingo")).not.toBeChecked();
+  await page.getByLabel("Quarta").check();
+  await page.getByRole("button", { name: "Salvar calendário" }).click();
+  await expect(page.getByText("Calendário de compras salvo.")).toBeVisible();
+  await page.getByLabel("Quarta").uncheck();
+  await page.getByRole("button", { name: "Salvar calendário" }).click();
+  await expect(page.getByText("Calendário de compras salvo.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Quarta")).not.toBeChecked();
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  }
 });
 
 test("Precificação exibe estados, cálculo, simulação, revisão e impressão", async ({ page }, testInfo) => {
@@ -61,10 +82,10 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
     ? page.locator(".manager-mobile-cards")
     : page.locator(".manager-table-wrap");
   await expect(pricingList.getByText("Custo alterado", { exact: true }).first()).toBeVisible();
-  await expect(pricingList.getByText("Sem compra recente", { exact: true }).first()).toBeVisible();
+  await expect(pricingList.getByText(/Sem compra recente/).first()).toBeVisible();
   await expect(pricingList.getByText("Sem custo", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: /^Sem compra recente/ }).click();
-  await expect(pricingList.getByText("Sem compra recente", { exact: true }).first()).toBeVisible();
+  await expect(pricingList.getByText(/Sem compra recente/).first()).toBeVisible();
   await page.getByRole("button", { name: /^Não revisados/ }).click();
   await expect(pricingList.getByText(/Não revisado|Custo alterado|Parâmetros alterados/, { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: /^Todos/ }).click();
@@ -99,12 +120,16 @@ test("RBAC bloqueia rotas gerenciais e drawer respeita o papel", async ({ page }
   await page.goto("/gestor/produtos");
   await expect(page).toHaveURL(/\/comprador\/consolidado/);
   await expect(page.getByText("Produtos", { exact: true })).toHaveCount(0);
+  await page.goto("/gestor/configuracoes");
+  await expect(page).toHaveURL(/\/comprador\/consolidado/);
   await page.goto("/gestor/precificacao/impressao");
   await expect(page).toHaveURL(/\/comprador\/consolidado/);
   await page.goto("/produtos");
   await expect(page).toHaveURL(/\/comprador\/consolidado/);
   await page.context().clearCookies();
   await login(page, "loja");
+  await page.goto("/gestor/configuracoes");
+  await expect(page).toHaveURL("/");
   await page.goto("/gestor/precificacao");
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "Pedido de hoje" })).toBeVisible();
