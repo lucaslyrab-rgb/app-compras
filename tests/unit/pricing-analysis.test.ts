@@ -223,9 +223,10 @@ describe("análise de precificação", () => {
   it("não trata revisão legada sem preço aplicado como confirmação", () => {
     const original = buildPricingAnalysis(source());
     const legacy = buildPricingAnalysis(source({
-      latestReview: { ...reviewOf(original), appliedPrice: null, decidedPrice: "" },
+      latestReview: { ...reviewOf(original), appliedPrice: null, decidedPrice: null, decisionOrigin: null },
     }));
     expect(legacy).toMatchObject({ status: "NOT_REVIEWED", costChanged: false, reviewPending: true });
+    expect(legacy.latestReview?.decidedPrice).toBeNull();
   });
 
   it("normaliza bases equivalentes com aritmética exata", () => {

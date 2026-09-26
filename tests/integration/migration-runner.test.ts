@@ -156,6 +156,39 @@ integration("migration-runner integration", () => {
     }
   });
 
+  async function provisionValidBaseline(sql: postgres.Sql, schema: string) {
+    for (const table of BASELINE_REQUIRED_TABLES) {
+      await sql.unsafe(`CREATE TABLE "${schema}"."${table}" (id int);`);
+    }
+    await sql.unsafe(`
+      ALTER TABLE "${schema}".orders
+        ADD COLUMN cancelled_at timestamptz,
+        ADD COLUMN cancelled_by uuid,
+        ADD COLUMN cancellation_reason text,
+        ADD COLUMN purchase_cycle_date date,
+        ADD COLUMN cutoff_at timestamptz;
+      ALTER TABLE "${schema}".order_items
+        ADD COLUMN snapshot_erp_code integer,
+        ADD COLUMN snapshot_name text,
+        ADD COLUMN snapshot_unit text;
+      ALTER TABLE "${schema}".purchase_cycle_product_costs
+        ADD COLUMN cost_is_unit boolean DEFAULT false;
+      ALTER TABLE "${schema}".pricing_settings
+        ALTER COLUMN id TYPE text;
+      INSERT INTO "${schema}".pricing_settings (id) VALUES ('FLV');
+      ALTER TABLE "${schema}".purchase_calendar_settings
+        ALTER COLUMN id TYPE text;
+      INSERT INTO "${schema}".purchase_calendar_settings (id) VALUES ('OPERATIONAL');
+      CREATE OR REPLACE FUNCTION "${schema}".prevent_order_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RETURN NEW; END $$;
+      CREATE TRIGGER immutable_orders BEFORE UPDATE OR DELETE ON "${schema}".orders FOR EACH ROW EXECUTE FUNCTION "${schema}".prevent_order_mutation();
+      CREATE TRIGGER immutable_order_items BEFORE UPDATE OR DELETE ON "${schema}".order_items FOR EACH ROW EXECUTE FUNCTION "${schema}".prevent_order_mutation();
+      CREATE OR REPLACE FUNCTION "${schema}".prevent_pricing_review_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RETURN NEW; END $$;
+      CREATE TRIGGER pricing_reviews_immutable BEFORE UPDATE OR DELETE ON "${schema}".pricing_reviews FOR EACH ROW EXECUTE FUNCTION "${schema}".prevent_pricing_review_mutation();
+    `);
+  }
+
   it("detecta baseline legado 0001–0008, não reexecuta, e aplica 0009 e 0010 normalmente", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "runner-base-"));
     const schema = `runner_base_${Date.now()}`;
@@ -165,9 +198,7 @@ integration("migration-runner integration", () => {
     isolatedUrl.searchParams.set("options", `-csearch_path=${schema}`);
 
     try {
-      for (const table of BASELINE_REQUIRED_TABLES) {
-        await sql.unsafe(`CREATE TABLE "${schema}"."${table}" (id int);`);
-      }
+      await provisionValidBaseline(sql, schema);
 
       for (let i = 1; i <= 8; i++) {
         const prefix = String(i).padStart(4, "0");
@@ -201,7 +232,7 @@ integration("migration-runner integration", () => {
     }
   });
 
-  it("falha-fechado (fail-closed) se o banco possui baseline legado incompleto", async () => {
+  it("falha-fechado (fail-closed) se o banco possui baseline legado com tabelas incompletas", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "runner-inc-"));
     const schema = `runner_inc_${Date.now()}`;
     const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
@@ -223,7 +254,99 @@ integration("migration-runner integration", () => {
           databaseUrl: isolatedUrl.toString(),
           migrationsDirectory: dir,
         }),
-      ).rejects.toThrow(/falha de baseline legado.*inconsistente/i);
+      ).rejects.toThrow(/tabelas obrigatórias ausentes no baseline/i);
+    } finally {
+      await sql.unsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+      await sql.end();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("falha-fechado (fail-closed) se o banco possui todas as tabelas mas faltam colunas essenciais", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "runner-cols-"));
+    const schema = `runner_cols_${Date.now()}`;
+    const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+    await sql.unsafe(`CREATE SCHEMA "${schema}"`);
+    const isolatedUrl = new URL(process.env.DATABASE_URL!);
+    isolatedUrl.searchParams.set("options", `-csearch_path=${schema}`);
+
+    try {
+      for (const table of BASELINE_REQUIRED_TABLES) {
+        await sql.unsafe(`CREATE TABLE "${schema}"."${table}" (id int);`);
+      }
+
+      for (let i = 1; i <= 8; i++) {
+        const prefix = String(i).padStart(4, "0");
+        await writeFile(path.join(dir, `${prefix}_test.sql`), "SELECT 1;");
+      }
+
+      await expect(
+        runMigrations({
+          databaseUrl: isolatedUrl.toString(),
+          migrationsDirectory: dir,
+        }),
+      ).rejects.toThrow(/colunas obrigatórias ausentes no baseline 0001–0008:.*order_items\.snapshot_erp_code/i);
+    } finally {
+      await sql.unsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+      await sql.end();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("falha-fechado (fail-closed) se falta singleton obrigatório no baseline", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "runner-single-"));
+    const schema = `runner_single_${Date.now()}`;
+    const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+    await sql.unsafe(`CREATE SCHEMA "${schema}"`);
+    const isolatedUrl = new URL(process.env.DATABASE_URL!);
+    isolatedUrl.searchParams.set("options", `-csearch_path=${schema}`);
+
+    try {
+      await provisionValidBaseline(sql, schema);
+      // Remove o singleton FLV
+      await sql.unsafe(`DELETE FROM "${schema}".pricing_settings WHERE id = 'FLV';`);
+
+      for (let i = 1; i <= 8; i++) {
+        const prefix = String(i).padStart(4, "0");
+        await writeFile(path.join(dir, `${prefix}_test.sql`), "SELECT 1;");
+      }
+
+      await expect(
+        runMigrations({
+          databaseUrl: isolatedUrl.toString(),
+          migrationsDirectory: dir,
+        }),
+      ).rejects.toThrow(/registro singleton obrigatório ausente em pricing_settings/i);
+    } finally {
+      await sql.unsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+      await sql.end();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("falha-fechado (fail-closed) se falta trigger/função de imutabilidade no baseline", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "runner-trig-"));
+    const schema = `runner_trig_${Date.now()}`;
+    const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+    await sql.unsafe(`CREATE SCHEMA "${schema}"`);
+    const isolatedUrl = new URL(process.env.DATABASE_URL!);
+    isolatedUrl.searchParams.set("options", `-csearch_path=${schema}`);
+
+    try {
+      await provisionValidBaseline(sql, schema);
+      await sql.unsafe(`DROP TRIGGER immutable_orders ON "${schema}".orders;`);
+
+      for (let i = 1; i <= 8; i++) {
+        const prefix = String(i).padStart(4, "0");
+        await writeFile(path.join(dir, `${prefix}_test.sql`), "SELECT 1;");
+      }
+
+      await expect(
+        runMigrations({
+          databaseUrl: isolatedUrl.toString(),
+          migrationsDirectory: dir,
+        }),
+      ).rejects.toThrow(/triggers obrigatórias ausentes no baseline 0001–0008:.*orders\.immutable_orders/i);
     } finally {
       await sql.unsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
       await sql.end();

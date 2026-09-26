@@ -101,4 +101,11 @@ describe("arquitetura e isolamento de módulos", () => {
     const workspace = await readFile("src/modules/pricing/analysis/pricing-workspace.tsx", "utf8");
     expect(workspace).toContain("<PricingDetail key={selected.id} analysis={selected} />");
   });
+
+  it("não utiliza suggested_price como fallback para preço decidido", async () => {
+    const repository = await readFile("src/modules/pricing/analysis/repository.ts", "utf8");
+    expect(repository).not.toMatch(/COALESCE\s*\([^)]*suggested_price[^)]*\)\s*::text\s*AS\s*"(?:reviewDecidedPrice|decidedPrice)"/i);
+    expect(repository).not.toMatch(/decidedPrice:\s*[^,\n]*reviewSuggestedPrice/);
+    expect(repository).not.toMatch(/appliedPrice:\s*[^,\n]*reviewSuggestedPrice/);
+  });
 });

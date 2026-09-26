@@ -42,8 +42,8 @@ export type LatestReview = {
   calculatedPrice: string;
   suggestedPrice: string;
   appliedPrice: string | null;
-  decidedPrice: string;
-  decisionOrigin: DecisionOrigin;
+  decidedPrice: string | null;
+  decisionOrigin: DecisionOrigin | null;
   reviewedAt: string;
 } | null;
 
@@ -77,8 +77,8 @@ export type PricingReviewDecision = {
   effectiveUnitCost: string;
   calculatedPrice: string;
   suggestedPrice: string;
-  decidedPrice: string;
-  decisionOrigin: DecisionOrigin;
+  decidedPrice: string | null;
+  decisionOrigin: DecisionOrigin | null;
   reviewedAt: string;
 };
 

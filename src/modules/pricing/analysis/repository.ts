@@ -93,9 +93,9 @@ function source(row: AnalysisRow, history: PreviousOfficialCost[]): PricingAnaly
       effectiveUnitCost: row.reviewEffectiveUnitCost!,
       calculatedPrice: row.reviewCalculatedPrice!,
       suggestedPrice: row.reviewSuggestedPrice!,
-      appliedPrice: row.reviewAppliedPrice ?? row.reviewDecidedPrice ?? row.reviewSuggestedPrice,
-      decidedPrice: row.reviewDecidedPrice ?? row.reviewAppliedPrice ?? row.reviewSuggestedPrice!,
-      decisionOrigin: row.reviewDecisionOrigin ?? "SUGGESTED",
+      appliedPrice: row.reviewAppliedPrice ?? row.reviewDecidedPrice ?? null,
+      decidedPrice: row.reviewDecidedPrice ?? row.reviewAppliedPrice ?? null,
+      decisionOrigin: row.reviewDecisionOrigin ?? null,
       reviewedAt: new Date(row.reviewedAt!).toISOString(),
     } : null,
     referenceCycleDate: row.referenceCycleDate,
@@ -140,8 +140,13 @@ export async function readPricingAnalysisSources(principal: Principal, operation
              review.calculated_price::text AS "reviewCalculatedPrice",
              review.suggested_price::text AS "reviewSuggestedPrice",
              review.applied_price::text AS "reviewAppliedPrice",
-             COALESCE(review.decided_price, review.applied_price, review.suggested_price)::text AS "reviewDecidedPrice",
-             COALESCE(review.decision_origin, 'SUGGESTED') AS "reviewDecisionOrigin",
+             COALESCE(review.decided_price, review.applied_price)::text AS "reviewDecidedPrice",
+             CASE
+               WHEN review.decided_price IS NOT NULL THEN COALESCE(review.decision_origin, 'MANUAL')
+               WHEN review.applied_price IS NOT NULL THEN
+                 CASE WHEN review.applied_price = review.suggested_price THEN 'SUGGESTED' ELSE 'MANUAL' END
+               ELSE NULL
+             END AS "reviewDecisionOrigin",
              review.reviewed_at AS "reviewedAt",
              pricing_reference.cycle_date::text AS "referenceCycleDate"
       FROM products p
@@ -347,8 +352,13 @@ export async function readPricingReviewDecisions(principal: Principal, ids: stri
            r.effective_unit_cost::text AS "effectiveUnitCost",
            r.calculated_price::text AS "calculatedPrice",
            r.suggested_price::text AS "suggestedPrice",
-           COALESCE(r.decided_price, r.applied_price, r.suggested_price)::text AS "decidedPrice",
-           COALESCE(r.decision_origin, 'SUGGESTED') AS "decisionOrigin",
+           COALESCE(r.decided_price, r.applied_price)::text AS "decidedPrice",
+           CASE
+             WHEN r.decided_price IS NOT NULL THEN COALESCE(r.decision_origin, 'MANUAL')
+             WHEN r.applied_price IS NOT NULL THEN
+               CASE WHEN r.applied_price = r.suggested_price THEN 'SUGGESTED' ELSE 'MANUAL' END
+             ELSE NULL
+           END AS "decisionOrigin",
            r.reviewed_at AS "reviewedAt"
     FROM pricing_reviews r
     JOIN products p ON p.id = r.product_id

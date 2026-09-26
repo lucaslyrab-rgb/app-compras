@@ -275,13 +275,25 @@ integration("precificação no PostgreSQL", () => {
     const reloaded = await loadPricingAnalysis(manager, manualProductId, friday);
     expect(reloaded?.latestReview).toMatchObject({
       id: legacy.id,
-      decidedPrice: reloaded!.calculation!.suggestedPrice,
-      decisionOrigin: "SUGGESTED",
+      appliedPrice: null,
+      decidedPrice: null,
+      decisionOrigin: null,
     });
+    expect(reloaded?.reviewPending).toBe(true);
+    expect(reloaded?.status).toBe("NOT_REVIEWED");
+
     const [printDecision] = await loadPricingReviewDecisions(manager, [legacy.id]);
     expect(printDecision).toMatchObject({
-      decidedPrice: printDecision.suggestedPrice,
-      decisionOrigin: "SUGGESTED",
+      id: legacy.id,
+      decidedPrice: null,
+      decisionOrigin: null,
     });
+
+    // Caminho completo Repository -> Domain -> UI/Relatório
+    const allAnalyses = await loadPricingAnalyses(manager, friday);
+    const pendingItem = allAnalyses.find((a) => a.id === manualProductId);
+    expect(pendingItem?.reviewPending).toBe(true);
+    expect(pendingItem?.status).toBe("NOT_REVIEWED");
+    expect(pendingItem?.latestReview?.decidedPrice).toBeNull();
   });
 });
