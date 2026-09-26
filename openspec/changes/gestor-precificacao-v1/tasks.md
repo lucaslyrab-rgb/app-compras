@@ -46,6 +46,8 @@
 - [x] 6.4 Implementar action transacional de revisão explícita com releitura das fontes e snapshot; verificar autoria/data, imutabilidade, conflito entre abertura e confirmação e ausência de revisão ao apenas abrir.
 - [x] 6.5 Implementar `/gestor/precificacao` com indicadores, busca, filtros e tabela/cards; verificar estados Custos alterados, Sem compra recente, Não revisados, Revisados e Sem custo com dados reais.
 - [x] 6.6 Implementar `/gestor/precificacao/[id]` com painel desktop/tela mobile, cálculo explicável, preço sugerido destacado e simulação local; verificar que nenhum valor é rotulado como preço atual do ERP.
+- [x] 6.7 Separar o fingerprint técnico da comparação semântica de custo, usando aritmética racional exata e o custo oficial imediatamente anterior; verificar igualdade normalizada, aumento/redução, ausência de anterior, parâmetros alterados e base historicamente não reconstruível.
+- [x] 6.8 Validar a auditoria somente leitura de 25/09 sem corrigir dados: Batata Inglesa 100→100 fora de Custo alterado; Abacate, Aipim, Banana Nanica e Cebola Roxa como mudanças econômicas seguras; Banana Prata, Berinjela e Chuchu explicados individualmente conforme compatibilidade histórica da base.
 
 ## 7. Navegação e RBAC
 

@@ -33,19 +33,31 @@ O sistema SHALL apresentar em conjunto os dados de origem e cada etapa do cálcu
 - **THEN** a análise usa tela dedicada e a simulação pode ser expandida sem comprimir uma tabela desktop
 
 ### Requirement: Estado de revisão derivado das entradas
-O sistema SHALL considerar uma revisão atual somente quando o custo oficial e sua versão, os parâmetros do produto e a configuração global aplicável corresponderem ao snapshot da última revisão.
+O sistema SHALL preservar um fingerprint técnico das entradas para auditoria e concorrência, mas SHALL classificar Custo alterado somente por diferença econômica exata entre o custo oficial atual e o custo oficial imediatamente anterior em bases equivalentes. Mudança de id, versão ou ciclo MUST NOT ser usada como evidência semântica de alteração de custo.
 
 #### Scenario: Produto nunca revisado
 - **WHEN** existe preço calculável, mas nenhuma revisão explícita
 - **THEN** o produto é identificado como Não revisado
 
 #### Scenario: Custo oficial mudou
-- **WHEN** o custo oficial atual não corresponde ao custo analisado na última revisão
+- **WHEN** os custos oficiais atual e imediatamente anterior podem ser normalizados para a mesma base e os valores exatos diferem
 - **THEN** o produto recebe badge Custo alterado e aparece no respectivo filtro
 
+#### Scenario: Novo registro com o mesmo custo normalizado
+- **WHEN** id, versão ou ciclo do custo oficial muda, mas os custos atual e imediatamente anterior são economicamente iguais na mesma base
+- **THEN** o produto não recebe o estado Custo alterado
+
+#### Scenario: Ausência de custo oficial anterior
+- **WHEN** existe custo oficial atual, mas nenhum custo oficial anterior reconstruível
+- **THEN** o produto é identificado como Não revisado e não como Custo alterado
+
 #### Scenario: Outro parâmetro relevante mudou
-- **WHEN** conversão, perda, margem específica, custo operacional ou margem global aplicável muda após a revisão
-- **THEN** a revisão deixa de ser atual e o produto volta a exigir análise
+- **WHEN** unidade de venda, conversão, perda, margem específica, custo operacional ou margem global aplicável muda após a revisão
+- **THEN** a revisão deixa de ser atual e o produto recebe o estado Parâmetros alterados
+
+#### Scenario: Bases sem equivalência demonstrável
+- **WHEN** a natureza unitária ou outra base difere e os dados históricos não permitem reconstruir uma normalização equivalente com segurança
+- **THEN** o produto recebe o estado Parâmetros alterados sem inferir uma mudança econômica
 
 #### Scenario: Rascunho de custo mudou
 - **WHEN** somente um custo não comprado muda

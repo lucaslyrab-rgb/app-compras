@@ -8,6 +8,8 @@ Existem apenas as migrations `0001` a `0004`. As triggers de imutabilidade de pe
 
 As duas referências medem 1536 × 1024 px. A composição aprovada reserva aproximadamente 220–230 px para a sidebar verde e divide a área útil em uma lista/tabela de cerca de dois terços e um painel de trabalho de cerca de um terço. A hierarquia observada é breadcrumb/título, resumo de configurações, quatro indicadores, busca/filtros e área de trabalho; Cadastro destaca o formulário do produto à direita, enquanto Precificação usa o mesmo espaço para explicar o cálculo, dar destaque verde ao preço sugerido e manter a simulação abaixo. Badges amarelos, vermelhos, verdes e azuis foram mantidos com a semântica da referência.
 
+A auditoria somente leitura de 25/09/2026 confirmou os dois últimos custos oficiais dos oito produtos investigados, sem alterar qualquer linha. Batata Inglesa permaneceu em 100→100 na mesma base e, portanto, não é `COST_CHANGED`. Abacate 50→60, Aipim 80→75, Banana Nanica 60→63 e Cebola Roxa 100→120 mantiveram `cost_is_unit=false`, logo são mudanças econômicas exatas e seguras. Banana Prata 3 não unitário→2,50 unitário e Berinjela 3 não unitário→3 unitário partem de registros de 23/09 anteriores à metadata histórica; Chuchu 70 não unitário→50 unitário tem custo anterior de 24/09 às 10:51, também anterior à criação dos parâmetros às 11:38. Nos três casos a mudança de base não pode ser reconstruída com segurança e resulta em `PARAMETERS_CHANGED`, sem inferência de aumento ou redução.
+
 ## Goals / Non-Goals
 
 **Goals:**
@@ -46,7 +48,9 @@ O importador fará, na mesma transação de cada upsert de produto, um `INSERT .
 
 `pricing_reviews` será append-only e guardará: produto, usuário, instante, id/versão/data/valor/`cost_is_unit` do custo oficial, unidade de venda, conversão, origem, perda, custo operacional, margem aplicada e sua origem, custo bruto, custo efetivo, preço calculado e preço sugerido. Valores derivados usarão `NUMERIC(18,6)`; o sugerido usará duas casas.
 
-Também serão guardadas as versões de parâmetro e configuração para diagnóstico. A validade atual, porém, será comparada por um fingerprint canônico das entradas relevantes: fonte/versão do custo oficial, `cost_is_unit`, unidade/conversão/perda e percentuais efetivamente aplicados. Isso evita invalidar um produto com margem específica quando somente a margem global não aplicável muda, mas permite invalidar qualquer mudança relevante exigida no documento.
+Também serão guardadas as versões de parâmetro e configuração para diagnóstico. Um fingerprint canônico continuará cobrindo fonte/versão do custo oficial, `cost_is_unit`, unidade/conversão/perda e percentuais efetivamente aplicados, mas seu papel será estritamente técnico: detectar concorrência entre abertura e confirmação e provar quais entradas formaram o snapshot. Id, versão ou ciclo diferentes não provarão mudança econômica.
+
+O estado `COST_CHANGED` será derivado separadamente pela comparação racional exata entre o custo oficial atual e o oficial imediatamente anterior. Custos com a mesma natureza serão comparados diretamente; quando a natureza unitária diferir, ambos serão normalizados pela conversão aplicável somente se a metadata histórica e a estabilidade dos parâmetros tornarem a equivalência demonstrável. Sem custo anterior, o estado será `NOT_REVIEWED`. Unidade, conversão, perda ou margem divergentes do snapshot, assim como base incompatível ou historicamente não reconstruível, resultarão em `PARAMETERS_CHANGED`. Um custo normalizado idêntico nunca resultará em `COST_CHANGED`.
 
 Abrir detalhe, simular ou imprimir não escreve revisão. A action de revisão relê todas as fontes dentro de transação, compara o fingerprint esperado e só então insere o snapshot. UPDATE/DELETE de revisão serão bloqueados por trigger própria; isso não reutiliza nem modifica as triggers dos pedidos.
 

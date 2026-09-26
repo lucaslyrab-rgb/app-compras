@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPricingAnalysis, filterPricingAnalyses, pricingMetrics, pricingStalePurchaseMessage, type PricingAnalysisSource } from "@/modules/pricing/analysis/domain";
+import { buildPricingAnalysis, filterPricingAnalyses, pricingMetrics, pricingStalePurchaseMessage, type PricingAnalysis, type PricingAnalysisSource } from "@/modules/pricing/analysis/domain";
 
 function source(overrides: Partial<PricingAnalysisSource> = {}): PricingAnalysisSource {
   return {
@@ -15,10 +15,28 @@ function source(overrides: Partial<PricingAnalysisSource> = {}): PricingAnalysis
     version: 1,
     updatedAt: "2026-09-23T10:00:00.000Z",
     settings: { operatingCostPercent: "23.0000", defaultMarginPercent: "20.0000", version: 1, updatedAt: "2026-09-23T10:00:00.000Z" },
-    officialCost: { id: "22222222-2222-4222-8222-222222222222", cost: "40.00", costIsUnit: false, version: 1, cycleDate: "2026-09-23", purchasedAt: "2026-09-23T10:00:00.000Z" },
+    officialCost: { id: "22222222-2222-4222-8222-222222222222", cost: "40.00", costIsUnit: false, version: 1, cycleDate: "2026-09-23", purchasedAt: "2026-09-23T10:00:00.000Z", revisedAfterPurchase: false },
+    previousOfficialCost: null,
     latestReview: null,
     referenceCycleDate: "2026-09-23",
     ...overrides,
+  };
+}
+
+function reviewOf(analysis: PricingAnalysis) {
+  return {
+    id: "r",
+    inputFingerprint: analysis.fingerprint!,
+    officialCostId: analysis.officialCost!.id,
+    officialCostVersion: analysis.officialCost!.version,
+    officialCost: analysis.officialCost!.cost,
+    costIsUnit: analysis.officialCost!.costIsUnit,
+    saleUnit: analysis.saleUnit,
+    conversionQuantity: analysis.conversionQuantity,
+    beneficiationLossPercent: analysis.beneficiationLossPercent,
+    operatingCostPercent: analysis.settings.operatingCostPercent,
+    desiredMarginPercent: analysis.desiredMarginPercent,
+    reviewedAt: "2026-09-23T11:00:00.000Z",
   };
 }
 
@@ -57,23 +75,115 @@ describe("análise de precificação", () => {
 
   it("distingue custo alterado de parâmetro alterado e revisado", () => {
     const fresh = buildPricingAnalysis(source());
-    const reviewed = buildPricingAnalysis(source({ latestReview: { id: "r", inputFingerprint: fresh.fingerprint!, officialCostId: fresh.officialCost!.id, officialCostVersion: 1, reviewedAt: "2026-09-23T11:00:00.000Z" } }));
+    const reviewed = buildPricingAnalysis(source({ latestReview: reviewOf(fresh) }));
     expect(reviewed.status).toBe("REVIEWED");
-    const parameterChanged = buildPricingAnalysis(source({ latestReview: { ...reviewed.latestReview!, inputFingerprint: "old" } }));
+    const parameterChanged = buildPricingAnalysis(source({
+      latestReview: { ...reviewed.latestReview!, inputFingerprint: "old", conversionQuantity: "19.000000" },
+    }));
     expect(parameterChanged.status).toBe("PARAMETERS_CHANGED");
-    const costChanged = buildPricingAnalysis(source({ latestReview: { ...reviewed.latestReview!, inputFingerprint: "old", officialCostVersion: 0 } }));
+    const costChanged = buildPricingAnalysis(source({
+      officialCost: { ...source().officialCost!, id: "current", cost: "50.00" },
+      previousOfficialCost: { ...source().officialCost!, basisRecorded: true, conversionRecorded: true },
+      latestReview: { ...reviewed.latestReview!, inputFingerprint: "old" },
+    }));
     expect(costChanged.status).toBe("COST_CHANGED");
+  });
+
+  it("compara custo semântico sem usar id, versão ou ciclo como evidência", () => {
+    const previous = { ...source().officialCost!, basisRecorded: true, conversionRecorded: true };
+    const sameCost = buildPricingAnalysis(source({
+      officialCost: { ...source().officialCost!, id: "current", version: 9, cycleDate: "2026-09-25" },
+      previousOfficialCost: previous,
+      referenceCycleDate: "2026-09-25",
+    }));
+    expect(sameCost.status).toBe("NOT_REVIEWED");
+
+    const increased = buildPricingAnalysis(source({
+      officialCost: { ...source().officialCost!, id: "current", cost: "41.00", cycleDate: "2026-09-25" },
+      previousOfficialCost: previous,
+      referenceCycleDate: "2026-09-25",
+    }));
+    expect(increased.status).toBe("COST_CHANGED");
+  });
+
+  it("normaliza bases equivalentes com aritmética exata", () => {
+    const previous = { ...source().officialCost!, cost: "40.00", basisRecorded: true, conversionRecorded: true };
+    const equivalent = buildPricingAnalysis(source({
+      officialCost: { ...source().officialCost!, id: "current", cost: "2.00", costIsUnit: true },
+      previousOfficialCost: previous,
+    }));
+    expect(equivalent.status).toBe("NOT_REVIEWED");
+
+    const reduced = buildPricingAnalysis(source({
+      officialCost: { ...source().officialCost!, id: "current", cost: "1.99", costIsUnit: true },
+      previousOfficialCost: previous,
+    }));
+    expect(reduced.status).toBe("COST_CHANGED");
+  });
+
+  it("trata ausência e base histórica insegura sem inventar equivalência", () => {
+    expect(buildPricingAnalysis(source({ previousOfficialCost: null })).status).toBe("NOT_REVIEWED");
+    const incompatible = buildPricingAnalysis(source({
+      officialCost: { ...source().officialCost!, costIsUnit: true },
+      previousOfficialCost: { ...source().officialCost!, basisRecorded: false, conversionRecorded: false },
+    }));
+    expect(incompatible.status).toBe("PARAMETERS_CHANGED");
+  });
+
+  it("aceita conversão já vigente no registro anterior mesmo após edição versionada", () => {
+    const converted = buildPricingAnalysis(source({
+      version: 2,
+      officialCost: { ...source().officialCost!, id: "current", cost: "2.00", costIsUnit: true },
+      previousOfficialCost: {
+        ...source().officialCost!,
+        cost: "40.00",
+        basisRecorded: true,
+        conversionRecorded: true,
+      },
+    }));
+    expect(converted.status).toBe("NOT_REVIEWED");
+  });
+
+  it("classifica com segurança os dados auditados de 25/09", () => {
+    const audited = [
+      ["ABACATE KG", "60.00", false, "50.00", false, true, "COST_CHANGED"],
+      ["AIPIM KG", "75.00", false, "80.00", false, true, "COST_CHANGED"],
+      ["BANANA NANICA KG", "63.00", false, "60.00", false, true, "COST_CHANGED"],
+      ["CEBOLA ROXA KG", "120.00", false, "100.00", false, true, "COST_CHANGED"],
+      ["BATATA INGLESA KG", "100.00", false, "100.00", false, true, "NOT_REVIEWED"],
+      ["BANANA PRATA KG", "2.50", true, "3.00", false, false, "PARAMETERS_CHANGED"],
+      ["BERINJELA KG", "3.00", true, "3.00", false, false, "PARAMETERS_CHANGED"],
+      ["CHUCHU KG", "50.00", true, "70.00", false, false, "PARAMETERS_CHANGED"],
+    ] as const;
+
+    for (const [name, currentCost, currentIsUnit, previousCost, previousIsUnit, basisRecorded, expected] of audited) {
+      const analysis = buildPricingAnalysis(source({
+        name,
+        referenceCycleDate: "2026-09-25",
+        officialCost: {
+          ...source().officialCost!,
+          id: `${name}-current`,
+          cost: currentCost,
+          costIsUnit: currentIsUnit,
+          cycleDate: "2026-09-25",
+        },
+        previousOfficialCost: {
+          ...source().officialCost!,
+          id: `${name}-previous`,
+          cost: previousCost,
+          costIsUnit: previousIsUnit,
+          cycleDate: "2026-09-24",
+          basisRecorded,
+          conversionRecorded: basisRecorded,
+        },
+      }));
+      expect(analysis.status, name).toBe(expected);
+    }
   });
 
   it("invalida a revisão quando qualquer entrada aplicável muda", () => {
     const original = buildPricingAnalysis(source());
-    const latestReview = {
-      id: "r",
-      inputFingerprint: original.fingerprint!,
-      officialCostId: original.officialCost!.id,
-      officialCostVersion: original.officialCost!.version,
-      reviewedAt: "2026-09-23T11:00:00.000Z",
-    };
+    const latestReview = reviewOf(original);
     const changes: Partial<PricingAnalysisSource>[] = [
       { conversionQuantity: "19.000000" },
       { beneficiationLossPercent: "41.0000" },
@@ -88,13 +198,7 @@ describe("análise de precificação", () => {
 
   it("não invalida margem específica por mudança na margem global não aplicável", () => {
     const specific = buildPricingAnalysis(source({ specificMarginPercent: "25.0000" }));
-    const latestReview = {
-      id: "r",
-      inputFingerprint: specific.fingerprint!,
-      officialCostId: specific.officialCost!.id,
-      officialCostVersion: specific.officialCost!.version,
-      reviewedAt: "2026-09-23T11:00:00.000Z",
-    };
+    const latestReview = reviewOf(specific);
     const changedGlobal = buildPricingAnalysis(source({
       specificMarginPercent: "25.0000",
       latestReview,
@@ -107,7 +211,7 @@ describe("análise de precificação", () => {
     const pending = buildPricingAnalysis(source());
     const stale = buildPricingAnalysis(source({ id: "2", name: "ALHO", officialCost: { ...source().officialCost!, cycleDate: "2026-09-22" } }));
     const reviewedBase = buildPricingAnalysis(source({ id: "3", name: "BANANA" }));
-    const reviewed = buildPricingAnalysis(source({ id: "3", name: "BANANA", latestReview: { id: "r", inputFingerprint: reviewedBase.fingerprint!, officialCostId: reviewedBase.officialCost!.id, officialCostVersion: 1, reviewedAt: "2026-09-23T11:00:00.000Z" } }));
+    const reviewed = buildPricingAnalysis(source({ id: "3", name: "BANANA", latestReview: reviewOf(reviewedBase) }));
     expect(filterPricingAnalyses([pending, stale, reviewed], "alho", "stale-purchase")).toEqual([stale]);
     expect(pricingMetrics([pending, stale, reviewed])).toEqual({ total: 3, costChanged: 0, stalePurchase: 1, reviewed: 1 });
   });

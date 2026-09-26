@@ -26,10 +26,27 @@ type AnalysisRow = {
   officialCostVersion: number | null;
   officialCycleDate: string | null;
   officialPurchasedAt: string | null;
+  officialRevisedAfterPurchase: boolean | null;
+  previousOfficialCostId: string | null;
+  previousOfficialCost: string | null;
+  previousOfficialCostIsUnit: boolean | null;
+  previousOfficialCostVersion: number | null;
+  previousOfficialCycleDate: string | null;
+  previousOfficialPurchasedAt: string | null;
+  previousOfficialRevisedAfterPurchase: boolean | null;
+  previousOfficialBasisRecorded: boolean | null;
+  previousOfficialConversionRecorded: boolean | null;
   reviewId: string | null;
   reviewFingerprint: string | null;
   reviewOfficialCostId: string | null;
   reviewOfficialCostVersion: number | null;
+  reviewOfficialCost: string | null;
+  reviewCostIsUnit: boolean | null;
+  reviewSaleUnit: string | null;
+  reviewConversionQuantity: string | null;
+  reviewBeneficiationLossPercent: string | null;
+  reviewOperatingCostPercent: string | null;
+  reviewDesiredMarginPercent: string | null;
   reviewedAt: string | null;
   referenceCycleDate: string | null;
 };
@@ -60,12 +77,31 @@ function source(row: AnalysisRow): PricingAnalysisSource {
       version: row.officialCostVersion!,
       cycleDate: row.officialCycleDate!,
       purchasedAt: new Date(row.officialPurchasedAt!).toISOString(),
+      revisedAfterPurchase: row.officialRevisedAfterPurchase ?? false,
+    } : null,
+    previousOfficialCost: row.previousOfficialCostId ? {
+      id: row.previousOfficialCostId,
+      cost: row.previousOfficialCost!,
+      costIsUnit: row.previousOfficialCostIsUnit ?? false,
+      version: row.previousOfficialCostVersion!,
+      cycleDate: row.previousOfficialCycleDate!,
+      purchasedAt: new Date(row.previousOfficialPurchasedAt!).toISOString(),
+      revisedAfterPurchase: row.previousOfficialRevisedAfterPurchase ?? false,
+      basisRecorded: row.previousOfficialBasisRecorded ?? false,
+      conversionRecorded: row.previousOfficialConversionRecorded ?? false,
     } : null,
     latestReview: row.reviewId ? {
       id: row.reviewId,
       inputFingerprint: row.reviewFingerprint!,
       officialCostId: row.reviewOfficialCostId!,
       officialCostVersion: row.reviewOfficialCostVersion!,
+      officialCost: row.reviewOfficialCost!,
+      costIsUnit: row.reviewCostIsUnit!,
+      saleUnit: row.reviewSaleUnit!,
+      conversionQuantity: row.reviewConversionQuantity!,
+      beneficiationLossPercent: row.reviewBeneficiationLossPercent!,
+      operatingCostPercent: row.reviewOperatingCostPercent!,
+      desiredMarginPercent: row.reviewDesiredMarginPercent!,
       reviewedAt: new Date(row.reviewedAt!).toISOString(),
     } : null,
     referenceCycleDate: row.referenceCycleDate,
@@ -98,9 +134,26 @@ export async function readPricingAnalysisSources(principal: Principal, operation
            official.version AS "officialCostVersion",
            official.purchase_cycle_date::text AS "officialCycleDate",
            official.purchased_at AS "officialPurchasedAt",
+           official.version > 1 AND official.updated_at > official.purchased_at AS "officialRevisedAfterPurchase",
+           previous.id AS "previousOfficialCostId",
+           previous.cost::text AS "previousOfficialCost",
+           previous.cost_is_unit AS "previousOfficialCostIsUnit",
+           previous.version AS "previousOfficialCostVersion",
+           previous.purchase_cycle_date::text AS "previousOfficialCycleDate",
+           previous.purchased_at AS "previousOfficialPurchasedAt",
+           previous.version > 1 AND previous.updated_at > previous.purchased_at AS "previousOfficialRevisedAfterPurchase",
+           previous.updated_at >= pp.created_at AS "previousOfficialBasisRecorded",
+           previous.updated_at >= pp.updated_at AS "previousOfficialConversionRecorded",
            review.id AS "reviewId", review.input_fingerprint AS "reviewFingerprint",
            review.official_cost_id AS "reviewOfficialCostId",
            review.official_cost_version AS "reviewOfficialCostVersion",
+           review.official_cost::text AS "reviewOfficialCost",
+           review.cost_is_unit AS "reviewCostIsUnit",
+           review.sale_unit AS "reviewSaleUnit",
+           review.conversion_quantity::text AS "reviewConversionQuantity",
+           review.beneficiation_loss_percent::text AS "reviewBeneficiationLossPercent",
+           review.operating_cost_percent::text AS "reviewOperatingCostPercent",
+           review.desired_margin_percent::text AS "reviewDesiredMarginPercent",
            review.reviewed_at AS "reviewedAt",
            pricing_reference.cycle_date::text AS "referenceCycleDate"
     FROM products p
@@ -115,6 +168,14 @@ export async function readPricingAnalysisSources(principal: Principal, operation
                c.updated_at DESC, c.id DESC
       LIMIT 1
     ) official ON true
+    LEFT JOIN LATERAL (
+      SELECT c.* FROM purchase_cycle_product_costs c
+      WHERE c.product_id = p.id AND c.purchased AND c.cost IS NOT NULL
+        AND c.purchase_cycle_date <= pricing_reference.cycle_date
+      ORDER BY c.purchase_cycle_date DESC, c.purchased_at DESC NULLS LAST,
+               c.updated_at DESC, c.id DESC
+      OFFSET 1 LIMIT 1
+    ) previous ON true
     LEFT JOIN LATERAL (
       SELECT r.* FROM pricing_reviews r
       WHERE r.product_id = p.id
@@ -199,6 +260,7 @@ export async function persistPricingReview(
         version: official.version,
         cycleDate: official.cycleDate,
         purchasedAt: new Date(official.purchasedAt).toISOString(),
+        revisedAfterPurchase: false,
       },
       saleUnit: parameters.saleUnit,
       conversionQuantity: parameters.conversionQuantity,
