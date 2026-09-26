@@ -72,4 +72,9 @@ describe("fronteiras dos módulos", () => {
     expect(detail).toContain("pricingStalePurchaseMessage(analysis)");
     expect(detail).not.toContain("dateLabel(analysis.officialCost.purchasedAt)");
   });
+
+  it("remonta o detalhe ao trocar o produto selecionado", async () => {
+    const workspace = await readFile("src/modules/pricing/analysis/pricing-workspace.tsx", "utf8");
+    expect(workspace).toContain("<PricingDetail key={selected.id} analysis={selected} />");
+  });
 });

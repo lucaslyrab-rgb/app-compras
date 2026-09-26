@@ -6,6 +6,7 @@ import { useMemo, useState, useTransition } from "react";
 import { simulateSellingPrice } from "../financial";
 import { formatPricingCurrency, formatPricingNumber, pricingStalePurchaseMessage, type PricingAnalysis } from "./domain";
 import { reviewPricingProductAction } from "./actions";
+import { initialAppliedPriceValue } from "./pricing-detail-state";
 
 export function pricingStatusLabel(analysis: PricingAnalysis) {
   if (analysis.status === "NO_COST") return "Sem custo";
@@ -29,7 +30,7 @@ function cycleDateLabel(value: string) {
 
 export function PricingDetail({ analysis, mobile = false }: { analysis: PricingAnalysis; mobile?: boolean }) {
   const router = useRouter();
-  const [appliedPrice, setAppliedPrice] = useState(analysis.calculation?.suggestedPrice.replace(".", ",") ?? "");
+  const [appliedPrice, setAppliedPrice] = useState(() => initialAppliedPriceValue(analysis));
   const [feedback, setFeedback] = useState("");
   const [pending, startTransition] = useTransition();
   const simulation = useMemo(() => {
