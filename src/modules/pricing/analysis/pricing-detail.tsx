@@ -6,7 +6,6 @@ import { useMemo, useState, useTransition } from "react";
 import { simulateSellingPrice } from "../financial";
 import { formatPricingCurrency, formatPricingNumber, pricingStalePurchaseMessage, type PricingAnalysis } from "./domain";
 import { reviewPricingProductAction } from "./actions";
-import { initialAppliedPriceValue } from "./pricing-detail-state";
 
 export function pricingStatusLabel(analysis: PricingAnalysis) {
   if (analysis.status === "NO_COST") return "Sem custo";
@@ -30,22 +29,28 @@ function cycleDateLabel(value: string) {
 
 export function PricingDetail({ analysis, mobile = false }: { analysis: PricingAnalysis; mobile?: boolean }) {
   const router = useRouter();
-  const [appliedPrice, setAppliedPrice] = useState(() => initialAppliedPriceValue(analysis));
+  const [decidedPrice, setDecidedPrice] = useState((analysis.latestReview?.decidedPrice ?? analysis.calculation?.suggestedPrice)?.replace(".", ",") ?? "");
   const [feedback, setFeedback] = useState("");
+  const [reviewId, setReviewId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const simulation = useMemo(() => {
-    if (!analysis.calculation || !appliedPrice.trim()) return null;
+    if (!analysis.calculation || !decidedPrice.trim()) return null;
     try {
-      return simulateSellingPrice({ effectiveUnitCost: analysis.calculation.effectiveUnitCost, operatingCostPercent: analysis.settings.operatingCostPercent, simulatedPrice: appliedPrice.replace(",", ".") });
+      return simulateSellingPrice({ effectiveUnitCost: analysis.calculation.effectiveUnitCost, operatingCostPercent: analysis.settings.operatingCostPercent, simulatedPrice: decidedPrice.replace(",", ".") });
     } catch { return null; }
-  }, [analysis.calculation, analysis.settings.operatingCostPercent, appliedPrice]);
+  }, [analysis.calculation, analysis.settings.operatingCostPercent, decidedPrice]);
 
   function review() {
     if (!analysis.fingerprint) return;
     startTransition(async () => {
-      const result = await reviewPricingProductAction({ productId: analysis.id, expectedFingerprint: analysis.fingerprint, appliedPrice });
-      if (result.status === "success") { setFeedback("Revisão registrada."); router.refresh(); }
-      else setFeedback(result.message);
+      const result = await reviewPricingProductAction({ productId: analysis.id, expectedFingerprint: analysis.fingerprint, decidedPrice: decidedPrice.replace(",", ".") });
+      if (result.status === "success") {
+        setFeedback(result.value.decisionOrigin === "MANUAL" ? "Decisão manual registrada." : "Preço sugerido aceito.");
+        setReviewId(result.value.id);
+        router.refresh();
+      } else {
+        setFeedback(result.message);
+      }
     });
   }
 
@@ -56,10 +61,9 @@ export function PricingDetail({ analysis, mobile = false }: { analysis: PricingA
       <div className="pricing-section"><strong>Último custo oficial</strong><dl className="pricing-data-grid pricing-data-grid--cost"><div><dt>Ciclo do custo utilizado</dt><dd>{cycleDateLabel(analysis.officialCost.cycleDate)}</dd></div><div><dt>Valor original</dt><dd>{formatPricingCurrency(analysis.officialCost.cost)} / {analysis.officialCost.costIsUnit ? analysis.saleUnit : analysis.purchaseFormat}</dd></div><div><dt>Custo informado é unitário</dt><dd>{analysis.officialCost.costIsUnit ? "Sim" : "Não"}</dd></div></dl>{pricingStalePurchaseMessage(analysis) ? <p className="pricing-stale-note">{pricingStalePurchaseMessage(analysis)}</p> : null}</div>
       {analysis.calculation ? <>
         <div className="pricing-gross"><span>Custo unitário bruto (por {analysis.saleUnit.toLocaleLowerCase("pt-BR")})</span><strong>{formatPricingCurrency(analysis.calculation.grossUnitCost)}</strong><small>{formatPricingCurrency(analysis.officialCost.cost)} {analysis.officialCost.costIsUnit ? "já unitário" : `÷ ${formatPricingNumber(analysis.conversionQuantity)}`}</small></div>
-        <div className="pricing-calculation"><strong>Cálculo da precificação</strong><dl><div><dt>Custo unitário bruto</dt><dd>{formatPricingCurrency(analysis.calculation.grossUnitCost)}</dd></div><div><dt>Perda média ({formatPricingNumber(analysis.beneficiationLossPercent)}%)</dt><dd>aplicada</dd></div><div><dt>Custo efetivo após perda</dt><dd>{formatPricingCurrency(analysis.calculation.effectiveUnitCost)}</dd></div><div><dt>Custo operacional</dt><dd>{formatPricingNumber(analysis.settings.operatingCostPercent)}%</dd></div><div><dt>Margem desejada</dt><dd>{formatPricingNumber(analysis.desiredMarginPercent)}%</dd></div><div><dt>Preço calculado</dt><dd>{formatPricingCurrency(analysis.calculation.calculatedPrice)}</dd></div></dl><div className="pricing-suggested"><span>Preço sugerido</span><strong>{formatPricingCurrency(analysis.calculation.suggestedPrice)}</strong></div></div>
-        {analysis.latestReview?.appliedPrice && analysis.status === "REVIEWED" ? <div className="pricing-suggested"><span>Preço aplicado nesta revisão</span><strong>{formatPricingCurrency(analysis.latestReview.appliedPrice)}</strong></div> : null}
-        <details className="pricing-simulation" open><summary>Definição do preço aplicado</summary><label><span>Preço aplicado pelo Gestor</span><span className="manager-input-group"><em>R$</em><input inputMode="decimal" aria-label="Preço aplicado pelo Gestor" value={appliedPrice} onChange={(event) => setAppliedPrice(event.target.value)} disabled={analysis.status === "REVIEWED"} /></span></label>{simulation ? <dl><div><dt>Margem líquida</dt><dd>{formatPricingNumber(simulation.resultingMarginPercent)}%</dd></div><div><dt>Markup sobre custo</dt><dd>{formatPricingNumber(simulation.markupPercent)}%</dd></div></dl> : <p className="manager-feedback manager-feedback--error">Informe um preço positivo válido.</p>}<small>O valor só é persistido como preço aplicado ao confirmar a revisão.</small></details>
-        <div className="pricing-review-actions">{feedback ? <p role="status">{feedback}</p> : null}<button type="button" className="manager-primary" onClick={review} disabled={pending || analysis.status === "REVIEWED" || !simulation}>{pending ? "Salvando…" : analysis.status === "REVIEWED" ? "Preço aplicado confirmado" : "Confirmar preço aplicado"}</button></div>
+        <div className="pricing-calculation"><strong>Cálculo da precificação</strong><dl><div><dt>Custo unitário bruto</dt><dd>{formatPricingCurrency(analysis.calculation.grossUnitCost)}</dd></div><div><dt>Perda média ({formatPricingNumber(analysis.beneficiationLossPercent)}%)</dt><dd>aplicada</dd></div><div><dt>Custo efetivo após perda</dt><dd>{formatPricingCurrency(analysis.calculation.effectiveUnitCost)}</dd></div><div><dt>Custo operacional</dt><dd>{formatPricingNumber(analysis.settings.operatingCostPercent)}%</dd></div><div><dt>Margem desejada</dt><dd>{formatPricingNumber(analysis.desiredMarginPercent)}%</dd></div><div><dt>Preço calculado</dt><dd>{formatPricingCurrency(analysis.calculation.calculatedPrice)}</dd></div></dl><div className="pricing-suggested"><span>Preço sugerido</span><strong>{formatPricingCurrency(analysis.calculation.suggestedPrice)}</strong></div>{analysis.latestReview ? <div className="pricing-last-decision"><span>Último preço decidido</span><strong>{formatPricingCurrency(analysis.latestReview.decidedPrice)}</strong><small>{analysis.latestReview.decisionOrigin === "MANUAL" ? "Decisão manual" : "Sugestão aceita"}</small></div> : null}</div>
+        <details className="pricing-simulation" open><summary>Decisão de preço</summary><label><span>Preço decidido</span><span className="manager-input-group"><em>R$</em><input inputMode="decimal" value={decidedPrice} onChange={(event) => { setDecidedPrice(event.target.value); setReviewId(null); }} /></span></label><button type="button" className="pricing-use-suggested" onClick={() => { setDecidedPrice(analysis.calculation!.suggestedPrice.replace(".", ",")); setReviewId(null); }}>Usar preço sugerido</button>{simulation ? <dl><div><dt>Margem líquida</dt><dd>{formatPricingNumber(simulation.resultingMarginPercent)}%</dd></div><div><dt>Markup sobre custo</dt><dd>{formatPricingNumber(simulation.markupPercent)}%</dd></div></dl> : <p className="manager-feedback manager-feedback--error">Informe um preço positivo válido.</p>}<small>Salvar registra uma decisão do Gestor sem alterar custo ou parâmetros.</small></details>
+        <div className="pricing-review-actions"><div>{feedback ? <p role="status">{feedback}</p> : null}{reviewId ? <Link href={`/gestor/precificacao/impressao?reviews=${reviewId}`} target="_blank">Imprimir esta decisão</Link> : null}</div><button type="button" className="manager-primary" onClick={review} disabled={pending || !simulation}>{pending ? "Salvando…" : "Registrar decisão"}</button></div>
       </> : <p className="manager-feedback manager-feedback--error">{analysis.calculationError}</p>}
     </>}
   </section>;

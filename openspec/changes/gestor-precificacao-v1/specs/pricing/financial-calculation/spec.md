@@ -98,3 +98,18 @@ O sistema SHALL permitir informar um preço simulado positivo e calcular margem 
 #### Scenario: Simulação inválida
 - **WHEN** o preço simulado for zero, negativo ou não numérico
 - **THEN** o sistema não calcula indicadores e informa o erro
+
+### Requirement: Decisão comercial de preço
+O sistema SHALL manter separados o preço calculado, o preço sugerido e o preço positivo decidido pelo Gestor, sem recalcular custo ou parâmetros a partir da decisão comercial.
+
+#### Scenario: Aceitar o preço sugerido
+- **WHEN** o Gestor registra como decidido o mesmo valor exato do preço sugerido
+- **THEN** a revisão persiste a origem `SUGGESTED`
+
+#### Scenario: Informar preço manual
+- **WHEN** o Gestor registra um valor positivo diferente do preço sugerido
+- **THEN** a revisão persiste o valor decidido e a origem `MANUAL` sem criar uma mudança de custo
+
+#### Scenario: Preço decidido inválido
+- **WHEN** o valor decidido é zero, negativo ou inválido
+- **THEN** a revisão é rejeitada sem alterar custo, parâmetros ou snapshots existentes

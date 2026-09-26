@@ -2,7 +2,7 @@
 
 ## Context
 
-Veja `proposal.md` para a motivação e os arquivos em `specs/` para o contrato observável. A aplicação é um monólito modular Next.js 16.3.5 com Server Components/Actions, PostgreSQL 18, Drizzle e valores `NUMERIC` lidos como strings. O módulo de custos já possui autosave por linha, custo oficial definido por `purchased=true`, correção na mesma linha e versão otimista; o runner de migrations reaplica uma lista explícita de SQLs idempotentes.
+Veja `proposal.md` para a motivação e os arquivos em `specs/` para o contrato observável. A aplicação é um monólito modular Next.js 16.3.5 com Server Components/Actions, PostgreSQL 18, Drizzle e valores `NUMERIC` lidos como strings. O módulo de custos já possui autosave por linha, custo oficial definido por `purchased=true`, correção na mesma linha e versão otimista; o runner de migrations reaplicava listas explícitas divergentes entre desenvolvimento e produção.
 
 Existem apenas as migrations `0001` a `0004`. As triggers de imutabilidade de pedidos e snapshots pertencem às migrations antigas e não serão tocadas. O catálogo atual possui formato de compra, mas não contém os parâmetros de venda necessários. Não há biblioteca decimal instalada. As referências `Gestor-Cadastro` e `Gestor-precificação` foram sincronizadas de `origin/main` e inspecionadas em resolução original antes da implementação.
 
@@ -31,7 +31,7 @@ A auditoria somente leitura de 25/09/2026 confirmou os dois últimos custos ofic
 
 ### 1. Migrations aditivas e carga idempotente
 
-Serão criadas duas migrations novas e acrescentadas, em ordem, à lista explícita de `scripts/migrate.ts`:
+Serão criadas duas migrations novas e executadas, em ordem, pelo runner compartilhado:
 
 1. `0005_pricing_parameters_and_cost_basis.sql`: adiciona `cost_is_unit boolean NOT NULL DEFAULT false`, cria parâmetros por produto e configuração global e faz a carga inicial com `INSERT ... ON CONFLICT DO NOTHING`.
 2. `0006_pricing_reviews.sql`: cria o histórico append-only de revisões e seus índices/guardas de imutabilidade.
@@ -55,6 +55,10 @@ O domínio derivará três flags independentes. `costChanged` indica a primeira 
 Custos com a mesma natureza serão comparados diretamente por aritmética racional exata. Quando a natureza unitária diferir, os valores serão normalizados somente se a metadata histórica permitir equivalência segura. Se valor e base mudarem juntos sem reconstrução segura, `parametersChanged` e `costChanged` serão preservados simultaneamente: a aplicação não afirma uma direção econômica normalizada, mas não remove o item do fluxo de revisão de custo. O primeiro custo oficial terá `costChanged=true`; um custo normalizado idêntico não abrirá nova revisão por mudança de id, versão ou ciclo.
 
 Abrir detalhe, simular ou imprimir não escreve revisão. A action de revisão valida o preço aplicado, relê todas as fontes dentro de transação, compara o fingerprint esperado e só então insere o snapshot. UPDATE/DELETE de revisão serão bloqueados por trigger própria; isso não reutiliza nem modifica as triggers dos pedidos.
+
+A pendência econômica atravessará ciclos sem coluna própria: a consulta carregará em lote o histórico oficial confiável e a última revisão funcionará como watermark. Sem revisão, todas as transições consecutivas disponíveis serão consideradas; com revisão, somente as posteriores ao custo oficial coberto. Uma transição diferente mantém `COST_CHANGED` mesmo se custos seguintes forem iguais ou retornarem ao valor inicial. Se uma transição relevante mudar de base sem metadata suficiente, o resultado será conservadoramente `PARAMETERS_CHANGED`. Correções intermediárias sobrescritas na mesma linha antes de qualquer snapshot continuam não reconstruíveis e não serão inventadas.
+
+A migration aditiva `0010_pricing_review_decisions.sql` acrescentará `decided_price NUMERIC(18,2) NULL` e `decision_origin TEXT NULL` com `CHECK` para `SUGGESTED` ou `MANUAL`, seguindo o padrão textual do schema. Nulos serão mantidos para snapshots históricos e lidos com fallback para `suggested_price`, sem backfill. Novas revisões exigirão preço positivo: igualdade exata com o sugerido grava `SUGGESTED`; valor diferente grava `MANUAL`. O fingerprint permanecerá técnico e não incluirá a decisão comercial como motivo de custo alterado.
 
 ### 3. Aritmética racional baseada em `bigint`
 
@@ -97,13 +101,19 @@ Produtos e Precificação usarão tabela a partir do breakpoint de desktop e car
 
 ### 8. Relatório de impressão HTML
 
-A impressão será uma rota autenticada renderizada no servidor, com CSS A4 e botão cliente que chama `window.print()`. A rota listará somente produtos com revisão atual e `applied_price` confirmado, usando os valores imutáveis do snapshot e excluindo pendências. Abrir ou imprimir não cria revisão nem altera estado; controle de “já impresso” permanece fora desta mudança. Gerar PDF no servidor foi rejeitado por adicionar dependência e não trazer benefício à V1.
+A impressão será uma rota autenticada renderizada no servidor, com CSS A4 e botão cliente que chama `window.print()`. Sem seleção explícita por query parameter (`reviews`), a rota listará revisões confirmadas e pendentes calculáveis conforme o modo. Após salvar ou selecionar explicitamente revisões recém-criadas via `reviews`, o relatório lerá os snapshots persistidos correspondentes, incluirá decisões comerciais e destacará o preço decidido como valor principal. A solução não cria fila, status de impressão ou lote durável. Gerar PDF no servidor foi rejeitado por adicionar dependência e não trazer benefício à V1.
 
 ### 9. Estratégia de teste
 
 O domínio puro terá testes de normalização para CX/SC/UND/PCT/BDJ, perda, denominador, todos os limites comerciais e simulação. Integração PostgreSQL cobrirá backfill, constraints, concorrência, `cost_is_unit`, seleção oficial/histórica, drafts ignorados, snapshot e RBAC.
 
 Playwright cobrirá os fluxos gerenciais e regressões de Custos, Consolidado e Loja. Os viewports mínimos serão 320, 375, 390, 412, 768 e 1280 px; serão verificados overflow, drawer, edição, detalhe, simulação e impressão. A suíte atual não será relaxada.
+
+### 10. Fonte única para execução de migrations
+
+`migrations/` será a única fonte de verdade. Um módulo ESM compartilhado descobrirá todos os arquivos `.sql`, exigirá prefixo numérico, rejeitará prefixos duplicados e os ordenará numericamente antes da execução sequencial. `scripts/migrate.ts` manterá a resolução de conexão usada em desenvolvimento/CI e `scripts/entrypoint.mjs` manterá `DATABASE_URL` e `DATABASE_URL_FILE`, mas ambos delegarão a execução ao mesmo módulo.
+
+A imagem copiará o diretório completo de migrations e o runner compartilhado, sem listas de nomes no Dockerfile ou nos entrypoints. O servidor somente será iniciado após a conclusão de todas as migrations; qualquer falha será propagada e encerrará o processo. A compatibilidade será validada tanto em banco vazio quanto em PostgreSQL descartável materializado até o estado legado anterior à migration mais nova, seguido da reaplicação integral pelo novo runner.
 
 ## Risks / Trade-offs
 

@@ -33,7 +33,7 @@ O sistema SHALL apresentar em conjunto os dados de origem e cada etapa do cálcu
 - **THEN** a análise usa tela dedicada e a simulação pode ser expandida sem comprimir uma tabela desktop
 
 ### Requirement: Estado de revisão derivado das entradas
-O sistema SHALL preservar um fingerprint técnico das entradas para auditoria e concorrência e SHALL derivar separadamente `costChanged`, `parametersChanged` e `reviewPending`. Em bases equivalentes, mudança de custo SHALL depender de comparação econômica exata; mudança de id, versão ou ciclo MUST NOT ser usada como evidência semântica de alteração.
+O sistema SHALL preservar um fingerprint técnico das entradas para auditoria e concorrência e SHALL derivar separadamente `costChanged`, `parametersChanged` e `reviewPending`. Em bases equivalentes, mudança de custo SHALL depender de comparação econômica exata posterior ao watermark da última revisão; mudança de id, versão, ciclo ou fingerprint MUST NOT ser usada como evidência semântica de alteração.
 
 #### Scenario: Primeiro custo oficial
 - **WHEN** existe o primeiro custo oficial calculável de um produto, sem custo anterior e sem revisão explícita
@@ -50,6 +50,26 @@ O sistema SHALL preservar um fingerprint técnico das entradas para auditoria e 
 #### Scenario: Nova mudança após revisão
 - **WHEN** um custo oficial economicamente diferente sucede o custo confirmado na última revisão
 - **THEN** `costChanged` e `reviewPending` voltam a ser verdadeiros e uma nova revisão é exigida
+
+#### Scenario: Pendência atravessa ciclos iguais
+- **WHEN** ocorreu uma mudança econômica ainda não revisada e um ou mais custos oficiais posteriores permanecem economicamente iguais
+- **THEN** o produto continua em Custo alterado até uma revisão cobrir o estado oficial atual
+
+#### Scenario: Múltiplas mudanças antes da revisão
+- **WHEN** várias transições econômicas, inclusive retorno a um valor anterior, ocorrem depois do watermark e o histórico confiável as preserva
+- **THEN** o produto mantém uma única pendência de Custo alterado
+
+#### Scenario: Revisão como watermark
+- **WHEN** o Gestor revisa o estado oficial atual
+- **THEN** as mudanças econômicas até esse custo ficam cobertas e somente transições posteriores podem gerar nova pendência
+
+#### Scenario: Base histórica não reconstruível
+- **WHEN** uma transição posterior ao watermark possui bases incompatíveis ou metadata insuficiente para demonstrar equivalência
+- **THEN** o produto é tratado conservadoramente como Parâmetros alterados sem inventar mudança econômica
+
+#### Scenario: Ausência de custo oficial anterior
+- **WHEN** existe custo oficial atual, mas nenhum custo oficial anterior reconstruível
+- **THEN** o produto é identificado como Não revisado e não como Custo alterado
 
 #### Scenario: Outro parâmetro relevante mudou
 - **WHEN** natureza unitária do custo, unidade de venda, conversão, perda, margem específica, custo operacional ou margem global aplicável muda após a revisão
@@ -68,7 +88,7 @@ O sistema SHALL preservar um fingerprint técnico das entradas para auditoria e 
 - **THEN** o estado da revisão e o preço oficial não mudam
 
 ### Requirement: Revisão explícita e auditável
-O sistema SHALL criar uma revisão somente por ação explícita do Gestor e SHALL registrar usuário, data, custo oficial analisado, natureza do custo, conversão, perda, percentuais, custos derivados, preço matemático, preço sugerido e preço aplicado confirmado.
+O sistema SHALL criar uma revisão somente por ação explícita do Gestor e SHALL registrar usuário, data, custo oficial analisado, natureza do custo, conversão, perda, percentuais, custos derivados, preço matemático, preço sugerido, preço aplicado, preço decidido e origem da decisão.
 
 #### Scenario: Confirmar revisão
 - **WHEN** o Gestor confirma a revisão de um produto calculável usando a versão atual e aceita o sugerido ou informa outro preço de venda positivo com até duas casas
@@ -77,6 +97,14 @@ O sistema SHALL criar uma revisão somente por ação explícita do Gestor e SHA
 #### Scenario: Preço aplicado manual
 - **WHEN** o preço sugerido é R$ 6,99 e o Gestor confirma R$ 6,49
 - **THEN** a revisão preserva R$ 6,99 como sugerido e R$ 6,49 como aplicado, sem substituir o preço calculado
+
+#### Scenario: Decisão sem pendência
+- **WHEN** o Gestor altera ou aceita o preço de um produto sem Custo alterado ou Parâmetros alterados, inclusive já Revisado
+- **THEN** o sistema permite a ação, registra uma nova revisão e não cria artificialmente Custo alterado
+
+#### Scenario: Compatibilidade de revisão histórica
+- **WHEN** uma revisão anterior não possui preço decidido nem origem
+- **THEN** o sistema mantém o snapshot válido e interpreta o preço sugerido existente como decisão sugerida quando necessário
 
 #### Scenario: Entradas mudaram antes da confirmação
 - **WHEN** custo ou parâmetros mudam entre a abertura e a ação de revisar
@@ -87,7 +115,7 @@ O sistema SHALL criar uma revisão somente por ação explícita do Gestor e SHA
 - **THEN** nenhuma revisão é criada
 
 ### Requirement: Impressão de alterações
-O sistema SHALL oferecer relatório autenticado em nova aba somente com produtos cuja revisão atual foi confirmada, contendo ERP, produto, unidade, custo efetivo, preço calculado, preço sugerido e preço aplicado da revisão. Produtos pendentes MUST NOT ser impressos.
+O sistema SHALL oferecer relatório autenticado em nova aba para produtos com revisões confirmadas e seleções explícitas de revisões recém-criadas, contendo ERP, produto, unidade, custo efetivo, preço calculado, preço sugerido, preço decidido e espaço para anotação.
 
 #### Scenario: Abrir relatório
 - **WHEN** o Gestor aciona “Imprimir alterações”
@@ -96,6 +124,10 @@ O sistema SHALL oferecer relatório autenticado em nova aba somente com produtos
 #### Scenario: Imprimir relatório
 - **WHEN** o Gestor usa o botão Imprimir
 - **THEN** a caixa de impressão é aberta sem marcar os produtos como revisados
+
+#### Scenario: Imprimir decisão recém-criada
+- **WHEN** o Gestor abre o relatório pelos IDs das revisões recém-criadas
+- **THEN** o relatório inclui decisões manuais sem Custo alterado e usa o preço decidido como valor principal a aplicar
 
 ### Requirement: Identidade visual responsiva
 O sistema SHALL seguir a hierarquia visual das referências aprovadas, com área clara, cards compactos, tabela gerencial e painel no desktop, cores semânticas discretas e experiências próprias em cards/telas no mobile.

@@ -12,7 +12,7 @@ import { reviewPricingProduct } from "./service";
 const reviewSchema = z.object({
   productId: z.uuid(),
   expectedFingerprint: z.string().min(1).max(512),
-  appliedPrice: z.string().trim().min(1).max(32),
+  decidedPrice: z.string().trim().min(1).max(32),
 });
 
 export async function reviewPricingProductAction(raw: unknown) {
@@ -26,7 +26,11 @@ export async function reviewPricingProductAction(raw: unknown) {
       action: "PRICING_REVIEW_CREATED",
       entityType: "pricing_review",
       entityId: value.id,
-      metadata: { productId: parsed.data.productId, appliedPrice: value.appliedPrice },
+      metadata: {
+        productId: parsed.data.productId,
+        decidedPrice: value.decidedPrice,
+        decisionOrigin: value.decisionOrigin,
+      },
     });
     revalidatePath("/gestor/precificacao");
     revalidatePath(`/gestor/precificacao/${parsed.data.productId}`);

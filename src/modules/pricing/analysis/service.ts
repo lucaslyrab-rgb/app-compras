@@ -3,7 +3,7 @@ import { operationalLocalDate } from "@/modules/ordering/calendar/domain";
 import { readOperationalPurchaseCalendar } from "@/modules/ordering/calendar/service";
 import { appliedSellingPrice } from "../financial";
 import { buildPricingAnalysis } from "./domain";
-import { persistPricingReview, readPricingAnalysisSources } from "./repository";
+import { persistPricingReview, readPricingAnalysisSources, readPricingReviewDecisions } from "./repository";
 
 async function pricingOperationalDate(now: Date) {
   const calendar = await readOperationalPurchaseCalendar();
@@ -21,12 +21,16 @@ export async function loadPricingAnalysis(principal: Principal, productId: strin
 
 export async function reviewPricingProduct(
   principal: Principal,
-  input: { productId: string; expectedFingerprint: string; appliedPrice: string },
+  input: { productId: string; expectedFingerprint: string; decidedPrice: string },
   now = new Date(),
 ) {
   return persistPricingReview(principal, {
     ...input,
-    appliedPrice: appliedSellingPrice(input.appliedPrice),
+    decidedPrice: appliedSellingPrice(input.decidedPrice),
     operationalDate: await pricingOperationalDate(now),
   });
+}
+
+export async function loadPricingReviewDecisions(principal: Principal, ids: string[]) {
+  return readPricingReviewDecisions(principal, ids);
 }

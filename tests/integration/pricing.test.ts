@@ -3,7 +3,7 @@ import { database } from "@/db/client";
 import type { Principal } from "@/modules/identity";
 import { currentPurchaseCycle } from "@/modules/ordering/calendar/service";
 import { persistPurchaseCost, readPurchaseCostStates } from "@/modules/purchasing/costs/repository";
-import { loadPricingAnalyses, loadPricingAnalysis, reviewPricingProduct } from "@/modules/pricing/analysis/service";
+import { loadPricingAnalyses, loadPricingAnalysis, loadPricingReviewDecisions, reviewPricingProduct } from "@/modules/pricing/analysis/service";
 import { listPricingProducts, readPricingSettings, savePricingSettings, saveProductPricing } from "@/modules/pricing/parameters/service";
 import { persistProducts } from "../../scripts/import-products";
 
@@ -16,6 +16,7 @@ integration("precificação no PostgreSQL", () => {
   let productId = "";
   let secondProductId = "";
   let noCostProductId = "";
+  let manualProductId = "";
   const stamp = Date.now();
 
   beforeAll(async () => {
@@ -45,11 +46,23 @@ integration("precificação no PostgreSQL", () => {
       RETURNING id
     `;
     noCostProductId = noCostProduct.id;
+    const [manualProduct] = await database().sql<{ id: string }[]>`
+      INSERT INTO products(erp_code, name, unit, purchase_format, markup, active)
+      VALUES (${960000 + (stamp % 10000)}, 'BATATA DECISÃO COMERCIAL', 'KG', 'CX', 0, true)
+      RETURNING id
+    `;
+    manualProductId = manualProduct.id;
     await database().sql`
       INSERT INTO product_pricing_parameters(product_id, sale_unit, conversion_quantity, conversion_origin, beneficiation_loss_percent)
       VALUES (${productId}, 'KG', 20, 'PROVISIONAL', 40),
              (${secondProductId}, 'UND', 1, 'UNIT', 0),
-             (${noCostProductId}, 'KG', 20, 'PROVISIONAL', 0)
+             (${noCostProductId}, 'KG', 20, 'PROVISIONAL', 0),
+             (${manualProductId}, 'KG', 20, 'MANUAL', 0)
+    `;
+    await database().sql`
+      UPDATE pricing_settings
+      SET operating_cost_percent = '23.00', default_margin_percent = '20.00', version = 1
+      WHERE id = 'FLV'
     `;
   });
 
@@ -118,15 +131,17 @@ integration("precificação no PostgreSQL", () => {
       officialCost: { cost: "40.00", costIsUnit: false, cycleDate: "2026-09-25" },
     });
     expect(analysis?.calculation).toBeTruthy();
-    const review = await reviewPricingProduct(manager, { productId, expectedFingerprint: analysis!.fingerprint!, appliedPrice: "6.49" }, friday);
+    const review = await reviewPricingProduct(manager, { productId, expectedFingerprint: analysis!.fingerprint!, decidedPrice: "6.49" }, friday);
     expect(review.id).toBeTruthy();
     expect(review.appliedPrice).toBe("6.49");
+    expect(review.decidedPrice).toBe("6.49");
     expect((await loadPricingAnalysis(manager, productId, friday))?.status).toBe("REVIEWED");
-    const [storedReview] = await database().sql<{ suggestedPrice: string; appliedPrice: string }[]>`
-      SELECT suggested_price::text AS "suggestedPrice", applied_price::text AS "appliedPrice"
+    const [storedReview] = await database().sql<{ suggestedPrice: string; appliedPrice: string; decidedPrice: string; decisionOrigin: string }[]>`
+      SELECT suggested_price::text AS "suggestedPrice", applied_price::text AS "appliedPrice",
+             decided_price::text AS "decidedPrice", decision_origin AS "decisionOrigin"
       FROM pricing_reviews WHERE id = ${review.id}
     `;
-    expect(storedReview).toMatchObject({ appliedPrice: "6.49" });
+    expect(storedReview).toMatchObject({ appliedPrice: "6.49", decidedPrice: "6.49", decisionOrigin: "MANUAL" });
     expect(storedReview.suggestedPrice).not.toBe(storedReview.appliedPrice);
     await expect(database().sql`UPDATE pricing_reviews SET suggested_price = 99.99 WHERE id = ${review.id}`).rejects.toThrow(/imutáveis/);
     await expect(database().sql`DELETE FROM pricing_reviews WHERE id = ${review.id}`).rejects.toThrow(/imutáveis/);
@@ -183,6 +198,90 @@ integration("precificação no PostgreSQL", () => {
       referenceCycleDate: "2026-09-28",
       stalePurchase: true,
       officialCost: { cost: "3.00", costIsUnit: true, cycleDate: "2026-09-24" },
+    });
+  });
+
+  it("persiste decisão manual sem mudança de custo e imprime o preço decidido", async () => {
+    const friday = new Date("2026-09-25T10:00:00-03:00");
+    await database().sql`
+      INSERT INTO purchase_cycle_product_costs(product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by)
+      VALUES (${manualProductId}, '2026-09-25', 100, false, true, now() - interval '2 days', ${manager.userId})
+    `;
+    const before = await loadPricingAnalysis(manager, manualProductId, friday);
+    expect(before).toMatchObject({ status: "COST_CHANGED", officialCost: { cost: "100.00" } });
+    await expect(reviewPricingProduct(manager, {
+      productId: manualProductId,
+      expectedFingerprint: `${before!.fingerprint!}-stale`,
+      decidedPrice: "7.99",
+    }, friday)).rejects.toThrow(/mudaram/i);
+
+    const manual = await reviewPricingProduct(manager, {
+      productId: manualProductId,
+      expectedFingerprint: before!.fingerprint!,
+      decidedPrice: "7.99",
+    }, friday);
+    expect(manual).toMatchObject({ decidedPrice: "7.99", decisionOrigin: "MANUAL" });
+    const after = await loadPricingAnalysis(manager, manualProductId, friday);
+    expect(after).toMatchObject({
+      status: "REVIEWED",
+      latestReview: { id: manual.id, decidedPrice: "7.99", decisionOrigin: "MANUAL" },
+    });
+    const [printDecision] = await loadPricingReviewDecisions(manager, [manual.id]);
+    expect(printDecision).toMatchObject({
+      id: manual.id,
+      productId: manualProductId,
+      decidedPrice: "7.99",
+      decisionOrigin: "MANUAL",
+    });
+    expect(printDecision.decidedPrice).not.toBe(printDecision.suggestedPrice);
+
+    const accepted = await reviewPricingProduct(manager, {
+      productId: manualProductId,
+      expectedFingerprint: after!.fingerprint!,
+      decidedPrice: after!.calculation!.suggestedPrice,
+    }, friday);
+    expect(accepted).toMatchObject({
+      decidedPrice: after!.calculation!.suggestedPrice,
+      decisionOrigin: "SUGGESTED",
+    });
+  });
+
+  it("mantém compatibilidade com revisões históricas sem decisão explícita", async () => {
+    const friday = new Date("2026-09-25T10:00:00-03:00");
+    const current = await loadPricingAnalysis(manager, manualProductId, friday);
+    const [legacy] = await database().sql<{ id: string }[]>`
+      INSERT INTO pricing_reviews (
+        product_id, official_cost_id, official_cost_version,
+        official_purchase_cycle_date, official_cost, cost_is_unit,
+        sale_unit, conversion_quantity, conversion_origin,
+        beneficiation_loss_percent, parameter_version,
+        operating_cost_percent, desired_margin_percent, margin_origin,
+        settings_version, gross_unit_cost, effective_unit_cost,
+        calculated_price, suggested_price, input_fingerprint,
+        reviewed_by, reviewed_at
+      )
+      SELECT product_id, official_cost_id, official_cost_version,
+             official_purchase_cycle_date, official_cost, cost_is_unit,
+             sale_unit, conversion_quantity, conversion_origin,
+             beneficiation_loss_percent, parameter_version,
+             operating_cost_percent, desired_margin_percent, margin_origin,
+             settings_version, gross_unit_cost, effective_unit_cost,
+             calculated_price, suggested_price, input_fingerprint,
+             reviewed_by, now() + interval '1 second'
+      FROM pricing_reviews
+      WHERE id = ${current!.latestReview!.id}
+      RETURNING id
+    `;
+    const reloaded = await loadPricingAnalysis(manager, manualProductId, friday);
+    expect(reloaded?.latestReview).toMatchObject({
+      id: legacy.id,
+      decidedPrice: reloaded!.calculation!.suggestedPrice,
+      decisionOrigin: "SUGGESTED",
+    });
+    const [printDecision] = await loadPricingReviewDecisions(manager, [legacy.id]);
+    expect(printDecision).toMatchObject({
+      decidedPrice: printDecision.suggestedPrice,
+      decisionOrigin: "SUGGESTED",
     });
   });
 });

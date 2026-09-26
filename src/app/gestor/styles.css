@@ -118,17 +118,22 @@
 .pricing-calculation dd { font-weight: 800; }
 .pricing-suggested { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; padding: 10px; border-radius: 7px; background: #d9f6e3; color: #005c3e; font-size: .9rem; font-weight: 800; }
 .pricing-suggested strong { font-size: 1.35rem; }
+.pricing-last-decision { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; margin-top: 8px; padding: 9px 11px; border: 1px solid #b9d7c8; border-radius: 7px; background: #f4fbf7; }
+.pricing-last-decision strong { color: #075e3e; font-size: 1.1rem; }
+.pricing-last-decision small { grid-column: 1 / -1; color: var(--ink-600); }
 .pricing-simulation { margin-top: 9px; padding: 10px; border: 1px solid #cfe0eb; border-radius: 8px; background: #f5faff; }
 .pricing-simulation summary { cursor: pointer; font-weight: 800; }
 .pricing-simulation > label { display: grid; gap: 5px; max-width: 250px; margin-top: 10px; }
 .pricing-simulation .manager-input-group em { border-left: 1px solid #b7c3cc; border-right: 0; border-radius: 7px 0 0 7px; }
 .pricing-simulation .manager-input-group input { min-height: 44px; width: 100%; min-width: 0; border: 1px solid #b7c3cc; border-radius: 0 7px 7px 0; padding: 8px; font-size: 16px; }
+.pricing-use-suggested { min-height: 36px; margin-top: 7px; border: 0; background: transparent; color: var(--brand-700); font-weight: 800; cursor: pointer; }
 .pricing-simulation dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; padding: 9px; border-radius: 7px; background: #eaf0f5; }
 .pricing-simulation dt { font-size: .66rem; }
 .pricing-simulation dd { margin: 3px 0 0; color: #083a7b; font-size: .9rem; font-weight: 800; }
 .pricing-simulation > small { color: var(--ink-600); }
 .pricing-review-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 10px; }
 .pricing-review-actions p { margin: 0; color: var(--brand-700); }
+.pricing-review-actions a { display: inline-block; margin-top: 4px; color: var(--brand-700); font-weight: 700; }
 .pricing-card-suggested { grid-column: 1 / -1; padding: 8px; border-radius: 6px; background: #e0f7e9; }
 .pricing-card-suggested dd { color: #006443; font-size: 1rem !important; }
 .pricing-print-report { width: min(1100px, 100%); margin: auto; padding: 24px; background: white; color: #111; }

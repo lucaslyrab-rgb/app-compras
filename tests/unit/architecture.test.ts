@@ -1,15 +1,16 @@
-import { describe, expect, it } from "vitest";
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { discoverMigrations } from "../../scripts/migration-runner.mjs";
 
-async function files(dir: string): Promise<string[]> {
-  const entries = await readdir(dir, { withFileTypes: true });
-  return (await Promise.all(entries.map((entry) => entry.isDirectory() ? files(path.join(dir, entry.name)) : [path.join(dir, entry.name)]))).flat();
-}
+describe("arquitetura e isolamento de módulos", () => {
+  it("impede vazamento de banco nos módulos de regras", async () => {
+    const modulesDir = path.resolve("src", "modules");
+    const moduleFiles = (await readdir(modulesDir, { recursive: true, withFileTypes: true }))
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".ts"))
+      .map((entry) => path.join(entry.parentPath, entry.name));
 
-describe("fronteiras dos módulos", () => {
-  it("não permite importação entre repositórios de domínio", async () => {
-    const moduleFiles = (await files("src/modules")).filter((file) => file.endsWith(".ts") || file.endsWith(".tsx"));
     for (const file of moduleFiles) {
       const source = await readFile(file, "utf8");
       const moduleName = file.split(path.sep)[2];
@@ -18,30 +19,53 @@ describe("fronteiras dos módulos", () => {
     }
   });
 
-  it("mantém a ordem sequencial das migrations no runner", async () => {
-    const source = await readFile("scripts/migrate.ts", "utf8");
-    const migrations = [...source.matchAll(/"(\d{4}_[^"]+\.sql)"/g)].map((match) => match[1]);
-    expect(migrations).toEqual([
-      "0001_foundation.sql",
-      "0002_store_order_snapshots_cancel.sql",
-      "0003_purchase_cycles.sql",
-      "0004_purchase_cycle_product_costs.sql",
-      "0005_pricing_parameters_and_cost_basis.sql",
-      "0006_pricing_reviews.sql",
-      "0007_pricing_object_ownership.sql",
-      "0008_purchase_calendar_settings.sql",
-      "0009_pricing_review_applied_price.sql",
-    ]);
-    const migrationFiles = (await readdir("migrations"))
-      .filter((file) => /^\d{4}_.+\.sql$/.test(file))
-      .sort();
-    expect(migrations).toEqual(migrationFiles);
+  it("descobre e ordena automaticamente as migrations 0001–0010", async () => {
+    const migrations = await discoverMigrations(path.resolve("migrations"));
+    expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
+      Array.from({ length: 10 }, (_, index) => String(index + 1).padStart(4, "0")),
+    );
+  });
+
+  it("rejeita prefixos numéricos duplicados", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "migration-prefixes-"));
+    try {
+      await writeFile(path.join(directory, "0009_one.sql"), "SELECT 1;");
+      await writeFile(path.join(directory, "9_two.sql"), "SELECT 2;");
+      await expect(discoverMigrations(directory)).rejects.toThrow(/prefixo numérico duplicado/i);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it("empacota todas as migrations versionadas na imagem runtime", async () => {
     const dockerfile = await readFile("Dockerfile", "utf8");
     expect(dockerfile).toContain("/app/migrations ./migrations");
     expect(dockerfile).not.toMatch(/\/app\/migrations\/\d{4}_.+\.sql/);
+  });
+
+  it("usa um único runner em desenvolvimento e produção sem listas hardcoded", async () => {
+    const [development, production, dockerfile] = await Promise.all([
+      readFile("scripts/migrate.ts", "utf8"),
+      readFile("scripts/entrypoint.mjs", "utf8"),
+      readFile("Dockerfile", "utf8"),
+    ]);
+
+    expect(development).toContain('from "./migration-runner.mjs"');
+    expect(production).toContain('from "./migration-runner.mjs"');
+    expect(`${development}\n${production}`).not.toMatch(/\d+_[^"']+\.sql/);
+    expect(production).toContain("process.env.DATABASE_URL_FILE");
+    expect(production.indexOf("await runMigrations")).toBeLessThan(production.indexOf("spawn("));
+    expect(dockerfile).toContain("/app/migrations ./migrations");
+    expect(dockerfile).toContain("/app/scripts/migration-runner.mjs ./migration-runner.mjs");
+    expect(dockerfile).not.toMatch(/migrations\/\d+_[^\s]+\.sql/);
+  });
+
+  it("mantém a 0010 aditiva e compatível com revisões históricas", async () => {
+    const migration = await readFile("migrations/0010_pricing_review_decisions.sql", "utf8");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS decided_price numeric(18,2)");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS decision_origin text");
+    expect(migration).toContain("decided_price IS NULL AND decision_origin IS NULL");
+    expect(migration).not.toMatch(/UPDATE\s+pricing_reviews\b/i);
   });
 
   it("mantém a 0008 aditiva, sem recalcular histórico e com ownership explícito", async () => {

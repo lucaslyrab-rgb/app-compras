@@ -12,6 +12,7 @@
 - [x] 2.2 Criar `0006_pricing_reviews.sql` com snapshots imutáveis, FKs, precisões e índices; verificar que INSERT funciona e UPDATE/DELETE são rejeitados em integração.
 - [x] 2.3 Atualizar `src/db/schema.ts` e `scripts/migrate.ts` sem alterar migrations antigas; verificar typecheck e teste arquitetural de ordem das migrations.
 - [x] 2.4 Atualizar o importador para inicializar somente parâmetros ausentes na mesma transação e rejeitar formato desconhecido; verificar importação repetida preservando configuração MANUAL.
+- [x] 2.5 Unificar a execução em `scripts/migration-runner.mjs`, descobrindo e ordenando `migrations/*.sql`, rejeitando prefixos duplicados e fazendo desenvolvimento/CI e entrypoint de produção consumirem a mesma fonte sem listas hardcoded.
 
 ## 3. Domínio financeiro
 
@@ -48,6 +49,9 @@
 - [x] 6.6 Implementar `/gestor/precificacao/[id]` com painel desktop/tela mobile, cálculo explicável, preço sugerido destacado e simulação local; verificar que nenhum valor é rotulado como preço atual do ERP.
 - [x] 6.7 Separar o fingerprint técnico da comparação semântica de custo, usando aritmética racional exata e o custo oficial imediatamente anterior; verificar igualdade normalizada, aumento/redução, ausência de anterior, parâmetros alterados e base historicamente não reconstruível.
 - [x] 6.8 Validar a auditoria somente leitura de 25/09 sem corrigir dados: Batata Inglesa 100→100 fora de Custo alterado; Abacate, Aipim, Banana Nanica e Cebola Roxa como mudanças econômicas seguras; Banana Prata, Berinjela e Chuchu explicados individualmente conforme compatibilidade histórica da base.
+- [x] 6.9 Derivar a pendência de custo do histórico oficial após o watermark da última revisão, preservando-a através de custos iguais, novas mudanças e retorno ao valor inicial; verificar N+1, N+2, encerramento pela revisão e tratamento conservador de bases incompatíveis.
+- [x] 6.10 Criar migration aditiva para preço decidido/origem, persistir decisões sugeridas ou manuais e manter fallback de snapshots históricos nulos; verificar concorrência por fingerprint e ausência de mutação de custo/parâmetros.
+- [x] 6.11 Manter todos os produtos calculáveis editáveis e separar visualmente pendência, sugerido, último preço decidido e nova decisão; verificar reload e ausência de badge Custo alterado em decisão puramente comercial.
 
 ## 7. Navegação e RBAC
 
@@ -60,7 +64,7 @@
 
 - [x] 8.1 Implementar `/gestor/precificacao/impressao` autenticada e, após homologação, restringi-la a revisões atuais com preço aplicado confirmado; verificar conteúdo, ausência de pendentes e RBAC.
 - [x] 8.2 Adicionar botão Imprimir com CSS A4 e abertura manual da caixa do navegador; verificar nova aba, ausência de impressão automática e ausência de revisão colateral.
-- [x] 8.3 Persistir preço aplicado em migration aditiva, separar flags de custo/parâmetros/pendência e imprimir somente revisões confirmadas; verificar primeiro custo, igualdade econômica, reabertura, CHUCHU com flags simultâneas, preço manual e ausência de backfill histórico.
+- [x] 8.3 Persistir preço aplicado e preço decidido com origem durável em migrations aditivas 0009 e 0010, separar flags de custo/parâmetros/pendência, permitir relatório por IDs de revisões recém-criadas ou revisões confirmadas; verificar primeiro custo, igualdade econômica, reabertura, CHUCHU com flags simultâneas, decisão manual e ausência de backfill histórico.
 
 ## 9. Qualidade, responsividade e regressão
 
@@ -69,6 +73,8 @@
 - [x] 9.3 Executar regressões completas de LOJA, Consolidado e Lançamento de Custos; verificar que latest valid revision, cutoff/ciclo, cancelamento, snapshots e triggers continuam iguais.
 - [x] 9.4 Executar `npm run lint`, `npm run typecheck`, `npm run test:unit`, `npm run test:integration`, E2E relevante, `git diff --check` e `npm run build`; registrar resultado individual e não alterar regra para contornar falha.
 - [x] 9.5 Revisar o diff para confirmar ausência de migration antiga alterada, migration destrutiva, integração ERP, upload de fotos ou funcionalidade fora do escopo; verificar `git diff --stat` e inspeção arquivo a arquivo.
+- [x] 9.6 Executar lint, typecheck, unitários, integração em PostgreSQL descartável, build, validação OpenSpec e `git diff --check` para a pendência durável e decisões comerciais; registrar cada resultado sem commit, push ou deploy.
+- [x] 9.7 Validar descoberta automática de 0001–0009, reaplicação em banco vazio e em estado legado equivalente à produção, rejeição de prefixo duplicado e conteúdo do artefato de produção; executar lint, typecheck, unitários, integração, build e `git diff --check`.
 
 ## 10. Entrega controlada
 

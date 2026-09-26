@@ -15,6 +15,14 @@ integration(
     let originalId = "";
     beforeAll(async () => {
       const sql = database().sql;
+      await sql.unsafe(`
+        SET session_replication_role = 'replica';
+        DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE purchase_cycle_date = '2098-05-20');
+        DELETE FROM orders WHERE purchase_cycle_date = '2098-05-20';
+        DELETE FROM product_pricing_parameters WHERE product_id IN (SELECT id FROM products WHERE erp_code >= 810000 AND erp_code < 810010);
+        DELETE FROM products WHERE erp_code >= 810000 AND erp_code < 810010;
+        SET session_replication_role = 'origin';
+      `);
       for (let i = 0; i < 3; i++) {
         const [store] = await sql<
           { id: string }[]
