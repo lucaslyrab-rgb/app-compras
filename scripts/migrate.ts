@@ -16,6 +16,7 @@ try {
     "0006_pricing_reviews.sql",
     "0007_pricing_object_ownership.sql",
     "0008_purchase_calendar_settings.sql",
+    "0009_pricing_review_applied_price.sql",
   ]) {
     const migration = await readFile(path.resolve("migrations", file), "utf8");
     await sql.unsafe(migration);

@@ -190,6 +190,7 @@ export const pricingReviews = pgTable("pricing_reviews", {
   effectiveUnitCost: numeric("effective_unit_cost", { precision: 18, scale: 6 }).notNull(),
   calculatedPrice: numeric("calculated_price", { precision: 18, scale: 6 }).notNull(),
   suggestedPrice: numeric("suggested_price", { precision: 18, scale: 2 }).notNull(),
+  appliedPrice: numeric("applied_price", { precision: 18, scale: 2 }),
   inputFingerprint: text("input_fingerprint").notNull(),
   reviewedBy: uuid("reviewed_by").notNull().references(() => users.id, { onDelete: "restrict" }),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow()
@@ -203,7 +204,8 @@ export const pricingReviews = pgTable("pricing_reviews", {
   check("pricing_reviews_margin_origin_check", sql`${table.marginOrigin} IN ('DEFAULT', 'SPECIFIC')`),
   check("pricing_reviews_percentages_check", sql`${table.operatingCostPercent} >= 0 AND ${table.desiredMarginPercent} >= 0 AND ${table.operatingCostPercent} + ${table.desiredMarginPercent} < 100`),
   check("pricing_reviews_versions_check", sql`${table.officialCostVersion} > 0 AND ${table.parameterVersion} > 0 AND ${table.settingsVersion} > 0`),
-  check("pricing_reviews_derived_values_check", sql`${table.grossUnitCost} > 0 AND ${table.effectiveUnitCost} > 0 AND ${table.calculatedPrice} > 0 AND ${table.suggestedPrice} > 0`)
+  check("pricing_reviews_derived_values_check", sql`${table.grossUnitCost} > 0 AND ${table.effectiveUnitCost} > 0 AND ${table.calculatedPrice} > 0 AND ${table.suggestedPrice} > 0`),
+  check("pricing_reviews_applied_price_check", sql`${table.appliedPrice} IS NULL OR ${table.appliedPrice} > 0`)
 ]);
 
 export const auditEvents = pgTable("audit_events", {

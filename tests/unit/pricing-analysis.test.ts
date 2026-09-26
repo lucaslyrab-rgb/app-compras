@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPricingAnalysis, filterPricingAnalyses, pricingMetrics, pricingStalePurchaseMessage, type PricingAnalysis, type PricingAnalysisSource } from "@/modules/pricing/analysis/domain";
+import { buildPricingAnalysis, filterPricingAnalyses, printablePricingAnalyses, pricingMetrics, pricingStalePurchaseMessage, type PricingAnalysis, type PricingAnalysisSource } from "@/modules/pricing/analysis/domain";
 
 function source(overrides: Partial<PricingAnalysisSource> = {}): PricingAnalysisSource {
   return {
@@ -36,6 +36,10 @@ function reviewOf(analysis: PricingAnalysis) {
     beneficiationLossPercent: analysis.beneficiationLossPercent,
     operatingCostPercent: analysis.settings.operatingCostPercent,
     desiredMarginPercent: analysis.desiredMarginPercent,
+    effectiveUnitCost: analysis.calculation!.effectiveUnitCost,
+    calculatedPrice: analysis.calculation!.calculatedPrice,
+    suggestedPrice: analysis.calculation!.suggestedPrice,
+    appliedPrice: analysis.calculation!.suggestedPrice,
     reviewedAt: "2026-09-23T11:00:00.000Z",
   };
 }
@@ -45,7 +49,8 @@ describe("análise de precificação", () => {
     expect(buildPricingAnalysis(source({ officialCost: null })).status).toBe("NO_COST");
     const stale = buildPricingAnalysis(source({ officialCost: { ...source().officialCost!, cycleDate: "2026-09-22" } }));
     expect(stale.stalePurchase).toBe(true);
-    expect(stale.status).toBe("NOT_REVIEWED");
+    expect(stale.status).toBe("COST_CHANGED");
+    expect(stale).toMatchObject({ costChanged: true, reviewPending: true });
     expect(pricingStalePurchaseMessage(stale)).toBe(
       "Sem compra no ciclo 23/09/2026 — usando custo oficial do ciclo 22/09/2026.",
     );
@@ -75,6 +80,7 @@ describe("análise de precificação", () => {
 
   it("distingue custo alterado de parâmetro alterado e revisado", () => {
     const fresh = buildPricingAnalysis(source());
+    expect(fresh).toMatchObject({ status: "COST_CHANGED", costChanged: true, reviewPending: true });
     const reviewed = buildPricingAnalysis(source({ latestReview: reviewOf(fresh) }));
     expect(reviewed.status).toBe("REVIEWED");
     const parameterChanged = buildPricingAnalysis(source({
@@ -106,6 +112,62 @@ describe("análise de precificação", () => {
     expect(increased.status).toBe("COST_CHANGED");
   });
 
+  it("mantém a revisão quando um novo ciclo repete o custo econômico confirmado", () => {
+    const original = buildPricingAnalysis(source());
+    const sameEconomicCost = buildPricingAnalysis(source({
+      officialCost: { ...source().officialCost!, id: "new", version: 1, cycleDate: "2026-09-25" },
+      previousOfficialCost: { ...source().officialCost!, basisRecorded: true, conversionRecorded: true },
+      latestReview: reviewOf(original),
+      referenceCycleDate: "2026-09-25",
+    }));
+    expect(sameEconomicCost).toMatchObject({
+      status: "REVIEWED",
+      costChanged: false,
+      parametersChanged: false,
+      reviewPending: false,
+    });
+  });
+
+  it("reabre a revisão após mudança posterior ao custo confirmado", () => {
+    const original = buildPricingAnalysis(source());
+    const changed = buildPricingAnalysis(source({
+      officialCost: { ...source().officialCost!, id: "new", cost: "50.00", cycleDate: "2026-09-25" },
+      previousOfficialCost: { ...source().officialCost!, basisRecorded: true, conversionRecorded: true },
+      latestReview: reviewOf(original),
+      referenceCycleDate: "2026-09-25",
+    }));
+    expect(changed).toMatchObject({ status: "COST_CHANGED", costChanged: true, reviewPending: true });
+  });
+
+  it("preserva custo e parâmetros quando valor e base mudam após a revisão", () => {
+    const original = buildPricingAnalysis(source());
+    const changed = buildPricingAnalysis(source({
+      officialCost: {
+        ...source().officialCost!,
+        id: "new",
+        cost: "3.00",
+        costIsUnit: true,
+        cycleDate: "2026-09-25",
+      },
+      latestReview: reviewOf(original),
+      referenceCycleDate: "2026-09-25",
+    }));
+    expect(changed).toMatchObject({
+      status: "PARAMETERS_CHANGED",
+      costChanged: true,
+      parametersChanged: true,
+      reviewPending: true,
+    });
+  });
+
+  it("não trata revisão legada sem preço aplicado como confirmação", () => {
+    const original = buildPricingAnalysis(source());
+    const legacy = buildPricingAnalysis(source({
+      latestReview: { ...reviewOf(original), appliedPrice: null },
+    }));
+    expect(legacy).toMatchObject({ status: "NOT_REVIEWED", costChanged: false, reviewPending: true });
+  });
+
   it("normaliza bases equivalentes com aritmética exata", () => {
     const previous = { ...source().officialCost!, cost: "40.00", basisRecorded: true, conversionRecorded: true };
     const equivalent = buildPricingAnalysis(source({
@@ -122,7 +184,11 @@ describe("análise de precificação", () => {
   });
 
   it("trata ausência e base histórica insegura sem inventar equivalência", () => {
-    expect(buildPricingAnalysis(source({ previousOfficialCost: null })).status).toBe("NOT_REVIEWED");
+    expect(buildPricingAnalysis(source({ previousOfficialCost: null }))).toMatchObject({
+      status: "COST_CHANGED",
+      costChanged: true,
+      reviewPending: true,
+    });
     const incompatible = buildPricingAnalysis(source({
       officialCost: { ...source().officialCost!, costIsUnit: true },
       previousOfficialCost: { ...source().officialCost!, basisRecorded: false, conversionRecorded: false },
@@ -178,6 +244,11 @@ describe("análise de precificação", () => {
         },
       }));
       expect(analysis.status, name).toBe(expected);
+      if (name === "CHUCHU KG") expect(analysis).toMatchObject({
+        costChanged: true,
+        parametersChanged: true,
+        reviewPending: true,
+      });
     }
   });
 
@@ -213,6 +284,14 @@ describe("análise de precificação", () => {
     const reviewedBase = buildPricingAnalysis(source({ id: "3", name: "BANANA" }));
     const reviewed = buildPricingAnalysis(source({ id: "3", name: "BANANA", latestReview: reviewOf(reviewedBase) }));
     expect(filterPricingAnalyses([pending, stale, reviewed], "alho", "stale-purchase")).toEqual([stale]);
-    expect(pricingMetrics([pending, stale, reviewed])).toEqual({ total: 3, costChanged: 0, stalePurchase: 1, reviewed: 1 });
+    expect(pricingMetrics([pending, stale, reviewed])).toEqual({ total: 3, costChanged: 2, stalePurchase: 1, reviewed: 1 });
+    expect(filterPricingAnalyses([pending, stale, reviewed], "", "cost-changed")).toEqual([pending, stale]);
+    expect(printablePricingAnalyses([pending, stale, reviewed])).toEqual([reviewed]);
+    const legacy = buildPricingAnalysis(source({
+      id: "4",
+      name: "LEGADO",
+      latestReview: { ...reviewOf(reviewedBase), appliedPrice: null },
+    }));
+    expect(printablePricingAnalyses([pending, reviewed, legacy])).toEqual([reviewed]);
   });
 });

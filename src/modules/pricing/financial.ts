@@ -195,3 +195,12 @@ export function simulateSellingPrice(input: {
     markupPercent: toDecimal(multiply(markup, decimal("100"))),
   };
 }
+
+export function appliedSellingPrice(value: string) {
+  const price = decimal(value);
+  assertPositive(price, "O preço aplicado deve ser maior que zero.");
+  const normalized = toDecimal(price, 2);
+  if (compare(price, decimal(normalized)) !== 0)
+    throw new PricingValidationError("O preço aplicado deve ter no máximo duas casas decimais.");
+  return normalized;
+}

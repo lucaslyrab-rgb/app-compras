@@ -35,6 +35,10 @@ export type LatestReview = {
   beneficiationLossPercent: string;
   operatingCostPercent: string;
   desiredMarginPercent: string;
+  effectiveUnitCost: string;
+  calculatedPrice: string;
+  suggestedPrice: string;
+  appliedPrice: string | null;
   reviewedAt: string;
 } | null;
 
@@ -53,6 +57,9 @@ export type PricingAnalysis = PricingAnalysisSource & {
   calculationError: string | null;
   fingerprint: string | null;
   stalePurchase: boolean;
+  costChanged: boolean;
+  parametersChanged: boolean;
+  reviewPending: boolean;
   status: PricingStatus;
 };
 
@@ -87,6 +94,7 @@ function reviewParametersChanged(
 ) {
   const review = source.latestReview;
   return Boolean(review && (
+    review.costIsUnit !== source.officialCost?.costIsUnit ||
     review.saleUnit !== source.saleUnit ||
     !sameDecimal(review.conversionQuantity, source.conversionQuantity) ||
     !sameDecimal(review.beneficiationLossPercent, source.beneficiationLossPercent) ||
@@ -95,50 +103,38 @@ function reviewParametersChanged(
   ));
 }
 
-function reviewedCostBeforeCorrection(source: PricingAnalysisSource): PreviousOfficialCost | null {
-  const current = source.officialCost;
+function costChangeSinceReview(source: PricingAnalysisSource) {
+  const current = source.officialCost!;
   const review = source.latestReview;
-  if (!current?.revisedAfterPurchase || !review) return null;
-  if (review.officialCostId !== current.id || review.officialCostVersion + 1 !== current.version)
-    return null;
-  return {
-    id: review.officialCostId,
-    cost: review.officialCost,
-    costIsUnit: review.costIsUnit,
-    version: review.officialCostVersion,
-    cycleDate: current.cycleDate,
-    purchasedAt: current.purchasedAt,
-    revisedAfterPurchase: false,
-    basisRecorded: true,
-    conversionRecorded: true,
-  };
+  if (!review) return null;
+  if (current.costIsUnit === review.costIsUnit)
+    return !sameDecimal(current.cost, review.officialCost);
+  const currentNormalized = grossUnitCost(
+    current.cost,
+    source.conversionQuantity,
+    current.costIsUnit,
+  );
+  const reviewedNormalized = grossUnitCost(
+    review.officialCost,
+    review.conversionQuantity,
+    review.costIsUnit,
+  );
+  return compare(currentNormalized, reviewedNormalized) !== 0;
 }
 
-function semanticCostStatus(
-  source: PricingAnalysisSource,
-  parametersChanged: boolean,
-): PricingStatus {
+function costChangeWithoutReview(source: PricingAnalysisSource) {
   const current = source.officialCost!;
-  if (parametersChanged) return "PARAMETERS_CHANGED";
 
-  const correctedPrevious = reviewedCostBeforeCorrection(source);
-  if (current.revisedAfterPurchase && !correctedPrevious) return "PARAMETERS_CHANGED";
-  const previous = correctedPrevious ?? source.previousOfficialCost;
-  if (!previous) return "NOT_REVIEWED";
+  const previous = source.previousOfficialCost;
+  if (!previous) return { costChanged: true, basisUncertain: false };
 
   if (current.costIsUnit === previous.costIsUnit)
-    return sameDecimal(current.cost, previous.cost) ? "NOT_REVIEWED" : "COST_CHANGED";
+    return { costChanged: !sameDecimal(current.cost, previous.cost), basisUncertain: false };
 
-  if (!previous.basisRecorded) return "PARAMETERS_CHANGED";
-  const reviewProvesStableConversion = Boolean(
-    source.latestReview &&
-    source.latestReview.officialCostId === previous.id &&
-    source.latestReview.officialCostVersion === previous.version &&
-    source.latestReview.saleUnit === source.saleUnit &&
-    sameDecimal(source.latestReview.conversionQuantity, source.conversionQuantity),
-  );
-  if (!previous.conversionRecorded && !reviewProvesStableConversion)
-    return "PARAMETERS_CHANGED";
+  if (!previous.basisRecorded)
+    return { costChanged: !sameDecimal(current.cost, previous.cost), basisUncertain: true };
+  if (!previous.conversionRecorded)
+    return { costChanged: !sameDecimal(current.cost, previous.cost), basisUncertain: true };
 
   const currentNormalized = grossUnitCost(
     current.cost,
@@ -150,7 +146,10 @@ function semanticCostStatus(
     source.conversionQuantity,
     previous.costIsUnit,
   );
-  return compare(currentNormalized, previousNormalized) === 0 ? "NOT_REVIEWED" : "COST_CHANGED";
+  return {
+    costChanged: compare(currentNormalized, previousNormalized) !== 0,
+    basisUncertain: false,
+  };
 }
 
 export function buildPricingAnalysis(source: PricingAnalysisSource): PricingAnalysis {
@@ -169,6 +168,9 @@ export function buildPricingAnalysis(source: PricingAnalysisSource): PricingAnal
     calculationError: null,
     fingerprint: null,
     stalePurchase,
+    costChanged: false,
+    parametersChanged: false,
+    reviewPending: false,
     status: "NO_COST",
   };
   let calculation: PricingCalculation;
@@ -190,6 +192,9 @@ export function buildPricingAnalysis(source: PricingAnalysisSource): PricingAnal
       calculationError: error instanceof Error ? error.message : "Configuração inválida.",
       fingerprint: null,
       stalePurchase,
+      costChanged: false,
+      parametersChanged: false,
+      reviewPending: true,
       status: "CONFIG_ERROR",
     };
   }
@@ -201,12 +206,22 @@ export function buildPricingAnalysis(source: PricingAnalysisSource): PricingAnal
     operatingCostPercent: source.settings.operatingCostPercent,
     desiredMarginPercent,
   });
-  let status: PricingStatus = "NOT_REVIEWED";
-  if (source.latestReview?.inputFingerprint === fingerprint) status = "REVIEWED";
-  else status = semanticCostStatus(
-    source,
-    reviewParametersChanged(source, desiredMarginPercent),
+  const parameterInputsChanged = reviewParametersChanged(source, desiredMarginPercent);
+  const reviewedCostChanged = costChangeSinceReview(source);
+  const unreviewedCost = reviewedCostChanged === null
+    ? costChangeWithoutReview(source)
+    : null;
+  const basisUncertain = unreviewedCost?.basisUncertain ?? false;
+  const parametersChanged = parameterInputsChanged || basisUncertain || Boolean(
+    source.officialCost.revisedAfterPurchase && !source.latestReview,
   );
+  const costChanged = reviewedCostChanged ?? unreviewedCost!.costChanged;
+  const reviewPending = !source.latestReview?.appliedPrice || parametersChanged || costChanged;
+  let status: PricingStatus;
+  if (!reviewPending) status = "REVIEWED";
+  else if (parametersChanged) status = "PARAMETERS_CHANGED";
+  else if (costChanged) status = "COST_CHANGED";
+  else status = "NOT_REVIEWED";
   return {
     ...source,
     desiredMarginPercent,
@@ -215,6 +230,9 @@ export function buildPricingAnalysis(source: PricingAnalysisSource): PricingAnal
     calculationError: null,
     fingerprint,
     stalePurchase,
+    costChanged,
+    parametersChanged,
+    reviewPending,
     status,
   };
 }
@@ -226,19 +244,25 @@ export function filterPricingAnalyses(analyses: PricingAnalysis[], query: string
       String(analysis.erpCode).includes(term) ||
       analysis.purchaseFormat.toLocaleLowerCase("pt-BR").includes(term)) &&
     (filter === "all" ||
-      (filter === "cost-changed" && analysis.status === "COST_CHANGED") ||
+      (filter === "cost-changed" && analysis.reviewPending && analysis.costChanged) ||
       (filter === "stale-purchase" && analysis.stalePurchase) ||
-      (filter === "not-reviewed" && !["REVIEWED", "NO_COST"].includes(analysis.status)) ||
-      (filter === "reviewed" && analysis.status === "REVIEWED")));
+      (filter === "not-reviewed" && analysis.reviewPending) ||
+      (filter === "reviewed" && !analysis.reviewPending && analysis.status === "REVIEWED")));
 }
 
 export function pricingMetrics(analyses: PricingAnalysis[]) {
   return {
     total: analyses.length,
-    costChanged: analyses.filter((analysis) => analysis.status === "COST_CHANGED").length,
+    costChanged: analyses.filter((analysis) => analysis.reviewPending && analysis.costChanged).length,
     stalePurchase: analyses.filter((analysis) => analysis.stalePurchase).length,
     reviewed: analyses.filter((analysis) => analysis.status === "REVIEWED").length,
   };
+}
+
+export function printablePricingAnalyses(analyses: PricingAnalysis[]) {
+  return analyses.filter((analysis) =>
+    analysis.status === "REVIEWED" && Boolean(analysis.latestReview?.appliedPrice)
+  );
 }
 
 export function pricingStalePurchaseMessage(analysis: PricingAnalysis) {

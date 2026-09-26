@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  appliedSellingPrice,
   calculatePricing,
   commercialRound,
   decimal,
@@ -82,5 +83,12 @@ describe("domínio financeiro da precificação", () => {
     })).toEqual({ resultingMarginPercent: "21.351703", markupPercent: "79.700018" });
     for (const simulatedPrice of ["0", "-1", "inválido"])
       expect(() => simulateSellingPrice({ effectiveUnitCost: "3", operatingCostPercent: "23", simulatedPrice })).toThrow();
+  });
+
+  it("normaliza o preço aplicado sem arredondar uma decisão do Gestor", () => {
+    expect(appliedSellingPrice("6,49")).toBe("6.49");
+    expect(appliedSellingPrice("6.5")).toBe("6.50");
+    for (const value of ["0", "-1", "6.499", "inválido"])
+      expect(() => appliedSellingPrice(value)).toThrow();
   });
 });

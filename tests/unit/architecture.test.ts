@@ -30,6 +30,7 @@ describe("fronteiras dos módulos", () => {
       "0006_pricing_reviews.sql",
       "0007_pricing_object_ownership.sql",
       "0008_purchase_calendar_settings.sql",
+      "0009_pricing_review_applied_price.sql",
     ]);
     const migrationFiles = (await readdir("migrations"))
       .filter((file) => /^\d{4}_.+\.sql$/.test(file))
@@ -48,6 +49,14 @@ describe("fronteiras dos módulos", () => {
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_calendar_settings");
     expect(migration).toContain("ALTER TABLE public.purchase_calendar_settings OWNER TO");
     expect(migration).not.toMatch(/UPDATE\s+(?:orders|purchase_cycle_product_costs|pricing_reviews)\b/i);
+  });
+
+  it("mantém a 0009 aditiva e não inventa preço aplicado no histórico", async () => {
+    const migration = await readFile("migrations/0009_pricing_review_applied_price.sql", "utf8");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS applied_price numeric(18,2)");
+    expect(migration).toContain("applied_price IS NULL OR applied_price > 0");
+    expect(migration).not.toMatch(/UPDATE\s+pricing_reviews\b/i);
+    expect(migration).not.toMatch(/DEFAULT\s+/i);
   });
 
   it("preserva a seleção oficial e usa a referência efetivamente comprada", async () => {

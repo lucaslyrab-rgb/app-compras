@@ -58,8 +58,9 @@
 
 ## 8. Impressão
 
-- [x] 8.1 Implementar `/gestor/precificacao/impressao` autenticada com somente produtos pendentes calculáveis, colunas definidas e espaço de anotação; verificar conteúdo e RBAC em integração/E2E.
+- [x] 8.1 Implementar `/gestor/precificacao/impressao` autenticada e, após homologação, restringi-la a revisões atuais com preço aplicado confirmado; verificar conteúdo, ausência de pendentes e RBAC.
 - [x] 8.2 Adicionar botão Imprimir com CSS A4 e abertura manual da caixa do navegador; verificar nova aba, ausência de impressão automática e ausência de revisão colateral.
+- [x] 8.3 Persistir preço aplicado em migration aditiva, separar flags de custo/parâmetros/pendência e imprimir somente revisões confirmadas; verificar primeiro custo, igualdade econômica, reabertura, CHUCHU com flags simultâneas, preço manual e ausência de backfill histórico.
 
 ## 9. Qualidade, responsividade e regressão
 

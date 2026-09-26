@@ -47,6 +47,10 @@ type AnalysisRow = {
   reviewBeneficiationLossPercent: string | null;
   reviewOperatingCostPercent: string | null;
   reviewDesiredMarginPercent: string | null;
+  reviewEffectiveUnitCost: string | null;
+  reviewCalculatedPrice: string | null;
+  reviewSuggestedPrice: string | null;
+  reviewAppliedPrice: string | null;
   reviewedAt: string | null;
   referenceCycleDate: string | null;
 };
@@ -102,6 +106,10 @@ function source(row: AnalysisRow): PricingAnalysisSource {
       beneficiationLossPercent: row.reviewBeneficiationLossPercent!,
       operatingCostPercent: row.reviewOperatingCostPercent!,
       desiredMarginPercent: row.reviewDesiredMarginPercent!,
+      effectiveUnitCost: row.reviewEffectiveUnitCost!,
+      calculatedPrice: row.reviewCalculatedPrice!,
+      suggestedPrice: row.reviewSuggestedPrice!,
+      appliedPrice: row.reviewAppliedPrice,
       reviewedAt: new Date(row.reviewedAt!).toISOString(),
     } : null,
     referenceCycleDate: row.referenceCycleDate,
@@ -154,6 +162,10 @@ export async function readPricingAnalysisSources(principal: Principal, operation
            review.beneficiation_loss_percent::text AS "reviewBeneficiationLossPercent",
            review.operating_cost_percent::text AS "reviewOperatingCostPercent",
            review.desired_margin_percent::text AS "reviewDesiredMarginPercent",
+           review.effective_unit_cost::text AS "reviewEffectiveUnitCost",
+           review.calculated_price::text AS "reviewCalculatedPrice",
+           review.suggested_price::text AS "reviewSuggestedPrice",
+           review.applied_price::text AS "reviewAppliedPrice",
            review.reviewed_at AS "reviewedAt",
            pricing_reference.cycle_date::text AS "referenceCycleDate"
     FROM products p
@@ -212,7 +224,7 @@ type OfficialRow = {
 
 export async function persistPricingReview(
   principal: Principal,
-  input: { productId: string; operationalDate: string; expectedFingerprint: string },
+  input: { productId: string; operationalDate: string; expectedFingerprint: string; appliedPrice: string },
 ) {
   authorizePricingManagement(principal);
   return database().sql.begin(async (sql) => {
@@ -286,7 +298,7 @@ export async function persistPricingReview(
         beneficiation_loss_percent, parameter_version,
         operating_cost_percent, desired_margin_percent, margin_origin,
         settings_version, gross_unit_cost, effective_unit_cost,
-        calculated_price, suggested_price, input_fingerprint,
+        calculated_price, suggested_price, applied_price, input_fingerprint,
         reviewed_by
       ) VALUES (
         ${input.productId}, ${official.id}, ${official.version},
@@ -297,10 +309,15 @@ export async function persistPricingReview(
         ${parameters.specificMarginPercent === null ? "DEFAULT" : "SPECIFIC"},
         ${parameters.settingsVersion}, ${calculation.grossUnitCost},
         ${calculation.effectiveUnitCost}, ${calculation.calculatedPrice},
-        ${calculation.suggestedPrice}, ${fingerprint}, ${principal.userId}
+        ${calculation.suggestedPrice}, ${input.appliedPrice}, ${fingerprint}, ${principal.userId}
       )
       RETURNING id, reviewed_at AS "reviewedAt"
     `;
-    return { ...review, reviewedAt: new Date(review.reviewedAt).toISOString(), fingerprint };
+    return {
+      ...review,
+      reviewedAt: new Date(review.reviewedAt).toISOString(),
+      fingerprint,
+      appliedPrice: input.appliedPrice,
+    };
   });
 }

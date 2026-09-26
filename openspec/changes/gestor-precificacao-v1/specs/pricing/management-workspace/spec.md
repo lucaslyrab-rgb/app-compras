@@ -11,7 +11,7 @@ O sistema SHALL apresentar produtos ativos com indicadores reais, busca por prod
 
 #### Scenario: Tabela desktop
 - **WHEN** o Gestor acessa a Precificação em viewport desktop
-- **THEN** o sistema apresenta tabela com ERP, produto, formatos e unidades, custo oficial, custos unitários, preços calculado e sugerido, status, revisão e ações
+- **THEN** o sistema apresenta tabela com ERP, produto, formatos e unidades, custo oficial, custos unitários, preços calculado, sugerido e aplicado quando confirmado, status, revisão e ações
 
 #### Scenario: Cards mobile
 - **WHEN** o Gestor acessa entre 320 e 412 px
@@ -22,7 +22,7 @@ O sistema SHALL apresentar produtos ativos com indicadores reais, busca por prod
 - **THEN** o conteúdo quebra de forma controlada sem encobrir ações ou criar overflow horizontal
 
 ### Requirement: Detalhe explicável da precificação
-O sistema SHALL apresentar em conjunto os dados de origem e cada etapa do cálculo, destacando visualmente o preço sugerido sem rotular qualquer valor como preço atual do ERP.
+O sistema SHALL apresentar em conjunto os dados de origem e cada etapa do cálculo, distinguindo preço calculado, sugerido e aplicado sem rotular qualquer valor como preço atual do ERP.
 
 #### Scenario: Análise completa
 - **WHEN** o Gestor abre um produto com custo oficial e configuração válida
@@ -33,11 +33,11 @@ O sistema SHALL apresentar em conjunto os dados de origem e cada etapa do cálcu
 - **THEN** a análise usa tela dedicada e a simulação pode ser expandida sem comprimir uma tabela desktop
 
 ### Requirement: Estado de revisão derivado das entradas
-O sistema SHALL preservar um fingerprint técnico das entradas para auditoria e concorrência, mas SHALL classificar Custo alterado somente por diferença econômica exata entre o custo oficial atual e o custo oficial imediatamente anterior em bases equivalentes. Mudança de id, versão ou ciclo MUST NOT ser usada como evidência semântica de alteração de custo.
+O sistema SHALL preservar um fingerprint técnico das entradas para auditoria e concorrência e SHALL derivar separadamente `costChanged`, `parametersChanged` e `reviewPending`. Em bases equivalentes, mudança de custo SHALL depender de comparação econômica exata; mudança de id, versão ou ciclo MUST NOT ser usada como evidência semântica de alteração.
 
-#### Scenario: Produto nunca revisado
-- **WHEN** existe preço calculável, mas nenhuma revisão explícita
-- **THEN** o produto é identificado como Não revisado
+#### Scenario: Primeiro custo oficial
+- **WHEN** existe o primeiro custo oficial calculável de um produto, sem custo anterior e sem revisão explícita
+- **THEN** `costChanged` e `reviewPending` são verdadeiros, o produto recebe Custo alterado e entra para revisão
 
 #### Scenario: Custo oficial mudou
 - **WHEN** os custos oficiais atual e imediatamente anterior podem ser normalizados para a mesma base e os valores exatos diferem
@@ -45,30 +45,38 @@ O sistema SHALL preservar um fingerprint técnico das entradas para auditoria e 
 
 #### Scenario: Novo registro com o mesmo custo normalizado
 - **WHEN** id, versão ou ciclo do custo oficial muda, mas os custos atual e imediatamente anterior são economicamente iguais na mesma base
-- **THEN** o produto não recebe o estado Custo alterado
+- **THEN** o produto não recebe uma nova pendência nem o estado Custo alterado apenas pela identidade técnica
 
-#### Scenario: Ausência de custo oficial anterior
-- **WHEN** existe custo oficial atual, mas nenhum custo oficial anterior reconstruível
-- **THEN** o produto é identificado como Não revisado e não como Custo alterado
+#### Scenario: Nova mudança após revisão
+- **WHEN** um custo oficial economicamente diferente sucede o custo confirmado na última revisão
+- **THEN** `costChanged` e `reviewPending` voltam a ser verdadeiros e uma nova revisão é exigida
 
 #### Scenario: Outro parâmetro relevante mudou
-- **WHEN** unidade de venda, conversão, perda, margem específica, custo operacional ou margem global aplicável muda após a revisão
+- **WHEN** natureza unitária do custo, unidade de venda, conversão, perda, margem específica, custo operacional ou margem global aplicável muda após a revisão
 - **THEN** a revisão deixa de ser atual e o produto recebe o estado Parâmetros alterados
 
 #### Scenario: Bases sem equivalência demonstrável
 - **WHEN** a natureza unitária ou outra base difere e os dados históricos não permitem reconstruir uma normalização equivalente com segurança
-- **THEN** o produto recebe o estado Parâmetros alterados sem inferir uma mudança econômica
+- **THEN** `parametersChanged` é verdadeiro e o produto recebe Parâmetros alterados sem inventar equivalência econômica
+
+#### Scenario: Valor e base mudaram juntos
+- **WHEN** o valor nominal do custo oficial muda e a base também muda sem equivalência histórica demonstrável
+- **THEN** `costChanged`, `parametersChanged` e `reviewPending` permanecem verdadeiros, o produto aparece no fluxo de Custos alterados e a interface também informa Parâmetros alterados
 
 #### Scenario: Rascunho de custo mudou
 - **WHEN** somente um custo não comprado muda
 - **THEN** o estado da revisão e o preço oficial não mudam
 
 ### Requirement: Revisão explícita e auditável
-O sistema SHALL criar uma revisão somente por ação explícita do Gestor e SHALL registrar usuário, data, custo oficial analisado, natureza do custo, conversão, perda, percentuais, custos derivados, preço matemático e preço sugerido.
+O sistema SHALL criar uma revisão somente por ação explícita do Gestor e SHALL registrar usuário, data, custo oficial analisado, natureza do custo, conversão, perda, percentuais, custos derivados, preço matemático, preço sugerido e preço aplicado confirmado.
 
 #### Scenario: Confirmar revisão
-- **WHEN** o Gestor confirma a revisão de um produto calculável usando a versão atual
-- **THEN** o sistema grava um snapshot imutável, registra o autor e identifica o produto como Revisado
+- **WHEN** o Gestor confirma a revisão de um produto calculável usando a versão atual e aceita o sugerido ou informa outro preço de venda positivo com até duas casas
+- **THEN** o sistema grava um snapshot imutável com o preço aplicado, registra o autor e identifica o produto como Revisado
+
+#### Scenario: Preço aplicado manual
+- **WHEN** o preço sugerido é R$ 6,99 e o Gestor confirma R$ 6,49
+- **THEN** a revisão preserva R$ 6,99 como sugerido e R$ 6,49 como aplicado, sem substituir o preço calculado
 
 #### Scenario: Entradas mudaram antes da confirmação
 - **WHEN** custo ou parâmetros mudam entre a abertura e a ação de revisar
@@ -79,11 +87,11 @@ O sistema SHALL criar uma revisão somente por ação explícita do Gestor e SHA
 - **THEN** nenhuma revisão é criada
 
 ### Requirement: Impressão de alterações
-O sistema SHALL oferecer relatório autenticado em nova aba com produtos relevantes ou pendentes, contendo ERP, produto, unidade, custo efetivo, preço calculado, preço sugerido e espaço para anotação.
+O sistema SHALL oferecer relatório autenticado em nova aba somente com produtos cuja revisão atual foi confirmada, contendo ERP, produto, unidade, custo efetivo, preço calculado, preço sugerido e preço aplicado da revisão. Produtos pendentes MUST NOT ser impressos.
 
 #### Scenario: Abrir relatório
 - **WHEN** o Gestor aciona “Imprimir alterações”
-- **THEN** o sistema abre uma página preparada para impressão com botão Imprimir e não dispara impressão automaticamente
+- **THEN** o sistema abre uma página preparada para impressão com somente revisões atuais confirmadas, destaca o preço aplicado, oferece botão Imprimir e não dispara impressão automaticamente
 
 #### Scenario: Imprimir relatório
 - **WHEN** o Gestor usa o botão Imprimir

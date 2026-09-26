@@ -12,7 +12,9 @@ O Gestor ainda não dispõe de uma área segura para manter conversões, perdas 
 - Implementar domínio financeiro preciso para normalização unitária, perda, preço matemático, arredondamento comercial em finais 0,49/0,99 e simulação de margem/markup.
 - Criar as áreas responsivas `Gestor > Produtos`, `Gestor > Precificação` e `Gestor > Configurações`, com edição versionada, estados sem custo/sem compra recente, revisão explícita e relatório de impressão.
 - Criar navegação operacional com sidebar no desktop e drawer no mobile, filtrada por papel e protegida no servidor; a experiência da Loja permanece fora desse shell.
-- Registrar revisões de preço como snapshots auditáveis dos dados e versões utilizados, sem integração ou escrita no ERP.
+- Registrar revisões de preço como snapshots auditáveis dos dados, versões e preços calculado, sugerido e aplicado utilizados, sem integração ou escrita no ERP.
+- Separar mudança de custo, mudança de parâmetros e pendência de revisão para que alterações simultâneas de valor e base permaneçam visíveis nas duas dimensões.
+- Imprimir somente decisões já revisadas, usando o preço aplicado confirmado pelo Gestor.
 - Ampliar testes unitários, de integração, RBAC, regressão, E2E e responsividade, preservando pedidos, snapshots e triggers de imutabilidade existentes.
 
 ## Capabilities
@@ -31,7 +33,7 @@ O Gestor ainda não dispõe de uma área segura para manter conversões, perdas 
 
 ## Impact
 
-- Novas migrations sequenciais após `0004`, schema Drizzle e carga inicial idempotente para produtos existentes e futuros.
+- Novas migrations sequenciais após `0004`, incluindo uma extensão aditiva e sem backfill para o preço aplicado, schema Drizzle e carga inicial idempotente para produtos existentes e futuros.
 - Novos módulos de parâmetros, cálculo e revisão de precificação; extensão mínima do módulo `purchasing/costs` e do importador de produtos.
 - Novas rotas sob `/gestor`, redirecionamento compatível da rota legada `/produtos` e shell compartilhado apenas para áreas não-LOJA.
 - Novas Server Actions e consultas com autorização GESTOR no domínio/repositório, auditoria e concorrência otimista.

@@ -112,13 +112,22 @@ integration("precificação no PostgreSQL", () => {
     expect(analysis).toMatchObject({
       referenceCycleDate: "2026-09-25",
       stalePurchase: false,
-      status: "NOT_REVIEWED",
+      status: "COST_CHANGED",
+      costChanged: true,
+      reviewPending: true,
       officialCost: { cost: "40.00", costIsUnit: false, cycleDate: "2026-09-25" },
     });
     expect(analysis?.calculation).toBeTruthy();
-    const review = await reviewPricingProduct(manager, { productId, expectedFingerprint: analysis!.fingerprint! }, friday);
+    const review = await reviewPricingProduct(manager, { productId, expectedFingerprint: analysis!.fingerprint!, appliedPrice: "6.49" }, friday);
     expect(review.id).toBeTruthy();
+    expect(review.appliedPrice).toBe("6.49");
     expect((await loadPricingAnalysis(manager, productId, friday))?.status).toBe("REVIEWED");
+    const [storedReview] = await database().sql<{ suggestedPrice: string; appliedPrice: string }[]>`
+      SELECT suggested_price::text AS "suggestedPrice", applied_price::text AS "appliedPrice"
+      FROM pricing_reviews WHERE id = ${review.id}
+    `;
+    expect(storedReview).toMatchObject({ appliedPrice: "6.49" });
+    expect(storedReview.suggestedPrice).not.toBe(storedReview.appliedPrice);
     await expect(database().sql`UPDATE pricing_reviews SET suggested_price = 99.99 WHERE id = ${review.id}`).rejects.toThrow(/imutáveis/);
     await expect(database().sql`DELETE FROM pricing_reviews WHERE id = ${review.id}`).rejects.toThrow(/imutáveis/);
     const draftUpdated = await persistPurchaseCost(buyer, { productId, cycleDate, cost: "8.00", costIsUnit: true, purchased: false, expectedVersion: draft.version });
@@ -162,7 +171,10 @@ integration("precificação no PostgreSQL", () => {
 
     const afterPurchase = await loadPricingAnalyses(manager, monday);
     expect(afterPurchase.find((item) => item.id === productId)).toMatchObject({
-      status: "COST_CHANGED",
+      status: "PARAMETERS_CHANGED",
+      costChanged: true,
+      parametersChanged: true,
+      reviewPending: true,
       referenceCycleDate: "2026-09-28",
       stalePurchase: false,
       officialCost: { cost: "8.00", costIsUnit: true, cycleDate },

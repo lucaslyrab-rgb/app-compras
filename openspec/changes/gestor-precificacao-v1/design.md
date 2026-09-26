@@ -46,13 +46,15 @@ O importador fará, na mesma transação de cada upsert de produto, um `INSERT .
 
 ### 2. Revisões como snapshots imutáveis
 
-`pricing_reviews` será append-only e guardará: produto, usuário, instante, id/versão/data/valor/`cost_is_unit` do custo oficial, unidade de venda, conversão, origem, perda, custo operacional, margem aplicada e sua origem, custo bruto, custo efetivo, preço calculado e preço sugerido. Valores derivados usarão `NUMERIC(18,6)`; o sugerido usará duas casas.
+`pricing_reviews` será append-only e guardará: produto, usuário, instante, id/versão/data/valor/`cost_is_unit` do custo oficial, unidade de venda, conversão, origem, perda, custo operacional, margem aplicada e sua origem, custo bruto, custo efetivo, preço calculado, preço sugerido e preço aplicado pelo Gestor. Valores derivados usarão `NUMERIC(18,6)`; sugerido e aplicado usarão duas casas. A migration `0009` acrescentará `applied_price` nullable, sem UPDATE ou backfill: revisões legadas não receberão um preço aplicado inventado, enquanto toda nova confirmação deverá preenchê-lo.
 
 Também serão guardadas as versões de parâmetro e configuração para diagnóstico. Um fingerprint canônico continuará cobrindo fonte/versão do custo oficial, `cost_is_unit`, unidade/conversão/perda e percentuais efetivamente aplicados, mas seu papel será estritamente técnico: detectar concorrência entre abertura e confirmação e provar quais entradas formaram o snapshot. Id, versão ou ciclo diferentes não provarão mudança econômica.
 
-O estado `COST_CHANGED` será derivado separadamente pela comparação racional exata entre o custo oficial atual e o oficial imediatamente anterior. Custos com a mesma natureza serão comparados diretamente; quando a natureza unitária diferir, ambos serão normalizados pela conversão aplicável somente se a metadata histórica e a estabilidade dos parâmetros tornarem a equivalência demonstrável. Sem custo anterior, o estado será `NOT_REVIEWED`. Unidade, conversão, perda ou margem divergentes do snapshot, assim como base incompatível ou historicamente não reconstruível, resultarão em `PARAMETERS_CHANGED`. Um custo normalizado idêntico nunca resultará em `COST_CHANGED`.
+O domínio derivará três flags independentes. `costChanged` indica a primeira entrada oficial ou uma diferença de custo ainda não confirmada; quando existe revisão, a comparação usa o custo confirmado nela, impedindo que uma pendência desapareça porque ciclos posteriores repetiram o novo valor. `parametersChanged` indica divergência de parâmetros ou base historicamente insegura. `reviewPending` indica que não há snapshot atual com preço aplicado confirmado. O `status` continua como projeção para apresentação, com Parâmetros alterados tendo precedência visual sobre Custo alterado, sem apagar a flag econômica.
 
-Abrir detalhe, simular ou imprimir não escreve revisão. A action de revisão relê todas as fontes dentro de transação, compara o fingerprint esperado e só então insere o snapshot. UPDATE/DELETE de revisão serão bloqueados por trigger própria; isso não reutiliza nem modifica as triggers dos pedidos.
+Custos com a mesma natureza serão comparados diretamente por aritmética racional exata. Quando a natureza unitária diferir, os valores serão normalizados somente se a metadata histórica permitir equivalência segura. Se valor e base mudarem juntos sem reconstrução segura, `parametersChanged` e `costChanged` serão preservados simultaneamente: a aplicação não afirma uma direção econômica normalizada, mas não remove o item do fluxo de revisão de custo. O primeiro custo oficial terá `costChanged=true`; um custo normalizado idêntico não abrirá nova revisão por mudança de id, versão ou ciclo.
+
+Abrir detalhe, simular ou imprimir não escreve revisão. A action de revisão valida o preço aplicado, relê todas as fontes dentro de transação, compara o fingerprint esperado e só então insere o snapshot. UPDATE/DELETE de revisão serão bloqueados por trigger própria; isso não reutiliza nem modifica as triggers dos pedidos.
 
 ### 3. Aritmética racional baseada em `bigint`
 
@@ -95,7 +97,7 @@ Produtos e Precificação usarão tabela a partir do breakpoint de desktop e car
 
 ### 8. Relatório de impressão HTML
 
-A impressão será uma rota autenticada renderizada no servidor, com CSS A4 e botão cliente que chama `window.print()`. A rota listará produtos calculáveis cuja revisão não está atual, sem criar revisão nem alterar estados. Gerar PDF no servidor foi rejeitado por adicionar dependência e não trazer benefício à V1.
+A impressão será uma rota autenticada renderizada no servidor, com CSS A4 e botão cliente que chama `window.print()`. A rota listará somente produtos com revisão atual e `applied_price` confirmado, usando os valores imutáveis do snapshot e excluindo pendências. Abrir ou imprimir não cria revisão nem altera estado; controle de “já impresso” permanece fora desta mudança. Gerar PDF no servidor foi rejeitado por adicionar dependência e não trazer benefício à V1.
 
 ### 9. Estratégia de teste
 

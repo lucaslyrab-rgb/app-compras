@@ -93,11 +93,11 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
   expect(detailHref).toBeTruthy();
   await page.goto(detailHref!);
   await expect(page.getByText("Preço sugerido", { exact: true })).toBeVisible();
-  const simulated = page.getByLabel("Preço de venda");
+  const simulated = page.getByLabel("Preço aplicado pelo Gestor");
   await simulated.fill("5,99");
   await expect(page.getByText("Margem líquida", { exact: true })).toBeVisible();
   await expect(page.getByText("Markup sobre custo", { exact: true })).toBeVisible();
-  const review = page.getByRole("button", { name: "Marcar como revisado" });
+  const review = page.getByRole("button", { name: "Confirmar preço aplicado" });
   if (testInfo.project.name === "desktop" && await review.isVisible()) {
     await review.click();
     await expect(page.getByText("Revisão registrada.")).toBeVisible();
@@ -112,6 +112,8 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
   await page.getByRole("link", { name: /Imprimir alterações/ }).click();
   const report = await popupPromise;
   await expect(report.getByRole("heading", { name: "Alterações de preços - FLV" })).toBeVisible();
+  await expect(report.getByRole("columnheader", { name: "Preço aplicado" })).toBeVisible();
+  await expect(report.getByText("Produtos pendentes de revisão")).toHaveCount(0);
   await expect(report.getByRole("button", { name: "Imprimir" })).toBeVisible();
 });
 

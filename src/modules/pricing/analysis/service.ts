@@ -1,6 +1,7 @@
 import type { Principal } from "@/modules/identity";
 import { operationalLocalDate } from "@/modules/ordering/calendar/domain";
 import { readOperationalPurchaseCalendar } from "@/modules/ordering/calendar/service";
+import { appliedSellingPrice } from "../financial";
 import { buildPricingAnalysis } from "./domain";
 import { persistPricingReview, readPricingAnalysisSources } from "./repository";
 
@@ -20,11 +21,12 @@ export async function loadPricingAnalysis(principal: Principal, productId: strin
 
 export async function reviewPricingProduct(
   principal: Principal,
-  input: { productId: string; expectedFingerprint: string },
+  input: { productId: string; expectedFingerprint: string; appliedPrice: string },
   now = new Date(),
 ) {
   return persistPricingReview(principal, {
     ...input,
+    appliedPrice: appliedSellingPrice(input.appliedPrice),
     operationalDate: await pricingOperationalDate(now),
   });
 }
