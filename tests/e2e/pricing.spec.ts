@@ -95,6 +95,10 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
   const detailHref = await page.locator('a[href^="/gestor/precificacao/"]').filter({ hasText: "Analisar precificação" }).first().getAttribute("href");
   expect(detailHref).toBeTruthy();
   await page.goto(detailHref!);
+  const reviewedProductName = await page.locator(".pricing-detail h2").textContent();
+  const reviewedProductErp = (await page.locator(".pricing-detail__header .manager-product-identity p").textContent())?.replace("ERP: ", "");
+  expect(reviewedProductName).toBeTruthy();
+  expect(reviewedProductErp).toBeTruthy();
   await expect(page.getByText("Preço sugerido", { exact: true })).toBeVisible();
   const simulated = page.getByLabel("Preço decidido");
   await simulated.fill("5,99");
@@ -109,16 +113,21 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
   if (testInfo.project.name === "desktop") {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const pricingDetail = page.locator(".pricing-columns > .pricing-detail");
+    const reviewedRow = page.locator(".pricing-table tbody tr").filter({
+      has: page.getByRole("cell", { name: reviewedProductErp!, exact: true }),
+    });
+    await reviewedRow.getByRole("button", { name: `Analisar ${reviewedProductName}` }).click();
+    await expect(pricingDetail.getByText("Último preço decidido", { exact: true })).toBeVisible();
     expect(await pricingDetail.evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
     await page.evaluate(() => window.scrollTo(0, 400));
     await expect(pricingDetail.getByRole("button", { name: "Registrar decisão" })).toBeInViewport();
     const panelFit = await pricingDetail.evaluate((element) => ({
       clientHeight: element.clientHeight,
       scrollHeight: element.scrollHeight,
-      bottom: element.getBoundingClientRect().bottom,
+      bottomGap: window.innerHeight - element.getBoundingClientRect().bottom,
     }));
     expect(panelFit.scrollHeight).toBeLessThanOrEqual(panelFit.clientHeight + 1);
-    expect(panelFit.bottom).toBeLessThanOrEqual(1080);
+    expect(panelFit.bottomGap).toBeGreaterThanOrEqual(40);
     await page.getByRole("button", { name: /^Revisados/ }).click();
     await expect(page.locator(".manager-table-wrap").getByText("Revisado", { exact: true }).first()).toBeVisible();
     await page.getByRole("button", { name: /^Todos/ }).click();

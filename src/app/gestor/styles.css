@@ -151,90 +151,103 @@
     max-height: calc(100vh - 36px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 9px;
+    padding: 7px;
   }
   .pricing-columns > .pricing-detail .pricing-detail__header {
-    gap: 8px;
-    margin-bottom: 6px;
-    padding: 6px;
+    gap: 6px;
+    margin-bottom: 4px;
+    padding: 4px;
   }
   .pricing-columns > .pricing-detail .manager-placeholder {
-    width: 42px;
-    height: 42px;
-    flex-basis: 42px;
-    font-size: 1.25rem;
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    font-size: 1.1rem;
   }
   .pricing-columns > .pricing-detail .manager-product-identity {
-    gap: 8px;
+    gap: 6px;
   }
   .pricing-columns > .pricing-detail .manager-product-identity h2 {
-    font-size: 1rem;
+    font-size: .95rem;
   }
   .pricing-columns > .pricing-detail .manager-product-identity p {
-    margin-top: 2px;
+    margin-top: 1px;
+    font-size: .7rem;
   }
   .pricing-columns > .pricing-detail .pricing-detail__badges {
-    gap: 4px;
+    gap: 3px;
   }
   .pricing-columns > .pricing-detail .manager-badge {
-    padding: 4px 6px;
+    padding: 3px 5px;
+    font-size: .64rem;
   }
   .pricing-columns > .pricing-detail .pricing-section {
-    padding: 6px 0;
+    padding: 4px 0;
   }
   .pricing-columns > .pricing-detail .pricing-section-title {
-    margin-bottom: 5px;
+    margin-bottom: 3px;
   }
   .pricing-columns > .pricing-detail .pricing-section-title .manager-secondary {
-    min-height: 32px;
-    padding: 5px 9px;
+    min-height: 28px;
+    padding: 3px 7px;
   }
   .pricing-columns > .pricing-detail .pricing-data-grid {
-    gap: 5px;
-    margin-top: 5px;
+    gap: 4px;
+    margin-top: 3px;
+  }
+  .pricing-columns > .pricing-detail .pricing-data-grid dt {
+    font-size: .64rem;
   }
   .pricing-columns > .pricing-detail .pricing-data-grid dd {
-    margin-top: 2px;
+    margin-top: 1px;
   }
   .pricing-columns > .pricing-detail .pricing-stale-note {
-    margin-top: 5px;
-    padding: 5px 7px;
+    margin-top: 3px;
+    padding: 4px 6px;
+    font-size: .66rem;
   }
   .pricing-columns > .pricing-detail .pricing-gross {
-    gap: 7px;
-    padding: 6px 8px;
+    gap: 5px;
+    padding: 5px 7px;
+  }
+  .pricing-columns > .pricing-detail .pricing-gross small {
+    font-size: .66rem;
+    line-height: 1.2;
   }
   .pricing-columns > .pricing-detail .pricing-calculation {
-    margin-top: 6px;
-    padding: 8px;
+    margin-top: 4px;
+    padding: 6px;
   }
   .pricing-columns > .pricing-detail .pricing-calculation > dl {
-    gap: 0 14px;
-    margin-top: 5px;
+    gap: 0 12px;
+    margin-top: 3px;
   }
   .pricing-columns > .pricing-detail .pricing-calculation > dl > div {
-    padding: 3px 0;
+    padding: 2px 0;
   }
   .pricing-columns > .pricing-detail .pricing-suggested {
-    margin-top: 5px;
-    padding: 6px 8px;
+    margin-top: 4px;
+    padding: 5px 7px;
   }
   .pricing-columns > .pricing-detail .pricing-suggested strong {
     font-size: 1.15rem;
   }
   .pricing-columns > .pricing-detail .pricing-last-decision {
-    margin-top: 5px;
-    padding: 6px 8px;
+    margin-top: 4px;
+    padding: 5px 7px;
   }
   .pricing-columns > .pricing-detail .pricing-last-decision strong {
     font-size: 1rem;
   }
+  .pricing-columns > .pricing-detail .pricing-last-decision small {
+    font-size: .66rem;
+  }
   .pricing-columns > .pricing-detail .pricing-simulation[open] {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: 8px;
-    margin-top: 6px;
-    padding: 7px;
+    column-gap: 6px;
+    margin-top: 4px;
+    padding: 5px;
   }
   .pricing-columns > .pricing-detail .pricing-simulation summary,
   .pricing-columns > .pricing-detail .pricing-simulation dl,
@@ -242,41 +255,45 @@
     grid-column: 1 / -1;
   }
   .pricing-columns > .pricing-detail .pricing-simulation > label {
-    gap: 3px;
+    gap: 2px;
     max-width: none;
-    margin-top: 6px;
+    margin-top: 4px;
+    font-size: .68rem;
   }
   .pricing-columns > .pricing-detail .pricing-simulation .manager-input-group em,
   .pricing-columns > .pricing-detail .pricing-simulation .manager-input-group input {
-    min-height: 36px;
-    padding: 6px;
+    min-height: 32px;
+    padding: 5px;
   }
   .pricing-columns > .pricing-detail .pricing-simulation .manager-input-group em {
     min-width: 38px;
   }
   .pricing-columns > .pricing-detail .pricing-use-suggested {
-    min-height: 30px;
+    min-height: 28px;
     align-self: end;
-    margin-top: 6px;
+    margin-top: 4px;
+    font-size: .72rem;
   }
   .pricing-columns > .pricing-detail .pricing-simulation dl {
-    gap: 6px;
-    margin: 5px 0;
-    padding: 6px;
+    gap: 4px;
+    margin: 4px 0;
+    padding: 5px;
   }
   .pricing-columns > .pricing-detail .pricing-simulation dd {
     margin-top: 1px;
+    font-size: .84rem;
   }
   .pricing-columns > .pricing-detail .pricing-simulation > small {
-    line-height: 1.25;
+    font-size: .65rem;
+    line-height: 1.2;
   }
   .pricing-columns > .pricing-detail .pricing-review-actions {
-    gap: 8px;
-    margin-top: 6px;
+    gap: 6px;
+    margin-top: 4px;
   }
   .pricing-columns > .pricing-detail .pricing-review-actions .manager-primary {
-    min-height: 36px;
-    padding: 7px 12px;
+    min-height: 34px;
+    padding: 6px 11px;
   }
 }
 
