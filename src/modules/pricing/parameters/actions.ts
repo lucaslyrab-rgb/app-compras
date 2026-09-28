@@ -37,12 +37,15 @@ export type PricingActionResult<T> =
   | { status: "conflict"; value: T; message: string }
   | { status: "error"; message: string };
 
-function revalidateProductFlows() {
+function revalidateProductFlows(productId?: string) {
   revalidatePath("/");
   revalidatePath("/gestor/produtos");
   revalidatePath("/gestor/precificacao");
   revalidatePath("/comprador/consolidado");
   revalidatePath("/comprador/custos");
+  if (productId) {
+    revalidatePath(`/gestor/produtos/${productId}`);
+  }
 }
 
 export async function createProductAction(raw: unknown): Promise<PricingActionResult<PricingProduct>> {
@@ -52,7 +55,7 @@ export async function createProductAction(raw: unknown): Promise<PricingActionRe
   try {
     const value = await createProduct(principal, parsed.data);
     await recordAudit({ actorId: principal.userId, action: "PRODUCT_CREATED", entityType: "product", entityId: value.id, metadata: { erpCode: value.erpCode, productVersion: value.productVersion, pricingVersion: value.version } });
-    revalidateProductFlows();
+    revalidateProductFlows(value.id);
     return { status: "success", value };
   } catch (error) {
     if (error instanceof ProductErpConflictError || error instanceof PricingValidationError || error instanceof z.ZodError)
@@ -74,7 +77,7 @@ export async function saveProductPricingAction(raw: unknown): Promise<PricingAct
       entityId: value.id,
       metadata: { productVersion: value.productVersion, pricingVersion: value.version },
     });
-    revalidateProductFlows();
+    revalidateProductFlows(value.id);
     return { status: "success", value };
   } catch (error) {
     if (error instanceof PricingConflictError)

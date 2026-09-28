@@ -208,3 +208,82 @@ test("Lançamento de Custos persiste a natureza unitária do custo", async ({ pa
   if (nextChecked) await expect(reloadedCheckbox).toBeChecked();
   else await expect(reloadedCheckbox).not.toBeChecked();
 });
+
+test("Gestor digita e persiste nome na criação e edição com recarregamento e snapshots preservados", async ({ page }, testInfo) => {
+  await login(page);
+  await page.goto("/gestor/produtos");
+
+  const erpCode = testInfo.project.name === "mobile" ? "998201" : "998202";
+  const initialName = `MELANCIA TESTE ${testInfo.project.name.toUpperCase()}`;
+  const editedName = `MELANCIA ESPECIAL ${testInfo.project.name.toUpperCase()}`;
+
+  const newProductControl = testInfo.project.name === "mobile"
+    ? page.getByRole("link", { name: "+ Novo produto" })
+    : page.getByRole("button", { name: "+ Novo produto" });
+  await newProductControl.click();
+
+  const nameInput = page.getByLabel("Nome");
+  await expect(nameInput).toBeVisible();
+  await expect(nameInput).toHaveAttribute("required", "");
+  await expect(nameInput).toHaveAttribute("autocomplete", "off");
+  await nameInput.click();
+  await nameInput.pressSequentially(initialName);
+  await expect(nameInput).toHaveValue(initialName);
+
+  await page.getByLabel("Código ERP").fill(erpCode);
+  await page.getByLabel("Unidade do catálogo/pedido").fill("KG");
+  await page.getByLabel("Formato de compra").fill("CX");
+  await page.getByLabel("Unidade de venda").fill("KG");
+  await page.getByLabel("Quantidade de conversão").fill("15");
+  await page.getByLabel("Perda média de beneficiamento").fill("5");
+
+  await page.getByRole("button", { name: "Cadastrar produto" }).click();
+  if (testInfo.project.name === "mobile") {
+    await expect(page).toHaveURL(/\/gestor\/produtos\/[0-9a-f-]+/);
+  } else {
+    await expect(page.locator(".manager-editor h2")).toHaveText(initialName);
+  }
+
+  await page.goto("/gestor/produtos");
+  await page.getByLabel("Status").selectOption("all");
+  await page.getByPlaceholder("Buscar por produto, ERP ou formato...").fill(erpCode);
+  const createdContainer = testInfo.project.name === "mobile"
+    ? page.locator(".manager-mobile-card").filter({ hasText: erpCode })
+    : page.locator(".manager-product-table tbody tr").filter({ hasText: erpCode });
+  await expect(createdContainer).toContainText(initialName);
+
+  if (testInfo.project.name === "mobile") {
+    await createdContainer.getByRole("link", { name: "Editar" }).click();
+  } else {
+    await createdContainer.getByRole("button", { name: `Editar ${initialName}` }).click();
+  }
+  const editNameInput = page.getByLabel("Nome");
+  await expect(editNameInput).toHaveValue(initialName);
+  await editNameInput.click();
+  await editNameInput.fill("");
+  await editNameInput.pressSequentially(editedName);
+  await expect(editNameInput).toHaveValue(editedName);
+
+  await page.getByRole("button", { name: "Salvar alterações" }).click();
+  await expect(page.getByText("Alterações salvas.")).toBeVisible();
+
+  await page.reload();
+  if (testInfo.project.name === "mobile") {
+    await expect(page.getByLabel("Nome")).toHaveValue(editedName);
+    await page.goto("/gestor/produtos");
+    await page.getByPlaceholder("Buscar por produto, ERP ou formato...").fill(erpCode);
+    const reloadedMobileCard = page.locator(".manager-mobile-card").filter({ hasText: erpCode });
+    await expect(reloadedMobileCard).toContainText(editedName);
+  } else {
+    await page.getByPlaceholder("Buscar por produto, ERP ou formato...").fill(erpCode);
+    const reloadedRow = page.locator(".manager-product-table tbody tr").filter({ hasText: erpCode });
+    await expect(reloadedRow).toContainText(editedName);
+    await expect(page.getByLabel("Nome")).toHaveValue(editedName);
+  }
+
+  await page.goto("/comprador/consolidado?ciclo=2097-09-24");
+  const historicalContainer = testInfo.project.name === "mobile"
+    ? page.locator(".buyer-card").filter({ hasText: "BANANA TESTE" })
+    : page.locator(".buyer-table tbody tr").filter({ hasText: "BANANA TESTE" });
+  await expect(historicalContainer.first()).toBeVisible();
+});

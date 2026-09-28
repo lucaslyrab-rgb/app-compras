@@ -11,5 +11,5 @@ export default async function ManagerProductDetailPage({ params }: { params: Pro
   const { id } = await params;
   const [product, settings] = await Promise.all([readPricingProduct(principal, id), readPricingSettings(principal)]);
   if (!product) notFound();
-  return <main className="manager-page manager-detail-page"><Link className="manager-back" href="/gestor/produtos">← Produtos</Link><div className="manager-breadcrumb">Gestor <span>›</span> Produtos <span>›</span> Editar</div><ProductPricingEditor product={product} settings={settings} /></main>;
+  return <main className="manager-page manager-detail-page"><Link className="manager-back" href="/gestor/produtos">← Produtos</Link><div className="manager-breadcrumb">Gestor <span>›</span> Produtos <span>›</span> Editar</div><ProductPricingEditor key={product.id} product={product} settings={settings} /></main>;
 }

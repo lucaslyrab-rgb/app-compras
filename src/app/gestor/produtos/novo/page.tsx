@@ -8,5 +8,5 @@ export const dynamic = "force-dynamic";
 export default async function NewManagerProductPage() {
   const principal = await requireManagerPrincipal();
   const settings = await readPricingSettings(principal);
-  return <main className="manager-page manager-detail-page"><Link className="manager-back" href="/gestor/produtos">← Produtos</Link><div className="manager-breadcrumb">Gestor <span>›</span> Produtos <span>›</span> Novo</div><ProductPricingEditor settings={settings} /></main>;
+  return <main className="manager-page manager-detail-page"><Link className="manager-back" href="/gestor/produtos">← Produtos</Link><div className="manager-breadcrumb">Gestor <span>›</span> Produtos <span>›</span> Novo</div><ProductPricingEditor key="new-product" settings={settings} /></main>;
 }

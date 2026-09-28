@@ -40,7 +40,17 @@ export function ProductPricingWorkspace({ initialProducts, settings }: { initial
   const filterCount = (value: ProductPricingFilter) => filterPricingProducts(products, "", value, statusFilter).length;
 
   function resetAnd(action: () => void) { action(); setPage(1); setCreating(false); }
-  function saved(updated: PricingProduct) { setProducts((current) => current.map((product) => product.id === updated.id ? updated : product)); }
+  function saved(updated: PricingProduct) {
+    const next = products.map((product) => product.id === updated.id ? updated : product)
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR") || a.erpCode - b.erpCode);
+    setProducts(next);
+    setSelectedId(updated.id);
+    const filteredNext = filterPricingProducts(next, query, filter, statusFilter);
+    const index = filteredNext.findIndex((product) => product.id === updated.id);
+    if (index >= 0) {
+      setPage(Math.floor(index / 20) + 1);
+    }
+  }
   function created(value: PricingProduct) {
     const next = [...products, value].sort((a, b) => a.name.localeCompare(b.name, "pt-BR") || a.erpCode - b.erpCode);
     setProducts(next);
@@ -71,6 +81,6 @@ export function ProductPricingWorkspace({ initialProducts, settings }: { initial
       <div className="manager-mobile-cards">{visible.map((product) => <article key={product.id} className="manager-mobile-card"><header><div><h2>{product.name}</h2><p>ERP {product.erpCode}</p></div><span className={`manager-badge ${product.active ? `manager-badge--${pricingProductStatus(product)}` : "manager-badge--neutral"}`}>{product.active ? statusLabel(product) : "Inativo"}</span></header><dl><div><dt>Compra</dt><dd>{product.purchaseFormat}</dd></div><div><dt>Conversão</dt><dd>{formatPricingNumber(product.conversionQuantity)} {product.saleUnit}</dd></div><div><dt>Perda</dt><dd>{formatPricingNumber(product.beneficiationLossPercent)}%</dd></div><div><dt>Margem</dt><dd>{product.specificMarginPercent ? `${formatPricingNumber(product.specificMarginPercent)}%` : `Padrão ${formatPricingNumber(settings.defaultMarginPercent)}%`}</dd></div></dl><div className="manager-card-actions"><Link className="manager-secondary" href={`/gestor/produtos/${product.id}`}>Editar</Link><button type="button" className="manager-secondary" disabled={pending} onClick={() => toggle(product)}>{product.active ? "Inativar" : "Reativar"}</button></div></article>)}</div>
       {!visible.length ? <p className="manager-empty">Nenhum produto encontrado.</p> : null}
       {pagination.total ? <nav className="manager-pagination" aria-label="Paginação de produtos"><span>{pagination.start + 1}–{pagination.end} de {pagination.total}</span><div><button type="button" className="manager-secondary" disabled={pagination.currentPage === 1} onClick={() => setPage(pagination.currentPage - 1)}>Anterior</button><span>Página {pagination.currentPage} de {pagination.pageCount}</span><button type="button" className="manager-secondary" disabled={pagination.currentPage === pagination.pageCount} onClick={() => setPage(pagination.currentPage + 1)}>Próxima</button></div></nav> : null}
-    </section>{creating ? <ProductPricingEditor settings={settings} onCreated={created} onCancel={() => setCreating(false)} /> : selected ? <ProductPricingEditor key={selected.id} product={selected} settings={settings} onSaved={saved} /> : null}</div>
+    </section>{creating ? <ProductPricingEditor key="create-product" settings={settings} onCreated={created} onCancel={() => setCreating(false)} /> : selected ? <ProductPricingEditor key={selected.id} product={selected} settings={settings} onSaved={saved} /> : null}</div>
   </main>;
 }

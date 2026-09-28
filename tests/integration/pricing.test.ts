@@ -146,12 +146,15 @@ integration("precificação no PostgreSQL", () => {
       specificMarginPercent: null, expectedVersion: 1, expectedProductVersion: 1, confirmedFormatConversion: false,
     })).rejects.toThrow(/outra sessão/i);
 
+    const draftDate = `2045-${String((stamp % 11) + 1).padStart(2, "0")}-${String((stamp % 27) + 1).padStart(2, "0")}`;
+    const orderDate = `2046-${String((stamp % 11) + 1).padStart(2, "0")}-${String((stamp % 27) + 1).padStart(2, "0")}`;
     const [storeRow] = await database().sql<{ id: string }[]>`SELECT id FROM stores ORDER BY id LIMIT 1`;
     const [draft] = await database().sql<{ id: string }[]>`
-      INSERT INTO order_drafts(store_id, order_date, updated_by) VALUES (${storeRow.id}, '2040-01-02', ${manager.userId}) RETURNING id`;
+      INSERT INTO order_drafts(store_id, order_date, updated_by) VALUES (${storeRow.id}, ${draftDate}, ${manager.userId}) RETURNING id`;
     await database().sql`INSERT INTO order_draft_items(draft_id, product_id, stock, quantity) VALUES (${draft.id}, ${created.id}, 1, 0)`;
     await expect(setProductActive(manager, created.id, false, updated.productVersion)).rejects.toThrow(/rascunho/i);
     await database().sql`DELETE FROM order_draft_items WHERE draft_id = ${draft.id} AND product_id = ${created.id}`;
+    await database().sql`DELETE FROM order_drafts WHERE id = ${draft.id}`;
     const inactive = await setProductActive(manager, created.id, false, updated.productVersion);
     expect(inactive.active).toBe(false);
     const active = await setProductActive(manager, created.id, true, inactive.version);
@@ -159,7 +162,7 @@ integration("precificação no PostgreSQL", () => {
 
     const [order] = await database().sql<{ id: string }[]>`
       INSERT INTO orders(store_id, order_date, purchase_cycle_date, cutoff_at, revision, submitted_by)
-      VALUES (${storeRow.id}, '2040-01-03', '2040-01-04', '2040-01-03T12:00:00Z', 1, ${manager.userId}) RETURNING id`;
+      VALUES (${storeRow.id}, ${orderDate}, ${orderDate}, ${orderDate + "T12:00:00Z"}, 1, ${manager.userId}) RETURNING id`;
     await database().sql`INSERT INTO order_items(order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
       VALUES (${order.id}, ${created.id}, 0, 1, ${erpCode + 1}, 'PRODUTO GERENCIAL EDITADO', 'UND')`;
     const latest = (await listPricingProducts(manager)).find((product) => product.id === created.id)!;
@@ -170,6 +173,9 @@ integration("precificação no PostgreSQL", () => {
     const [snapshot] = await database().sql<{ erp: number; name: string; unit: string }[]>`
       SELECT snapshot_erp_code AS erp, snapshot_name AS name, snapshot_unit AS unit FROM order_items WHERE order_id = ${order.id} AND product_id = ${created.id}`;
     expect(snapshot).toEqual({ erp: erpCode + 1, name: "PRODUTO GERENCIAL EDITADO", unit: "UND" });
+    const [reloadedProduct] = await database().sql<{ name: string; version: number }[]>`
+      SELECT name, version FROM products WHERE id = ${created.id}`;
+    expect(reloadedProduct).toEqual({ name: "NOVO NOME", version: 5 });
   });
 
   it("importador preserva cadastro gerenciado por padrão", async () => {
@@ -199,6 +205,7 @@ integration("precificação no PostgreSQL", () => {
     const [draft] = await database().sql<{ version: number }[]>`
       SELECT version FROM purchase_cycle_product_costs WHERE product_id = ${productId} AND purchase_cycle_date = ${cycleDate}::date
     `;
+    await database().sql`DELETE FROM purchase_cycle_product_costs WHERE purchase_cycle_date = '2026-09-26'`;
     await database().sql`
       INSERT INTO purchase_cycle_product_costs(product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by)
       VALUES (${productId}, '2026-09-25', 40, false, true, now() - interval '1 day', ${manager.userId})
