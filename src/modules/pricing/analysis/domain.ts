@@ -221,6 +221,40 @@ function compareCostTransition(
   return compare(currentNormalized, previousNormalized) === 0 ? "EQUAL" : "CHANGED";
 }
 
+export function hasReferenceCycleCostChange(source: PricingAnalysisSource) {
+  const current = source.officialCost;
+  if (!current || !source.referenceCycleDate || current.cycleDate !== source.referenceCycleDate)
+    return false;
+
+  let currentIndex = -1;
+  for (let index = source.officialCostHistory.length - 1; index >= 0; index -= 1) {
+    const candidate = source.officialCostHistory[index];
+    if (candidate.id === current.id && candidate.version === current.version) {
+      currentIndex = index;
+      break;
+    }
+  }
+  if (currentIndex <= 0) return false;
+
+  const previous = source.officialCostHistory[currentIndex - 1];
+  const currentWithMetadata = source.officialCostHistory[currentIndex];
+  if (previous.revisedAfterPurchase || currentWithMetadata.revisedAfterPurchase)
+    return false;
+
+  return compareCostTransition(source, previous, currentWithMetadata) === "CHANGED";
+}
+
+function reviewCoversCurrentOfficialCost(analysis: PricingAnalysis) {
+  const review = analysis.latestReview;
+  const cost = analysis.officialCost;
+  return Boolean(
+    review && cost &&
+    review.officialCostId === cost.id &&
+    review.officialCostVersion === cost.version &&
+    review.officialPurchaseCycleDate === cost.cycleDate
+  );
+}
+
 export function buildPricingAnalysis(source: PricingAnalysisSource): PricingAnalysis {
   const desiredMarginPercent = source.specificMarginPercent ?? source.settings.defaultMarginPercent;
   const marginOrigin = source.specificMarginPercent === null ? "DEFAULT" : "SPECIFIC";
@@ -360,6 +394,8 @@ export function pricingMetrics(analyses: PricingAnalysis[]) {
 export function printablePricingAnalyses(analyses: PricingAnalysis[]) {
   return analyses.filter((analysis) =>
     analysis.status === "REVIEWED" &&
+    hasReferenceCycleCostChange(analysis) &&
+    reviewCoversCurrentOfficialCost(analysis) &&
     Boolean(analysis.latestReview?.decidedPrice || analysis.latestReview?.appliedPrice)
   );
 }
@@ -367,7 +403,12 @@ export function printablePricingAnalyses(analyses: PricingAnalysis[]) {
 export function pricingPrintRows(analyses: PricingAnalysis[], reviewIds: string[] = []): PricingPrintRow[] {
   const selectedReviews = reviewIds.length ? new Set(reviewIds) : null;
   return analyses.flatMap((analysis) => {
-    if (analysis.status !== "REVIEWED" || !analysis.latestReview) return [];
+    if (
+      analysis.status !== "REVIEWED" ||
+      !analysis.latestReview ||
+      !hasReferenceCycleCostChange(analysis) ||
+      !reviewCoversCurrentOfficialCost(analysis)
+    ) return [];
     const review = analysis.latestReview;
     const decidedPrice = review.decidedPrice ?? review.appliedPrice;
     if (!decidedPrice || (selectedReviews && !selectedReviews.has(review.id))) return [];

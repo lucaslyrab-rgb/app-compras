@@ -18,6 +18,7 @@ integration("precificação no PostgreSQL", () => {
   let secondProductId = "";
   let noCostProductId = "";
   let manualProductId = "";
+  let reportProductId = "";
   const stamp = Date.now();
 
   beforeAll(async () => {
@@ -53,12 +54,19 @@ integration("precificação no PostgreSQL", () => {
       RETURNING id
     `;
     manualProductId = manualProduct.id;
+    const [reportProduct] = await database().sql<{ id: string }[]>`
+      INSERT INTO products(erp_code, name, unit, purchase_format, markup, active)
+      VALUES (${970000 + (stamp % 10000)}, 'ABACATE ALTERAÇÃO DA RODADA', 'KG', 'CX', 0, true)
+      RETURNING id
+    `;
+    reportProductId = reportProduct.id;
     await database().sql`
       INSERT INTO product_pricing_parameters(product_id, sale_unit, conversion_quantity, conversion_origin, beneficiation_loss_percent)
       VALUES (${productId}, 'KG', 20, 'PROVISIONAL', 40),
              (${secondProductId}, 'UND', 1, 'UNIT', 0),
              (${noCostProductId}, 'KG', 20, 'PROVISIONAL', 0),
-             (${manualProductId}, 'KG', 20, 'MANUAL', 0)
+             (${manualProductId}, 'KG', 20, 'MANUAL', 0),
+             (${reportProductId}, 'KG', 20, 'MANUAL', 0)
     `;
     await database().sql`
       UPDATE pricing_settings
@@ -202,14 +210,49 @@ integration("precificação no PostgreSQL", () => {
     });
   });
 
-  it("persiste decisão manual sem mudança de custo e imprime o preço decidido", async () => {
+  it("imprime somente a mudança de custo revisada da rodada atual", async () => {
+    const friday = new Date("2026-09-25T10:00:00-03:00");
+    const monday = new Date("2026-09-28T10:00:00-03:00");
+    await database().sql`
+      INSERT INTO purchase_cycle_product_costs(product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by)
+      VALUES (${reportProductId}, '2026-09-24', 50, false, true, now() - interval '2 days', ${manager.userId}),
+             (${reportProductId}, '2026-09-25', 60, false, true, now() - interval '1 day', ${manager.userId})
+    `;
+    const pending = await loadPricingAnalysis(manager, reportProductId, friday);
+    expect(pending).toMatchObject({ status: "COST_CHANGED", referenceCycleDate: "2026-09-25" });
+    expect(pricingPrintRows(await loadPricingAnalyses(manager, friday)).some((row) => row.productId === reportProductId)).toBe(false);
+
+    const review = await reviewPricingProduct(manager, {
+      productId: reportProductId,
+      expectedFingerprint: pending!.fingerprint!,
+      decidedPrice: "9.99",
+    }, friday);
+    const reviewedRows = pricingPrintRows(await loadPricingAnalyses(manager, friday));
+    expect(reviewedRows).toContainEqual(expect.objectContaining({
+      reviewId: review.id,
+      productId: reportProductId,
+      decidedPrice: "9.99",
+      decisionOrigin: "MANUAL",
+    }));
+
+    await database().sql`
+      INSERT INTO purchase_cycle_product_costs(product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by)
+      VALUES (${reportProductId}, '2026-09-28', 60, false, true, now(), ${manager.userId})
+    `;
+    const nextCycle = await loadPricingAnalysis(manager, reportProductId, monday);
+    expect(nextCycle).toMatchObject({ status: "REVIEWED", referenceCycleDate: "2026-09-28" });
+    expect(pricingPrintRows(await loadPricingAnalyses(manager, monday)).some((row) => row.productId === reportProductId)).toBe(false);
+  });
+
+  it("persiste decisão manual sem mudança de custo sem levá-la ao relatório da rodada", async () => {
     const friday = new Date("2026-09-25T10:00:00-03:00");
     await database().sql`
       INSERT INTO purchase_cycle_product_costs(product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at, updated_by)
-      VALUES (${manualProductId}, '2026-09-25', 100, false, true, now() - interval '2 days', ${manager.userId})
+      VALUES (${manualProductId}, '2026-09-24', 100, false, true, now() - interval '2 days', ${manager.userId}),
+             (${manualProductId}, '2026-09-25', 100, false, true, now() - interval '1 day', ${manager.userId})
     `;
     const before = await loadPricingAnalysis(manager, manualProductId, friday);
-    expect(before).toMatchObject({ status: "COST_CHANGED", officialCost: { cost: "100.00" } });
+    expect(before).toMatchObject({ status: "NOT_REVIEWED", costChanged: false, officialCost: { cost: "100.00" } });
     await expect(reviewPricingProduct(manager, {
       productId: manualProductId,
       expectedFingerprint: `${before!.fingerprint!}-stale`,
@@ -235,13 +278,7 @@ integration("precificação no PostgreSQL", () => {
       decisionOrigin: "MANUAL",
     });
     expect(printDecision.decidedPrice).not.toBe(printDecision.suggestedPrice);
-    expect(pricingPrintRows(await loadPricingAnalyses(manager, friday))).toContainEqual(expect.objectContaining({
-      reviewId: manual.id,
-      productId: manualProductId,
-      suggestedPrice: printDecision.suggestedPrice,
-      decidedPrice: "7.99",
-      decisionOrigin: "MANUAL",
-    }));
+    expect(pricingPrintRows(await loadPricingAnalyses(manager, friday)).some((row) => row.productId === manualProductId)).toBe(false);
 
     const accepted = await reviewPricingProduct(manager, {
       productId: manualProductId,

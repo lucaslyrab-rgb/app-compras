@@ -133,9 +133,10 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
     await page.getByRole("button", { name: /^Todos/ }).click();
   }
   const popupPromise = page.waitForEvent("popup");
-  await page.getByRole("link", { name: /Imprimir decisões/ }).click();
+  await page.getByRole("link", { name: /Imprimir alterações de preço/ }).click();
   const report = await popupPromise;
-  await expect(report.getByRole("heading", { name: "Decisões de preços - FLV" })).toBeVisible();
+  await expect(report.getByRole("heading", { name: "Alterações de preços - FLV" })).toBeVisible();
+  await expect(report.getByText(/Ciclo \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
   await expect(report.getByRole("columnheader", { name: "Preço decidido" })).toBeVisible();
   await expect(report.getByText("Produtos pendentes de revisão")).toHaveCount(0);
   await expect(report.getByRole("button", { name: "Imprimir" })).toBeVisible();

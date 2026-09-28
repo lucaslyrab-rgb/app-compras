@@ -109,7 +109,7 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(repository).not.toMatch(/appliedPrice:\s*[^,\n]*reviewSuggestedPrice/);
   });
 
-  it("restringe a impressão a decisões atuais e mantém o painel desktop sticky", async () => {
+  it("restringe a impressão a mudanças revisadas da rodada atual e mantém o painel desktop sticky", async () => {
     const [page, domain, managerStyles, shellStyles] = await Promise.all([
       readFile("src/app/gestor/precificacao/impressao/page.tsx", "utf8"),
       readFile("src/modules/pricing/analysis/domain.ts", "utf8"),
@@ -119,6 +119,8 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(page).toContain("pricingPrintRows");
     expect(page).not.toContain('analysis.status !== "REVIEWED"');
     expect(domain).toContain('analysis.status !== "REVIEWED"');
+    expect(domain).toContain("hasReferenceCycleCostChange(analysis)");
+    expect(domain).toContain("reviewCoversCurrentOfficialCost(analysis)");
     expect(domain).toContain("review.decidedPrice ?? review.appliedPrice");
     expect(managerStyles).toMatch(/@media \(min-width: 1181px\)[\s\S]*position: sticky/);
     expect(shellStyles).not.toContain("brightness(0) invert(1)");

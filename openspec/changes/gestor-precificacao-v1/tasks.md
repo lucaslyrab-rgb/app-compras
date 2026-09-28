@@ -66,6 +66,7 @@
 - [x] 8.2 Adicionar botão Imprimir com CSS A4 e abertura manual da caixa do navegador; verificar nova aba, ausência de impressão automática e ausência de revisão colateral.
 - [x] 8.3 Persistir preço aplicado e preço decidido com origem durável em migrations aditivas 0009 e 0010, separar flags de custo/parâmetros/pendência, permitir relatório por IDs de revisões recém-criadas ou revisões confirmadas; verificar primeiro custo, igualdade econômica, reabertura, CHUCHU com flags simultâneas, decisão manual e ausência de backfill histórico.
 - [x] 8.4 Restringir a impressão às revisões atuais com decisão explícita, usar `decided_price` como fonte canônica com compatibilidade exclusiva por `applied_price` e excluir pendências e snapshots legados sem decisão; verificar preço manual diferente do sugerido.
+- [x] 8.7 Restringir o relatório às mudanças econômicas reais do ciclo oficial de referência atual cobertas por revisão ancorada no custo da rodada; excluir custos iguais, pendências e decisões anteriores sem criar migration.
 - [x] 8.5 Manter o painel lateral de decisão visível no desktop com limite de viewport e rolagem interna, preservando largura, seleção e comportamento mobile.
 - [x] 8.6 Exibir o asset horizontal MultiShow existente na sidebar e no cabeçalho mobile com cores originais, removendo o filtro monocromático sem redesenhar a navegação.
 
@@ -79,6 +80,7 @@
 - [x] 9.6 Executar lint, typecheck, unitários, integração em PostgreSQL descartável, build, validação OpenSpec e `git diff --check` para a pendência durável e decisões comerciais; registrar cada resultado sem commit, push ou deploy.
 - [x] 9.7 Validar descoberta automática de 0001–0009, reaplicação em banco vazio e em estado legado equivalente à produção, rejeição de prefixo duplicado e conteúdo do artefato de produção; executar lint, typecheck, unitários, integração, build e `git diff --check`.
 - [x] 9.8 Executar testes relacionados, unitários, integração PostgreSQL descartável, lint, typecheck, build, OpenSpec strict e `git diff --check` para o pacote de homologação, sem modificar recência, calendário, fórmulas, migrations ou regras de custo.
+- [x] 9.9 Validar o relatório da rodada com custo alterado pendente/revisado, custo igual revisado, decisão anterior, preço manual e avanço de ciclo; executar unitários, integração PostgreSQL descartável, lint, typecheck, build, OpenSpec strict e `git diff --check`.
 
 ## 10. Entrega controlada
 

@@ -104,7 +104,7 @@ O sistema SHALL criar uma revisão somente por ação explícita do Gestor e SHA
 
 #### Scenario: Compatibilidade de revisão histórica
 - **WHEN** uma revisão anterior não possui preço decidido nem origem
-- **THEN** o sistema mantém o snapshot válido e interpreta o preço sugerido existente como decisão sugerida quando necessário
+- **THEN** o sistema mantém o snapshot válido, mas não promove o preço sugerido a decisão explícita nem inclui a revisão no relatório
 
 #### Scenario: Entradas mudaram antes da confirmação
 - **WHEN** custo ou parâmetros mudam entre a abertura e a ação de revisar
@@ -115,11 +115,11 @@ O sistema SHALL criar uma revisão somente por ação explícita do Gestor e SHA
 - **THEN** nenhuma revisão é criada
 
 ### Requirement: Impressão de alterações
-O sistema SHALL oferecer relatório autenticado em nova aba para produtos com revisões confirmadas e seleções explícitas de revisões recém-criadas, contendo ERP, produto, unidade, custo efetivo, preço calculado, preço sugerido, preço decidido e espaço para anotação.
+O sistema SHALL oferecer relatório autenticado em nova aba somente para produtos cuja mudança econômica real de custo ocorreu no ciclo oficial de referência atual e já foi coberta por revisão com decisão comercial explícita, contendo ERP, produto, unidade, custo efetivo, preço calculado, preço sugerido, preço decidido e espaço para anotação.
 
 #### Scenario: Abrir relatório
-- **WHEN** o Gestor aciona “Imprimir alterações”
-- **THEN** o sistema abre uma página preparada para impressão com somente revisões atuais confirmadas, destaca o preço aplicado, oferece botão Imprimir e não dispara impressão automaticamente
+- **WHEN** o Gestor aciona “Imprimir alterações de preço”
+- **THEN** o sistema abre uma página preparada para impressão, identifica o ciclo de referência, lista somente as mudanças de custo da rodada já revisadas, destaca o preço decidido, oferece botão Imprimir e não dispara impressão automaticamente
 
 #### Scenario: Imprimir relatório
 - **WHEN** o Gestor usa o botão Imprimir
@@ -127,11 +127,19 @@ O sistema SHALL oferecer relatório autenticado em nova aba para produtos com re
 
 #### Scenario: Imprimir decisão recém-criada
 - **WHEN** o Gestor abre o relatório pelos IDs das revisões recém-criadas
-- **THEN** o relatório inclui decisões manuais sem Custo alterado e usa o preço decidido como valor principal a aplicar
+- **THEN** o relatório restringe as mudanças qualificadas da rodada aos IDs informados e usa o preço decidido como valor principal a aplicar
 
 #### Scenario: Excluir pendência e revisão legada
 - **WHEN** um produto está pendente ou sua revisão não possui `decided_price` nem `applied_price`
 - **THEN** o produto não aparece no relatório e `suggested_price` não é interpretado como decisão
+
+#### Scenario: Excluir custo igual e rodada anterior
+- **WHEN** o custo permaneceu economicamente igual no ciclo atual ou a decisão cobre uma mudança de ciclo anterior
+- **THEN** o produto não aparece no relatório da rodada atual, ainda que esteja Revisado
+
+#### Scenario: Avançar o ciclo de referência
+- **WHEN** um novo ciclo oficial passa a ser a referência sem nova mudança econômica de custo
+- **THEN** as alterações confirmadas do ciclo anterior não são carregadas para o novo relatório
 
 #### Scenario: Preço manual no relatório
 - **WHEN** a revisão atual preserva preço sugerido R$ 10,49 e preço decidido manual R$ 9,99

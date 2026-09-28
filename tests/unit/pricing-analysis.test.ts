@@ -230,12 +230,25 @@ describe("análise de precificação", () => {
     expect(legacy.latestReview?.decidedPrice).toBeNull();
   });
 
-  it("imprime somente revisão atual com decisão explícita e preserva o preço manual", () => {
-    const pending = buildPricingAnalysis(source({ id: "pending" }));
-    const manualBase = buildPricingAnalysis(source({ id: "manual", name: "CEBOLA ROXA" }));
+  it("imprime somente mudança econômica revisada do ciclo atual e preserva o preço manual", () => {
+    const previous = cost("40.00", "2026-09-22", { id: "previous" });
+    const current = cost("50.00", "2026-09-23", { id: "current" });
+    const pending = buildPricingAnalysis(source({
+      id: "pending",
+      officialCost: current,
+      officialCostHistory: [previous, current],
+    }));
+    const manualBase = buildPricingAnalysis(source({
+      id: "manual",
+      name: "ABACATE KG",
+      officialCost: current,
+      officialCostHistory: [previous, current],
+    }));
     const manual = buildPricingAnalysis(source({
       id: "manual",
-      name: "CEBOLA ROXA",
+      name: "ABACATE KG",
+      officialCost: current,
+      officialCostHistory: [previous, current],
       latestReview: reviewOf(manualBase, {
         id: "manual-review",
         suggestedPrice: "10.49",
@@ -247,8 +260,13 @@ describe("análise de precificação", () => {
     const legacyBase = buildPricingAnalysis(source({ id: "legacy" }));
     const legacy = buildPricingAnalysis(source({
       id: "legacy",
+      officialCost: current,
+      officialCostHistory: [previous, current],
       latestReview: reviewOf(legacyBase, {
         id: "legacy-review",
+        officialCostId: current.id,
+        officialPurchaseCycleDate: current.cycleDate,
+        officialCost: current.cost,
         appliedPrice: null,
         decidedPrice: null,
         decisionOrigin: null,
@@ -258,7 +276,7 @@ describe("análise de precificação", () => {
     expect(pricingPrintRows([pending, manual, legacy])).toEqual([
       expect.objectContaining({
         reviewId: "manual-review",
-        productName: "CEBOLA ROXA",
+        productName: "ABACATE KG",
         suggestedPrice: "10.49",
         decidedPrice: "9.99",
         decisionOrigin: "MANUAL",
@@ -266,6 +284,39 @@ describe("análise de precificação", () => {
     ]);
     expect(pricingPrintRows([manual], ["other-review"])).toEqual([]);
     expect(pricingPrintRows([manual], ["manual-review"])).toHaveLength(1);
+  });
+
+  it("não imprime custo igual, decisão anterior nem mudança carregada para novo ciclo", () => {
+    const initial = cost("40.00", "2026-09-22", { id: "initial" });
+    const changed = cost("50.00", "2026-09-23", { id: "changed" });
+    const changedAnalysis = buildPricingAnalysis(source({
+      officialCost: changed,
+      officialCostHistory: [initial, changed],
+    }));
+    const previousReview = reviewOf(changedAnalysis);
+    const equalNextCycle = cost("50.00", "2026-09-24", { id: "equal-next-cycle" });
+    const carriedDecision = buildPricingAnalysis(source({
+      officialCost: equalNextCycle,
+      officialCostHistory: [initial, changed, equalNextCycle],
+      latestReview: previousReview,
+      referenceCycleDate: equalNextCycle.cycleDate,
+    }));
+    expect(carriedDecision.status).toBe("REVIEWED");
+    expect(pricingPrintRows([carriedDecision])).toEqual([]);
+
+    const equalBase = buildPricingAnalysis(source({
+      officialCost: equalNextCycle,
+      officialCostHistory: [changed, equalNextCycle],
+      referenceCycleDate: equalNextCycle.cycleDate,
+    }));
+    const equalReviewed = buildPricingAnalysis(source({
+      officialCost: equalNextCycle,
+      officialCostHistory: [changed, equalNextCycle],
+      latestReview: reviewOf(equalBase),
+      referenceCycleDate: equalNextCycle.cycleDate,
+    }));
+    expect(equalReviewed.status).toBe("REVIEWED");
+    expect(pricingPrintRows([equalReviewed])).toEqual([]);
   });
 
   it("normaliza bases equivalentes com aritmética exata", () => {
@@ -342,8 +393,10 @@ describe("análise de precificação", () => {
     const pending = buildPricingAnalysis(source());
     const staleCost = cost("40.00", "2026-09-22");
     const stale = buildPricingAnalysis(source({ id: "2", name: "ALHO", officialCost: staleCost, officialCostHistory: [staleCost] }));
-    const reviewedBase = buildPricingAnalysis(source({ id: "3", name: "BANANA" }));
-    const reviewed = buildPricingAnalysis(source({ id: "3", name: "BANANA", latestReview: reviewOf(reviewedBase) }));
+    const previous = cost("30.00", "2026-09-22", { id: "previous" });
+    const current = cost("40.00");
+    const reviewedBase = buildPricingAnalysis(source({ id: "3", name: "BANANA", officialCost: current, officialCostHistory: [previous, current] }));
+    const reviewed = buildPricingAnalysis(source({ id: "3", name: "BANANA", officialCost: current, officialCostHistory: [previous, current], latestReview: reviewOf(reviewedBase) }));
     expect(filterPricingAnalyses([pending, stale, reviewed], "alho", "stale-purchase")).toEqual([stale]);
     expect(pricingMetrics([pending, stale, reviewed])).toEqual({
       total: 3,

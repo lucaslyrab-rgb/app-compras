@@ -16,7 +16,7 @@ O Gestor ainda não dispõe de uma área segura para manter conversões, perdas 
 - Separar mudança de custo, mudança de parâmetros e pendência de revisão para que alterações simultâneas de valor e base permaneçam visíveis nas duas dimensões.
 - Manter pendências econômicas de custo através dos ciclos até que uma revisão do estado oficial atual as cubra, usando a última revisão como watermark.
 - Persistir separadamente o preço decidido pelo Gestor e sua origem sugerida ou manual, permitindo decisão comercial durável.
-- Permitir relatório de impressão em rota autenticada somente para decisões explícitas que ainda representam o estado econômico atual, destacando o preço decidido como valor principal e excluindo pendências e revisões legadas sem decisão.
+- Permitir relatório de impressão em rota autenticada somente para mudanças econômicas reais do ciclo oficial de referência atual que já foram cobertas por revisão com decisão explícita, destacando o preço decidido como valor principal e excluindo pendências, decisões de ciclos anteriores e revisões legadas sem decisão.
 - Ampliar testes unitários, de integração, RBAC, regressão, E2E e responsividade, preservando pedidos, snapshots e triggers de imutabilidade existentes.
 
 ## Capabilities
