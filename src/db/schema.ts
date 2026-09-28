@@ -46,9 +46,15 @@ export const products = pgTable("products", {
   markup: numeric("markup", { precision: 8, scale: 2 }).notNull(),
   exclusiveSupplier: boolean("exclusive_supplier").notNull().default(false),
   active: boolean("active").notNull().default(true),
+  version: integer("version").notNull().default(1),
+  photoKey: text("photo_key"),
+  photoUpdatedAt: timestamp("photo_updated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
-}, (table) => [check("products_markup_nonnegative", sql`${table.markup} >= 0`)]);
+}, (table) => [
+  check("products_markup_nonnegative", sql`${table.markup} >= 0`),
+  check("products_version_check", sql`${table.version} > 0`),
+]);
 
 export const orderDrafts = pgTable("order_drafts", {
   id: uuid("id").primaryKey().defaultRandom(),

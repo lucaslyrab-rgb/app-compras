@@ -12,10 +12,36 @@ export const productInput = z.object({
 });
 export type ProductInput = z.infer<typeof productInput>;
 
+export const managedProductInput = productInput.omit({ markup: true });
+export type ManagedProductInput = z.infer<typeof managedProductInput>;
+
 export function authorizeProductManagement(principal: Principal) {
   if (!canManageProducts(principal)) throw new AuthorizationError("Somente o Gestor administra produtos");
 }
 
 export function normalizeProduct(input: ProductInput): ProductInput {
   return productInput.parse({ ...input, name: input.name.toUpperCase(), unit: input.unit.toUpperCase(), purchaseFormat: input.purchaseFormat.toUpperCase() });
+}
+
+export function normalizeManagedProduct(input: ManagedProductInput): ManagedProductInput {
+  return managedProductInput.parse({
+    ...input,
+    name: input.name.toLocaleUpperCase("pt-BR"),
+    unit: input.unit.toLocaleUpperCase("pt-BR"),
+    purchaseFormat: input.purchaseFormat.toLocaleUpperCase("pt-BR"),
+  });
+}
+
+export class ProductDraftConflictError extends Error {
+  constructor(public readonly draftCount: number) {
+    super(`O produto está preenchido em ${draftCount} rascunho(s). Finalize ou limpe esses rascunhos antes de inativar.`);
+    this.name = "ProductDraftConflictError";
+  }
+}
+
+export class ProductVersionConflictError extends Error {
+  constructor() {
+    super("O produto foi atualizado em outra sessão. Recarregue a página.");
+    this.name = "ProductVersionConflictError";
+  }
 }

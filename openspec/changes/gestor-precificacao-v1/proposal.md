@@ -18,6 +18,7 @@ O Gestor ainda não dispõe de uma área segura para manter conversões, perdas 
 - Persistir separadamente o preço decidido pelo Gestor e sua origem sugerida ou manual, permitindo decisão comercial durável.
 - Permitir relatório de impressão em rota autenticada somente para mudanças econômicas reais do ciclo oficial de referência atual que já foram cobertas por revisão com decisão explícita, destacando o preço decidido como valor principal e excluindo pendências, decisões de ciclos anteriores e revisões legadas sem decisão.
 - Ampliar testes unitários, de integração, RBAC, regressão, E2E e responsividade, preservando pedidos, snapshots e triggers de imutabilidade existentes.
+- Evoluir `Gestor > Produtos` para cadastro mestre versionado, criação transacional, ativação/inativação segura, busca e paginação, preparando chaves de foto sem implementar upload.
 
 ## Capabilities
 
@@ -35,7 +36,7 @@ O Gestor ainda não dispõe de uma área segura para manter conversões, perdas 
 
 ## Impact
 
-- Novas migrations sequenciais após `0004`, incluindo as migrações aditivas `0009` (preço aplicado) e `0010` (decisões e origens duráveis), schema Drizzle e carga inicial idempotente para produtos existentes e futuros.
+- Novas migrations sequenciais após `0004`, incluindo `0009` (preço aplicado), `0010` (decisões e origens duráveis) e `0011` (versão do cadastro e metadata de foto), schema Drizzle e carga inicial idempotente para produtos existentes e futuros.
 - `migrations/` passa a ser a única fonte de verdade para descoberta e execução ordenada das migrations em desenvolvimento, CI e inicialização da imagem de produção via runner unificado com checksum, advisory lock e baseline fail-closed.
 - Novos módulos de parâmetros, cálculo e revisão de precificação; extensão mínima do módulo `purchasing/costs` e do importador de produtos.
 - Novas rotas sob `/gestor`, redirecionamento compatível da rota legada `/produtos` e shell compartilhado apenas para áreas não-LOJA.

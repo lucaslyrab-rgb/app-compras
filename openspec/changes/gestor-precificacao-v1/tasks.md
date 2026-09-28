@@ -87,3 +87,12 @@
 - [x] 10.1 Produzir relatório pré-deploy com arquivos, migrations, banco, rotas, regras, pendências, testes, viewports, riscos e passos de rollout/rollback; verificar que qualquer falha legada é separada do escopo.
 - [x] 10.2 Criar commit focado sem incluir mudanças preexistentes do usuário e registrar o SHA; verificar `git status --short` e conteúdo do commit.
 - [ ] 10.3 Somente após autorização explícita de deploy, acompanhar GitHub Actions→GHCR→GitOps→Portainer→Swarm e registrar tag, digest, UpdateStatus, tarefa, health, RestartCount e rollback; verificar `/api/health` e saúde do container.
+
+## 11. Cadastro e manutenção de produtos
+
+- [x] 11.1 Criar migration 0011 aditiva com versão mestre e metadata opcional de foto, atualizar schema e descoberta automática sem implementar upload.
+- [x] 11.2 Implementar criação e edição transacionais de produto e parâmetros com ERP único, confirmação de formato/conversão, concorrência otimista dupla e auditoria.
+- [x] 11.3 Conectar inativação/reativação sem exclusão, bloqueando rascunhos preenchidos e preservando pedidos, custos, revisões e snapshots.
+- [x] 11.4 Implementar busca global, filtros de configuração/status, paginação client-side de 20 itens e seleção consistente em desktop/mobile.
+- [x] 11.5 Proteger o importador contra sobrescrita manual por padrão e manter bootstrap sincronizador somente por opção administrativa explícita.
+- [x] 11.6 Validar unitários, integração PostgreSQL, E2E desktop/mobile, lint, typecheck, build Node 24, OpenSpec strict e diff-check; criar commit local sem push/deploy.

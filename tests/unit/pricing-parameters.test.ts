@@ -3,15 +3,16 @@ import {
   authorizePricingManagement,
   filterPricingProducts,
   pricingProductMetrics,
+  paginatePricingProducts,
   validatePricingSettings,
   validateProductPricing,
   type PricingProduct,
 } from "@/modules/pricing/parameters/domain";
 
 const products: PricingProduct[] = [
-  { id: "1", erpCode: 1001, name: "BANANA PRATA", purchaseFormat: "CX", saleUnit: "KG", conversionQuantity: "20.000000", conversionOrigin: "PROVISIONAL", beneficiationLossPercent: "0.0000", specificMarginPercent: null, version: 1, updatedAt: "2026-09-23T00:00:00.000Z" },
-  { id: "2", erpCode: 1002, name: "ALHO", purchaseFormat: "PCT", saleUnit: "UND", conversionQuantity: "1.000000", conversionOrigin: "UNIT", beneficiationLossPercent: "0.0000", specificMarginPercent: null, version: 1, updatedAt: "2026-09-23T00:00:00.000Z" },
-  { id: "3", erpCode: 1003, name: "REPOLHO", purchaseFormat: "CX", saleUnit: "KG", conversionQuantity: "18.000000", conversionOrigin: "MANUAL", beneficiationLossPercent: "40.0000", specificMarginPercent: "25.0000", version: 2, updatedAt: "2026-09-23T00:00:00.000Z" },
+  { id: "1", erpCode: 1001, name: "BANANA PRATA", catalogUnit: "KG", purchaseFormat: "CX", exclusiveSupplier: false, active: true, productVersion: 1, photoKey: null, photoUpdatedAt: null, saleUnit: "KG", conversionQuantity: "20.000000", conversionOrigin: "PROVISIONAL", beneficiationLossPercent: "0.0000", specificMarginPercent: null, version: 1, updatedAt: "2026-09-23T00:00:00.000Z" },
+  { id: "2", erpCode: 1002, name: "ALHO", catalogUnit: "UND", purchaseFormat: "PCT", exclusiveSupplier: true, active: false, productVersion: 1, photoKey: null, photoUpdatedAt: null, saleUnit: "UND", conversionQuantity: "1.000000", conversionOrigin: "UNIT", beneficiationLossPercent: "0.0000", specificMarginPercent: null, version: 1, updatedAt: "2026-09-23T00:00:00.000Z" },
+  { id: "3", erpCode: 1003, name: "REPOLHO", catalogUnit: "KG", purchaseFormat: "CX", exclusiveSupplier: false, active: true, productVersion: 2, photoKey: null, photoUpdatedAt: null, saleUnit: "KG", conversionQuantity: "18.000000", conversionOrigin: "MANUAL", beneficiationLossPercent: "40.0000", specificMarginPercent: "25.0000", version: 2, updatedAt: "2026-09-23T00:00:00.000Z" },
 ];
 
 describe("parâmetros de precificação", () => {
@@ -36,7 +37,18 @@ describe("parâmetros de precificação", () => {
     expect(filterPricingProducts(products, "1002", "all")).toHaveLength(1);
     expect(filterPricingProducts(products, "pct", "unit")).toHaveLength(1);
     expect(filterPricingProducts(products, "", "configured")).toHaveLength(1);
-    expect(pricingProductMetrics(products)).toEqual({ total: 3, provisional: 1, unit: 1, configured: 1 });
+    expect(filterPricingProducts(products, "", "all", "active")).toHaveLength(2);
+    expect(filterPricingProducts(products, "", "all", "inactive")).toHaveLength(1);
+    expect(pricingProductMetrics(products)).toEqual({ total: 3, active: 2, inactive: 1, provisional: 1, unit: 1, configured: 1 });
+  });
+
+  it("pagina somente depois da busca e dos filtros", () => {
+    const catalog = Array.from({ length: 45 }, (_, index) => ({ ...products[0], id: String(index), erpCode: 2000 + index, name: `PRODUTO ${index}` }));
+    const page = paginatePricingProducts(filterPricingProducts(catalog, "produto", "all", "active"), 2);
+    expect(page.items).toHaveLength(20);
+    expect(page.start).toBe(20);
+    expect(page.end).toBe(40);
+    expect(page.total).toBe(45);
   });
 
   it("autoriza somente Gestor", () => {

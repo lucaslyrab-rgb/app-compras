@@ -26,12 +26,16 @@
 .manager-filters { display: flex; flex-wrap: wrap; gap: 7px; margin: 8px 0; }
 .manager-filters button { min-height: 34px; padding: 6px 17px; border: 0; border-radius: 18px; background: #eef2f5; color: var(--ink-900); cursor: pointer; font-size: .76rem; }
 .manager-filters button[aria-pressed="true"] { background: var(--brand-700); color: white; font-weight: 800; }
+.manager-filter-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.manager-status-filter { display: flex; align-items: center; gap: 7px; font-size: .74rem; font-weight: 700; }
+.manager-status-filter select { min-height: 36px; padding: 6px 28px 6px 9px; border: 1px solid #b8c5cf; border-radius: 7px; background: white; color: var(--ink-900); }
 .manager-table-wrap { overflow: hidden; border: 1px solid var(--border); border-radius: 9px; background: white; }
 .manager-table { width: 100%; border-collapse: collapse; font-size: .7rem; }
 .manager-table th, .manager-table td { padding: 7px 8px; border-right: 1px solid #e8edf1; border-bottom: 1px solid #e8edf1; text-align: left; vertical-align: middle; }
 .manager-table thead th { background: #f0f3f5; color: #44536a; font-size: .66rem; font-weight: 700; }
 .manager-table tbody th { font-weight: 500; }
 .manager-table tbody tr[data-selected="true"], .manager-table tbody tr:hover { background: #f3fbf8; }
+.manager-table tbody tr[data-inactive="true"] { color: var(--ink-600); background: #f7f8f9; }
 .manager-product-cell { display: flex; align-items: center; gap: 7px; min-width: 130px; }
 .manager-placeholder { display: grid; place-items: center; width: 58px; height: 58px; flex: 0 0 58px; border-radius: 50%; background: linear-gradient(135deg, #e6f5ec, #bddfc9); color: var(--brand-700); font-size: 1.7rem; }
 .manager-placeholder--small { width: 26px; height: 26px; flex-basis: 26px; font-size: .85rem; }
@@ -43,12 +47,20 @@
 .manager-badge--danger, .manager-badge--cost_changed { background: #ffdada; color: #a20f1c; }
 .manager-badge--neutral { background: #edf1f4; color: #536175; }
 .manager-icon-button { width: 36px; min-height: 36px; border: 1px solid #b9c5ce; border-radius: 7px; background: white; cursor: pointer; }
+.manager-row-actions, .manager-card-actions { display: flex; align-items: center; gap: 6px; }
+.manager-status-button { min-height: 34px; padding: 5px 8px; }
 .manager-editor { padding: 13px; border: 1px solid var(--border); border-radius: 10px; background: white; box-shadow: var(--shadow); }
 .manager-editor__title { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 16px; padding: 11px; border-radius: 8px; background: #f3f5f6; }
 .manager-product-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .manager-product-identity h2 { margin: 0; font-size: 1.1rem; overflow-wrap: anywhere; }
 .manager-product-identity p { margin: 5px 0 0; color: var(--ink-600); font-size: .78rem; }
 .manager-form { display: grid; gap: 14px; }
+.manager-form-section { display: grid; gap: 12px; margin: 0; padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
+.manager-form-section > legend { padding: 0 5px; font-size: .8rem; font-weight: 800; }
+.manager-form-section > label { display: grid; gap: 6px; font-size: .78rem; font-weight: 700; }
+.manager-check, .manager-confirmation { display: flex !important; align-items: center; gap: 8px; }
+.manager-check input, .manager-confirmation input { width: 20px; min-height: 20px; flex: 0 0 20px; }
+.manager-confirmation { padding: 8px; border-radius: 7px; background: #fff5d5; color: #755000; }
 .manager-form > label, .manager-form-grid label, .manager-settings-form > label { display: grid; gap: 6px; font-size: .78rem; font-weight: 700; }
 .manager-form input, .manager-settings-form input { width: 100%; min-width: 0; min-height: 44px; padding: 9px 11px; border: 1px solid #b7c3cc; border-radius: 7px; background: white; color: var(--ink-900); font-size: 16px; }
 .manager-form input[readonly], .manager-form input:disabled, .manager-settings-form input:disabled { background: #eef1f3; color: #657286; }
@@ -62,13 +74,17 @@
 .manager-margin-options > label { display: flex; align-items: center; gap: 8px; min-height: 42px; font-size: .76rem; }
 .manager-margin-options > label > input { width: 20px; min-height: 20px; flex: 0 0 20px; }
 .manager-margin-options .manager-input-group { width: 120px; margin-left: auto; }
-.manager-form-actions { display: flex; justify-content: flex-end; }
+.manager-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .manager-primary, .manager-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 9px 16px; border: 0; border-radius: 8px; background: var(--brand-700); color: white; font-weight: 800; text-decoration: none; cursor: pointer; }
 .manager-secondary { border: 1px solid #b7c3cc; background: white; color: var(--ink-900); font-size: .78rem; }
 .manager-feedback { margin: 0; padding: 9px 11px; border-radius: 7px; font-size: .78rem; }
 .manager-feedback--success { background: #e4f8ec; color: #075c36; }
 .manager-feedback--error { background: #fff0f1; color: #9c1721; }
 .manager-mobile-cards { display: none; }
+.manager-new-mobile { display: none; }
+.manager-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 2px; color: var(--ink-600); font-size: .76rem; }
+.manager-pagination > div { display: flex; align-items: center; gap: 8px; }
+.manager-pagination .manager-secondary { min-height: 34px; padding: 5px 10px; }
 .manager-empty { padding: 20px; text-align: center; color: var(--ink-600); }
 .manager-detail-page { max-width: 720px; }
 .manager-back { display: inline-flex; align-items: center; margin-bottom: 10px; color: var(--brand-700); text-decoration: none; }
@@ -306,6 +322,11 @@
 @media (max-width: 900px) {
   .manager-page { padding: 14px 10px calc(30px + env(safe-area-inset-bottom, 0px)); }
   .manager-heading h1 { font-size: 1.3rem; }
+  .manager-new-desktop { display: none; }
+  .manager-new-mobile { display: inline-flex; }
+  .manager-filter-row { display: block; }
+  .manager-status-filter { margin-bottom: 8px; }
+  .manager-status-filter select { flex: 1; }
   .manager-settings-summary { display: grid; }
   .manager-settings-summary dl { grid-template-columns: 1fr 1fr; gap: 9px; }
   .manager-settings-summary dl > div { padding: 0 9px; }
@@ -324,6 +345,9 @@
   .manager-mobile-card dt { color: var(--ink-600); font-size: .68rem; }
   .manager-mobile-card dd { margin: 3px 0 0; font-size: .79rem; font-weight: 800; overflow-wrap: anywhere; }
   .manager-mobile-card .manager-secondary { width: 100%; }
+  .manager-card-actions { align-items: stretch; }
+  .manager-pagination { align-items: flex-start; }
+  .manager-pagination > div { flex-wrap: wrap; justify-content: flex-end; }
   .manager-list-area + .manager-editor { display: none; }
   .manager-list-area + .pricing-detail { display: none; }
   .manager-detail-page .manager-editor { display: block; }

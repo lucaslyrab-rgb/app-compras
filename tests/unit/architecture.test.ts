@@ -19,11 +19,19 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0010", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0011", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 10 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 11 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
+  });
+
+  it("mantém a 0011 aditiva e prepara fotos sem implementar armazenamento", async () => {
+    const migration = await readFile("migrations/0011_product_catalog_management.sql", "utf8");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS version integer NOT NULL DEFAULT 1");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS photo_key text");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS photo_updated_at timestamptz");
+    expect(migration).not.toMatch(/UPDATE\s+products\b/i);
   });
 
   it("rejeita prefixos numéricos duplicados", async () => {

@@ -19,6 +19,7 @@ test("Gestor administra produtos e configurações em layout responsivo", async 
   await expect(page).toHaveURL(/\/gestor\/produtos/);
   await expect(page.getByRole("heading", { name: "Cadastro de Produtos - FLV" })).toBeVisible();
   await expect(page.getByText("Configurações gerais da precificação (FLV)")).toBeVisible();
+  await expect(page.getByText(/1–20 de \d+/)).toBeVisible();
   if (testInfo.project.name === "mobile") {
     await expect(page.locator(".manager-mobile-card").first()).toBeVisible();
     await expect(page.locator(".manager-table-wrap")).toBeHidden();
@@ -35,6 +36,32 @@ test("Gestor administra produtos e configurações em layout responsivo", async 
     await expect(page.locator(".manager-product-table")).toBeVisible();
     await expect(page.locator(".manager-editor")).toBeVisible();
   }
+  const managedErp = testInfo.project.name === "mobile" ? "998101" : "998102";
+  const newProductControl = testInfo.project.name === "mobile"
+    ? page.getByRole("link", { name: "+ Novo produto" })
+    : page.getByRole("button", { name: "+ Novo produto" });
+  await newProductControl.click();
+  await page.getByLabel("Código ERP").fill(managedErp);
+  await page.getByLabel("Nome").fill(`PRODUTO E2E ${testInfo.project.name}`);
+  await page.getByLabel("Unidade do catálogo/pedido").fill("KG");
+  await page.getByLabel("Formato de compra").fill("CX");
+  await page.getByLabel("Unidade de venda").fill("KG");
+  await page.getByLabel("Quantidade de conversão").fill("12");
+  await page.getByLabel("Perda média de beneficiamento").fill("3");
+  await page.getByRole("button", { name: "Cadastrar produto" }).click();
+  if (testInfo.project.name === "mobile") await expect(page).toHaveURL(/\/gestor\/produtos\/[0-9a-f-]+/);
+  else await expect(page.locator(".manager-editor h2")).toHaveText(`PRODUTO E2E ${testInfo.project.name.toUpperCase()}`);
+  await page.goto("/gestor/produtos");
+  await page.getByLabel("Status").selectOption("all");
+  await page.getByPlaceholder("Buscar por produto, ERP ou formato...").fill(managedErp);
+  const managedContainer = testInfo.project.name === "mobile"
+    ? page.locator(".manager-mobile-card").filter({ hasText: managedErp })
+    : page.locator(".manager-product-table tbody tr").filter({ hasText: managedErp });
+  await expect(managedContainer).toContainText(`PRODUTO E2E ${testInfo.project.name.toUpperCase()}`);
+  await managedContainer.getByRole("button", { name: "Inativar" }).click();
+  await expect(managedContainer.getByText("Inativo", { exact: true })).toBeVisible();
+  await managedContainer.getByRole("button", { name: "Reativar" }).click();
+  await expect(managedContainer.getByText("Configurado", { exact: true })).toBeVisible();
   await page.getByPlaceholder("Buscar por produto, ERP ou formato...").fill("BANANA TESTE");
   const searchedProduct = testInfo.project.name === "mobile"
     ? page.locator(".manager-mobile-card").getByText("BANANA TESTE", { exact: true })

@@ -30,7 +30,7 @@ O sistema SHALL inicializar parâmetros ausentes sem sobrescrever parâmetros j�
 
 #### Scenario: Importação repetida
 - **WHEN** a carga de produtos for executada após um produto ter parâmetros manuais
-- **THEN** o sistema preserva os parâmetros manuais e inicializa somente produtos sem parâmetros
+- **THEN** o sistema preserva o cadastro mestre e os parâmetros manuais e inicializa somente produtos ausentes ou sem parâmetros, salvo modo administrativo explícito de bootstrap
 
 ### Requirement: Configurações globais do FLV
 O sistema SHALL persistir uma configuração global versionada com custo operacional e margem líquida padrão, inicializados respectivamente em 23,00% e 20,00%, e SHALL exigir que ambos sejam não negativos e que sua soma seja menor que 100%.
@@ -62,9 +62,42 @@ O sistema SHALL oferecer ao Gestor uma tela de Produtos com indicadores derivado
 - **WHEN** o Gestor salva com uma versão anterior à persistida
 - **THEN** o sistema rejeita a gravação, preserva o estado mais recente e informa o conflito
 
-### Requirement: Formato de compra somente leitura
-O sistema SHALL tratar o formato de compra como dado mestre do catálogo e não SHALL permitir sua alteração na edição de parâmetros de precificação.
+### Requirement: Cadastro mestre versionado
+O sistema SHALL permitir ao Gestor criar e editar código ERP, nome, unidade do catálogo, formato de compra e exclusividade em conjunto com os parâmetros iniciais de precificação, usando versões independentes para produto e parâmetros.
 
-#### Scenario: Edição do produto
-- **WHEN** o Gestor abre o formulário de parâmetros
-- **THEN** produto, ERP e formato de compra são exibidos como contexto somente leitura
+#### Scenario: Novo produto
+- **WHEN** o Gestor informa cadastro e parâmetros válidos com ERP positivo e único
+- **THEN** produto ativo e parâmetros MANUAL são criados na mesma transação, sem custo oficial ou revisão automática, e PRODUCT_CREATED é auditado
+
+#### Scenario: Alteração de formato
+- **WHEN** o Gestor altera o formato de compra
+- **THEN** o sistema exige confirmação explícita da conversão informada e não recalcula a quantidade silenciosamente
+
+#### Scenario: Concorrência do cadastro
+- **WHEN** produto ou parâmetros foram atualizados após a abertura do formulário
+- **THEN** a transação inteira é rejeitada e o estado persistido mais recente é apresentado
+
+### Requirement: Ciclo de vida sem exclusão
+O sistema SHALL permitir filtrar ativos, inativos e todos, inativar e reativar sem exclusão física nem alteração de históricos.
+
+#### Scenario: Produto presente em rascunho preenchido
+- **WHEN** existe rascunho com estoque ou quantidade positiva para o produto
+- **THEN** a inativação é bloqueada sem apagar ou modificar o rascunho
+
+#### Scenario: Produto inativado
+- **WHEN** o Gestor inativa um produto sem rascunho preenchido
+- **THEN** novos fluxos deixam de oferecê-lo e pedidos, custos, revisões e snapshots existentes permanecem intactos
+
+### Requirement: Busca e paginação do catálogo
+O sistema SHALL aplicar catálogo completo, busca global, filtros e paginação nessa ordem, com vinte produtos por página.
+
+#### Scenario: Busca fora da página atual
+- **WHEN** o Gestor busca por nome, ERP ou formato
+- **THEN** todos os produtos são considerados antes da paginação e a interface retorna à primeira página
+
+### Requirement: Preparação de fotos
+O sistema SHALL manter `photo_key` e `photo_updated_at` opcionais no produto sem inventar URL ou persistir arquivos no container nesta etapa.
+
+#### Scenario: Cadastro sem foto
+- **WHEN** um produto é criado ou editado nesta versão
+- **THEN** os campos de foto podem permanecer nulos e nenhum upload é executado

@@ -23,3 +23,7 @@ Este repositório adota a baseline Wittemberg na revisão `9dbc93d105de52d855f7e
 ## Desenvolvimento local
 
 Os comandos serão adicionados junto da primeira fatia executável. Não há aplicação implementada neste marco documental; o HTML existente é referência funcional e não arquitetura de produção.
+
+### Importação administrativa de produtos
+
+`npm run db:import-products -- arquivo.xlsx` preserva por padrão qualquer cadastro mestre e parâmetros já existentes para o mesmo ERP, inserindo somente produtos ausentes e parâmetros faltantes. Para um bootstrap administrativo deliberado que sincronize os campos legados da planilha, use `npm run db:import-products -- arquivo.xlsx --bootstrap-sync`; esse modo é explícito e incrementa a versão do produto.

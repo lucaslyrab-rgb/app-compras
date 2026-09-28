@@ -5,16 +5,25 @@ import { z } from "zod";
 import { recordAudit } from "@/modules/identity/audit";
 import { requirePrincipal } from "@/modules/identity/session";
 import { PricingValidationError } from "../financial";
-import { PricingConflictError, type PricingProduct, type PricingSettings } from "./domain";
-import { savePricingSettings, saveProductPricing } from "./service";
+import { PricingConflictError, ProductErpConflictError, type PricingProduct, type PricingSettings } from "./domain";
+import { createProduct, savePricingSettings, saveProductPricing } from "./service";
 
-const productSchema = z.object({
-  productId: z.uuid(),
+const productFields = {
+  erpCode: z.number().int().positive(),
+  name: z.string().trim().min(2).max(200),
+  catalogUnit: z.string().trim().min(1).max(16),
+  purchaseFormat: z.string().trim().min(1).max(16),
+  exclusiveSupplier: z.boolean(),
   saleUnit: z.string().max(16),
   conversionQuantity: z.string().max(32),
   beneficiationLossPercent: z.string().max(32),
   specificMarginPercent: z.string().max(32).nullable(),
-  expectedVersion: z.number().int().positive(),
+};
+const createProductSchema = z.object(productFields);
+const productSchema = z.object({
+  productId: z.uuid(), ...productFields,
+  expectedVersion: z.number().int().positive(), expectedProductVersion: z.number().int().positive(),
+  confirmedFormatConversion: z.boolean(),
 });
 
 const settingsSchema = z.object({
@@ -28,6 +37,30 @@ export type PricingActionResult<T> =
   | { status: "conflict"; value: T; message: string }
   | { status: "error"; message: string };
 
+function revalidateProductFlows() {
+  revalidatePath("/");
+  revalidatePath("/gestor/produtos");
+  revalidatePath("/gestor/precificacao");
+  revalidatePath("/comprador/consolidado");
+  revalidatePath("/comprador/custos");
+}
+
+export async function createProductAction(raw: unknown): Promise<PricingActionResult<PricingProduct>> {
+  const principal = await requirePrincipal();
+  const parsed = createProductSchema.safeParse(raw);
+  if (!parsed.success) return { status: "error", message: "Dados do produto inválidos." };
+  try {
+    const value = await createProduct(principal, parsed.data);
+    await recordAudit({ actorId: principal.userId, action: "PRODUCT_CREATED", entityType: "product", entityId: value.id, metadata: { erpCode: value.erpCode, productVersion: value.productVersion, pricingVersion: value.version } });
+    revalidateProductFlows();
+    return { status: "success", value };
+  } catch (error) {
+    if (error instanceof ProductErpConflictError || error instanceof PricingValidationError || error instanceof z.ZodError)
+      return { status: "error", message: error.message };
+    return { status: "error", message: "Não foi possível cadastrar o produto." };
+  }
+}
+
 export async function saveProductPricingAction(raw: unknown): Promise<PricingActionResult<PricingProduct>> {
   const principal = await requirePrincipal();
   const parsed = productSchema.safeParse(raw);
@@ -36,18 +69,17 @@ export async function saveProductPricingAction(raw: unknown): Promise<PricingAct
     const value = await saveProductPricing(principal, parsed.data);
     await recordAudit({
       actorId: principal.userId,
-      action: "PRODUCT_PRICING_UPDATED",
-      entityType: "product_pricing_parameters",
+      action: "PRODUCT_UPDATED",
+      entityType: "product",
       entityId: value.id,
-      metadata: { version: value.version },
+      metadata: { productVersion: value.productVersion, pricingVersion: value.version },
     });
-    revalidatePath("/gestor/produtos");
-    revalidatePath("/gestor/precificacao");
+    revalidateProductFlows();
     return { status: "success", value };
   } catch (error) {
     if (error instanceof PricingConflictError)
       return { status: "conflict", value: error.current as PricingProduct, message: error.message };
-    if (error instanceof PricingValidationError)
+    if (error instanceof ProductErpConflictError || error instanceof PricingValidationError || error instanceof z.ZodError)
       return { status: "error", message: error.message };
     return { status: "error", message: "Não foi possível salvar os parâmetros." };
   }

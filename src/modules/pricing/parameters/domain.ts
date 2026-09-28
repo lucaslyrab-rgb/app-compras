@@ -5,6 +5,7 @@ import { add, compare, decimal, PricingValidationError, toDecimal } from "../fin
 export const conversionOrigins = ["PROVISIONAL", "UNIT", "MANUAL"] as const;
 export type ConversionOrigin = (typeof conversionOrigins)[number];
 export type ProductPricingFilter = "all" | "provisional" | "unit" | "configured";
+export type ProductStatusFilter = "active" | "inactive" | "all";
 
 export type PricingSettings = {
   operatingCostPercent: string;
@@ -17,7 +18,13 @@ export type PricingProduct = {
   id: string;
   erpCode: number;
   name: string;
+  catalogUnit: string;
   purchaseFormat: string;
+  exclusiveSupplier: boolean;
+  active: boolean;
+  productVersion: number;
+  photoKey: string | null;
+  photoUpdatedAt: string | null;
   saleUnit: string;
   conversionQuantity: string;
   conversionOrigin: ConversionOrigin;
@@ -31,6 +38,13 @@ export class PricingConflictError<T> extends Error {
   constructor(public readonly current: T) {
     super("Os dados foram atualizados em outra sessão.");
     this.name = "PricingConflictError";
+  }
+}
+
+export class ProductErpConflictError extends Error {
+  constructor() {
+    super("Já existe um produto com esse código ERP.");
+    this.name = "ProductErpConflictError";
   }
 }
 
@@ -102,18 +116,31 @@ export function filterPricingProducts(
   products: PricingProduct[],
   query: string,
   filter: ProductPricingFilter,
+  status: ProductStatusFilter = "all",
 ) {
   const term = query.trim().toLocaleLowerCase("pt-BR");
   return products.filter((product) =>
     (!term || product.name.toLocaleLowerCase("pt-BR").includes(term) ||
       String(product.erpCode).includes(term) ||
       product.purchaseFormat.toLocaleLowerCase("pt-BR").includes(term)) &&
-    (filter === "all" || pricingProductStatus(product) === filter));
+    (filter === "all" || pricingProductStatus(product) === filter) &&
+    (status === "all" || product.active === (status === "active")));
+}
+
+export const PRODUCTS_PER_PAGE = 20;
+
+export function paginatePricingProducts(products: PricingProduct[], page: number, pageSize = PRODUCTS_PER_PAGE) {
+  const pageCount = Math.max(1, Math.ceil(products.length / pageSize));
+  const currentPage = Math.min(Math.max(1, page), pageCount);
+  const start = (currentPage - 1) * pageSize;
+  return { items: products.slice(start, start + pageSize), currentPage, pageCount, start, end: Math.min(start + pageSize, products.length), total: products.length };
 }
 
 export function pricingProductMetrics(products: PricingProduct[]) {
   return {
     total: products.length,
+    active: products.filter((product) => product.active).length,
+    inactive: products.filter((product) => !product.active).length,
     provisional: products.filter((product) => product.conversionOrigin === "PROVISIONAL").length,
     unit: products.filter((product) => product.conversionOrigin === "UNIT").length,
     configured: products.filter((product) => product.conversionOrigin === "MANUAL").length,

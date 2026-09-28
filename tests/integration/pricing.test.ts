@@ -3,9 +3,10 @@ import { database } from "@/db/client";
 import type { Principal } from "@/modules/identity";
 import { currentPurchaseCycle } from "@/modules/ordering/calendar/service";
 import { persistPurchaseCost, readPurchaseCostStates } from "@/modules/purchasing/costs/repository";
+import { setProductActive } from "@/modules/catalog/repository";
 import { pricingPrintRows } from "@/modules/pricing/analysis/domain";
 import { loadPricingAnalyses, loadPricingAnalysis, loadPricingReviewDecisions, reviewPricingProduct } from "@/modules/pricing/analysis/service";
-import { listPricingProducts, readPricingSettings, savePricingSettings, saveProductPricing } from "@/modules/pricing/parameters/service";
+import { createProduct, listPricingProducts, readPricingSettings, savePricingSettings, saveProductPricing } from "@/modules/pricing/parameters/service";
 import { persistProducts } from "../../scripts/import-products";
 
 const integration = process.env.DATABASE_URL ? describe : describe.skip;
@@ -89,7 +90,8 @@ integration("precificação no PostgreSQL", () => {
     expect(unitary).toBeGreaterThan(0);
     expect(await readPricingSettings(manager)).toMatchObject({ operatingCostPercent: "23.0000", defaultMarginPercent: "20.0000" });
 
-    const current = await saveProductPricing(manager, { productId, saleUnit: "KG", conversionQuantity: "18", beneficiationLossPercent: "40", specificMarginPercent: "25", expectedVersion: 1 });
+    const master = (await listPricingProducts(manager)).find((product) => product.id === productId)!;
+    const current = await saveProductPricing(manager, { productId, erpCode: master.erpCode, name: master.name, catalogUnit: master.catalogUnit, purchaseFormat: master.purchaseFormat, exclusiveSupplier: master.exclusiveSupplier, saleUnit: "KG", conversionQuantity: "18", beneficiationLossPercent: "40", specificMarginPercent: "25", expectedVersion: 1, expectedProductVersion: master.productVersion, confirmedFormatConversion: false });
     expect(current).toMatchObject({ conversionQuantity: "18.000000", conversionOrigin: "MANUAL", specificMarginPercent: "25.0000", version: 2 });
     await persistProducts(process.env.DATABASE_URL!, [{ erpCode: 930000 + (stamp % 10000), name: "REPOLHO PRECIFICAÇÃO", unit: "KG", purchaseFormat: "CX", markup: 0, exclusiveSupplier: false }]);
     const preserved = (await listPricingProducts(manager)).find((product) => product.id === productId);
@@ -97,15 +99,86 @@ integration("precificação no PostgreSQL", () => {
   });
 
   it("aplica concorrência e RBAC a parâmetros e configurações", async () => {
-    await expect(saveProductPricing(manager, { productId, saleUnit: "KG", conversionQuantity: "20", beneficiationLossPercent: "20", specificMarginPercent: null, expectedVersion: 1 })).rejects.toThrow(/outra sessão/i);
+    const master = (await listPricingProducts(manager)).find((product) => product.id === productId)!;
+    await expect(saveProductPricing(manager, { productId, erpCode: master.erpCode, name: master.name, catalogUnit: master.catalogUnit, purchaseFormat: master.purchaseFormat, exclusiveSupplier: master.exclusiveSupplier, saleUnit: "KG", conversionQuantity: "20", beneficiationLossPercent: "20", specificMarginPercent: null, expectedVersion: 1, expectedProductVersion: master.productVersion, confirmedFormatConversion: false })).rejects.toThrow(/outra sessão/i);
     await expect(listPricingProducts(buyer)).rejects.toThrow(/Gestor/);
     await expect(listPricingProducts(store)).rejects.toThrow(/Gestor/);
-    await expect(saveProductPricing(buyer, { productId, saleUnit: "KG", conversionQuantity: "18", beneficiationLossPercent: "40", specificMarginPercent: "25", expectedVersion: 2 })).rejects.toThrow(/Gestor/);
+    await expect(saveProductPricing(buyer, { productId, erpCode: master.erpCode, name: master.name, catalogUnit: master.catalogUnit, purchaseFormat: master.purchaseFormat, exclusiveSupplier: master.exclusiveSupplier, saleUnit: "KG", conversionQuantity: "18", beneficiationLossPercent: "40", specificMarginPercent: "25", expectedVersion: 2, expectedProductVersion: master.productVersion, confirmedFormatConversion: false })).rejects.toThrow(/Gestor/);
     const settings = await readPricingSettings(manager);
     await expect(savePricingSettings(store, { operatingCostPercent: "23", defaultMarginPercent: "20", expectedVersion: settings.version })).rejects.toThrow(/Gestor/);
     const updated = await savePricingSettings(manager, { operatingCostPercent: "23", defaultMarginPercent: "20", expectedVersion: settings.version });
     await expect(savePricingSettings(manager, { operatingCostPercent: "24", defaultMarginPercent: "20", expectedVersion: settings.version })).rejects.toThrow(/outra sessão/i);
     expect(updated.version).toBe(settings.version + 1);
+  });
+
+  it("cadastra, edita e ativa produtos sem alterar snapshots históricos", async () => {
+    const erpCode = 980000 + (stamp % 10000);
+    const created = await createProduct(manager, {
+      erpCode, name: "produto gerencial", catalogUnit: "kg", purchaseFormat: "cx", exclusiveSupplier: true,
+      saleUnit: "kg", conversionQuantity: "12", beneficiationLossPercent: "5", specificMarginPercent: null,
+    });
+    expect(created).toMatchObject({ erpCode, name: "PRODUTO GERENCIAL", catalogUnit: "KG", purchaseFormat: "CX", active: true, productVersion: 1, version: 1, conversionOrigin: "MANUAL", photoKey: null });
+    const [{ markup, costs, reviews }] = await database().sql<{ markup: string; costs: number; reviews: number }[]>`
+      SELECT p.markup::text AS markup,
+        (SELECT count(*)::int FROM purchase_cycle_product_costs WHERE product_id = p.id) AS costs,
+        (SELECT count(*)::int FROM pricing_reviews WHERE product_id = p.id) AS reviews
+      FROM products p WHERE p.id = ${created.id}`;
+    expect({ markup, costs, reviews }).toEqual({ markup: "0.00", costs: 0, reviews: 0 });
+    await expect(createProduct(manager, {
+      erpCode, name: "duplicado", catalogUnit: "KG", purchaseFormat: "CX", exclusiveSupplier: false,
+      saleUnit: "KG", conversionQuantity: "1", beneficiationLossPercent: "0", specificMarginPercent: null,
+    })).rejects.toThrow(/ERP/i);
+
+    await expect(saveProductPricing(manager, {
+      productId: created.id, erpCode, name: created.name, catalogUnit: created.catalogUnit, purchaseFormat: "SC",
+      exclusiveSupplier: created.exclusiveSupplier, saleUnit: "KG", conversionQuantity: "15", beneficiationLossPercent: "5",
+      specificMarginPercent: null, expectedVersion: 1, expectedProductVersion: 1, confirmedFormatConversion: false,
+    })).rejects.toThrow(/conversão/i);
+    const updated = await saveProductPricing(manager, {
+      productId: created.id, erpCode: erpCode + 1, name: "produto gerencial editado", catalogUnit: "UND", purchaseFormat: "SC",
+      exclusiveSupplier: false, saleUnit: "KG", conversionQuantity: "15", beneficiationLossPercent: "6",
+      specificMarginPercent: "24", expectedVersion: 1, expectedProductVersion: 1, confirmedFormatConversion: true,
+    });
+    expect(updated).toMatchObject({ erpCode: erpCode + 1, name: "PRODUTO GERENCIAL EDITADO", catalogUnit: "UND", purchaseFormat: "SC", exclusiveSupplier: false, conversionQuantity: "15.000000", productVersion: 2, version: 2 });
+    await expect(saveProductPricing(manager, {
+      productId: created.id, erpCode, name: created.name, catalogUnit: created.catalogUnit, purchaseFormat: created.purchaseFormat,
+      exclusiveSupplier: false, saleUnit: "KG", conversionQuantity: "12", beneficiationLossPercent: "5",
+      specificMarginPercent: null, expectedVersion: 1, expectedProductVersion: 1, confirmedFormatConversion: false,
+    })).rejects.toThrow(/outra sessão/i);
+
+    const [storeRow] = await database().sql<{ id: string }[]>`SELECT id FROM stores ORDER BY id LIMIT 1`;
+    const [draft] = await database().sql<{ id: string }[]>`
+      INSERT INTO order_drafts(store_id, order_date, updated_by) VALUES (${storeRow.id}, '2040-01-02', ${manager.userId}) RETURNING id`;
+    await database().sql`INSERT INTO order_draft_items(draft_id, product_id, stock, quantity) VALUES (${draft.id}, ${created.id}, 1, 0)`;
+    await expect(setProductActive(manager, created.id, false, updated.productVersion)).rejects.toThrow(/rascunho/i);
+    await database().sql`DELETE FROM order_draft_items WHERE draft_id = ${draft.id} AND product_id = ${created.id}`;
+    const inactive = await setProductActive(manager, created.id, false, updated.productVersion);
+    expect(inactive.active).toBe(false);
+    const active = await setProductActive(manager, created.id, true, inactive.version);
+    expect(active.active).toBe(true);
+
+    const [order] = await database().sql<{ id: string }[]>`
+      INSERT INTO orders(store_id, order_date, purchase_cycle_date, cutoff_at, revision, submitted_by)
+      VALUES (${storeRow.id}, '2040-01-03', '2040-01-04', '2040-01-03T12:00:00Z', 1, ${manager.userId}) RETURNING id`;
+    await database().sql`INSERT INTO order_items(order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+      VALUES (${order.id}, ${created.id}, 0, 1, ${erpCode + 1}, 'PRODUTO GERENCIAL EDITADO', 'UND')`;
+    const latest = (await listPricingProducts(manager)).find((product) => product.id === created.id)!;
+    await saveProductPricing(manager, { productId: latest.id, erpCode: latest.erpCode, name: "NOVO NOME", catalogUnit: "KG", purchaseFormat: latest.purchaseFormat,
+      exclusiveSupplier: latest.exclusiveSupplier, saleUnit: latest.saleUnit, conversionQuantity: latest.conversionQuantity,
+      beneficiationLossPercent: latest.beneficiationLossPercent, specificMarginPercent: latest.specificMarginPercent,
+      expectedVersion: latest.version, expectedProductVersion: latest.productVersion, confirmedFormatConversion: false });
+    const [snapshot] = await database().sql<{ erp: number; name: string; unit: string }[]>`
+      SELECT snapshot_erp_code AS erp, snapshot_name AS name, snapshot_unit AS unit FROM order_items WHERE order_id = ${order.id} AND product_id = ${created.id}`;
+    expect(snapshot).toEqual({ erp: erpCode + 1, name: "PRODUTO GERENCIAL EDITADO", unit: "UND" });
+  });
+
+  it("importador preserva cadastro gerenciado por padrão", async () => {
+    const erpCode = 990000 + (stamp % 10000);
+    const created = await createProduct(manager, { erpCode, name: "NOME MANUAL", catalogUnit: "KG", purchaseFormat: "CX", exclusiveSupplier: true,
+      saleUnit: "KG", conversionQuantity: "7", beneficiationLossPercent: "2", specificMarginPercent: null });
+    await persistProducts(process.env.DATABASE_URL!, [{ erpCode, name: "NOME DA PLANILHA", unit: "UND", purchaseFormat: "PCT", markup: 99, exclusiveSupplier: false }]);
+    const preserved = (await listPricingProducts(manager)).find((product) => product.id === created.id)!;
+    expect(preserved).toMatchObject({ name: "NOME MANUAL", catalogUnit: "KG", purchaseFormat: "CX", exclusiveSupplier: true, conversionQuantity: "7.000000", productVersion: 1, version: 1 });
   });
 
   it("persiste cost_is_unit atomicamente com o custo", async () => {

@@ -47,7 +47,10 @@ export type LatestReview = {
   reviewedAt: string;
 } | null;
 
-export type PricingAnalysisSource = PricingProduct & {
+export type PricingAnalysisSource = Pick<PricingProduct,
+  "id" | "erpCode" | "name" | "purchaseFormat" | "saleUnit" | "conversionQuantity" |
+  "conversionOrigin" | "beneficiationLossPercent" | "specificMarginPercent" | "version" | "updatedAt"
+> & {
   settings: PricingSettings;
   officialCost: OfficialCost | null;
   officialCostHistory: PreviousOfficialCost[];

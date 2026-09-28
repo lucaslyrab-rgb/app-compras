@@ -26,6 +26,7 @@ A auditoria somente leitura de 25/09/2026 confirmou os dois últimos custos ofic
 - Implementar ERP, preço vigente externo, importação definitiva de parâmetros, fotos, fornecedores ou Separação/Embarque.
 - Implementar agora a reabertura de “Falta comprar” após aumento de quantidade por loja.
 - Usar a coluna legada `products.markup` como margem da nova Precificação; ela permanece intacta até haver decisão de migração específica.
+- Implementar upload, bucket S3 ou URL pública de foto nesta etapa; somente a metadata persistente será preparada.
 
 ## Decisions
 
@@ -114,6 +115,14 @@ Playwright cobrirá os fluxos gerenciais e regressões de Custos, Consolidado e 
 `migrations/` será a única fonte de verdade. Um módulo ESM compartilhado descobrirá todos os arquivos `.sql`, exigirá prefixo numérico, rejeitará prefixos duplicados e os ordenará numericamente antes da execução sequencial. `scripts/migrate.ts` manterá a resolução de conexão usada em desenvolvimento/CI e `scripts/entrypoint.mjs` manterá `DATABASE_URL` e `DATABASE_URL_FILE`, mas ambos delegarão a execução ao mesmo módulo.
 
 A imagem copiará o diretório completo de migrations e o runner compartilhado, sem listas de nomes no Dockerfile ou nos entrypoints. O servidor somente será iniciado após a conclusão de todas as migrations; qualquer falha será propagada e encerrará o processo. A compatibilidade será validada tanto em banco vazio quanto em PostgreSQL descartável materializado até o estado legado anterior à migration mais nova, seguido da reaplicação integral pelo novo runner.
+
+### 11. Cadastro mestre de produtos
+
+A migration aditiva `0011_product_catalog_management.sql` acrescentará `products.version`, `photo_key` e `photo_updated_at`. A versão do produto protegerá ERP, nome, unidade, formato, exclusividade e estado ativo; a versão já existente em `product_pricing_parameters` continuará independente. Criação e edição dos dois registros serão transacionais e o markup legado permanecerá oculto e compatível, inicializado em zero apenas para novos cadastros.
+
+Mudança de formato exigirá confirmação explícita da conversão apresentada. Inativação nunca excluirá dados e será bloqueada quando houver item de rascunho com estoque ou quantidade positiva, preservando o rascunho sem mutação silenciosa. A lista carregará ativos e inativos para aplicar busca e filtros globais antes da paginação client-side de 20 itens.
+
+O importador usará `PRESERVE_EXISTING` por padrão: conflitos de ERP reutilizam o UUID existente e somente inicializam parâmetros ausentes. O modo `BOOTSTRAP_SYNC` ficará disponível apenas por flag administrativa explícita `--bootstrap-sync`, incrementando a versão mestre quando atualizar cadastro existente.
 
 ## Risks / Trade-offs
 

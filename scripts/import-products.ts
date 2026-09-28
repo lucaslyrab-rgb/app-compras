@@ -55,7 +55,10 @@ export async function readProducts(file: string): Promise<ProductInput[]> {
   return products;
 }
 
-export async function persistProducts(url: string, products: ProductInput[]) {
+export type ProductImportMode = "PRESERVE_EXISTING" | "BOOTSTRAP_SYNC";
+
+export async function persistProducts(url: string, products: ProductInput[], options: { mode?: ProductImportMode } = {}) {
+  const mode = options.mode ?? "PRESERVE_EXISTING";
   const prepared = products.map((product) => ({
     product,
     pricing: initialPricingParameters(product.purchaseFormat),
@@ -64,18 +67,22 @@ export async function persistProducts(url: string, products: ProductInput[]) {
   try {
     await sql.begin(async (tx) => {
       for (const { product, pricing } of prepared) {
-        const [saved] = await tx<{ id: string }[]>`
+        const [inserted] = await tx<{ id: string }[]>`
           INSERT INTO products (erp_code, name, unit, purchase_format, markup, exclusive_supplier, active)
           VALUES (${product.erpCode}, ${product.name}, ${product.unit}, ${product.purchaseFormat}, ${product.markup}, ${product.exclusiveSupplier}, true)
-          ON CONFLICT (erp_code) DO UPDATE SET
-            name = EXCLUDED.name,
-            unit = EXCLUDED.unit,
-            purchase_format = EXCLUDED.purchase_format,
-            markup = EXCLUDED.markup,
-            exclusive_supplier = EXCLUDED.exclusive_supplier,
-            updated_at = now()
+          ON CONFLICT (erp_code) DO NOTHING
           RETURNING id
         `;
+        let saved = inserted;
+        if (!saved && mode === "BOOTSTRAP_SYNC") {
+          [saved] = await tx<{ id: string }[]>`
+            UPDATE products SET name = ${product.name}, unit = ${product.unit}, purchase_format = ${product.purchaseFormat},
+              markup = ${product.markup}, exclusive_supplier = ${product.exclusiveSupplier},
+              version = version + 1, updated_at = now()
+            WHERE erp_code = ${product.erpCode} RETURNING id
+          `;
+        }
+        if (!saved) [saved] = await tx<{ id: string }[]>`SELECT id FROM products WHERE erp_code = ${product.erpCode}`;
         await tx`
           INSERT INTO product_pricing_parameters (
             product_id, sale_unit, conversion_quantity, conversion_origin,
@@ -92,17 +99,22 @@ export async function persistProducts(url: string, products: ProductInput[]) {
     const [{ count, exclusive }] = await sql<[{ count: number; exclusive: number }]>`
       SELECT count(*)::int AS count, count(*) FILTER (WHERE exclusive_supplier)::int AS exclusive FROM products
     `;
-    return { imported: products.length, total: count, exclusive };
+    return { imported: products.length, total: count, exclusive, mode };
   } finally {
     await sql.end();
   }
 }
 
-export async function importProducts(file = "base_produtos_atual.xlsx") {
+export async function importProducts(file = "base_produtos_atual.xlsx", mode: ProductImportMode = "PRESERVE_EXISTING") {
   const url = databaseUrlFromEnv();
-  const result = await persistProducts(url, await readProducts(file));
+  const result = await persistProducts(url, await readProducts(file), { mode });
   console.log(JSON.stringify(result));
   return result;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) await importProducts(process.argv[2]);
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const args = process.argv.slice(2);
+  const bootstrapSync = args.includes("--bootstrap-sync");
+  const file = args.find((arg) => !arg.startsWith("--")) ?? "base_produtos_atual.xlsx";
+  await importProducts(file, bootstrapSync ? "BOOTSTRAP_SYNC" : "PRESERVE_EXISTING");
+}
