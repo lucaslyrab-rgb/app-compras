@@ -107,7 +107,18 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
   }
   await page.goto("/gestor/precificacao");
   if (testInfo.project.name === "desktop") {
-    expect(await page.locator(".pricing-columns > .pricing-detail").evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const pricingDetail = page.locator(".pricing-columns > .pricing-detail");
+    expect(await pricingDetail.evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
+    await page.evaluate(() => window.scrollTo(0, 400));
+    await expect(pricingDetail.getByRole("button", { name: "Registrar decisão" })).toBeInViewport();
+    const panelFit = await pricingDetail.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      bottom: element.getBoundingClientRect().bottom,
+    }));
+    expect(panelFit.scrollHeight).toBeLessThanOrEqual(panelFit.clientHeight + 1);
+    expect(panelFit.bottom).toBeLessThanOrEqual(1080);
     await page.getByRole("button", { name: /^Revisados/ }).click();
     await expect(page.locator(".manager-table-wrap").getByText("Revisado", { exact: true }).first()).toBeVisible();
     await page.getByRole("button", { name: /^Todos/ }).click();
