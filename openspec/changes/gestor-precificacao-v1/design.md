@@ -101,7 +101,7 @@ Produtos e Precificação usarão tabela a partir do breakpoint de desktop e car
 
 ### 8. Relatório de impressão HTML
 
-A impressão será uma rota autenticada renderizada no servidor, com CSS A4 e botão cliente que chama `window.print()`. Sem seleção explícita por query parameter (`reviews`), a rota listará revisões confirmadas e pendentes calculáveis conforme o modo. Após salvar ou selecionar explicitamente revisões recém-criadas via `reviews`, o relatório lerá os snapshots persistidos correspondentes, incluirá decisões comerciais e destacará o preço decidido como valor principal. A solução não cria fila, status de impressão ou lote durável. Gerar PDF no servidor foi rejeitado por adicionar dependência e não trazer benefício à V1.
+A impressão será uma rota autenticada renderizada no servidor, com CSS A4 e botão cliente que chama `window.print()`. A rota partirá das análises atuais e listará somente a última revisão que ainda cobre o estado econômico vigente e possui decisão comercial explícita. `decided_price` será a fonte canônica; `applied_price` será aceito somente como compatibilidade de revisões confirmadas anteriores à decisão durável. `suggested_price` nunca será promovido a decisão, e snapshots legados com ambos os campos nulos ficarão fora do relatório. O parâmetro `reviews` apenas restringirá essa lista atual a IDs recém-criados, sem reintroduzir pendências ou revisões históricas superadas. A solução não cria fila, status de impressão ou lote durável. Gerar PDF no servidor foi rejeitado por adicionar dependência e não trazer benefício à V1.
 
 ### 9. Estratégia de teste
 

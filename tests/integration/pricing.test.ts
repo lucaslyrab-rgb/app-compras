@@ -3,6 +3,7 @@ import { database } from "@/db/client";
 import type { Principal } from "@/modules/identity";
 import { currentPurchaseCycle } from "@/modules/ordering/calendar/service";
 import { persistPurchaseCost, readPurchaseCostStates } from "@/modules/purchasing/costs/repository";
+import { pricingPrintRows } from "@/modules/pricing/analysis/domain";
 import { loadPricingAnalyses, loadPricingAnalysis, loadPricingReviewDecisions, reviewPricingProduct } from "@/modules/pricing/analysis/service";
 import { listPricingProducts, readPricingSettings, savePricingSettings, saveProductPricing } from "@/modules/pricing/parameters/service";
 import { persistProducts } from "../../scripts/import-products";
@@ -234,6 +235,13 @@ integration("precificação no PostgreSQL", () => {
       decisionOrigin: "MANUAL",
     });
     expect(printDecision.decidedPrice).not.toBe(printDecision.suggestedPrice);
+    expect(pricingPrintRows(await loadPricingAnalyses(manager, friday))).toContainEqual(expect.objectContaining({
+      reviewId: manual.id,
+      productId: manualProductId,
+      suggestedPrice: printDecision.suggestedPrice,
+      decidedPrice: "7.99",
+      decisionOrigin: "MANUAL",
+    }));
 
     const accepted = await reviewPricingProduct(manager, {
       productId: manualProductId,
@@ -295,5 +303,6 @@ integration("precificação no PostgreSQL", () => {
     expect(pendingItem?.reviewPending).toBe(true);
     expect(pendingItem?.status).toBe("NOT_REVIEWED");
     expect(pendingItem?.latestReview?.decidedPrice).toBeNull();
+    expect(pricingPrintRows(allAnalyses).some((row) => row.productId === manualProductId)).toBe(false);
   });
 });

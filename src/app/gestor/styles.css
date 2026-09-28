@@ -144,6 +144,16 @@
 .pricing-print-report th, .pricing-print-report td { height: 38px; padding: 7px; border: 1px solid #69727a; text-align: left; }
 .pricing-print-report th { background: #edf0f2; }
 
+@media (min-width: 1181px) {
+  .pricing-columns > .pricing-detail {
+    position: sticky;
+    top: 18px;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
 @media (max-width: 1180px) {
   .manager-two-column { grid-template-columns: minmax(0, 1fr); }
   .manager-editor { max-width: 720px; }

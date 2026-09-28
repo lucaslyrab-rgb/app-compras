@@ -3,6 +3,7 @@ import {
   buildPricingAnalysis,
   filterPricingAnalyses,
   printablePricingAnalyses,
+  pricingPrintRows,
   pricingMetrics,
   pricingStalePurchaseMessage,
   type LatestReview,
@@ -227,6 +228,44 @@ describe("análise de precificação", () => {
     }));
     expect(legacy).toMatchObject({ status: "NOT_REVIEWED", costChanged: false, reviewPending: true });
     expect(legacy.latestReview?.decidedPrice).toBeNull();
+  });
+
+  it("imprime somente revisão atual com decisão explícita e preserva o preço manual", () => {
+    const pending = buildPricingAnalysis(source({ id: "pending" }));
+    const manualBase = buildPricingAnalysis(source({ id: "manual", name: "CEBOLA ROXA" }));
+    const manual = buildPricingAnalysis(source({
+      id: "manual",
+      name: "CEBOLA ROXA",
+      latestReview: reviewOf(manualBase, {
+        id: "manual-review",
+        suggestedPrice: "10.49",
+        appliedPrice: "9.99",
+        decidedPrice: "9.99",
+        decisionOrigin: "MANUAL",
+      }),
+    }));
+    const legacyBase = buildPricingAnalysis(source({ id: "legacy" }));
+    const legacy = buildPricingAnalysis(source({
+      id: "legacy",
+      latestReview: reviewOf(legacyBase, {
+        id: "legacy-review",
+        appliedPrice: null,
+        decidedPrice: null,
+        decisionOrigin: null,
+      }),
+    }));
+
+    expect(pricingPrintRows([pending, manual, legacy])).toEqual([
+      expect.objectContaining({
+        reviewId: "manual-review",
+        productName: "CEBOLA ROXA",
+        suggestedPrice: "10.49",
+        decidedPrice: "9.99",
+        decisionOrigin: "MANUAL",
+      }),
+    ]);
+    expect(pricingPrintRows([manual], ["other-review"])).toEqual([]);
+    expect(pricingPrintRows([manual], ["manual-review"])).toHaveLength(1);
   });
 
   it("normaliza bases equivalentes com aritmética exata", () => {

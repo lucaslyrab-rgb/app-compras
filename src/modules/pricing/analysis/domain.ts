@@ -82,6 +82,19 @@ export type PricingReviewDecision = {
   reviewedAt: string;
 };
 
+export type PricingPrintRow = {
+  reviewId: string;
+  productId: string;
+  erpCode: number;
+  productName: string;
+  saleUnit: string;
+  effectiveUnitCost: string;
+  calculatedPrice: string;
+  suggestedPrice: string;
+  decidedPrice: string;
+  decisionOrigin: DecisionOrigin;
+};
+
 export function pricingFingerprint(input: {
   officialCost: OfficialCost;
   saleUnit: string;
@@ -349,6 +362,31 @@ export function printablePricingAnalyses(analyses: PricingAnalysis[]) {
     analysis.status === "REVIEWED" &&
     Boolean(analysis.latestReview?.decidedPrice || analysis.latestReview?.appliedPrice)
   );
+}
+
+export function pricingPrintRows(analyses: PricingAnalysis[], reviewIds: string[] = []): PricingPrintRow[] {
+  const selectedReviews = reviewIds.length ? new Set(reviewIds) : null;
+  return analyses.flatMap((analysis) => {
+    if (analysis.status !== "REVIEWED" || !analysis.latestReview) return [];
+    const review = analysis.latestReview;
+    const decidedPrice = review.decidedPrice ?? review.appliedPrice;
+    if (!decidedPrice || (selectedReviews && !selectedReviews.has(review.id))) return [];
+    const decisionOrigin = review.decisionOrigin ?? (
+      compare(decimal(decidedPrice), decimal(review.suggestedPrice)) === 0 ? "SUGGESTED" : "MANUAL"
+    );
+    return [{
+      reviewId: review.id,
+      productId: analysis.id,
+      erpCode: analysis.erpCode,
+      productName: analysis.name,
+      saleUnit: review.saleUnit,
+      effectiveUnitCost: review.effectiveUnitCost,
+      calculatedPrice: review.calculatedPrice,
+      suggestedPrice: review.suggestedPrice,
+      decidedPrice,
+      decisionOrigin,
+    }];
+  });
 }
 
 export function pricingStalePurchaseMessage(analysis: PricingAnalysis) {

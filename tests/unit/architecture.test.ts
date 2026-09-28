@@ -108,4 +108,19 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(repository).not.toMatch(/decidedPrice:\s*[^,\n]*reviewSuggestedPrice/);
     expect(repository).not.toMatch(/appliedPrice:\s*[^,\n]*reviewSuggestedPrice/);
   });
+
+  it("restringe a impressão a decisões atuais e mantém o painel desktop sticky", async () => {
+    const [page, domain, managerStyles, shellStyles] = await Promise.all([
+      readFile("src/app/gestor/precificacao/impressao/page.tsx", "utf8"),
+      readFile("src/modules/pricing/analysis/domain.ts", "utf8"),
+      readFile("src/app/gestor/styles.css", "utf8"),
+      readFile("src/modules/navigation/operational-shell.css", "utf8"),
+    ]);
+    expect(page).toContain("pricingPrintRows");
+    expect(page).not.toContain('analysis.status !== "REVIEWED"');
+    expect(domain).toContain('analysis.status !== "REVIEWED"');
+    expect(domain).toContain("review.decidedPrice ?? review.appliedPrice");
+    expect(managerStyles).toMatch(/@media \(min-width: 1181px\)[\s\S]*position: sticky/);
+    expect(shellStyles).not.toContain("brightness(0) invert(1)");
+  });
 });

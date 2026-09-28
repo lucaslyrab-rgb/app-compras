@@ -129,9 +129,21 @@ O sistema SHALL oferecer relatório autenticado em nova aba para produtos com re
 - **WHEN** o Gestor abre o relatório pelos IDs das revisões recém-criadas
 - **THEN** o relatório inclui decisões manuais sem Custo alterado e usa o preço decidido como valor principal a aplicar
 
+#### Scenario: Excluir pendência e revisão legada
+- **WHEN** um produto está pendente ou sua revisão não possui `decided_price` nem `applied_price`
+- **THEN** o produto não aparece no relatório e `suggested_price` não é interpretado como decisão
+
+#### Scenario: Preço manual no relatório
+- **WHEN** a revisão atual preserva preço sugerido R$ 10,49 e preço decidido manual R$ 9,99
+- **THEN** o relatório mostra R$ 9,99 como preço principal e mantém sugerido e decidido distinguíveis
+
 ### Requirement: Identidade visual responsiva
 O sistema SHALL seguir a hierarquia visual das referências aprovadas, com área clara, cards compactos, tabela gerencial e painel no desktop, cores semânticas discretas e experiências próprias em cards/telas no mobile.
 
 #### Scenario: Viewports suportados
 - **WHEN** as telas são usadas em 320, 375, 390, 412, 768 e 1280 px ou mais
 - **THEN** navegação, filtros, badges, inputs, tabela ou cards e painéis permanecem utilizáveis sem overflow horizontal indesejado
+
+#### Scenario: Painel de decisão no desktop
+- **WHEN** o Gestor percorre uma lista longa de produtos em viewport desktop
+- **THEN** o painel lateral permanece visível, limitado à viewport e com rolagem interna quando necessária, sem alterar o fluxo responsivo mobile

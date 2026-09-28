@@ -40,6 +40,10 @@ O sistema SHALL apresentar sidebar verde escura permanente em desktop e drawer a
 - **WHEN** o usuário navega para uma função disponível
 - **THEN** o item correspondente é destacado e as seções mantêm hierarquia legível
 
+#### Scenario: Marca original na navegação
+- **WHEN** a sidebar ou o cabeçalho mobile exibe a marca MultiShow
+- **THEN** o asset horizontal existente mantém suas cores originais e transparência sem filtro monocromático
+
 ### Requirement: Preservação da experiência da Loja
 O sistema MUST NOT aplicar o novo shell gerencial ao fluxo homologado de pedido da LOJA.
 

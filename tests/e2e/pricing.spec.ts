@@ -78,6 +78,9 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
   await login(page);
   await page.goto("/gestor/precificacao");
   await expect(page.getByRole("heading", { name: "Precificação - FLV" })).toBeVisible();
+  const visibleLogo = testInfo.project.name === "mobile" ? page.locator(".ops-mobile-header img") : page.locator(".ops-brand img");
+  await expect(visibleLogo).toBeVisible();
+  expect(await visibleLogo.evaluate((element) => getComputedStyle(element).filter)).toBe("none");
   const pricingList = testInfo.project.name === "mobile"
     ? page.locator(".manager-mobile-cards")
     : page.locator(".manager-table-wrap");
@@ -93,26 +96,27 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
   expect(detailHref).toBeTruthy();
   await page.goto(detailHref!);
   await expect(page.getByText("Preço sugerido", { exact: true })).toBeVisible();
-  const simulated = page.getByLabel("Preço aplicado pelo Gestor");
+  const simulated = page.getByLabel("Preço decidido");
   await simulated.fill("5,99");
   await expect(page.getByText("Margem líquida", { exact: true })).toBeVisible();
   await expect(page.getByText("Markup sobre custo", { exact: true })).toBeVisible();
-  const review = page.getByRole("button", { name: "Confirmar preço aplicado" });
+  const review = page.getByRole("button", { name: "Registrar decisão" });
   if (testInfo.project.name === "desktop" && await review.isVisible()) {
     await review.click();
-    await expect(page.getByText("Revisão registrada.")).toBeVisible();
+    await expect(page.getByText("Decisão manual registrada.")).toBeVisible();
   }
   await page.goto("/gestor/precificacao");
   if (testInfo.project.name === "desktop") {
+    expect(await page.locator(".pricing-columns > .pricing-detail").evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
     await page.getByRole("button", { name: /^Revisados/ }).click();
     await expect(page.locator(".manager-table-wrap").getByText("Revisado", { exact: true }).first()).toBeVisible();
     await page.getByRole("button", { name: /^Todos/ }).click();
   }
   const popupPromise = page.waitForEvent("popup");
-  await page.getByRole("link", { name: /Imprimir alterações/ }).click();
+  await page.getByRole("link", { name: /Imprimir decisões/ }).click();
   const report = await popupPromise;
-  await expect(report.getByRole("heading", { name: "Alterações de preços - FLV" })).toBeVisible();
-  await expect(report.getByRole("columnheader", { name: "Preço aplicado" })).toBeVisible();
+  await expect(report.getByRole("heading", { name: "Decisões de preços - FLV" })).toBeVisible();
+  await expect(report.getByRole("columnheader", { name: "Preço decidido" })).toBeVisible();
   await expect(report.getByText("Produtos pendentes de revisão")).toHaveCount(0);
   await expect(report.getByRole("button", { name: "Imprimir" })).toBeVisible();
 });
