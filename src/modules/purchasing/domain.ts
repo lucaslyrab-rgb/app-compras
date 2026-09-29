@@ -18,6 +18,8 @@ export type CatalogProduct = {
   name: string;
   purchaseFormat: string;
   active: boolean;
+  photoKey?: string | null;
+  photoUpdatedAt?: string | null;
   imageUrl?: string | null;
 };
 export type StoreValues = { stock: string; quantity: string };

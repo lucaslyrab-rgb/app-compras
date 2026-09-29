@@ -8,10 +8,16 @@ services:
       - externa
     secrets:
       - app_compras_database_url
+      - app_compras_s3_photos_access_key_id
+      - app_compras_s3_photos_secret_access_key
     environment:
       DATABASE_URL_FILE: /run/secrets/app_compras_database_url
       APP_URL: https://compras.muitomaisatacado.com
       NODE_ENV: production
+      S3_PHOTOS_BUCKET: compras-img
+      S3_PHOTOS_REGION: us-east-1
+      S3_PHOTOS_ACCESS_KEY_ID_FILE: /run/secrets/app_compras_s3_photos_access_key_id
+      S3_PHOTOS_SECRET_ACCESS_KEY_FILE: /run/secrets/app_compras_s3_photos_secret_access_key
     deploy:
       replicas: 1
       placement:
@@ -53,4 +59,8 @@ networks:
 
 secrets:
   app_compras_database_url:
+    external: true
+  app_compras_s3_photos_access_key_id:
+    external: true
+  app_compras_s3_photos_secret_access_key:
     external: true

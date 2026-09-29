@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatPricingNumber } from "../analysis/domain";
 import { createProductAction, saveProductPricingAction } from "./actions";
+import { uploadProductPhotoAction, removeProductPhotoAction } from "@/modules/catalog/actions";
+import { ProductPhoto } from "@/components/product-photo";
 import type { PricingProduct, PricingSettings } from "./domain";
 
 type Props = {
@@ -28,6 +30,12 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
   const [margin, setMargin] = useState(product?.specificMarginPercent ? formatPricingNumber(product.specificMarginPercent) : formatPricingNumber(settings.defaultMarginPercent));
   const [version, setVersion] = useState(product?.version ?? 1);
   const [productVersion, setProductVersion] = useState(product?.productVersion ?? 1);
+  const [photoKey, setPhotoKey] = useState<string | null>(product?.photoKey ?? null);
+  const [photoUpdatedAt, setPhotoUpdatedAt] = useState<string | null>(product?.photoUpdatedAt ?? null);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoFeedback, setPhotoFeedback] = useState<{ error: boolean; message: string } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [confirmedFormatConversion, setConfirmedFormatConversion] = useState(false);
   const [feedback, setFeedback] = useState<{ error: boolean; message: string } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -46,7 +54,90 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
     setMargin(formatPricingNumber(current.specificMarginPercent ?? settings.defaultMarginPercent));
     setVersion(current.version);
     setProductVersion(current.productVersion);
+    setPhotoKey(current.photoKey);
+    setPhotoUpdatedAt(current.photoUpdatedAt);
     setConfirmedFormatConversion(false);
+  }
+
+  async function handlePhotoUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !product) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoFeedback({ error: true, message: "A foto deve ter no máximo 5 MB." });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setPhotoLoading(true);
+    setPhotoFeedback(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("productId", product.id);
+      formData.append("expectedVersion", String(productVersion));
+      formData.append("file", file);
+
+      const result = await uploadProductPhotoAction(formData);
+      if (result.status === "success") {
+        setPhotoKey(result.value.photoKey);
+        setPhotoUpdatedAt(result.value.photoUpdatedAt);
+        setProductVersion(result.value.version);
+        setPhotoFeedback({ error: false, message: "Foto enviada com sucesso." });
+        router.refresh();
+        if (onSaved) {
+          onSaved({
+            ...product,
+            photoKey: result.value.photoKey,
+            photoUpdatedAt: result.value.photoUpdatedAt,
+            productVersion: result.value.version,
+          });
+        }
+      } else {
+        setPhotoFeedback({ error: true, message: result.message });
+      }
+    } catch {
+      setPhotoFeedback({ error: true, message: "Erro inesperado ao enviar foto." });
+    } finally {
+      setPhotoLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handlePhotoRemove() {
+    if (!product) return;
+
+    setPhotoLoading(true);
+    setPhotoFeedback(null);
+    setShowDeleteConfirm(false);
+
+    try {
+      const result = await removeProductPhotoAction({
+        productId: product.id,
+        expectedVersion: productVersion,
+      });
+      if (result.status === "success") {
+        setPhotoKey(null);
+        setPhotoUpdatedAt(result.value.photoUpdatedAt);
+        setProductVersion(result.value.version);
+        setPhotoFeedback({ error: false, message: "Foto removida com sucesso." });
+        router.refresh();
+        if (onSaved) {
+          onSaved({
+            ...product,
+            photoKey: null,
+            photoUpdatedAt: result.value.photoUpdatedAt,
+            productVersion: result.value.version,
+          });
+        }
+      } else {
+        setPhotoFeedback({ error: true, message: result.message });
+      }
+    } catch {
+      setPhotoFeedback({ error: true, message: "Erro inesperado ao remover foto." });
+    } finally {
+      setPhotoLoading(false);
+    }
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -94,7 +185,17 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
   return <section className="manager-editor" aria-label={product ? `Editar ${product.name}` : "Cadastrar novo produto"}>
     <header className="manager-editor__title">
       <div className="manager-product-identity">
-        <span className="manager-placeholder" aria-hidden="true">◌</span>
+        {product ? (
+          <ProductPhoto
+            productId={product.id}
+            photoKey={photoKey}
+            photoUpdatedAt={photoUpdatedAt}
+            productName={displayTitle}
+            size="md"
+          />
+        ) : (
+          <span className="manager-placeholder" aria-hidden="true">◌</span>
+        )}
         <div>
           <h2>{displayTitle}</h2>
           <p>{displayErp}</p>
@@ -178,6 +279,92 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
           />
           Fornecedor exclusivo
         </label>
+      </fieldset>
+      <fieldset className="manager-form-section manager-photo-section">
+        <legend>Foto do produto</legend>
+        {product ? (
+          <div className="manager-photo-manager">
+            <div className="manager-photo-preview-wrap">
+              <ProductPhoto
+                productId={product.id}
+                photoKey={photoKey}
+                photoUpdatedAt={photoUpdatedAt}
+                productName={product.name}
+                size="xl"
+              />
+            </div>
+            <div className="manager-photo-controls">
+              <p className="manager-photo-help">
+                Formatos aceitos: JPEG, PNG ou WebP. Tamanho máximo: 5 MB.<br />
+                A imagem é redimensionada automaticamente para até 600×600 e otimizada em WebP.
+              </p>
+              <div className="manager-photo-actions">
+                <label className="manager-secondary manager-file-label" aria-disabled={photoLoading}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={photoLoading}
+                    onChange={handlePhotoUpload}
+                    className="manager-file-input"
+                  />
+                  {photoLoading ? "Enviando…" : photoKey ? "Alterar foto" : "Adicionar foto"}
+                </label>
+                {photoKey ? (
+                  showDeleteConfirm ? (
+                    <div className="manager-photo-confirm-dialog" role="alertdialog" aria-labelledby="confirm-delete-title">
+                      <p id="confirm-delete-title">Deseja realmente remover a foto deste produto?</p>
+                      <div className="manager-photo-confirm-actions">
+                        <button
+                          type="button"
+                          className="manager-danger"
+                          disabled={photoLoading}
+                          onClick={handlePhotoRemove}
+                        >
+                          Confirmar remoção
+                        </button>
+                        <button
+                          type="button"
+                          className="manager-secondary"
+                          disabled={photoLoading}
+                          onClick={() => setShowDeleteConfirm(false)}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="manager-secondary manager-button-remove-photo"
+                      disabled={photoLoading}
+                      onClick={() => setShowDeleteConfirm(true)}
+                    >
+                      Remover foto
+                    </button>
+                  )
+                ) : null}
+              </div>
+              {photoFeedback ? (
+                <p
+                  role="status"
+                  className={
+                    photoFeedback.error
+                      ? "manager-feedback manager-feedback--error"
+                      : "manager-feedback manager-feedback--success"
+                  }
+                >
+                  {photoFeedback.message}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <div className="manager-photo-disabled-notice">
+            <span className="manager-placeholder" aria-hidden="true" style={{ fontSize: "1.5rem" }}>📷</span>
+            <p>Cadastre o produto primeiro para adicionar uma foto.</p>
+          </div>
+        )}
       </fieldset>
       <fieldset className="manager-form-section">
         <legend>Parâmetros de precificação</legend>

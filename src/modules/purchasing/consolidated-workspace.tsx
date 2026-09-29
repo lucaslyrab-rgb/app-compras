@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import { ProductPhoto } from "@/components/product-photo";
 import {
   filterConsolidatedProducts,
   shortStoreName,
@@ -54,29 +54,15 @@ function compactTimestamp(value: string) {
 
 function Thumbnail({ product }: { product: ConsolidatedProduct }) {
   return (
-    <span className="buyer-thumbnail" aria-hidden="true">
-      {product.imageUrl ? (
-        <Image
-          src={product.imageUrl}
-          alt=""
-          width={36}
-          height={36}
-          unoptimized
-        />
-      ) : (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          focusable="false"
-        >
-          <rect x="3" y="3" width="18" height="18" rx="3" />
-          <circle cx="8" cy="8" r="1.5" />
-          <path d="m4 17 5-5 4 4 3-3 4 4" />
-        </svg>
-      )}
-    </span>
+    <ProductPhoto
+      productId={product.id}
+      name={product.name}
+      photoKey={product.photoKey}
+      photoUpdatedAt={product.photoUpdatedAt}
+      imageUrl={product.imageUrl}
+      size={36}
+      thumbnailClassName="buyer-thumbnail"
+    />
   );
 }
 

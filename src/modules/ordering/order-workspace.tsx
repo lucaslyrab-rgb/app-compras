@@ -5,8 +5,17 @@ import { logoutAction } from "@/app/login/actions";
 import { saveDraftAction, submitOrderAction, type State } from "./actions";
 import Link from "next/link";
 import Image from "next/image";
+import { ProductPhoto } from "@/components/product-photo";
 
-type Product = { id: string; erpCode: number; name: string; unit: string; imageUrl?: string | null };
+type Product = {
+  id: string;
+  erpCode: number;
+  name: string;
+  unit: string;
+  photoKey?: string | null;
+  photoUpdatedAt?: string | null;
+  imageUrl?: string | null;
+};
 type Filter = "all" | "empty" | "filled";
 
 export function OrderWorkspace({ products, storeId, storeName, initialDraft, date, cycleDate, cutoffAt }: { products: Product[]; storeId: string; storeName: string; initialDraft: { version: number; items: Array<{ productId: string; stock: number; quantity: number }> }; date: string; cycleDate: string; cutoffAt: string }) {
@@ -119,9 +128,15 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
               const value = values[product.id] ?? { stock: "", quantity: "" };
               return <article className="product-card" data-filled={Number(value.quantity) > 0} key={product.id}>
                 <div className="product-name">
-                  <span className="product-thumbnail" aria-hidden="true">
-                    {product.imageUrl ? <Image src={product.imageUrl} alt="" width={40} height={40} unoptimized /> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8" cy="8" r="1.5" /><path d="m4 17 5-5 4 4 3-3 4 4" /></svg>}
-                  </span>
+                  <ProductPhoto
+                    productId={product.id}
+                    name={product.name}
+                    photoKey={product.photoKey}
+                    photoUpdatedAt={product.photoUpdatedAt}
+                    imageUrl={product.imageUrl}
+                    size="md"
+                    thumbnailClassName="product-thumbnail"
+                  />
                   <div className="product-description"><h2>{product.name}</h2><span className="product-unit">{product.unit}</span></div>
                 </div>
                 <input type="hidden" name="productId" value={product.id} />

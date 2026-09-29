@@ -15,7 +15,14 @@ export default async function HomePage() {
     redirect("/login");
   }
   const data = await listActiveProducts();
-  const products = data.map((product) => ({ id: product.id, erpCode: product.erpCode, name: product.name, unit: product.unit }));
+  const products = data.map((product) => ({
+    id: product.id,
+    erpCode: product.erpCode,
+    name: product.name,
+    unit: product.unit,
+    photoKey: product.photoKey,
+    photoUpdatedAt: product.photoUpdatedAt?.toISOString() ?? null,
+  }));
   const cycle = await currentPurchaseCycle();
   const date = cycle.localDate;
   const draft = await loadDraft(principal, principal.storeId, date);
