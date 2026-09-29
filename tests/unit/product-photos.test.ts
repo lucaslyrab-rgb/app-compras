@@ -8,6 +8,7 @@ import {
   MAX_PHOTO_BYTES,
 } from "@/lib/s3-photos";
 import { uploadProductPhotoService, removeProductPhotoService } from "@/modules/catalog/service";
+import { toIsoDateString } from "@/modules/catalog/domain";
 import * as catalogRepo from "@/modules/catalog/repository";
 import * as s3Photos from "@/lib/s3-photos";
 import type { Principal } from "@/modules/identity";
@@ -159,7 +160,7 @@ describe("serviço de catálogo - upload e remoção de foto", () => {
     const uploadSpy = vi.spyOn(s3Photos, "uploadPhotoToS3").mockResolvedValue(undefined);
     const deleteSpy = vi.spyOn(s3Photos, "deletePhotoFromS3").mockResolvedValue(undefined);
 
-    const fixedDate = new Date("2026-09-29T17:00:00Z");
+    const fixedDate = "2026-09-29T17:00:00.000Z";
     const repoSpy = vi.spyOn(catalogRepo, "setProductPhoto").mockResolvedValue({
       updated: {
         id: "prod-10",
@@ -192,7 +193,7 @@ describe("serviço de catálogo - upload e remoção de foto", () => {
       updated: {
         id: "prod-10",
         photoKey: "products/prod-10/new-uuid.webp",
-        photoUpdatedAt: new Date("2026-09-29T17:10:00Z"),
+        photoUpdatedAt: "2026-09-29T17:10:00.000Z",
         version: 3,
       },
       oldPhotoKey: oldKey,
@@ -234,7 +235,7 @@ describe("serviço de catálogo - upload e remoção de foto", () => {
       updated: {
         id: "prod-10",
         photoKey: null,
-        photoUpdatedAt: new Date("2026-09-29T17:20:00Z"),
+        photoUpdatedAt: "2026-09-29T17:20:00.000Z",
         version: 4,
       },
       oldPhotoKey: oldKey,
@@ -253,7 +254,7 @@ describe("serviço de catálogo - upload e remoção de foto", () => {
       updated: {
         id: "prod-10",
         photoKey: null,
-        photoUpdatedAt: new Date("2026-09-29T17:30:00Z"),
+        photoUpdatedAt: "2026-09-29T17:30:00.000Z",
         version: 5,
       },
       oldPhotoKey: "products/prod-10/cannot-delete.webp",
@@ -264,5 +265,108 @@ describe("serviço de catálogo - upload e remoção de foto", () => {
     const result = await removeProductPhotoService(gestorPrincipal, "prod-10", 4);
     expect(result.photoKey).toBeNull();
     expect(result.version).toBe(5);
+  });
+
+  it("regressão: trata photoUpdatedAt retornado como string pelo banco sem lançar toISOString is not a function", async () => {
+    const validImage = await sharp({
+      create: { width: 50, height: 50, channels: 3, background: { r: 10, g: 20, b: 30 } },
+    }).png().toBuffer();
+
+    vi.spyOn(s3Photos, "uploadPhotoToS3").mockResolvedValue(undefined);
+    vi.spyOn(s3Photos, "deletePhotoFromS3").mockResolvedValue(undefined);
+
+    // Simula o comportamento exato ocorrido em produção: o driver PostgreSQL
+    // retorna photo_updated_at como string (ex: "2026-09-29 18:00:00.123+00")
+    // em vez de uma instância de Date.
+    const pgTimestampString = "2026-09-29 18:00:00.123+00";
+    vi.spyOn(catalogRepo, "setProductPhoto").mockResolvedValue({
+      updated: {
+        id: "prod-abacate",
+        photoKey: "products/prod-abacate/uuid-abacate.webp",
+        photoUpdatedAt: pgTimestampString,
+        version: 2,
+      },
+      oldPhotoKey: null,
+    });
+
+    const result = await uploadProductPhotoService(gestorPrincipal, "prod-abacate", validImage, 1);
+
+    expect(result.id).toBe("prod-abacate");
+    expect(result.version).toBe(2);
+    expect(result.photoKey).toBe("products/prod-abacate/uuid-abacate.webp");
+    expect(typeof result.photoUpdatedAt).toBe("string");
+    expect(result.photoUpdatedAt).toBe("2026-09-29T18:00:00.123Z");
+  });
+
+  it("regressão: trata photoUpdatedAt retornado como string na remoção de foto sem lançar toISOString is not a function", async () => {
+    vi.spyOn(s3Photos, "deletePhotoFromS3").mockResolvedValue(undefined);
+
+    const pgTimestampString = "2026-09-29 18:30:00.456+00";
+    vi.spyOn(catalogRepo, "removeProductPhoto").mockResolvedValue({
+      updated: {
+        id: "prod-abacate",
+        photoKey: null,
+        photoUpdatedAt: pgTimestampString,
+        version: 3,
+      },
+      oldPhotoKey: "products/prod-abacate/uuid-abacate.webp",
+    });
+
+    const result = await removeProductPhotoService(gestorPrincipal, "prod-abacate", 2);
+
+    expect(result.id).toBe("prod-abacate");
+    expect(result.version).toBe(3);
+    expect(result.photoKey).toBeNull();
+    expect(typeof result.photoUpdatedAt).toBe("string");
+    expect(result.photoUpdatedAt).toBe("2026-09-29T18:30:00.456Z");
+  });
+
+  it("regressão: trata photoUpdatedAt nulo ou indefinido sem lançar exceção", async () => {
+    vi.spyOn(s3Photos, "deletePhotoFromS3").mockResolvedValue(undefined);
+
+    vi.spyOn(catalogRepo, "removeProductPhoto").mockResolvedValue({
+      updated: {
+        id: "prod-abacate",
+        photoKey: null,
+        photoUpdatedAt: null,
+        version: 4,
+      },
+      oldPhotoKey: null,
+    });
+
+    const result = await removeProductPhotoService(gestorPrincipal, "prod-abacate", 3);
+    expect(result.photoUpdatedAt).toBeNull();
+  });
+});
+
+describe("normalização de datas (toIsoDateString)", () => {
+  it("converte objeto Date válido para string ISO", () => {
+    const date = new Date("2026-09-29T18:00:00.000Z");
+    expect(toIsoDateString(date)).toBe("2026-09-29T18:00:00.000Z");
+  });
+
+  it("converte string ISO para string ISO normalizada", () => {
+    expect(toIsoDateString("2026-09-29T18:00:00.000Z")).toBe("2026-09-29T18:00:00.000Z");
+  });
+
+  it("converte string de timestamp do PostgreSQL para string ISO", () => {
+    const pgTimestamp = "2026-09-29 18:00:00.123+00";
+    expect(toIsoDateString(pgTimestamp)).toBe("2026-09-29T18:00:00.123Z");
+  });
+
+  it("retorna null para Date inválida", () => {
+    const invalidDate = new Date("invalid-date-string");
+    expect(toIsoDateString(invalidDate)).toBeNull();
+  });
+
+  it("retorna null para string inválida, vazia ou apenas espaços", () => {
+    expect(toIsoDateString("not-a-date")).toBeNull();
+    expect(toIsoDateString("")).toBeNull();
+    expect(toIsoDateString("   ")).toBeNull();
+  });
+
+  it("retorna null para null ou undefined", () => {
+    expect(toIsoDateString(null)).toBeNull();
+    expect(toIsoDateString(undefined)).toBeNull();
   });
 });

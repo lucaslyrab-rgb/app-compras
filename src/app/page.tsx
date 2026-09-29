@@ -1,5 +1,6 @@
 import { requirePrincipal } from "@/modules/identity/session";
 import { listActiveProducts } from "@/modules/catalog/repository";
+import { toIsoDateString } from "@/modules/catalog/domain";
 import { currentPurchaseCycle } from "@/modules/ordering/calendar/service";
 import { OrderWorkspace } from "@/modules/ordering/order-workspace";
 import { getStoreName, loadDraft } from "@/modules/ordering/repository";
@@ -21,7 +22,7 @@ export default async function HomePage() {
     name: product.name,
     unit: product.unit,
     photoKey: product.photoKey,
-    photoUpdatedAt: product.photoUpdatedAt?.toISOString() ?? null,
+    photoUpdatedAt: toIsoDateString(product.photoUpdatedAt),
   }));
   const cycle = await currentPurchaseCycle();
   const date = cycle.localDate;

@@ -1,5 +1,5 @@
 import type { Principal } from "@/modules/identity";
-import { authorizeProductManagement } from "./domain";
+import { authorizeProductManagement, toIsoDateString, type ProductPhotoDto } from "./domain";
 import { setProductPhoto, removeProductPhoto } from "./repository";
 import {
   validateAndProcessPhoto,
@@ -27,7 +27,7 @@ export async function uploadProductPhotoService(
 
   // 4. Atualiza registro no PostgreSQL com controle de concorrência
   let result: {
-    updated: { id: string; photoKey: string | null; photoUpdatedAt: Date; version: number };
+    updated: ProductPhotoDto;
     oldPhotoKey: string | null;
   };
 
@@ -64,7 +64,7 @@ export async function uploadProductPhotoService(
     id: result.updated.id,
     version: result.updated.version,
     photoKey: result.updated.photoKey,
-    photoUpdatedAt: result.updated.photoUpdatedAt.toISOString(),
+    photoUpdatedAt: toIsoDateString(result.updated.photoUpdatedAt),
   };
 }
 
@@ -72,7 +72,7 @@ export async function removeProductPhotoService(
   principal: Principal,
   productId: string,
   expectedVersion: number
-) {
+): Promise<ProductPhotoDto> {
   authorizeProductManagement(principal);
 
   // 1. Atualiza registro no banco para photo_key = NULL
@@ -95,6 +95,6 @@ export async function removeProductPhotoService(
     id: result.updated.id,
     version: result.updated.version,
     photoKey: result.updated.photoKey,
-    photoUpdatedAt: result.updated.photoUpdatedAt ? result.updated.photoUpdatedAt.toISOString() : null,
+    photoUpdatedAt: toIsoDateString(result.updated.photoUpdatedAt),
   };
 }

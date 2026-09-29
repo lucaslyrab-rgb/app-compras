@@ -56,12 +56,17 @@ export function ProductPhoto({
   let src: string | null = null;
 
   if (productId && photoKey) {
-    const v = photoUpdatedAt
-      ? photoUpdatedAt instanceof Date
-        ? photoUpdatedAt.getTime()
-        : new Date(photoUpdatedAt).getTime()
-      : undefined;
-    src = `/api/products/${productId}/photo${v ? `?v=${v}` : ""}`;
+    let v: number | undefined;
+    if (photoUpdatedAt) {
+      const ms =
+        photoUpdatedAt instanceof Date
+          ? photoUpdatedAt.getTime()
+          : new Date(photoUpdatedAt).getTime();
+      if (!Number.isNaN(ms)) {
+        v = ms;
+      }
+    }
+    src = `/api/products/${productId}/photo${v !== undefined ? `?v=${v}` : ""}`;
   } else if (imageUrl) {
     src = imageUrl;
   }

@@ -2,7 +2,13 @@ import { eq } from "drizzle-orm";
 import { database } from "@/db/client";
 import { products } from "@/db/schema";
 import type { Principal } from "@/modules/identity";
-import { authorizeProductManagement, ProductDraftConflictError, ProductVersionConflictError } from "./domain";
+import {
+  authorizeProductManagement,
+  ProductDraftConflictError,
+  ProductVersionConflictError,
+  toIsoDateString,
+  type ProductPhotoDto,
+} from "./domain";
 
 export async function listActiveProducts() {
   return database().db.select().from(products).where(eq(products.active, true)).orderBy(products.name);
@@ -44,7 +50,7 @@ export async function setProductPhoto(
       throw new ProductVersionConflictError();
     }
     const [updated] = await tx<
-      { id: string; photoKey: string | null; photoUpdatedAt: Date; version: number }[]
+      { id: string; photoKey: string | null; photoUpdatedAt: Date | string | null; version: number }[]
     >`
       UPDATE products
       SET photo_key = ${newPhotoKey}, photo_updated_at = now(), version = version + 1, updated_at = now()
@@ -53,7 +59,12 @@ export async function setProductPhoto(
     `;
     if (!updated) throw new ProductVersionConflictError();
     return {
-      updated,
+      updated: {
+        id: updated.id,
+        version: updated.version,
+        photoKey: updated.photoKey,
+        photoUpdatedAt: toIsoDateString(updated.photoUpdatedAt),
+      },
       oldPhotoKey: current.photo_key,
     };
   });
@@ -63,7 +74,10 @@ export async function removeProductPhoto(
   principal: Principal,
   productId: string,
   expectedVersion: number
-) {
+): Promise<{
+  updated: ProductPhotoDto;
+  oldPhotoKey: string | null;
+}> {
   authorizeProductManagement(principal);
   return database().sql.begin(async (tx) => {
     const [current] = await tx<{ id: string; photo_key: string | null; version: number }[]>`
@@ -74,7 +88,7 @@ export async function removeProductPhoto(
       throw new ProductVersionConflictError();
     }
     const [updated] = await tx<
-      { id: string; photoKey: string | null; photoUpdatedAt: Date | null; version: number }[]
+      { id: string; photoKey: string | null; photoUpdatedAt: Date | string | null; version: number }[]
     >`
       UPDATE products
       SET photo_key = NULL, photo_updated_at = now(), version = version + 1, updated_at = now()
@@ -83,7 +97,12 @@ export async function removeProductPhoto(
     `;
     if (!updated) throw new ProductVersionConflictError();
     return {
-      updated,
+      updated: {
+        id: updated.id,
+        version: updated.version,
+        photoKey: updated.photoKey,
+        photoUpdatedAt: toIsoDateString(updated.photoUpdatedAt),
+      },
       oldPhotoKey: current.photo_key,
     };
   });
