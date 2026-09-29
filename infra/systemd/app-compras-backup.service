@@ -1,0 +1,16 @@
+[Unit]
+Description=Rotina diaria de backup PostgreSQL do app-compras
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/var/www/compras.muitomaisatacado.com
+ExecStart=/var/www/compras.muitomaisatacado.com/scripts/backup-postgres.sh
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target

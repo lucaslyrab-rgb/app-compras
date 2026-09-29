@@ -10,8 +10,19 @@ if [ "${RESTORE_DATABASE_URL#*app_compras_restore}" = "$RESTORE_DATABASE_URL" ];
   exit 1
 fi
 
+if [ -f "${BACKUP_FILE}.sha256" ]; then
+  printf '%s\n' "Validando checksum SHA-256 antes da restauração..."
+  (cd "$(dirname "$BACKUP_FILE")" && sha256sum -c "$(basename "${BACKUP_FILE}.sha256")")
+fi
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT INT TERM
 age --decrypt --identity "$AGE_IDENTITY_FILE" --output "$tmp/restore.dump" "$BACKUP_FILE"
-pg_restore --clean --if-exists --no-owner --no-acl --dbname "$RESTORE_DATABASE_URL" "$tmp/restore.dump"
-psql "$RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT count(*) AS stores FROM stores; SELECT count(*) AS products FROM products; SELECT count(*) AS exclusive_products FROM products WHERE exclusive = true;"
+if command -v pg_restore >/dev/null 2>&1 && pg_restore --version | grep -q " 18\."; then
+  pg_restore --clean --if-exists --no-owner --no-acl --dbname "$RESTORE_DATABASE_URL" "$tmp/restore.dump"
+elif command -v docker >/dev/null 2>&1 && docker image inspect postgres:18.6 >/dev/null 2>&1; then
+  docker run --rm -i --network=host postgres:18.6 pg_restore --clean --if-exists --no-owner --no-acl --dbname "$RESTORE_DATABASE_URL" < "$tmp/restore.dump"
+else
+  pg_restore --clean --if-exists --no-owner --no-acl --dbname "$RESTORE_DATABASE_URL" "$tmp/restore.dump"
+fi
+psql "$RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT count(*) AS stores FROM stores; SELECT count(*) AS products FROM products; SELECT count(*) AS exclusive_supplier_products FROM products WHERE exclusive_supplier = true;"
