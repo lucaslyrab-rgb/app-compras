@@ -59,6 +59,16 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
     setConfirmedFormatConversion(false);
   }
 
+  const [prevPropVersion, setPrevPropVersion] = useState(product?.productVersion);
+  const [prevPropId, setPrevPropId] = useState(product?.id);
+  if (product && (product.id !== prevPropId || product.productVersion !== prevPropVersion)) {
+    setPrevPropId(product.id);
+    setPrevPropVersion(product.productVersion);
+    setProductVersion(product.productVersion);
+    setPhotoKey(product.photoKey);
+    setPhotoUpdatedAt(product.photoUpdatedAt);
+  }
+
   async function handlePhotoUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file || !product) return;
@@ -94,10 +104,21 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
           });
         }
       } else {
+        if (result.status === "conflict") {
+          router.refresh();
+        }
         setPhotoFeedback({ error: true, message: result.message });
       }
-    } catch {
-      setPhotoFeedback({ error: true, message: "Erro inesperado ao enviar foto." });
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Failed to find Server Action")) {
+        setPhotoFeedback({
+          error: true,
+          message: "A aplicação foi atualizada no servidor. Recarregue a página (F5) para continuar.",
+        });
+      } else {
+        const message = err instanceof Error ? err.message : "Erro inesperado ao enviar foto.";
+        setPhotoFeedback({ error: true, message });
+      }
     } finally {
       setPhotoLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -131,10 +152,21 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
           });
         }
       } else {
+        if (result.status === "conflict") {
+          router.refresh();
+        }
         setPhotoFeedback({ error: true, message: result.message });
       }
-    } catch {
-      setPhotoFeedback({ error: true, message: "Erro inesperado ao remover foto." });
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Failed to find Server Action")) {
+        setPhotoFeedback({
+          error: true,
+          message: "A aplicação foi atualizada no servidor. Recarregue a página (F5) para continuar.",
+        });
+      } else {
+        const message = err instanceof Error ? err.message : "Erro inesperado ao remover foto.";
+        setPhotoFeedback({ error: true, message });
+      }
     } finally {
       setPhotoLoading(false);
     }

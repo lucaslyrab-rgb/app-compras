@@ -8,7 +8,7 @@ import {
   MAX_PHOTO_BYTES,
 } from "@/lib/s3-photos";
 import { uploadProductPhotoService, removeProductPhotoService } from "@/modules/catalog/service";
-import { toIsoDateString } from "@/modules/catalog/domain";
+import { toIsoDateString, ProductVersionConflictError } from "@/modules/catalog/domain";
 import * as catalogRepo from "@/modules/catalog/repository";
 import * as s3Photos from "@/lib/s3-photos";
 import type { Principal } from "@/modules/identity";
@@ -336,6 +336,221 @@ describe("serviço de catálogo - upload e remoção de foto", () => {
 
     const result = await removeProductPhotoService(gestorPrincipal, "prod-abacate", 3);
     expect(result.photoUpdatedAt).toBeNull();
+  });
+});
+
+describe("concorrência otimista, controle de versão e ciclo de vida de fotos", () => {
+  const gestorPrincipal: Principal = {
+    userId: "00000000-0000-0000-0000-000000000001",
+    role: "GESTOR",
+    storeId: null,
+  };
+
+  it("reproduz a sequência real: produto com foto -> troca 1 -> troca 2 sem reload -> remoção sem reload -> conclui com versão mais recente", async () => {
+    const validImage = await sharp({
+      create: { width: 50, height: 50, channels: 3, background: { r: 10, g: 20, b: 30 } },
+    }).png().toBuffer();
+
+    const uploadedKeys: string[] = [];
+    const deletedKeys: string[] = [];
+
+    vi.spyOn(s3Photos, "uploadPhotoToS3").mockImplementation(async (key) => {
+      uploadedKeys.push(key);
+    });
+    vi.spyOn(s3Photos, "deletePhotoFromS3").mockImplementation(async (key) => {
+      deletedKeys.push(key);
+    });
+
+    // Estado simulado do banco de dados (começa na versão 2 com foto do ABACATE)
+    let dbProduct: {
+      id: string;
+      version: number;
+      photoKey: string | null;
+      photoUpdatedAt: string;
+    } = {
+      id: "prod-abacate",
+      version: 2,
+      photoKey: "products/prod-abacate/v2-uuid.webp",
+      photoUpdatedAt: "2026-09-30T12:00:00.000Z",
+    };
+
+    vi.spyOn(catalogRepo, "setProductPhoto").mockImplementation(
+      async (_principal, productId, newPhotoKey, expectedVersion) => {
+        if (expectedVersion !== dbProduct.version) {
+          throw new ProductVersionConflictError();
+        }
+        const oldKey = dbProduct.photoKey;
+        dbProduct = {
+          id: productId,
+          version: dbProduct.version + 1,
+          photoKey: newPhotoKey,
+          photoUpdatedAt: new Date().toISOString(),
+        };
+        return {
+          updated: {
+            id: dbProduct.id,
+            version: dbProduct.version,
+            photoKey: dbProduct.photoKey,
+            photoUpdatedAt: dbProduct.photoUpdatedAt,
+          },
+          oldPhotoKey: oldKey,
+        };
+      }
+    );
+
+    vi.spyOn(catalogRepo, "removeProductPhoto").mockImplementation(
+      async (_principal, productId, expectedVersion) => {
+        if (expectedVersion !== dbProduct.version) {
+          throw new ProductVersionConflictError();
+        }
+        const oldKey = dbProduct.photoKey;
+        dbProduct = {
+          id: productId,
+          version: dbProduct.version + 1,
+          photoKey: null,
+          photoUpdatedAt: new Date().toISOString(),
+        };
+        return {
+          updated: {
+            id: dbProduct.id,
+            version: dbProduct.version,
+            photoKey: null,
+            photoUpdatedAt: dbProduct.photoUpdatedAt,
+          },
+          oldPhotoKey: oldKey,
+        };
+      }
+    );
+
+    // 1. Troca 1: versão esperada 2 -> promovido para versão 3
+    let currentVersion = 2;
+    const res1 = await uploadProductPhotoService(gestorPrincipal, "prod-abacate", validImage, currentVersion);
+    expect(res1.version).toBe(3);
+    expect(dbProduct.version).toBe(3);
+    expect(deletedKeys).toContain("products/prod-abacate/v2-uuid.webp"); // foto antiga removida
+
+    // 2. Troca 2 sem reload: versão esperada 3 -> promovido para versão 4
+    currentVersion = res1.version;
+    const v3PhotoKey = res1.photoKey;
+    const res2 = await uploadProductPhotoService(gestorPrincipal, "prod-abacate", validImage, currentVersion);
+    expect(res2.version).toBe(4);
+    expect(dbProduct.version).toBe(4);
+    expect(deletedKeys).toContain(v3PhotoKey!); // foto da troca 1 removida
+
+    // 3. Troca 3 sem reload: versão esperada 4 -> promovido para versão 5
+    currentVersion = res2.version;
+    const v4PhotoKey = res2.photoKey;
+    const res3 = await uploadProductPhotoService(gestorPrincipal, "prod-abacate", validImage, currentVersion);
+    expect(res3.version).toBe(5);
+    expect(dbProduct.version).toBe(5);
+    expect(deletedKeys).toContain(v4PhotoKey!);
+
+    // 4. Remoção sem reload: versão esperada 5 -> promovido para versão 6
+    currentVersion = res3.version;
+    const v5PhotoKey = res3.photoKey;
+    const res4 = await removeProductPhotoService(gestorPrincipal, "prod-abacate", currentVersion);
+    expect(res4.version).toBe(6);
+    expect(res4.photoKey).toBeNull();
+    expect(dbProduct.version).toBe(6);
+    expect(dbProduct.photoKey).toBeNull();
+    expect(deletedKeys).toContain(v5PhotoKey!);
+
+    // 5. Tentativa subsequente de remoção com versão desatualizada (ex: versão 2 ou 5) deve ser rejeitada
+    await expect(
+      removeProductPhotoService(gestorPrincipal, "prod-abacate", 2)
+    ).rejects.toThrow(ProductVersionConflictError);
+
+    await expect(
+      removeProductPhotoService(gestorPrincipal, "prod-abacate", 5)
+    ).rejects.toThrow(ProductVersionConflictError);
+  });
+
+  it("remoção logo após carregar a página utiliza a versão inicial e conclui", async () => {
+    vi.spyOn(s3Photos, "deletePhotoFromS3").mockResolvedValue(undefined);
+
+    vi.spyOn(catalogRepo, "removeProductPhoto").mockResolvedValue({
+      updated: {
+        id: "prod-abacate",
+        photoKey: null,
+        photoUpdatedAt: "2026-09-30T12:30:00.000Z",
+        version: 3,
+      },
+      oldPhotoKey: "products/prod-abacate/initial-v2.webp",
+    });
+
+    const result = await removeProductPhotoService(gestorPrincipal, "prod-abacate", 2);
+    expect(result.version).toBe(3);
+    expect(result.photoKey).toBeNull();
+  });
+
+  it("remoção após uma única troca de foto utiliza a versão incrementada e conclui", async () => {
+    const validImage = await sharp({
+      create: { width: 50, height: 50, channels: 3, background: { r: 10, g: 20, b: 30 } },
+    }).png().toBuffer();
+
+    vi.spyOn(s3Photos, "uploadPhotoToS3").mockResolvedValue(undefined);
+    const deleteSpy = vi.spyOn(s3Photos, "deletePhotoFromS3").mockResolvedValue(undefined);
+
+    vi.spyOn(catalogRepo, "setProductPhoto").mockResolvedValue({
+      updated: {
+        id: "prod-abacate",
+        photoKey: "products/prod-abacate/new-v3.webp",
+        photoUpdatedAt: "2026-09-30T12:35:00.000Z",
+        version: 3,
+      },
+      oldPhotoKey: "products/prod-abacate/initial-v2.webp",
+    });
+
+    const uploadRes = await uploadProductPhotoService(gestorPrincipal, "prod-abacate", validImage, 2);
+    expect(uploadRes.version).toBe(3);
+
+    vi.spyOn(catalogRepo, "removeProductPhoto").mockResolvedValue({
+      updated: {
+        id: "prod-abacate",
+        photoKey: null,
+        photoUpdatedAt: "2026-09-30T12:36:00.000Z",
+        version: 4,
+      },
+      oldPhotoKey: "products/prod-abacate/new-v3.webp",
+    });
+
+    const removeRes = await removeProductPhotoService(gestorPrincipal, "prod-abacate", uploadRes.version);
+    expect(removeRes.version).toBe(4);
+    expect(removeRes.photoKey).toBeNull();
+    expect(deleteSpy).toHaveBeenCalledWith("products/prod-abacate/new-v3.webp");
+  });
+
+  it("rejeita conflito real quando expectedVersion está desatualizada e não chama DeleteObject no S3", async () => {
+    const deleteSpy = vi.spyOn(s3Photos, "deletePhotoFromS3").mockResolvedValue(undefined);
+
+    vi.spyOn(catalogRepo, "removeProductPhoto").mockRejectedValue(
+      new ProductVersionConflictError()
+    );
+
+    await expect(
+      removeProductPhotoService(gestorPrincipal, "prod-abacate", 2)
+    ).rejects.toThrow(ProductVersionConflictError);
+
+    // O objeto no S3 NUNCA deve ser removido quando há conflito de versão
+    expect(deleteSpy).not.toHaveBeenCalled();
+  });
+
+  it("nenhuma foto errada é excluída quando o produto não possuía foto prévia", async () => {
+    const deleteSpy = vi.spyOn(s3Photos, "deletePhotoFromS3").mockResolvedValue(undefined);
+
+    vi.spyOn(catalogRepo, "removeProductPhoto").mockResolvedValue({
+      updated: {
+        id: "prod-sem-foto",
+        photoKey: null,
+        photoUpdatedAt: "2026-09-30T12:40:00.000Z",
+        version: 2,
+      },
+      oldPhotoKey: null,
+    });
+
+    const result = await removeProductPhotoService(gestorPrincipal, "prod-sem-foto", 1);
+    expect(result.photoKey).toBeNull();
+    expect(deleteSpy).not.toHaveBeenCalled();
   });
 });
 
