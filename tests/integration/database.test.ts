@@ -105,7 +105,7 @@ integration("PostgreSQL 18.6", () => {
     await withIsolatedBootstrapSchema(async (databaseUrl) => {
       const email = `bootstrap-${Date.now()}@example.com`;
       await bootstrapAdmin(databaseUrl, email, "senha-de-bootstrap-com-16");
-      await expect(bootstrapAdmin(databaseUrl, `${email}-outro`, "senha-de-bootstrap-com-16")).rejects.toThrow(/Gestor ativo/);
+      await expect(bootstrapAdmin(databaseUrl, `${email}-outro`, "senha-de-bootstrap-com-16")).rejects.toThrow(/administrador ativo.*gestor:usuarios/);
     });
   });
 

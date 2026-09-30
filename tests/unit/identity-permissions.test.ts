@@ -13,6 +13,9 @@ import {
   hasAnyPermission,
   hasPermission,
   AuthorizationError,
+  UserValidationError,
+  validateStoreUserInvariant,
+  assertStoreUserInvariant,
   type Principal,
 } from "@/modules/identity/domain";
 
@@ -197,5 +200,55 @@ describe("Fundação de Permissões V1", () => {
       expect(canManageSettings(precificador)).toBe(false);
       expect(canManageUsers(precificador)).toBe(false);
     });
+  });
+
+  describe("invariante Loja / storeId no domínio", () => {
+    const validStoreId = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+
+    const testMatrix: Array<{
+      desc: string;
+      permissions: Principal["permissions"];
+      storeId: string | null | undefined;
+      expectedValid: boolean;
+    }> = [
+      // Combinações válidas de Loja (tem permissão e tem loja)
+      { desc: "pedidos:criar com storeId válido", permissions: ["pedidos:criar"], storeId: validStoreId, expectedValid: true },
+      { desc: "pedidos:historico com storeId válido", permissions: ["pedidos:historico"], storeId: validStoreId, expectedValid: true },
+      { desc: "ambas permissões de loja com storeId válido", permissions: ["pedidos:criar", "pedidos:historico"], storeId: validStoreId, expectedValid: true },
+
+      // Combinações inválidas de Loja (tem permissão mas não tem loja)
+      { desc: "pedidos:criar com storeId null", permissions: ["pedidos:criar"], storeId: null, expectedValid: false },
+      { desc: "pedidos:criar com storeId undefined", permissions: ["pedidos:criar"], storeId: undefined, expectedValid: false },
+      { desc: "pedidos:criar com storeId vazio", permissions: ["pedidos:criar"], storeId: "", expectedValid: false },
+      { desc: "pedidos:historico com storeId null", permissions: ["pedidos:historico"], storeId: null, expectedValid: false },
+      { desc: "ambas permissões de loja com storeId null", permissions: ["pedidos:criar", "pedidos:historico"], storeId: null, expectedValid: false },
+
+      // Combinações válidas não-Loja (não tem permissão de loja e storeId é null/undefined)
+      { desc: "comprador padrão com storeId null", permissions: ["compras:consolidado", "compras:custos"], storeId: null, expectedValid: true },
+      { desc: "comprador padrão com storeId undefined", permissions: ["compras:consolidado", "compras:custos"], storeId: undefined, expectedValid: true },
+      { desc: "gestor completo com storeId null", permissions: ["compras:consolidado", "compras:custos", "gestor:produtos", "gestor:precificacao", "gestor:configuracoes", "gestor:usuarios"], storeId: null, expectedValid: true },
+      { desc: "gestor apenas de usuários com storeId null", permissions: ["gestor:usuarios"], storeId: null, expectedValid: true },
+      { desc: "usuário com permissions = [] e storeId null", permissions: [], storeId: null, expectedValid: true },
+      { desc: "usuário com permissions = [] e storeId undefined", permissions: [], storeId: undefined, expectedValid: true },
+
+      // Combinações inválidas não-Loja (não tem permissão de loja mas tem storeId associado)
+      { desc: "comprador com storeId associado", permissions: ["compras:consolidado", "compras:custos"], storeId: validStoreId, expectedValid: false },
+      { desc: "gestor completo com storeId associado", permissions: ["compras:consolidado", "compras:custos", "gestor:produtos", "gestor:precificacao", "gestor:configuracoes", "gestor:usuarios"], storeId: validStoreId, expectedValid: false },
+      { desc: "gestor de usuários com storeId associado", permissions: ["gestor:usuarios"], storeId: validStoreId, expectedValid: false },
+      { desc: "usuário com permissions = [] com storeId associado", permissions: [], storeId: validStoreId, expectedValid: false },
+    ];
+
+    for (const { desc, permissions, storeId, expectedValid } of testMatrix) {
+      it(`matriz: ${desc} -> ${expectedValid ? "VÁLIDO" : "INVÁLIDO"}`, () => {
+        const result = validateStoreUserInvariant(permissions, storeId);
+        expect(result.valid).toBe(expectedValid);
+        if (!expectedValid) {
+          expect(result.reason).toBeDefined();
+          expect(() => assertStoreUserInvariant(permissions, storeId)).toThrow(UserValidationError);
+        } else {
+          expect(() => assertStoreUserInvariant(permissions, storeId)).not.toThrow();
+        }
+      });
+    }
   });
 });

@@ -74,6 +74,25 @@ export function canManageGestor(principal: Principal) {
   ]);
 }
 
+export function resolveOperationalRoute(principal: Principal): string | null {
+  if (hasPermission(principal, "pedidos:criar") && Boolean(principal.storeId)) {
+    return "/";
+  }
+  if (hasPermission(principal, "gestor:produtos")) return "/gestor/produtos";
+  if (hasPermission(principal, "compras:consolidado")) return "/comprador/consolidado";
+  if (hasPermission(principal, "compras:custos")) return "/comprador/custos";
+  if (hasPermission(principal, "gestor:precificacao")) return "/gestor/precificacao";
+  if (hasPermission(principal, "gestor:configuracoes")) return "/gestor/configuracoes";
+  if (hasPermission(principal, "pedidos:historico") && Boolean(principal.storeId)) {
+    return "/historico";
+  }
+  return null;
+}
+
+export function hasOperationalRoute(principal: Principal): boolean {
+  return resolveOperationalRoute(principal) !== null;
+}
+
 export function assertStoreAccess(principal: Principal, requestedStoreId: string) {
   if (hasAnyPermission(principal, ["pedidos:criar", "pedidos:historico"])) {
     if (!principal.storeId || principal.storeId !== requestedStoreId) {
@@ -86,6 +105,42 @@ export function assertStoreAccess(principal: Principal, requestedStoreId: string
 
 export class AuthorizationError extends Error {
   override name = "AuthorizationError";
+}
+
+export class UserValidationError extends Error {
+  override name = "UserValidationError";
+}
+
+export function validateStoreUserInvariant(
+  permissions: readonly Permission[],
+  storeId: string | null | undefined
+): { valid: boolean; reason?: string } {
+  const hasStorePerm = permissions.some((p) => STORE_PERMISSIONS.includes(p));
+  const hasStoreId = typeof storeId === "string" && storeId.trim().length > 0;
+
+  if (hasStorePerm && !hasStoreId) {
+    return {
+      valid: false,
+      reason: "Usuário com permissão de Loja (pedidos:criar ou pedidos:historico) deve possuir uma loja vinculada.",
+    };
+  }
+  if (!hasStorePerm && (storeId !== null && storeId !== undefined && storeId !== "")) {
+    return {
+      valid: false,
+      reason: "Usuário sem permissão de Loja não pode possuir loja vinculada.",
+    };
+  }
+  return { valid: true };
+}
+
+export function assertStoreUserInvariant(
+  permissions: readonly Permission[],
+  storeId: string | null | undefined
+): void {
+  const result = validateStoreUserInvariant(permissions, storeId);
+  if (!result.valid) {
+    throw new UserValidationError(result.reason);
+  }
 }
 
 export async function hashPassword(password: string) {

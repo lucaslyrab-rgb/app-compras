@@ -19,11 +19,6 @@ export async function GET(
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
 
-  // Allowed roles: LOJA, COMPRADOR, GESTOR
-  if (!["LOJA", "COMPRADOR", "GESTOR"].includes(principal.role)) {
-    return NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 });
-  }
-
   const { id: productId } = await params;
   if (!z.string().uuid().safeParse(productId).success) {
     return NextResponse.json({ error: "ID de produto inválido." }, { status: 400 });

@@ -9,8 +9,8 @@ const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
 export async function bootstrapAdmin(databaseUrl: string, adminEmail: string, adminPassword: string) {
   const sql = postgres(databaseUrl, { max: 1 });
   try {
-    const [{ count }] = await sql<[{ count: number }]>`SELECT count(*)::int AS count FROM users WHERE role = 'GESTOR' AND active`;
-    if (count > 0) throw new Error("Já existe Gestor ativo; bootstrap recusado");
+    const [{ count }] = await sql<[{ count: number }]>`SELECT count(*)::int AS count FROM users WHERE 'gestor:usuarios' = ANY(permissions) AND active`;
+    if (count > 0) throw new Error("Já existe administrador ativo com permissão gestor:usuarios; bootstrap recusado");
     const passwordHash = await hashPassword(adminPassword);
     await sql`INSERT INTO users (email, name, password_hash, role, permissions) VALUES (${adminEmail.trim().toLowerCase()}, 'Gestor inicial', ${passwordHash}, 'GESTOR', ARRAY['compras:consolidado', 'compras:custos', 'gestor:produtos', 'gestor:precificacao', 'gestor:configuracoes', 'gestor:usuarios']::text[])`;
   } finally {

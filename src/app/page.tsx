@@ -36,5 +36,5 @@ export default async function HomePage() {
   if (hasPermission(principal, "gestor:configuracoes")) redirect("/gestor/configuracoes");
   if (hasPermission(principal, "pedidos:historico") && principal.storeId) redirect("/historico");
 
-  redirect("/login");
+  redirect("/sem-acesso");
 }
