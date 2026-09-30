@@ -25,7 +25,7 @@
     "@aws-sdk/client-s3": "^3.1143.0",
     "drizzle-orm": "0.45.2",
     "fflate": "0.8.3",
-    "next": "16.3.5",
+    "next": "16.3.8",
     "postgres": "3.4.9",
     "react": "19.3.0",
     "react-dom": "19.3.0",
