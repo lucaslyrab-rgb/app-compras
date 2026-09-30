@@ -9,11 +9,12 @@ export async function seedConsolidatedE2e(
   options?: { allowCustomSchema?: boolean },
 ) {
   const parsed = new URL(url);
-  if (
-    !options?.allowCustomSchema &&
-    (!["127.0.0.1", "localhost"].includes(parsed.hostname) ||
-      parsed.pathname !== "/consolidado_e2e")
-  ) {
+  if (!["127.0.0.1", "localhost"].includes(parsed.hostname)) {
+    throw new Error(
+      "Seed permitido apenas em host local descartável (127.0.0.1 ou localhost)",
+    );
+  }
+  if (!options?.allowCustomSchema && parsed.pathname !== "/consolidado_e2e") {
     throw new Error(
       "Seed permitido apenas no banco local descartável consolidado_e2e",
     );

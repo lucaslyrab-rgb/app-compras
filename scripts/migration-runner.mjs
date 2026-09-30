@@ -227,6 +227,11 @@ export async function runMigrations({
         try {
           await sql.unsafe(content);
         } catch (error) {
+          try {
+            await sql.unsafe("ROLLBACK");
+          } catch {
+            // Ignora se não houver transação aberta para preservar o erro original
+          }
           throw new Error(`Falha ao aplicar migration ${filename}`, { cause: error });
         }
 
@@ -238,7 +243,16 @@ export async function runMigrations({
         await onApplied?.(filename);
       }
     } finally {
-      await sql`SELECT pg_advisory_unlock(${MIGRATIONS_LOCK_ID})`;
+      try {
+        await sql.unsafe("ROLLBACK");
+      } catch {
+        // Rollback defensivo caso tenha ocorrido erro prévio em transação aberta
+      }
+      try {
+        await sql`SELECT pg_advisory_unlock(${MIGRATIONS_LOCK_ID})`;
+      } catch {
+        // Nunca mascara o erro original caso o unlock falhe
+      }
     }
   } finally {
     await sql.end();

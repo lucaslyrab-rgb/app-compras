@@ -111,25 +111,50 @@ export class UserValidationError extends Error {
   override name = "UserValidationError";
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isValidUuid(value: string): boolean {
+  return UUID_REGEX.test(value);
+}
+
+export function normalizeStoreId(storeId: string | null | undefined): string | null {
+  if (typeof storeId !== "string") {
+    return null;
+  }
+  const trimmed = storeId.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
 export function validateStoreUserInvariant(
   permissions: readonly Permission[],
   storeId: string | null | undefined
 ): { valid: boolean; reason?: string } {
   const hasStorePerm = permissions.some((p) => STORE_PERMISSIONS.includes(p));
-  const hasStoreId = typeof storeId === "string" && storeId.trim().length > 0;
+  const normalizedStoreId = normalizeStoreId(storeId);
 
-  if (hasStorePerm && !hasStoreId) {
-    return {
-      valid: false,
-      reason: "Usuário com permissão de Loja (pedidos:criar ou pedidos:historico) deve possuir uma loja vinculada.",
-    };
+  if (hasStorePerm) {
+    if (!normalizedStoreId) {
+      return {
+        valid: false,
+        reason: "Usuário com permissão de Loja (pedidos:criar ou pedidos:historico) deve possuir uma loja vinculada.",
+      };
+    }
+    if (!isValidUuid(normalizedStoreId)) {
+      return {
+        valid: false,
+        reason: "Identificador de loja inválido: deve ser um UUID válido.",
+      };
+    }
+    return { valid: true };
   }
-  if (!hasStorePerm && (storeId !== null && storeId !== undefined && storeId !== "")) {
+
+  if (normalizedStoreId !== null) {
     return {
       valid: false,
       reason: "Usuário sem permissão de Loja não pode possuir loja vinculada.",
     };
   }
+
   return { valid: true };
 }
 

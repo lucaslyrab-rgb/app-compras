@@ -14,6 +14,8 @@ import {
   hasPermission,
   AuthorizationError,
   UserValidationError,
+  isValidUuid,
+  normalizeStoreId,
   validateStoreUserInvariant,
   assertStoreUserInvariant,
   type Principal,
@@ -211,28 +213,37 @@ describe("Fundação de Permissões V1", () => {
       storeId: string | null | undefined;
       expectedValid: boolean;
     }> = [
-      // Combinações válidas de Loja (tem permissão e tem loja)
+      // Combinações válidas de Loja (tem permissão e tem loja com UUID válido)
       { desc: "pedidos:criar com storeId válido", permissions: ["pedidos:criar"], storeId: validStoreId, expectedValid: true },
       { desc: "pedidos:historico com storeId válido", permissions: ["pedidos:historico"], storeId: validStoreId, expectedValid: true },
       { desc: "ambas permissões de loja com storeId válido", permissions: ["pedidos:criar", "pedidos:historico"], storeId: validStoreId, expectedValid: true },
+      { desc: "pedidos:criar com storeId válido com espaços nas pontas (normalizado)", permissions: ["pedidos:criar"], storeId: `  ${validStoreId}  `, expectedValid: true },
 
-      // Combinações inválidas de Loja (tem permissão mas não tem loja)
+      // Combinações inválidas de Loja (tem permissão mas não tem loja ou UUID inválido)
       { desc: "pedidos:criar com storeId null", permissions: ["pedidos:criar"], storeId: null, expectedValid: false },
       { desc: "pedidos:criar com storeId undefined", permissions: ["pedidos:criar"], storeId: undefined, expectedValid: false },
       { desc: "pedidos:criar com storeId vazio", permissions: ["pedidos:criar"], storeId: "", expectedValid: false },
+      { desc: "pedidos:criar com storeId apenas whitespace", permissions: ["pedidos:criar"], storeId: "   ", expectedValid: false },
+      { desc: "pedidos:criar com storeId formato UUID inválido (texto arbitrário)", permissions: ["pedidos:criar"], storeId: "loja-1-nao-uuid", expectedValid: false },
       { desc: "pedidos:historico com storeId null", permissions: ["pedidos:historico"], storeId: null, expectedValid: false },
       { desc: "ambas permissões de loja com storeId null", permissions: ["pedidos:criar", "pedidos:historico"], storeId: null, expectedValid: false },
 
-      // Combinações válidas não-Loja (não tem permissão de loja e storeId é null/undefined)
+      // Combinações válidas não-Loja (não tem permissão de loja e storeId é null/undefined/vazio normalizado)
       { desc: "comprador padrão com storeId null", permissions: ["compras:consolidado", "compras:custos"], storeId: null, expectedValid: true },
       { desc: "comprador padrão com storeId undefined", permissions: ["compras:consolidado", "compras:custos"], storeId: undefined, expectedValid: true },
+      { desc: "comprador padrão com storeId vazio '' (normalizado para null)", permissions: ["compras:consolidado", "compras:custos"], storeId: "", expectedValid: true },
+      { desc: "comprador padrão com storeId whitespace '   ' (normalizado para null)", permissions: ["compras:consolidado", "compras:custos"], storeId: "   ", expectedValid: true },
       { desc: "gestor completo com storeId null", permissions: ["compras:consolidado", "compras:custos", "gestor:produtos", "gestor:precificacao", "gestor:configuracoes", "gestor:usuarios"], storeId: null, expectedValid: true },
+      { desc: "gestor completo com storeId vazio ''", permissions: ["compras:consolidado", "compras:custos", "gestor:produtos", "gestor:precificacao", "gestor:configuracoes", "gestor:usuarios"], storeId: "", expectedValid: true },
+      { desc: "gestor completo com storeId whitespace", permissions: ["compras:consolidado", "compras:custos", "gestor:produtos", "gestor:precificacao", "gestor:configuracoes", "gestor:usuarios"], storeId: "   ", expectedValid: true },
       { desc: "gestor apenas de usuários com storeId null", permissions: ["gestor:usuarios"], storeId: null, expectedValid: true },
       { desc: "usuário com permissions = [] e storeId null", permissions: [], storeId: null, expectedValid: true },
       { desc: "usuário com permissions = [] e storeId undefined", permissions: [], storeId: undefined, expectedValid: true },
+      { desc: "usuário com permissions = [] e storeId vazio", permissions: [], storeId: "", expectedValid: true },
 
       // Combinações inválidas não-Loja (não tem permissão de loja mas tem storeId associado)
       { desc: "comprador com storeId associado", permissions: ["compras:consolidado", "compras:custos"], storeId: validStoreId, expectedValid: false },
+      { desc: "comprador com storeId não-UUID associado", permissions: ["compras:consolidado", "compras:custos"], storeId: "loja-1", expectedValid: false },
       { desc: "gestor completo com storeId associado", permissions: ["compras:consolidado", "compras:custos", "gestor:produtos", "gestor:precificacao", "gestor:configuracoes", "gestor:usuarios"], storeId: validStoreId, expectedValid: false },
       { desc: "gestor de usuários com storeId associado", permissions: ["gestor:usuarios"], storeId: validStoreId, expectedValid: false },
       { desc: "usuário com permissions = [] com storeId associado", permissions: [], storeId: validStoreId, expectedValid: false },
@@ -250,5 +261,24 @@ describe("Fundação de Permissões V1", () => {
         }
       });
     }
+
+    it("normalizeStoreId: normaliza strings vazias ou whitespace para null", () => {
+      expect(normalizeStoreId(null)).toBeNull();
+      expect(normalizeStoreId(undefined)).toBeNull();
+      expect(normalizeStoreId("")).toBeNull();
+      expect(normalizeStoreId("   ")).toBeNull();
+      expect(normalizeStoreId("\t\n ")).toBeNull();
+      expect(normalizeStoreId("  3fa85f64-5717-4562-b3fc-2c963f66afa6  ")).toBe("3fa85f64-5717-4562-b3fc-2c963f66afa6");
+    });
+
+    it("isValidUuid: valida sintaxe canônica de UUIDs aceitos pelo PostgreSQL", () => {
+      expect(isValidUuid("3fa85f64-5717-4562-b3fc-2c963f66afa6")).toBe(true);
+      expect(isValidUuid("00000000-0000-0000-0000-000000000000")).toBe(true);
+      expect(isValidUuid("3FA85F64-5717-4562-B3FC-2C963F66AFA6")).toBe(true);
+      expect(isValidUuid("not-a-uuid")).toBe(false);
+      expect(isValidUuid("3fa85f64-5717-4562-b3fc-2c963f66afa")).toBe(false); // faltam caracteres
+      expect(isValidUuid("3fa85f64-5717-4562-b3fc-2c963f66afa6g")).toBe(false); // caracter inválido
+      expect(isValidUuid("")).toBe(false);
+    });
   });
 });

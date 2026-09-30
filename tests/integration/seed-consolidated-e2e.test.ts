@@ -98,4 +98,24 @@ integration("Seed E2E Consolidado com Migration 0012", () => {
       await sql.end();
     }
   });
+
+  it("rejeita execução contra host não local mesmo com allowCustomSchema habilitado", async () => {
+    await expect(
+      seedConsolidatedE2e("postgres://user:pass@192.168.1.50:5432/consolidado_e2e", "pass", {
+        allowCustomSchema: true,
+      })
+    ).rejects.toThrow("Seed permitido apenas em host local descartável (127.0.0.1 ou localhost)");
+
+    await expect(
+      seedConsolidatedE2e("postgres://user:pass@remote-db.production.internal:5432/consolidado_e2e", "pass", {
+        allowCustomSchema: true,
+      })
+    ).rejects.toThrow("Seed permitido apenas em host local descartável (127.0.0.1 ou localhost)");
+  });
+
+  it("rejeita banco não descartável se allowCustomSchema for falso ou omitido", async () => {
+    await expect(
+      seedConsolidatedE2e("postgres://user:pass@127.0.0.1:5432/production_database", "pass")
+    ).rejects.toThrow("Seed permitido apenas no banco local descartável consolidado_e2e");
+  });
 });
