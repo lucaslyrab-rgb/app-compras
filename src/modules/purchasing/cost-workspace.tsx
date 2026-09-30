@@ -55,7 +55,13 @@ function storeLetter(slug: string, name: string) {
   )[slug] ?? shortStoreName(name).slice(0, 1).toLocaleUpperCase("pt-BR");
 }
 
-function Thumbnail({ product }: { product: PurchaseCostProduct }) {
+function Thumbnail({
+  product,
+  size = 36,
+}: {
+  product: PurchaseCostProduct;
+  size?: number;
+}) {
   return (
     <ProductPhoto
       productId={product.id}
@@ -63,7 +69,7 @@ function Thumbnail({ product }: { product: PurchaseCostProduct }) {
       photoKey={product.photoKey}
       photoUpdatedAt={product.photoUpdatedAt}
       imageUrl={product.imageUrl}
-      size={36}
+      size={size}
       thumbnailClassName="cost-thumbnail"
     />
   );
@@ -349,10 +355,13 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
     );
   }
 
-  function renderUnitCostToggle(product: PurchaseCostProduct) {
+  function renderUnitCostToggle(
+    product: PurchaseCostProduct,
+    layout: "desktop" | "mobile" = "desktop",
+  ) {
     const row = rows[product.id];
     return (
-      <label className="cost-basis-toggle">
+      <label className={`cost-basis-toggle cost-basis-toggle--${layout}`}>
         <input
           type="checkbox"
           checked={row.costIsUnit}
@@ -360,7 +369,9 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
             queueSave(product.id, { costIsUnit: event.currentTarget.checked })
           }
         />
-        <span>Custo informado é unitário</span>
+        <span>
+          {layout === "mobile" ? "Custo unitário" : "Custo informado é unitário"}
+        </span>
       </label>
     );
   }
@@ -545,7 +556,7 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
                   <td>{formatCurrency(product.previousCost)}</td>
                   <td>
                     {renderCostInput(product, "desktop")}
-                    {renderUnitCostToggle(product)}
+                    {renderUnitCostToggle(product, "desktop")}
                     {renderRowStatus(product.id, "desktop")}
                   </td>
                   <td>
@@ -560,9 +571,9 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
             {visible.map((product) => (
               <article className="cost-card" key={product.id}>
                 <div className="cost-card-summary">
-                  <Thumbnail product={product} />
-                  <header className="cost-card-product">
-                    <div>
+                  <Thumbnail product={product} size={58} />
+                  <div className="cost-card-info">
+                    <header className="cost-card-product">
                       <div className="cost-product-meta">
                         <small>{product.erpCode}</small>
                         {renderRowStatus(product.id, "mobile")}
@@ -573,36 +584,41 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
                           <span className="exclusive-badge">EXCLUSIVO</span>
                         ) : null}
                       </h2>
+                    </header>
+                    <div className="cost-store-quantities">
+                      <div className="cost-store-badges">
+                        {data.stores.map((store) => (
+                          <span
+                            key={store.id}
+                            className={`store-${storeColor(store.slug)}`}
+                            title={shortStoreName(store.name)}
+                          >
+                            <b>{storeLetter(store.slug, store.name)}</b>{" "}
+                            {quantity(storeQuantity(product, store))}
+                          </span>
+                        ))}
+                      </div>
+                      <strong className="cost-total-badge">
+                        Total {quantity(product.total)} {product.purchaseFormat}
+                      </strong>
                     </div>
-                    <strong>{product.purchaseFormat}</strong>
-                  </header>
-                  <div className="cost-store-quantities">
-                    {data.stores.map((store) => (
-                      <span
-                        key={store.id}
-                        className={`store-${storeColor(store.slug)}`}
-                        title={shortStoreName(store.name)}
-                      >
-                        <b>{storeLetter(store.slug, store.name)}</b>{" "}
-                        {quantity(storeQuantity(product, store))}
-                      </span>
-                    ))}
-                    <strong>
-                      Total {quantity(product.total)} {product.purchaseFormat}
-                    </strong>
                   </div>
                 </div>
                 <div className="cost-card-fields">
+                  <div className="cost-card-field-unit">
+                    {renderUnitCostToggle(product, "mobile")}
+                  </div>
                   <div className="cost-previous-field">
                     <span>Ant.</span>
                     <strong>{formatCurrency(product.previousCost)}</strong>
                   </div>
+                  <div className="cost-card-field-purchased">
+                    {renderPurchaseToggle(product)}
+                  </div>
                   <div className="cost-current-field">
                     <span>Atual</span>
                     {renderCostInput(product, "mobile")}
-                    {renderUnitCostToggle(product)}
                   </div>
-                  {renderPurchaseToggle(product)}
                 </div>
               </article>
             ))}
