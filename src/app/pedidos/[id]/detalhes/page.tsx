@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requirePrincipal } from "@/modules/identity/session";
+import { hasPermission } from "@/modules/identity";
 import { getHistoricalOrder, getStoreName } from "@/modules/ordering/repository";
 import { CancelForm } from "./cancel-form";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function OrderDetailsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ all?: string }> }) {
   const principal = await requirePrincipal();
-  if (principal.role !== "LOJA" || !principal.storeId) redirect("/");
+  if (!hasPermission(principal, "pedidos:historico") || !principal.storeId) redirect("/");
   const { id } = await params;
   const { all } = await searchParams;
   let result;

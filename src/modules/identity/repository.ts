@@ -1,7 +1,7 @@
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { database } from "@/db/client";
 import { sessions, users } from "@/db/schema";
-import { createSessionToken, hashToken, sessionExpiries, verifyPassword, type Principal } from "./domain";
+import { createSessionToken, hashToken, sessionExpiries, verifyPassword, type Permission, type Principal } from "./domain";
 
 export async function authenticate(email: string, password: string) {
   const normalized = email.trim().toLowerCase();
@@ -15,14 +15,25 @@ export async function authenticate(email: string, password: string) {
 
 export async function findPrincipal(token: string): Promise<Principal | null> {
   const now = new Date();
-  const [row] = await database().db.select({ userId: users.id, role: users.role, storeId: users.storeId, sessionId: sessions.id })
+  const [row] = await database().db.select({
+    userId: users.id,
+    role: users.role,
+    storeId: users.storeId,
+    permissions: users.permissions,
+    sessionId: sessions.id,
+  })
     .from(sessions).innerJoin(users, eq(users.id, sessions.userId))
     .where(and(eq(sessions.tokenHash, hashToken(token)), isNull(sessions.revokedAt), gt(sessions.idleExpiresAt, now), gt(sessions.absoluteExpiresAt, now), eq(users.active, true)))
     .limit(1);
   if (!row) return null;
   const idleExpiresAt = sessionExpiries(now).idleExpiresAt;
   await database().db.update(sessions).set({ lastSeenAt: now, idleExpiresAt }).where(eq(sessions.id, row.sessionId));
-  return { userId: row.userId, role: row.role, storeId: row.storeId };
+  return {
+    userId: row.userId,
+    role: row.role,
+    storeId: row.storeId,
+    permissions: (row.permissions ?? []) as Permission[],
+  };
 }
 
 export async function revokeSession(token: string) {

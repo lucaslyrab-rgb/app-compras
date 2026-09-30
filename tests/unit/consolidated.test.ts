@@ -116,13 +116,13 @@ describe("Consolidado de leitura", () => {
   });
   it("permite Comprador/Gestor, recusa Loja e valida datas reais", () => {
     expect(
-      canViewConsolidated({ userId: "x", storeId: null, role: "COMPRADOR" }),
+      canViewConsolidated({ userId: "x", storeId: null, role: "COMPRADOR", permissions: ["compras:consolidado"] }),
     ).toBe(true);
     expect(
-      canViewConsolidated({ userId: "x", storeId: null, role: "GESTOR" }),
+      canViewConsolidated({ userId: "x", storeId: null, role: "GESTOR", permissions: ["compras:consolidado"] }),
     ).toBe(true);
     expect(
-      canViewConsolidated({ userId: "x", storeId: "s", role: "LOJA" }),
+      canViewConsolidated({ userId: "x", storeId: "s", role: "LOJA", permissions: ["pedidos:criar", "pedidos:historico"] }),
     ).toBe(false);
     expect(isCycleDate("2026-09-23")).toBe(true);
     for (const invalid of ["2026-02-30", "22/09/2026", "invalid", "2026-13-01"])

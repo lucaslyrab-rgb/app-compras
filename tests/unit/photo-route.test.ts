@@ -32,6 +32,7 @@ describe("API Route - /api/products/[id]/photo", () => {
         userId: "user-1",
         role: "LOJA",
         storeId: "store-1",
+        permissions: ["pedidos:criar", "pedidos:historico"],
       });
       const req = new NextRequest("http://localhost:3000/api/products/invalid-uuid/photo");
       const res = await GET(req, { params: Promise.resolve({ id: "invalid-uuid" }) });
@@ -43,6 +44,7 @@ describe("API Route - /api/products/[id]/photo", () => {
         userId: "user-1",
         role: "LOJA",
         storeId: "store-1",
+        permissions: ["pedidos:criar", "pedidos:historico"],
       });
       const mockSql = vi.fn().mockResolvedValue([]);
       vi.spyOn(dbClient, "database").mockReturnValue({ sql: mockSql } as unknown as ReturnType<typeof dbClient.database>);
@@ -57,6 +59,7 @@ describe("API Route - /api/products/[id]/photo", () => {
         userId: "user-1",
         role: "COMPRADOR",
         storeId: null,
+        permissions: ["compras:consolidado", "compras:custos"],
       });
 
       const mockSql = vi.fn().mockResolvedValue([
@@ -95,6 +98,7 @@ describe("API Route - /api/products/[id]/photo", () => {
         userId: "user-1",
         role: "COMPRADOR",
         storeId: null,
+        permissions: ["compras:consolidado", "compras:custos"],
       });
 
       const formData = new FormData();
@@ -115,6 +119,7 @@ describe("API Route - /api/products/[id]/photo", () => {
         userId: "gestor-1",
         role: "GESTOR",
         storeId: null,
+        permissions: ["gestor:produtos"],
       });
 
       vi.spyOn(catalogService, "uploadProductPhotoService").mockRejectedValue(
@@ -141,6 +146,7 @@ describe("API Route - /api/products/[id]/photo", () => {
         userId: "user-1",
         role: "LOJA",
         storeId: "store-1",
+        permissions: ["pedidos:criar", "pedidos:historico"],
       });
 
       const req = new NextRequest(`http://localhost:3000/api/products/${validUuid}/photo?expectedVersion=1`, {
@@ -156,6 +162,7 @@ describe("API Route - /api/products/[id]/photo", () => {
         userId: "gestor-1",
         role: "GESTOR",
         storeId: null,
+        permissions: ["gestor:produtos"],
       });
 
       vi.spyOn(catalogService, "removeProductPhotoService").mockResolvedValue({

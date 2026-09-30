@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requirePrincipal } from "@/modules/identity/session";
+import { hasPermission } from "@/modules/identity";
 import { getStoreName, listStoreHistory } from "@/modules/ordering/repository";
 
 export const dynamic = "force-dynamic";
 
 export default async function HistoryPage() {
   const principal = await requirePrincipal();
-  if (principal.role !== "LOJA" || !principal.storeId) redirect("/");
+  if (!hasPermission(principal, "pedidos:historico") || !principal.storeId) redirect("/");
   const orders = await listStoreHistory(principal, principal.storeId);
   const latestByCycle = new Map<string, string>();
   for (const order of orders) if (!latestByCycle.has(order.purchaseCycleDate)) latestByCycle.set(order.purchaseCycleDate, order.cancelledAt ? "" : order.id);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertStoreAccess, AuthorizationError, canManageProducts, createSessionToken, hashPassword, hashToken, sessionExpiries, verifyPassword } from "@/modules/identity/domain";
+import { assertStoreAccess, AuthorizationError, canManageProducts, createSessionToken, hashPassword, hashToken, sessionExpiries, verifyPassword, type Principal } from "@/modules/identity/domain";
 
 describe("identidade", () => {
   it("gera e verifica hash de senha sem expor a senha", async () => {
@@ -29,11 +29,11 @@ describe("identidade", () => {
   });
 
   it("aplica RBAC e isolamento da loja", () => {
-    const loja = { userId: "u1", role: "LOJA" as const, storeId: "s1" };
+    const loja: Principal = { userId: "u1", role: "LOJA", storeId: "s1", permissions: ["pedidos:criar", "pedidos:historico"] };
     expect(canManageProducts(loja)).toBe(false);
-    expect(canManageProducts({ userId: "u2", role: "GESTOR", storeId: null })).toBe(true);
+    expect(canManageProducts({ userId: "u2", role: "GESTOR", storeId: null, permissions: ["gestor:produtos"] })).toBe(true);
     expect(() => assertStoreAccess(loja, "s1")).not.toThrow();
     expect(() => assertStoreAccess(loja, "s2")).toThrow(AuthorizationError);
-    expect(() => assertStoreAccess({ userId: "u3", role: "COMPRADOR", storeId: null }, "s2")).not.toThrow();
+    expect(() => assertStoreAccess({ userId: "u3", role: "COMPRADOR", storeId: null, permissions: ["compras:consolidado", "compras:custos"] }, "s2")).toThrow(AuthorizationError);
   });
 });

@@ -12,9 +12,31 @@ import { persistProducts } from "../../scripts/import-products";
 const integration = process.env.DATABASE_URL ? describe : describe.skip;
 
 integration("precificação no PostgreSQL", () => {
-  const manager: Principal = { userId: "", role: "GESTOR", storeId: null };
-  const buyer: Principal = { userId: "", role: "COMPRADOR", storeId: null };
-  const store: Principal = { userId: "", role: "LOJA", storeId: "00000000-0000-0000-0000-000000000000" };
+  const manager: Principal = {
+    userId: "",
+    role: "GESTOR",
+    storeId: null,
+    permissions: [
+      "compras:consolidado",
+      "compras:custos",
+      "gestor:produtos",
+      "gestor:precificacao",
+      "gestor:configuracoes",
+      "gestor:usuarios",
+    ],
+  };
+  const buyer: Principal = {
+    userId: "",
+    role: "COMPRADOR",
+    storeId: null,
+    permissions: ["compras:consolidado", "compras:custos"],
+  };
+  const store: Principal = {
+    userId: "",
+    role: "LOJA",
+    storeId: "00000000-0000-0000-0000-000000000000",
+    permissions: ["pedidos:criar", "pedidos:historico"],
+  };
   let productId = "";
   let secondProductId = "";
   let noCostProductId = "";
@@ -24,9 +46,9 @@ integration("precificação no PostgreSQL", () => {
 
   beforeAll(async () => {
     const [managerUser, buyerUser] = await database().sql<{ id: string }[]>`
-      INSERT INTO users(email, name, password_hash, role)
-      VALUES (${`pricing-manager-${stamp}@example.com`}, 'Gestor Pricing', 'hash', 'GESTOR'),
-             (${`pricing-buyer-${stamp}@example.com`}, 'Buyer Pricing', 'hash', 'COMPRADOR')
+      INSERT INTO users(email, name, password_hash, role, permissions)
+      VALUES (${`pricing-manager-${stamp}@example.com`}, 'Gestor Pricing', 'hash', 'GESTOR', ARRAY['compras:consolidado', 'compras:custos', 'gestor:produtos', 'gestor:precificacao', 'gestor:configuracoes', 'gestor:usuarios']::text[]),
+             (${`pricing-buyer-${stamp}@example.com`}, 'Buyer Pricing', 'hash', 'COMPRADOR', ARRAY['compras:consolidado', 'compras:custos']::text[])
       RETURNING id
     `;
     manager.userId = managerUser.id;

@@ -1,4 +1,4 @@
-import { requireManagerPrincipal } from "@/modules/identity/session";
+import { requirePermission } from "@/modules/identity/session";
 import { formatPricingCurrency, pricingPrintRows } from "@/modules/pricing/analysis/domain";
 import { loadPricingAnalyses } from "@/modules/pricing/analysis/service";
 import { PrintPricingButton } from "./print-button";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export default async function PricingPrintPage({ searchParams }: { searchParams: Promise<{ reviews?: string | string[] }> }) {
-  const principal = await requireManagerPrincipal();
+  const principal = await requirePermission("gestor:precificacao");
   const rawReviews = (await searchParams).reviews;
   const reviewIds = (Array.isArray(rawReviews) ? rawReviews : [rawReviews ?? ""])
     .flatMap((value) => value.split(","))

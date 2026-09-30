@@ -3,6 +3,7 @@ import Image from "next/image";
 import { PrintButton } from "../pedidos/[id]/conferencia/print-button";
 import { redirect } from "next/navigation";
 import { requirePrincipal } from "@/modules/identity/session";
+import { hasPermission } from "@/modules/identity";
 import { listActiveProducts } from "@/modules/catalog/repository";
 import { getStoreName } from "@/modules/ordering/repository";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CountPage() {
   const principal = await requirePrincipal();
-  if (principal.role !== "LOJA" || !principal.storeId) redirect("/");
+  if (!hasPermission(principal, "pedidos:criar") || !principal.storeId) redirect("/");
   const products = await listActiveProducts();
   const storeName = await getStoreName(principal.storeId);
   const rows = Array.from({ length: Math.ceil(products.length / 2) }, (_, index) => [products[index * 2], products[index * 2 + 1]] as const);

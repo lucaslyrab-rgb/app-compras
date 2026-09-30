@@ -211,13 +211,13 @@ describe("Lançamento de custos", () => {
 
   it("autoriza Comprador/Gestor e recusa Loja", () => {
     expect(
-      canManagePurchaseCosts({ userId: "1", role: "COMPRADOR", storeId: null }),
+      canManagePurchaseCosts({ userId: "1", role: "COMPRADOR", storeId: null, permissions: ["compras:custos"] }),
     ).toBe(true);
     expect(
-      canManagePurchaseCosts({ userId: "1", role: "GESTOR", storeId: null }),
+      canManagePurchaseCosts({ userId: "1", role: "GESTOR", storeId: null, permissions: ["compras:custos"] }),
     ).toBe(true);
     expect(
-      canManagePurchaseCosts({ userId: "1", role: "LOJA", storeId: "s" }),
+      canManagePurchaseCosts({ userId: "1", role: "LOJA", storeId: "s", permissions: ["pedidos:criar", "pedidos:historico"] }),
     ).toBe(false);
   });
 });

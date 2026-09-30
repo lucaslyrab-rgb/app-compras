@@ -12,9 +12,9 @@ const integration = process.env.DATABASE_URL ? describe : describe.skip;
 
 integration("Lançamento de custos no PostgreSQL", () => {
   const cycles = ["2098-06-01", "2098-06-02", "2098-06-03", "2098-06-04"];
-  const buyer: Principal = { userId: "", role: "COMPRADOR", storeId: null };
-  const manager: Principal = { userId: "", role: "GESTOR", storeId: null };
-  const storeUser: Principal = { userId: "", role: "LOJA", storeId: "" };
+  const buyer: Principal = { userId: "", role: "COMPRADOR", storeId: null, permissions: ["compras:consolidado", "compras:custos"] };
+  const manager: Principal = { userId: "", role: "GESTOR", storeId: null, permissions: ["compras:consolidado", "compras:custos", "gestor:produtos", "gestor:precificacao", "gestor:configuracoes", "gestor:usuarios"] };
+  const storeUser: Principal = { userId: "", role: "LOJA", storeId: "", permissions: ["pedidos:criar", "pedidos:historico"] };
   let storeId = "";
   let productId = "";
   let newProductId = "";
@@ -29,9 +29,9 @@ integration("Lançamento de custos no PostgreSQL", () => {
     `;
     storeId = store.id;
     const users = await sql<{ id: string; role: string }[]>`
-      INSERT INTO users(email, name, password_hash, role, store_id) VALUES
-        (${`cost-buyer-${stamp}@example.com`}, 'Comprador custos', 'test', 'COMPRADOR', NULL),
-        (${`cost-store-${stamp}@example.com`}, 'Loja custos', 'test', 'LOJA', ${storeId})
+      INSERT INTO users(email, name, password_hash, role, store_id, permissions) VALUES
+        (${`cost-buyer-${stamp}@example.com`}, 'Comprador custos', 'test', 'COMPRADOR', NULL, ARRAY['compras:consolidado', 'compras:custos']::text[]),
+        (${`cost-store-${stamp}@example.com`}, 'Loja custos', 'test', 'LOJA', ${storeId}, ARRAY['pedidos:criar', 'pedidos:historico']::text[])
       RETURNING id, role::text
     `;
     buyer.userId = users.find((user) => user.role === "COMPRADOR")!.id;

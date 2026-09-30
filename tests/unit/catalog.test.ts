@@ -12,7 +12,7 @@ describe("catálogo", () => {
   });
 
   it("restringe manutenção ao Gestor", () => {
-    expect(() => authorizeProductManagement({ userId: "u", role: "GESTOR", storeId: null })).not.toThrow();
-    expect(() => authorizeProductManagement({ userId: "u", role: "COMPRADOR", storeId: null })).toThrow(/Gestor/);
+    expect(() => authorizeProductManagement({ userId: "u", role: "GESTOR", storeId: null, permissions: ["gestor:produtos"] })).not.toThrow();
+    expect(() => authorizeProductManagement({ userId: "u", role: "COMPRADOR", storeId: null, permissions: ["compras:consolidado", "compras:custos"] })).toThrow(/Gestor/);
   });
 });

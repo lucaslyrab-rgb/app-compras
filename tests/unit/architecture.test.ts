@@ -19,11 +19,18 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0011", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0012", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 11 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
+  });
+
+  it("mantém a 0012 aditiva com backfill e constraints de permissões", async () => {
+    const migration = await readFile("migrations/0012_user_permissions_and_management.sql", "utf8");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS permissions text[] NOT NULL DEFAULT '{}'");
+    expect(migration).toContain("users_permissions_valid_check");
+    expect(migration).toContain("users_store_permission_check");
   });
 
   it("mantém a 0011 aditiva e prepara fotos sem implementar armazenamento", async () => {

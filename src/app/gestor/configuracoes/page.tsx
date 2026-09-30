@@ -1,4 +1,4 @@
-import { requireManagerPrincipal } from "@/modules/identity/session";
+import { requirePermission } from "@/modules/identity/session";
 import { PurchaseCalendarForm } from "@/modules/ordering/calendar/calendar-form";
 import { readPurchaseCalendarForManagement } from "@/modules/ordering/calendar/service";
 import { PricingSettingsForm } from "@/modules/pricing/parameters/settings-form";
@@ -7,7 +7,7 @@ import { readPricingSettings } from "@/modules/pricing/parameters/service";
 export const dynamic = "force-dynamic";
 
 export default async function PricingSettingsPage() {
-  const principal = await requireManagerPrincipal();
+  const principal = await requirePermission("gestor:configuracoes");
   const [settings, purchaseCalendar] = await Promise.all([
     readPricingSettings(principal),
     readPurchaseCalendarForManagement(principal),

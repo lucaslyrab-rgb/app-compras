@@ -22,7 +22,7 @@ import {
   savePurchaseCost,
 } from "@/modules/purchasing/costs/service";
 
-const buyer: Principal = { userId: "buyer", role: "COMPRADOR", storeId: null };
+const buyer: Principal = { userId: "buyer", role: "COMPRADOR", storeId: null, permissions: ["compras:custos", "compras:consolidado"] };
 const consolidated: ConsolidatedData = {
   cycleDate: "2026-09-23",
   cycles: ["2026-09-23"],
@@ -129,7 +129,7 @@ describe("orquestração de custos", () => {
   });
 
   it("recusa Loja antes de ler ou gravar", async () => {
-    const store: Principal = { userId: "store", role: "LOJA", storeId: "s" };
+    const store: Principal = { userId: "store", role: "LOJA", storeId: "s", permissions: ["pedidos:criar", "pedidos:historico"] };
     await expect(loadPurchaseCosts(store)).rejects.toThrow(/restrito/);
     await expect(
       savePurchaseCost(store, {

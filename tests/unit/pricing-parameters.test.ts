@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   authorizePricingManagement,
+  authorizeProductManagement,
+  authorizePricingProductRead,
+  authorizePricingSettingsRead,
+  authorizePricingSettingsManagement,
   filterPricingProducts,
   pricingProductMetrics,
   paginatePricingProducts,
@@ -52,8 +56,30 @@ describe("parâmetros de precificação", () => {
   });
 
   it("autoriza somente Gestor", () => {
-    expect(() => authorizePricingManagement({ userId: "g", role: "GESTOR", storeId: null })).not.toThrow();
-    expect(() => authorizePricingManagement({ userId: "c", role: "COMPRADOR", storeId: null })).toThrow(/Gestor/);
-    expect(() => authorizePricingManagement({ userId: "l", role: "LOJA", storeId: "s" })).toThrow(/Gestor/);
+    const gestorPricing = { userId: "g", role: "GESTOR" as const, storeId: null, permissions: ["gestor:precificacao" as const] };
+    const gestorProducts = { userId: "gp", role: "GESTOR" as const, storeId: null, permissions: ["gestor:produtos" as const] };
+    const gestorSettings = { userId: "gs", role: "GESTOR" as const, storeId: null, permissions: ["gestor:configuracoes" as const] };
+    const comprador = { userId: "c", role: "COMPRADOR" as const, storeId: null, permissions: ["compras:consolidado" as const, "compras:custos" as const] };
+    const loja = { userId: "l", role: "LOJA" as const, storeId: "s", permissions: ["pedidos:criar" as const, "pedidos:historico" as const] };
+
+    expect(() => authorizePricingManagement(gestorPricing)).not.toThrow();
+    expect(() => authorizePricingManagement(gestorProducts)).toThrow(/Gestor/);
+    expect(() => authorizePricingManagement(comprador)).toThrow(/Gestor/);
+    expect(() => authorizePricingManagement(loja)).toThrow(/Gestor/);
+
+    expect(() => authorizeProductManagement(gestorProducts)).not.toThrow();
+    expect(() => authorizeProductManagement(gestorPricing)).toThrow(/Gestor/);
+
+    expect(() => authorizePricingProductRead(gestorProducts)).not.toThrow();
+    expect(() => authorizePricingProductRead(gestorPricing)).not.toThrow();
+    expect(() => authorizePricingProductRead(comprador)).toThrow(/Gestor/);
+
+    expect(() => authorizePricingSettingsRead(gestorProducts)).not.toThrow();
+    expect(() => authorizePricingSettingsRead(gestorPricing)).not.toThrow();
+    expect(() => authorizePricingSettingsRead(gestorSettings)).not.toThrow();
+    expect(() => authorizePricingSettingsRead(comprador)).toThrow(/Gestor/);
+
+    expect(() => authorizePricingSettingsManagement(gestorSettings)).not.toThrow();
+    expect(() => authorizePricingSettingsManagement(gestorPricing)).toThrow(/Gestor/);
   });
 });

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requirePrincipal } from "@/modules/identity/session";
+import { hasPermission } from "@/modules/identity";
 import { getConferenceOrder } from "@/modules/ordering/repository";
 import { PrintButton } from "./print-button";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ConferencePage({ params }: { params: Promise<{ id: string }> }) {
   const principal = await requirePrincipal();
-  if (principal.role !== "LOJA" || !principal.storeId) redirect("/");
+  if (!hasPermission(principal, "pedidos:historico") || !principal.storeId) redirect("/");
   let result;
   try { result = await getConferenceOrder(principal, principal.storeId, (await params).id); } catch { notFound(); }
   const hasItems = result.items.length > 0;

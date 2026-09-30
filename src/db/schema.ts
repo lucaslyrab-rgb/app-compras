@@ -18,12 +18,14 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: userRole("role").notNull(),
   storeId: uuid("store_id").references(() => stores.id, { onDelete: "restrict" }),
+  permissions: text("permissions").array().notNull().default(sql`'{}'::text[]`),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 }, (table) => [
   uniqueIndex("users_email_ci_unique").on(sql`lower(${table.email})`),
-  check("users_store_role_check", sql`(${table.role} = 'LOJA' AND ${table.storeId} IS NOT NULL) OR (${table.role} <> 'LOJA' AND ${table.storeId} IS NULL)`)
+  check("users_permissions_valid_check", sql`${table.permissions} <@ ARRAY['pedidos:criar', 'pedidos:historico', 'compras:consolidado', 'compras:custos', 'gestor:produtos', 'gestor:precificacao', 'gestor:configuracoes', 'gestor:usuarios']::text[]`),
+  check("users_store_permission_check", sql`(ARRAY['pedidos:criar', 'pedidos:historico']::text[] && ${table.permissions} AND ${table.storeId} IS NOT NULL) OR (NOT (ARRAY['pedidos:criar', 'pedidos:historico']::text[] && ${table.permissions}) AND ${table.storeId} IS NULL)`)
 ]);
 
 export const sessions = pgTable("sessions", {

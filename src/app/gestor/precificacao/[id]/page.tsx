@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireManagerPrincipal } from "@/modules/identity/session";
+import { requirePermission } from "@/modules/identity/session";
 import { PricingDetail } from "@/modules/pricing/analysis/pricing-detail";
 import { loadPricingAnalysis } from "@/modules/pricing/analysis/service";
 
 export const dynamic = "force-dynamic";
 
 export default async function PricingDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const principal = await requireManagerPrincipal();
+  const principal = await requirePermission("gestor:precificacao");
   const { id } = await params;
   const analysis = await loadPricingAnalysis(principal, id);
   if (!analysis) notFound();

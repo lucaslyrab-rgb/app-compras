@@ -2,8 +2,15 @@ import { database } from "@/db/client";
 import type { Principal } from "@/modules/identity";
 import { PricingValidationError } from "../financial";
 import {
-  authorizePricingManagement, PricingConflictError, ProductErpConflictError,
-  type ConversionOrigin, type PricingProduct, type PricingSettings,
+  authorizePricingProductRead,
+  authorizeProductManagement,
+  authorizePricingSettingsRead,
+  authorizePricingSettingsManagement,
+  PricingConflictError,
+  ProductErpConflictError,
+  type ConversionOrigin,
+  type PricingProduct,
+  type PricingSettings,
 } from "./domain";
 
 type PricingProductRow = Omit<PricingProduct, "conversionOrigin"> & { conversionOrigin: ConversionOrigin };
@@ -15,7 +22,7 @@ function productFromRow(row: PricingProductRow): PricingProduct {
 const isUniqueViolation = (error: unknown) => typeof error === "object" && error !== null && "code" in error && error.code === "23505";
 
 export async function listPricingProducts(principal: Principal) {
-  authorizePricingManagement(principal);
+  authorizePricingProductRead(principal);
   const rows = await database().sql<PricingProductRow[]>`
     SELECT p.id, p.erp_code AS "erpCode", p.name, p.unit AS "catalogUnit",
       p.purchase_format AS "purchaseFormat", p.exclusive_supplier AS "exclusiveSupplier",
@@ -30,7 +37,7 @@ export async function listPricingProducts(principal: Principal) {
 }
 
 export async function readPricingProduct(principal: Principal, productId: string) {
-  authorizePricingManagement(principal);
+  authorizePricingProductRead(principal);
   const [row] = await database().sql<PricingProductRow[]>`
     SELECT p.id, p.erp_code AS "erpCode", p.name, p.unit AS "catalogUnit",
       p.purchase_format AS "purchaseFormat", p.exclusive_supplier AS "exclusiveSupplier",
@@ -47,7 +54,7 @@ export async function createPricingProduct(principal: Principal, input: {
   erpCode: number; name: string; catalogUnit: string; purchaseFormat: string; exclusiveSupplier: boolean;
   saleUnit: string; conversionQuantity: string; beneficiationLossPercent: string; specificMarginPercent: string | null;
 }) {
-  authorizePricingManagement(principal);
+  authorizeProductManagement(principal);
   try {
     const row = await database().sql.begin(async (tx) => {
       const [product] = await tx<{ id: string }[]>`
@@ -79,7 +86,7 @@ export async function updatePricingProduct(principal: Principal, input: {
   saleUnit: string; conversionQuantity: string; beneficiationLossPercent: string; specificMarginPercent: string | null;
   expectedProductVersion: number; expectedVersion: number; confirmedFormatConversion: boolean;
 }) {
-  authorizePricingManagement(principal);
+  authorizeProductManagement(principal);
   try {
     const row = await database().sql.begin(async (tx) => {
       const [current] = await tx<PricingProductRow[]>`
@@ -123,7 +130,7 @@ export async function updatePricingProduct(principal: Principal, input: {
 }
 
 export async function readPricingSettings(principal: Principal): Promise<PricingSettings> {
-  authorizePricingManagement(principal);
+  authorizePricingSettingsRead(principal);
   const [row] = await database().sql<PricingSettings[]>`
     SELECT operating_cost_percent::text AS "operatingCostPercent", default_margin_percent::text AS "defaultMarginPercent",
       version, updated_at AS "updatedAt" FROM pricing_settings WHERE id = 'FLV'`;
@@ -132,7 +139,7 @@ export async function readPricingSettings(principal: Principal): Promise<Pricing
 }
 
 export async function updatePricingSettings(principal: Principal, input: { operatingCostPercent: string; defaultMarginPercent: string; expectedVersion: number }) {
-  authorizePricingManagement(principal);
+  authorizePricingSettingsManagement(principal);
   const rows = await database().sql<PricingSettings[]>`
     UPDATE pricing_settings SET operating_cost_percent = ${input.operatingCostPercent}, default_margin_percent = ${input.defaultMarginPercent},
       version = version + 1, updated_at = now() WHERE id = 'FLV' AND version = ${input.expectedVersion}

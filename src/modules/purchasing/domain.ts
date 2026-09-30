@@ -1,4 +1,4 @@
-import type { Principal } from "@/modules/identity";
+import { hasPermission, type Principal } from "@/modules/identity";
 
 export type OrderSummary = {
   id: string;
@@ -41,7 +41,7 @@ export type ConsolidatedItem = StoreValues & {
 export type OrderFilter = "all" | "filled" | "empty";
 
 export function canViewConsolidated(principal: Principal) {
-  return principal.role === "COMPRADOR" || principal.role === "GESTOR";
+  return hasPermission(principal, "compras:consolidado");
 }
 
 // Values already use the product's purchase format. Integer hundredths avoid floating point drift.

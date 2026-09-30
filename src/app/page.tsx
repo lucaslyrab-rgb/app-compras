@@ -1,4 +1,5 @@
 import { requirePrincipal } from "@/modules/identity/session";
+import { hasPermission } from "@/modules/identity";
 import { listActiveProducts } from "@/modules/catalog/repository";
 import { toIsoDateString } from "@/modules/catalog/domain";
 import { currentPurchaseCycle } from "@/modules/ordering/calendar/service";
@@ -10,23 +11,30 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const principal = await requirePrincipal();
-  if (principal.role === "COMPRADOR") redirect("/comprador/consolidado");
-  if (principal.role === "GESTOR") redirect("/gestor/produtos");
-  if (principal.role !== "LOJA" || !principal.storeId) {
-    redirect("/login");
+
+  if (hasPermission(principal, "pedidos:criar") && principal.storeId) {
+    const data = await listActiveProducts();
+    const products = data.map((product) => ({
+      id: product.id,
+      erpCode: product.erpCode,
+      name: product.name,
+      unit: product.unit,
+      photoKey: product.photoKey,
+      photoUpdatedAt: toIsoDateString(product.photoUpdatedAt),
+    }));
+    const cycle = await currentPurchaseCycle();
+    const date = cycle.localDate;
+    const draft = await loadDraft(principal, principal.storeId, date);
+    const storeName = await getStoreName(principal.storeId);
+    return <OrderWorkspace products={products} storeId={principal.storeId} storeName={storeName} initialDraft={draft} date={date} cycleDate={cycle.cycleDate} cutoffAt={cycle.cutoffAt.toISOString()} />;
   }
-  const data = await listActiveProducts();
-  const products = data.map((product) => ({
-    id: product.id,
-    erpCode: product.erpCode,
-    name: product.name,
-    unit: product.unit,
-    photoKey: product.photoKey,
-    photoUpdatedAt: toIsoDateString(product.photoUpdatedAt),
-  }));
-  const cycle = await currentPurchaseCycle();
-  const date = cycle.localDate;
-  const draft = await loadDraft(principal, principal.storeId, date);
-  const storeName = await getStoreName(principal.storeId);
-  return <OrderWorkspace products={products} storeId={principal.storeId} storeName={storeName} initialDraft={draft} date={date} cycleDate={cycle.cycleDate} cutoffAt={cycle.cutoffAt.toISOString()} />;
+
+  if (hasPermission(principal, "gestor:produtos")) redirect("/gestor/produtos");
+  if (hasPermission(principal, "compras:consolidado")) redirect("/comprador/consolidado");
+  if (hasPermission(principal, "compras:custos")) redirect("/comprador/custos");
+  if (hasPermission(principal, "gestor:precificacao")) redirect("/gestor/precificacao");
+  if (hasPermission(principal, "gestor:configuracoes")) redirect("/gestor/configuracoes");
+  if (hasPermission(principal, "pedidos:historico") && principal.storeId) redirect("/historico");
+
+  redirect("/login");
 }

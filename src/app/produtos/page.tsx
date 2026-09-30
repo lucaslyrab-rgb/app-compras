@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { requireManagerPrincipal } from "@/modules/identity/session";
+import { requirePermission } from "@/modules/identity/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProductsPage() {
-  await requireManagerPrincipal();
+  await requirePermission("gestor:produtos");
   redirect("/gestor/produtos");
 }

@@ -1,8 +1,7 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { database } from "@/db/client";
 import { orderDraftItems, orderDrafts, orderItems, orders, products, stores } from "@/db/schema";
-import type { Principal } from "@/modules/identity";
-import { assertStoreAccess } from "@/modules/identity";
+import { assertPermission, assertStoreAccess, type Principal } from "@/modules/identity";
 import { currentPurchaseCycle } from "./calendar/service";
 import { DraftConflictError, validateDraft, type DraftItem } from "./domain";
 
@@ -13,6 +12,7 @@ export class ExistingOrderError extends Error {
 }
 
 export async function saveDraft(principal: Principal, storeId: string, date: string, expectedVersion: number, items: DraftItem[]) {
+  assertPermission(principal, "pedidos:criar");
   assertStoreAccess(principal, storeId);
   const parsed = validateDraft(items);
   return database().db.transaction(async (tx) => {
@@ -37,6 +37,7 @@ export async function saveDraft(principal: Principal, storeId: string, date: str
 }
 
 export async function loadDraft(principal: Principal, storeId: string, date: string) {
+  assertPermission(principal, "pedidos:criar");
   assertStoreAccess(principal, storeId);
   const draft = await database().db.query.orderDrafts.findFirst({ where: and(eq(orderDrafts.storeId, storeId), eq(orderDrafts.orderDate, date)) });
   if (!draft) return { version: 0, items: [] };
@@ -45,6 +46,7 @@ export async function loadDraft(principal: Principal, storeId: string, date: str
 }
 
 export async function submitDraft(principal: Principal, storeId: string, date: string, allowRevision = false, now = new Date()) {
+  assertPermission(principal, "pedidos:criar");
   assertStoreAccess(principal, storeId);
   const cycle = await currentPurchaseCycle(now);
   return database().db.transaction(async (tx) => {
@@ -71,6 +73,7 @@ export async function submitDraft(principal: Principal, storeId: string, date: s
 }
 
 export async function listStoreHistory(principal: Principal, storeId: string) {
+  assertPermission(principal, "pedidos:historico");
   assertStoreAccess(principal, storeId);
   return database().db.select({
     id: orders.id, storeId: orders.storeId, orderDate: orders.orderDate, purchaseCycleDate: orders.purchaseCycleDate, cutoffAt: orders.cutoffAt, revision: orders.revision,
@@ -81,6 +84,7 @@ export async function listStoreHistory(principal: Principal, storeId: string) {
 }
 
 export async function getHistoricalOrder(principal: Principal, storeId: string, orderId: string, showAll = false) {
+  assertPermission(principal, "pedidos:historico");
   assertStoreAccess(principal, storeId);
   const [order] = await database().db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.storeId, storeId)));
   if (!order) throw new Error("Pedido não encontrado");
@@ -101,7 +105,8 @@ export async function getStoreName(storeId: string) {
 }
 
 export async function cancelOrder(principal: Principal, orderId: string, reason?: string) {
-  if (principal.role !== "LOJA" || !principal.storeId) throw new Error("Acesso negado");
+  assertPermission(principal, "pedidos:historico");
+  if (!principal.storeId) throw new Error("Acesso negado");
   const [order] = await database().db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.storeId, principal.storeId)));
   if (!order) throw new Error("Pedido não encontrado");
   if (order.cancelledAt) throw new Error("Pedido já cancelado");

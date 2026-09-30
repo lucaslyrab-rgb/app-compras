@@ -1,4 +1,4 @@
-import type { Principal } from "@/modules/identity";
+import { hasPermission, type Principal } from "@/modules/identity";
 import type {
   ConsolidatedData,
   ConsolidatedProduct,
@@ -63,7 +63,7 @@ export class PurchaseCostValidationError extends Error {
 }
 
 export function canManagePurchaseCosts(principal: Principal) {
-  return principal.role === "COMPRADOR" || principal.role === "GESTOR";
+  return hasPermission(principal, "compras:custos");
 }
 
 function costCents(value: string) {

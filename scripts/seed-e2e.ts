@@ -10,5 +10,5 @@ const sql = postgres(url, { max: 1 });
 try {
   const [{ id: storeId }] = await sql<[{ id: string }]>`SELECT id FROM stores WHERE slug = 'ponta-da-fruta'`;
   const passwordHash = await hashPassword(password);
-  await sql`INSERT INTO users (email, name, password_hash, role, store_id) VALUES (${email.toLowerCase()}, 'Loja E2E', ${passwordHash}, 'LOJA', ${storeId}) ON CONFLICT ((lower(email))) DO UPDATE SET password_hash = EXCLUDED.password_hash, active = true`;
+  await sql`INSERT INTO users (email, name, password_hash, role, store_id, permissions) VALUES (${email.toLowerCase()}, 'Loja E2E', ${passwordHash}, 'LOJA', ${storeId}, ARRAY['pedidos:criar', 'pedidos:historico']::text[]) ON CONFLICT ((lower(email))) DO UPDATE SET password_hash = EXCLUDED.password_hash, active = true, permissions = EXCLUDED.permissions, store_id = EXCLUDED.store_id`;
 } finally { await sql.end(); }

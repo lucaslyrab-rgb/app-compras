@@ -1,5 +1,5 @@
 import type { Principal } from "@/modules/identity";
-import { AuthorizationError, canManagePricing } from "@/modules/identity";
+import { AuthorizationError, canManagePricing, canManageProducts, canManageSettings, hasAnyPermission } from "@/modules/identity";
 import { add, compare, decimal, PricingValidationError, toDecimal } from "../financial";
 
 export const conversionOrigins = ["PROVISIONAL", "UNIT", "MANUAL"] as const;
@@ -48,8 +48,28 @@ export class ProductErpConflictError extends Error {
   }
 }
 
+export function authorizeProductManagement(principal: Principal) {
+  if (!canManageProducts(principal))
+    throw new AuthorizationError("Acesso restrito ao Gestor");
+}
+
 export function authorizePricingManagement(principal: Principal) {
   if (!canManagePricing(principal))
+    throw new AuthorizationError("Acesso restrito ao Gestor");
+}
+
+export function authorizePricingProductRead(principal: Principal) {
+  if (!hasAnyPermission(principal, ["gestor:produtos", "gestor:precificacao"]))
+    throw new AuthorizationError("Acesso restrito ao Gestor");
+}
+
+export function authorizePricingSettingsRead(principal: Principal) {
+  if (!hasAnyPermission(principal, ["gestor:produtos", "gestor:precificacao", "gestor:configuracoes"]))
+    throw new AuthorizationError("Acesso restrito ao Gestor");
+}
+
+export function authorizePricingSettingsManagement(principal: Principal) {
+  if (!canManageSettings(principal))
     throw new AuthorizationError("Acesso restrito ao Gestor");
 }
 

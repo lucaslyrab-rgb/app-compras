@@ -3,20 +3,83 @@ import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } fr
 function scrypt(password: string, salt: Buffer, length: number, options: { N: number; r: number; p: number }) {
   return new Promise<Buffer>((resolve, reject) => scryptCallback(password, salt, length, { ...options, maxmem: 64 * 1024 * 1024 }, (error, derived) => error ? reject(error) : resolve(derived)));
 }
+export const PERMISSIONS = [
+  "pedidos:criar",
+  "pedidos:historico",
+  "compras:consolidado",
+  "compras:custos",
+  "gestor:produtos",
+  "gestor:precificacao",
+  "gestor:configuracoes",
+  "gestor:usuarios",
+] as const;
+
+export type Permission = (typeof PERMISSIONS)[number];
+
+export const STORE_PERMISSIONS: readonly Permission[] = [
+  "pedidos:criar",
+  "pedidos:historico",
+] as const;
+
 export const roles = ["LOJA", "COMPRADOR", "GESTOR"] as const;
 export type Role = (typeof roles)[number];
-export type Principal = { userId: string; role: Role; storeId: string | null };
+
+export type Principal = {
+  userId: string;
+  role: Role;
+  storeId: string | null;
+  permissions: Permission[];
+};
+
+export function hasPermission(principal: Principal, permission: Permission): boolean {
+  return (principal.permissions ?? []).includes(permission);
+}
+
+export function hasAnyPermission(principal: Principal, permissions: readonly Permission[]): boolean {
+  return permissions.some((permission) => hasPermission(principal, permission));
+}
+
+export function hasAllPermissions(principal: Principal, permissions: readonly Permission[]): boolean {
+  return permissions.every((permission) => hasPermission(principal, permission));
+}
+
+export function assertPermission(principal: Principal, permission: Permission, message = "Acesso negado") {
+  if (!hasPermission(principal, permission)) {
+    throw new AuthorizationError(message);
+  }
+}
 
 export function canManageProducts(principal: Principal) {
-  return principal.role === "GESTOR";
+  return hasPermission(principal, "gestor:produtos");
 }
 
 export function canManagePricing(principal: Principal) {
-  return principal.role === "GESTOR";
+  return hasPermission(principal, "gestor:precificacao");
+}
+
+export function canManageSettings(principal: Principal) {
+  return hasPermission(principal, "gestor:configuracoes");
+}
+
+export function canManageUsers(principal: Principal) {
+  return hasPermission(principal, "gestor:usuarios");
+}
+
+export function canManageGestor(principal: Principal) {
+  return hasAnyPermission(principal, [
+    "gestor:produtos",
+    "gestor:precificacao",
+    "gestor:configuracoes",
+    "gestor:usuarios",
+  ]);
 }
 
 export function assertStoreAccess(principal: Principal, requestedStoreId: string) {
-  if (principal.role === "LOJA" && principal.storeId !== requestedStoreId) {
+  if (hasAnyPermission(principal, ["pedidos:criar", "pedidos:historico"])) {
+    if (!principal.storeId || principal.storeId !== requestedStoreId) {
+      throw new AuthorizationError("Acesso negado");
+    }
+  } else {
     throw new AuthorizationError("Acesso negado");
   }
 }

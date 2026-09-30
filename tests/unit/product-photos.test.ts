@@ -114,18 +114,21 @@ describe("serviço de catálogo - upload e remoção de foto", () => {
     userId: "00000000-0000-0000-0000-000000000001",
     role: "GESTOR",
     storeId: null,
+    permissions: ["gestor:produtos"],
   };
 
   const compradorPrincipal: Principal = {
     userId: "00000000-0000-0000-0000-000000000002",
     role: "COMPRADOR",
     storeId: null,
+    permissions: ["compras:consolidado", "compras:custos"],
   };
 
   const lojaPrincipal: Principal = {
     userId: "00000000-0000-0000-0000-000000000003",
     role: "LOJA",
     storeId: "store-1",
+    permissions: ["pedidos:criar", "pedidos:historico"],
   };
 
   beforeEach(() => {
@@ -344,6 +347,7 @@ describe("concorrência otimista, controle de versão e ciclo de vida de fotos",
     userId: "00000000-0000-0000-0000-000000000001",
     role: "GESTOR",
     storeId: null,
+    permissions: ["gestor:produtos"],
   };
 
   it("reproduz a sequência real: produto com foto -> troca 1 -> troca 2 sem reload -> remoção sem reload -> conclui com versão mais recente", async () => {

@@ -9,9 +9,9 @@ import {
 const integration = process.env.DATABASE_URL ? describe : describe.skip;
 
 integration("calendário operacional no PostgreSQL", () => {
-  const manager: Principal = { userId: "00000000-0000-0000-0000-000000000001", role: "GESTOR", storeId: null };
-  const buyer: Principal = { userId: "00000000-0000-0000-0000-000000000002", role: "COMPRADOR", storeId: null };
-  const store: Principal = { userId: "00000000-0000-0000-0000-000000000003", role: "LOJA", storeId: "00000000-0000-0000-0000-000000000004" };
+  const manager: Principal = { userId: "00000000-0000-0000-0000-000000000001", role: "GESTOR", storeId: null, permissions: ["gestor:configuracoes"] };
+  const buyer: Principal = { userId: "00000000-0000-0000-0000-000000000002", role: "COMPRADOR", storeId: null, permissions: ["compras:consolidado", "compras:custos"] };
+  const store: Principal = { userId: "00000000-0000-0000-0000-000000000003", role: "LOJA", storeId: "00000000-0000-0000-0000-000000000004", permissions: ["pedidos:criar", "pedidos:historico"] };
 
   afterAll(async () => { await database().sql.end(); });
 

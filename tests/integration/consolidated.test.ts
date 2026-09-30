@@ -7,7 +7,7 @@ const integration = process.env.DATABASE_URL ? describe : describe.skip;
 integration(
   "Consolidado PostgreSQL: revisões, cancelamento, autorização e itens",
   () => {
-    const buyer: Principal = { userId: "", role: "COMPRADOR", storeId: null };
+    const buyer: Principal = { userId: "", role: "COMPRADOR", storeId: null, permissions: ["compras:consolidado", "compras:custos"] };
     const cycle = "2098-05-20";
     const stores: string[] = [];
     const products: string[] = [];
@@ -31,7 +31,7 @@ integration(
       }
       const [user] = await sql<
         { id: string }[]
-      >`INSERT INTO users(email,name,password_hash,role) VALUES (${`buyer-${Date.now()}@example.com`},'Comprador teste','test','COMPRADOR') RETURNING id`;
+      >`INSERT INTO users(email,name,password_hash,role,permissions) VALUES (${`buyer-${Date.now()}@example.com`},'Comprador teste','test','COMPRADOR',ARRAY['compras:consolidado', 'compras:custos']::text[]) RETURNING id`;
       buyer.userId = user.id;
       for (const [i, format] of ["CX", "SC", "UND", "PCT"].entries()) {
         const [product] = await sql<
@@ -153,7 +153,7 @@ integration(
     });
     it("rejeita Loja e datas inválidas; aceita ciclo sem pedidos", async () => {
       await expect(
-        loadConsolidated({ ...buyer, role: "LOJA", storeId: stores[0] }, cycle),
+        loadConsolidated({ ...buyer, role: "LOJA", storeId: stores[0], permissions: ["pedidos:criar", "pedidos:historico"] }, cycle),
       ).rejects.toThrow(/restrito/);
       await expect(loadConsolidated(buyer, "2098-02-30")).rejects.toThrow(
         /inválida/,

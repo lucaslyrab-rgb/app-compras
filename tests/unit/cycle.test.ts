@@ -104,8 +104,8 @@ describe("ciclo de compra", () => {
   });
 
   it("autoriza a gestão somente para GESTOR", () => {
-    expect(() => authorizePurchaseCalendarManagement({ userId: "gestor", role: "GESTOR", storeId: null })).not.toThrow();
-    expect(() => authorizePurchaseCalendarManagement({ userId: "comprador", role: "COMPRADOR", storeId: null })).toThrow(/Gestor/);
-    expect(() => authorizePurchaseCalendarManagement({ userId: "loja", role: "LOJA", storeId: "loja" })).toThrow(/Gestor/);
+    expect(() => authorizePurchaseCalendarManagement({ userId: "gestor", role: "GESTOR", storeId: null, permissions: ["gestor:configuracoes"] })).not.toThrow();
+    expect(() => authorizePurchaseCalendarManagement({ userId: "comprador", role: "COMPRADOR", storeId: null, permissions: ["compras:consolidado", "compras:custos"] })).toThrow(/Gestor/);
+    expect(() => authorizePurchaseCalendarManagement({ userId: "loja", role: "LOJA", storeId: "loja", permissions: ["pedidos:criar", "pedidos:historico"] })).toThrow(/Gestor/);
   });
 });

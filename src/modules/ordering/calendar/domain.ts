@@ -1,5 +1,5 @@
 import type { Principal } from "@/modules/identity";
-import { AuthorizationError } from "@/modules/identity";
+import { AuthorizationError, hasPermission } from "@/modules/identity";
 
 export const isoWeekdays = [1, 2, 3, 4, 5, 6, 7] as const;
 export type IsoWeekday = (typeof isoWeekdays)[number];
@@ -31,7 +31,7 @@ export class PurchaseCalendarConflictError extends Error {
 }
 
 export function authorizePurchaseCalendarManagement(principal: Principal) {
-  if (principal.role !== "GESTOR")
+  if (!hasPermission(principal, "gestor:configuracoes"))
     throw new AuthorizationError("Acesso restrito ao Gestor");
 }
 

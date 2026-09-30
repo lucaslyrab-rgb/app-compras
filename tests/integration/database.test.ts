@@ -25,7 +25,7 @@ async function withIsolatedBootstrapSchema(run: (databaseUrl: string) => Promise
 }
 
 integration("PostgreSQL 18.6", () => {
-  const principal: Principal = { userId: "", role: "LOJA", storeId: "" };
+  const principal: Principal = { userId: "", role: "LOJA", storeId: "", permissions: ["pedidos:criar", "pedidos:historico"] };
   let productId = "";
   let secondProductId = "";
 
@@ -38,8 +38,8 @@ integration("PostgreSQL 18.6", () => {
     const [product, secondProduct] = products;
     if (!store || !product) throw new Error("Execute migração e importação antes dos testes de integração");
     const [user] = await db.sql<{ id: string }[]>`
-      INSERT INTO users(email, name, password_hash, role, store_id)
-      VALUES (${`integration-${Date.now()}@example.com`}, 'Integração', 'hash-controlado', 'LOJA', ${store.id})
+      INSERT INTO users(email, name, password_hash, role, store_id, permissions)
+      VALUES (${`integration-${Date.now()}@example.com`}, 'Integração', 'hash-controlado', 'LOJA', ${store.id}, ARRAY['pedidos:criar', 'pedidos:historico']::text[])
       RETURNING id
     `;
     if (!user) throw new Error("Usuário de integração não criado");
@@ -55,8 +55,12 @@ integration("PostgreSQL 18.6", () => {
 
   it("aplica constraints de papel, loja, produto e quantidade", async () => {
     await expect(database().sql`
-      INSERT INTO users(email, name, password_hash, role)
-      VALUES (${`invalid-${Date.now()}@example.com`}, 'Inválido', 'x', 'LOJA')
+      INSERT INTO users(email, name, password_hash, role, permissions)
+      VALUES (${`invalid-${Date.now()}@example.com`}, 'Inválido', 'x', 'LOJA', ARRAY['pedidos:criar']::text[])
+    `).rejects.toMatchObject({ code: "23514" });
+    await expect(database().sql`
+      INSERT INTO users(email, name, password_hash, role, permissions)
+      VALUES (${`invalid-perm-${Date.now()}@example.com`}, 'Inválido', 'x', 'LOJA', ARRAY['invalida']::text[])
     `).rejects.toMatchObject({ code: "23514" });
     await expect(database().sql`
       INSERT INTO products(erp_code, name, unit, purchase_format, markup)
