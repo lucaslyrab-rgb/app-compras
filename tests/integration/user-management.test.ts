@@ -16,6 +16,7 @@ import {
   LastAdminProtectionError,
   UserConflictError,
   UserValidationError,
+  hashPassword,
   hashToken,
   sessionExpiries,
   verifyPassword,
@@ -368,14 +369,18 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         { userId: other.id, tokenHash: hashToken(`other-token-${stamp}`), ...exp },
       ]);
 
-      // Executa reset de senha no target com expectedUpdatedAt
-      await resetUserPassword({
+      // Executa reset de senha no target com expectedUpdatedAt (Caso A)
+      const resetResult = await resetUserPassword({
         targetUserId: target.id,
         newPassword: "novaSenha456",
         passwordConfirmation: "novaSenha456",
         actorId,
         expectedUpdatedAt: target.updatedAt,
       });
+
+      expect(resetResult.targetUserId).toBe(target.id);
+      expect(resetResult.updatedAt).toBeDefined();
+      expect(new Date(resetResult.updatedAt).getTime()).toBeGreaterThan(new Date(target.updatedAt).getTime());
 
       // Confirma que sessão do target foi revogada
       const targetSessions = await database().sql<{ id: string }[]>`
@@ -407,6 +412,162 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
       expect(str).not.toContain("senhaAntiga123");
       expect(str).not.toContain("password");
       expect(str).not.toContain("hash");
+    });
+
+    it("Caso B: reset com watermark antigo/obsoleto é rejeitado com UserConflictError sem alterar estado", async () => {
+      const email = `cas-b-${stamp}@example.com`;
+      const user = await createUser({
+        name: "Usuario CAS B",
+        email,
+        role: "COMPRADOR",
+        permissions: ["compras:consolidado"],
+        password: "senhaOriginal123",
+        passwordConfirmation: "senhaOriginal123",
+        actorId,
+      });
+
+      const watermarkA = user.updatedAt;
+
+      // Cria sessão ativa
+      const exp = sessionExpiries();
+      await database().db.insert(sessions).values([
+        { userId: user.id, tokenHash: hashToken(`token-cas-b-${stamp}`), ...exp },
+      ]);
+
+      // Realiza outra alteração para avançar watermark para B
+      const { user: updatedUser } = await updateUser({
+        id: user.id,
+        name: "Usuario CAS B Alterado",
+        email,
+        role: "COMPRADOR",
+        permissions: ["compras:consolidado"],
+        active: true,
+        expectedUpdatedAt: watermarkA,
+        actorId,
+      });
+      const watermarkB = updatedUser.updatedAt;
+      expect(new Date(watermarkB).getTime()).toBeGreaterThan(new Date(watermarkA).getTime());
+
+      // Tenta reset usando watermark A (obsoleto)
+      await expect(
+        resetUserPassword({
+          targetUserId: user.id,
+          newPassword: "novaSenhaFalha123",
+          passwordConfirmation: "novaSenhaFalha123",
+          expectedUpdatedAt: watermarkA,
+          actorId,
+        })
+      ).rejects.toThrow(UserConflictError);
+
+      // Confirma que senha permanece inalterada
+      const [u] = await database().sql<{ password_hash: string }[]>`
+        SELECT password_hash FROM users WHERE id = ${user.id}::uuid;
+      `;
+      await expect(verifyPassword("senhaOriginal123", u.password_hash)).resolves.toBe(true);
+      await expect(verifyPassword("novaSenhaFalha123", u.password_hash)).resolves.toBe(false);
+
+      // Confirma que sessão continua ativa (não revogada)
+      const sess = await database().sql<{ id: string }[]>`
+        SELECT id FROM sessions WHERE user_id = ${user.id}::uuid AND revoked_at IS NULL;
+      `;
+      expect(sess.length).toBe(1);
+
+      // Confirma que nenhuma auditoria de reset foi gravada
+      const audit = await database().sql<{ id: string }[]>`
+        SELECT id FROM audit_events WHERE entity_id = ${user.id} AND action = 'user_password_reset_by_admin';
+      `;
+      expect(audit.length).toBe(0);
+    });
+
+    it("Caso D: resets consecutivos pela aplicação avançam monotonicamente o watermark (C > B > A)", async () => {
+      const email = `cas-d-${stamp}@example.com`;
+      const user = await createUser({
+        name: "Usuario CAS D",
+        email,
+        role: "COMPRADOR",
+        permissions: ["compras:consolidado"],
+        password: "senhaInicial123",
+        passwordConfirmation: "senhaInicial123",
+        actorId,
+      });
+
+      const watermarkA = user.updatedAt;
+
+      // 1º reset usando A -> retorna B
+      const resB = await resetUserPassword({
+        targetUserId: user.id,
+        newPassword: "senhaSegunda123",
+        passwordConfirmation: "senhaSegunda123",
+        expectedUpdatedAt: watermarkA,
+        actorId,
+      });
+      const watermarkB = resB.updatedAt;
+      expect(new Date(watermarkB).getTime()).toBeGreaterThan(new Date(watermarkA).getTime());
+
+      // 2º reset consecutivo imediato usando B -> retorna C
+      const resC = await resetUserPassword({
+        targetUserId: user.id,
+        newPassword: "senhaTerceira123",
+        passwordConfirmation: "senhaTerceira123",
+        expectedUpdatedAt: watermarkB,
+        actorId,
+      });
+      const watermarkC = resC.updatedAt;
+      expect(new Date(watermarkC).getTime()).toBeGreaterThan(new Date(watermarkB).getTime());
+
+      // Valida senha final
+      const [u] = await database().sql<{ password_hash: string }[]>`
+        SELECT password_hash FROM users WHERE id = ${user.id}::uuid;
+      `;
+      await expect(verifyPassword("senhaTerceira123", u.password_hash)).resolves.toBe(true);
+    });
+
+    it("Caso E: após reset retornar watermark B, edição e inativação sucedem sem falso conflito", async () => {
+      const email = `cas-e-${stamp}@example.com`;
+      const user = await createUser({
+        name: "Usuario CAS E",
+        email,
+        role: "COMPRADOR",
+        permissions: ["compras:consolidado"],
+        password: "senhaInicial123",
+        passwordConfirmation: "senhaInicial123",
+        actorId,
+      });
+
+      // Reset usando A -> retorna watermark B
+      const resReset = await resetUserPassword({
+        targetUserId: user.id,
+        newPassword: "senhaResetada123",
+        passwordConfirmation: "senhaResetada123",
+        expectedUpdatedAt: user.updatedAt,
+        actorId,
+      });
+      const watermarkB = resReset.updatedAt;
+
+      // Edita o usuário utilizando diretamente o watermark B retornado pelo reset
+      const { user: edited } = await updateUser({
+        id: user.id,
+        name: "Usuario CAS E Editado",
+        email,
+        role: "COMPRADOR",
+        permissions: ["compras:consolidado"],
+        active: true,
+        expectedUpdatedAt: watermarkB,
+        actorId,
+      });
+      expect(edited.name).toBe("Usuario CAS E Editado");
+      const watermarkC = edited.updatedAt;
+      expect(new Date(watermarkC).getTime()).toBeGreaterThan(new Date(watermarkB).getTime());
+
+      // Inativa o usuário utilizando o watermark C
+      const { user: deactivated } = await toggleUserActive({
+        id: user.id,
+        active: false,
+        expectedUpdatedAt: watermarkC,
+        actorId,
+      });
+      expect(deactivated.active).toBe(false);
+      expect(new Date(deactivated.updatedAt).getTime()).toBeGreaterThan(new Date(watermarkC).getTime());
     });
   });
 
@@ -476,6 +637,108 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
           SELECT count(*)::int as count FROM "${isoClient.unsafe(schemaName)}".users WHERE email = ${email};
         `;
         expect(Number(checkUser[0].count)).toBe(0);
+
+        // 2. Teste de rollback no resetUserPassword em caso de falha na auditoria
+        const initialPwd = "senhaInicial123";
+        const initialHash = await hashPassword(initialPwd);
+        const [targetUser] = await isoClient<{ id: string; updated_at: Date; password_hash: string }[]>`
+          INSERT INTO "${isoClient.unsafe(schemaName)}".users (email, name, password_hash, role, active, permissions)
+          VALUES ('target-reset-fail@example.com', 'Target Reset Fail', ${initialHash}, 'COMPRADOR', true, ARRAY['compras:consolidado']::text[])
+          RETURNING id, updated_at, password_hash;
+        `;
+        const exp = sessionExpiries();
+        await isoClient`
+          INSERT INTO "${isoClient.unsafe(schemaName)}".sessions (user_id, token_hash, idle_expires_at, absolute_expires_at)
+          VALUES (${targetUser.id}::uuid, ${hashToken(`token-reset-fail-${stamp}`)}, ${exp.idleExpiresAt.toISOString()}::timestamptz, ${exp.absoluteExpiresAt.toISOString()}::timestamptz);
+        `;
+
+        let resetError: (Error & { cause?: { message?: string } }) | null = null;
+        try {
+          await resetUserPassword(
+            {
+              targetUserId: targetUser.id,
+              newPassword: "novaSenhaTentada1",
+              passwordConfirmation: "novaSenhaTentada1",
+              expectedUpdatedAt: targetUser.updated_at,
+              actorId: isoActor.id,
+            },
+            isoDb
+          );
+        } catch (err: unknown) {
+          resetError = err as Error & { cause?: { message?: string } };
+        }
+        expect(resetError).toBeDefined();
+        expect(`${resetError?.message ?? ""} ${resetError?.cause?.message ?? ""}`).toMatch(/audit/i);
+
+        // Confirma no banco: password_hash continua idêntico, senha antiga funciona e nova não funciona
+        const [targetDbAfterReset] = await isoClient<{ password_hash: string; updated_at: Date }[]>`
+          SELECT password_hash, updated_at FROM "${isoClient.unsafe(schemaName)}".users WHERE id = ${targetUser.id}::uuid;
+        `;
+        expect(targetDbAfterReset.password_hash).toBe(initialHash);
+        await expect(verifyPassword(initialPwd, targetDbAfterReset.password_hash)).resolves.toBe(true);
+        await expect(verifyPassword("novaSenhaTentada1", targetDbAfterReset.password_hash)).resolves.toBe(false);
+        expect(new Date(targetDbAfterReset.updated_at).getTime()).toBe(new Date(targetUser.updated_at).getTime());
+
+        // Confirma no banco: sessão continua válida (não foi revogada!)
+        const targetSessionsAfterReset = await isoClient<{ id: string }[]>`
+          SELECT id FROM "${isoClient.unsafe(schemaName)}".sessions WHERE user_id = ${targetUser.id}::uuid AND revoked_at IS NULL;
+        `;
+        expect(targetSessionsAfterReset.length).toBe(1);
+
+        // Confirma no banco: nenhum evento de reset de senha foi persistido
+        const auditResetCount = await isoClient<{ count: number }[]>`
+          SELECT count(*)::int as count FROM "${isoClient.unsafe(schemaName)}".audit_events
+          WHERE entity_id = ${targetUser.id} AND action = 'user_password_reset_by_admin';
+        `;
+        expect(Number(auditResetCount[0].count)).toBe(0);
+
+        // 3. Teste de rollback no toggleUserActive (inativação) em caso de falha na auditoria
+        const [userForDeact] = await isoClient<{ id: string; updated_at: string | Date; active: boolean }[]>`
+          INSERT INTO "${isoClient.unsafe(schemaName)}".users (email, name, password_hash, role, active, permissions)
+          VALUES ('target-deact-fail@example.com', 'Target Deact Fail', 'dummy', 'COMPRADOR', true, ARRAY['compras:consolidado']::text[])
+          RETURNING id, updated_at, active;
+        `;
+        await isoClient`
+          INSERT INTO "${isoClient.unsafe(schemaName)}".sessions (user_id, token_hash, idle_expires_at, absolute_expires_at)
+          VALUES (${userForDeact.id}::uuid, ${hashToken(`token-deact-fail-${stamp}`)}, ${exp.idleExpiresAt.toISOString()}::timestamptz, ${exp.absoluteExpiresAt.toISOString()}::timestamptz);
+        `;
+
+        let deactError: (Error & { cause?: { message?: string } }) | null = null;
+        try {
+          await toggleUserActive(
+            {
+              id: userForDeact.id,
+              active: false,
+              expectedUpdatedAt: userForDeact.updated_at,
+              actorId: isoActor.id,
+            },
+            isoDb
+          );
+        } catch (err: unknown) {
+          deactError = err as Error & { cause?: { message?: string } };
+        }
+        expect(deactError).toBeDefined();
+        expect(`${deactError?.message ?? ""} ${deactError?.cause?.message ?? ""}`).toMatch(/audit/i);
+
+        // Confirma no banco: active continua true e updated_at inalterado
+        const [targetDbAfterDeact] = await isoClient<{ active: boolean; updated_at: string | Date }[]>`
+          SELECT active, updated_at FROM "${isoClient.unsafe(schemaName)}".users WHERE id = ${userForDeact.id}::uuid;
+        `;
+        expect(targetDbAfterDeact.active).toBe(true);
+        expect(new Date(targetDbAfterDeact.updated_at).getTime()).toBe(new Date(userForDeact.updated_at).getTime());
+
+        // Confirma no banco: sessão continua ativa (não revogada!)
+        const deactSessions = await isoClient<{ id: string }[]>`
+          SELECT id FROM "${isoClient.unsafe(schemaName)}".sessions WHERE user_id = ${userForDeact.id}::uuid AND revoked_at IS NULL;
+        `;
+        expect(deactSessions.length).toBe(1);
+
+        // Confirma no banco: nenhum evento de inativação gravado
+        const auditDeactCount = await isoClient<{ count: number }[]>`
+          SELECT count(*)::int as count FROM "${isoClient.unsafe(schemaName)}".audit_events
+          WHERE entity_id = ${userForDeact.id} AND action = 'user_deactivated';
+        `;
+        expect(Number(auditDeactCount[0].count)).toBe(0);
       } finally {
         await isoClient.end();
         const cleanupSql = postgres(process.env.DATABASE_URL!, { max: 1 });

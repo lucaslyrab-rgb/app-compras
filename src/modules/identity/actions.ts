@@ -109,13 +109,22 @@ export async function resetUserPasswordAction(input: Omit<ResetUserPasswordInput
     return { status: "error" as const, message: "Acesso negado: permissão gestor:usuarios necessária." };
   }
 
+  if (!input.expectedUpdatedAt) {
+    return { status: "error" as const, message: "Timestamp de versão (expectedUpdatedAt) é obrigatório." };
+  }
+
   try {
     const result = await resetUserPassword({ ...input, actorId: principal.userId });
 
     revalidatePath("/gestor/usuarios");
     revalidatePath("/");
 
-    return { status: "success" as const, targetUserId: result.targetUserId };
+    return {
+      status: "success" as const,
+      targetUserId: result.targetUserId,
+      targetEmail: result.targetEmail,
+      updatedAt: result.updatedAt,
+    };
   } catch (error) {
     if (error instanceof UserConflictError) {
       const freshUsers = await listUsersForManagement();

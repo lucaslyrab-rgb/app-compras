@@ -93,6 +93,7 @@ describe("Gestão de Usuários - Server Actions e Autorização Server-Side", ()
         targetUserId: "target-id",
         newPassword: "novaSenhaValida1",
         passwordConfirmation: "novaSenhaValida1",
+        expectedUpdatedAt: "2026-10-01T12:00:00.000Z",
       });
 
       expect(res.status).toBe("error");
@@ -191,11 +192,12 @@ describe("Gestão de Usuários - Server Actions e Autorização Server-Side", ()
       expect(res.message).toMatch(/manter pelo menos um administrador ativo/);
     });
 
-    it("executa reset de senha propagando actorId e expectedUpdatedAt", async () => {
+    it("executa reset de senha propagando actorId e expectedUpdatedAt e retornando novo watermark", async () => {
       vi.spyOn(sessionModule, "currentPrincipal").mockResolvedValue(adminPrincipal);
       const resetSpy = vi.spyOn(repositoryModule, "resetUserPassword").mockResolvedValue({
         targetUserId: "target-user-id",
         targetEmail: "target@example.com",
+        updatedAt: "2026-10-01T12:00:01.000Z",
       });
 
       const res = await resetUserPasswordAction({
@@ -206,6 +208,11 @@ describe("Gestão de Usuários - Server Actions e Autorização Server-Side", ()
       });
 
       expect(res.status).toBe("success");
+      if (res.status === "success") {
+        expect(res.targetUserId).toBe("target-user-id");
+        expect(res.targetEmail).toBe("target@example.com");
+        expect(res.updatedAt).toBe("2026-10-01T12:00:01.000Z");
+      }
       expect(resetSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           targetUserId: "target-user-id",
@@ -213,6 +220,22 @@ describe("Gestão de Usuários - Server Actions e Autorização Server-Side", ()
           expectedUpdatedAt: "2026-10-01T12:00:00.000Z",
         })
       );
+    });
+
+    it("Caso C: rejeita resetUserPasswordAction sem expectedUpdatedAt na fronteira pública da Action", async () => {
+      vi.spyOn(sessionModule, "currentPrincipal").mockResolvedValue(adminPrincipal);
+      const resetSpy = vi.spyOn(repositoryModule, "resetUserPassword");
+
+      // @ts-expect-error testando omissão intencional de expectedUpdatedAt na fronteira pública
+      const res = await resetUserPasswordAction({
+        targetUserId: "target-user-id",
+        newPassword: "novaSenhaSegura1",
+        passwordConfirmation: "novaSenhaSegura1",
+      });
+
+      expect(res.status).toBe("error");
+      expect(res.message).toMatch(/expectedUpdatedAt/i);
+      expect(resetSpy).not.toHaveBeenCalled();
     });
   });
 });

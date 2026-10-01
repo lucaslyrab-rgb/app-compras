@@ -319,6 +319,9 @@ export function UserWorkspace({
       });
 
       if (res.status === "success") {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === res.targetUserId ? { ...u, updatedAt: res.updatedAt } : u))
+        );
         setResettingUser(null);
         setFeedback({
           type: "success",

@@ -560,7 +560,7 @@ export type ResetUserPasswordInput = {
   newPassword: string;
   passwordConfirmation: string;
   actorId: string;
-  expectedUpdatedAt?: string | Date;
+  expectedUpdatedAt: string | Date;
 };
 
 export async function resetUserPassword(
@@ -569,7 +569,18 @@ export async function resetUserPassword(
 ): Promise<{
   targetUserId: string;
   targetEmail: string;
+  updatedAt: string;
 }> {
+  if (!input.targetUserId || typeof input.targetUserId !== "string") {
+    throw new UserValidationError("Identificador de usuário inválido.");
+  }
+  if (!input.expectedUpdatedAt) {
+    throw new UserValidationError("Timestamp de versão (expectedUpdatedAt) é obrigatório.");
+  }
+  const expectedDate = new Date(input.expectedUpdatedAt);
+  if (isNaN(expectedDate.getTime())) {
+    throw new UserValidationError("Timestamp de versão inválido.");
+  }
   if (input.newPassword !== input.passwordConfirmation) {
     throw new UserValidationError("As senhas não coincidem.");
   }
@@ -580,48 +591,28 @@ export async function resetUserPassword(
   return dbClient.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${USER_MANAGEMENT_ADVISORY_LOCK_ID});`);
 
-    let updatedRows;
-    if (input.expectedUpdatedAt) {
-      const expectedDate = new Date(input.expectedUpdatedAt);
-      if (isNaN(expectedDate.getTime())) {
-        throw new UserValidationError("Timestamp de versão inválido.");
-      }
-      updatedRows = await tx
-        .update(users)
-        .set({
-          passwordHash: newHash,
-          updatedAt: sql`date_trunc('milliseconds', GREATEST(clock_timestamp(), ${users.updatedAt} + INTERVAL '1 millisecond'))`,
-        })
-        .where(
-          and(
-            eq(users.id, input.targetUserId),
-            sql`date_trunc('milliseconds', ${users.updatedAt}) = date_trunc('milliseconds', ${expectedDate.toISOString()}::timestamptz)`
-          )
+    const updatedRows = await tx
+      .update(users)
+      .set({
+        passwordHash: newHash,
+        updatedAt: sql`date_trunc('milliseconds', GREATEST(clock_timestamp(), ${users.updatedAt} + INTERVAL '1 millisecond'))`,
+      })
+      .where(
+        and(
+          eq(users.id, input.targetUserId),
+          sql`date_trunc('milliseconds', ${users.updatedAt}) = date_trunc('milliseconds', ${expectedDate.toISOString()}::timestamptz)`
         )
-        .returning({ id: users.id, email: users.email });
+      )
+      .returning({ id: users.id, email: users.email, updatedAt: users.updatedAt });
 
-      if (updatedRows.length === 0) {
-        const [existing] = await tx.select({ id: users.id }).from(users).where(eq(users.id, input.targetUserId)).limit(1);
-        if (!existing) {
-          throw new UserValidationError("Usuário não encontrado.");
-        }
-        throw new UserConflictError(
-          "Este usuário foi alterado por outro administrador. Os dados mais recentes foram carregados."
-        );
-      }
-    } else {
-      updatedRows = await tx
-        .update(users)
-        .set({
-          passwordHash: newHash,
-          updatedAt: sql`date_trunc('milliseconds', GREATEST(clock_timestamp(), ${users.updatedAt} + INTERVAL '1 millisecond'))`,
-        })
-        .where(eq(users.id, input.targetUserId))
-        .returning({ id: users.id, email: users.email });
-
-      if (updatedRows.length === 0) {
+    if (updatedRows.length === 0) {
+      const [existing] = await tx.select({ id: users.id }).from(users).where(eq(users.id, input.targetUserId)).limit(1);
+      if (!existing) {
         throw new UserValidationError("Usuário não encontrado.");
       }
+      throw new UserConflictError(
+        "Este usuário foi alterado por outro administrador. Os dados mais recentes foram carregados."
+      );
     }
 
     const target = updatedRows[0];
@@ -645,6 +636,10 @@ export async function resetUserPassword(
       tx
     );
 
-    return { targetUserId: target.id, targetEmail: target.email };
+    return {
+      targetUserId: target.id,
+      targetEmail: target.email,
+      updatedAt: target.updatedAt.toISOString(),
+    };
   });
 }
