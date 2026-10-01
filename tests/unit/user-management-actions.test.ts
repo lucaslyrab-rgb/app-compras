@@ -11,7 +11,6 @@ import {
 } from "@/modules/identity/actions";
 import * as sessionModule from "@/modules/identity/session";
 import * as repositoryModule from "@/modules/identity/repository";
-import * as auditModule from "@/modules/identity/audit";
 import { LastAdminProtectionError, UserConflictError, type Principal } from "@/modules/identity/domain";
 
 describe("Gestão de Usuários - Server Actions e Autorização Server-Side", () => {
@@ -102,10 +101,9 @@ describe("Gestão de Usuários - Server Actions e Autorização Server-Side", ()
   });
 
   describe("Permissão concedida via gestor:usuarios (independente de role)", () => {
-    it("permite COMPRADOR com permissão gestor:usuarios executar criação e grava auditoria", async () => {
+    it("permite COMPRADOR com permissão gestor:usuarios executar criação propagando actorId", async () => {
       vi.spyOn(sessionModule, "currentPrincipal").mockResolvedValue(buyerPrincipalWithAdmin);
-      const auditSpy = vi.spyOn(auditModule, "recordAudit").mockResolvedValue(undefined);
-      vi.spyOn(repositoryModule, "createUser").mockResolvedValue({
+      const createSpy = vi.spyOn(repositoryModule, "createUser").mockResolvedValue({
         id: "created-id",
         email: "novo@example.com",
         name: "Novo Usuário",
@@ -129,19 +127,13 @@ describe("Gestão de Usuários - Server Actions e Autorização Server-Side", ()
       });
 
       expect(res.status).toBe("success");
-      expect(auditSpy).toHaveBeenCalledWith(
+      expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({
+          name: "Novo Usuário",
+          email: "novo@example.com",
           actorId: "buyer-admin-uuid",
-          action: "USER_CREATED",
-          entityType: "user",
-          entityId: "created-id",
         })
       );
-      // Confirma que nenhuma senha vazou para a auditoria
-      const auditPayload = auditSpy.mock.calls[0][0];
-      const payloadStr = JSON.stringify(auditPayload);
-      expect(payloadStr).not.toContain("senhaValida1");
-      expect(payloadStr).not.toContain("password");
     });
 
     it("trata conflito de concorrência e retorna dados frescos", async () => {
@@ -199,10 +191,9 @@ describe("Gestão de Usuários - Server Actions e Autorização Server-Side", ()
       expect(res.message).toMatch(/manter pelo menos um administrador ativo/);
     });
 
-    it("executa reset de senha e grava auditoria sem expor a senha", async () => {
+    it("executa reset de senha propagando actorId e expectedUpdatedAt", async () => {
       vi.spyOn(sessionModule, "currentPrincipal").mockResolvedValue(adminPrincipal);
-      const auditSpy = vi.spyOn(auditModule, "recordAudit").mockResolvedValue(undefined);
-      vi.spyOn(repositoryModule, "resetUserPassword").mockResolvedValue({
+      const resetSpy = vi.spyOn(repositoryModule, "resetUserPassword").mockResolvedValue({
         targetUserId: "target-user-id",
         targetEmail: "target@example.com",
       });
@@ -211,25 +202,17 @@ describe("Gestão de Usuários - Server Actions e Autorização Server-Side", ()
         targetUserId: "target-user-id",
         newPassword: "novaSenhaSegura1",
         passwordConfirmation: "novaSenhaSegura1",
+        expectedUpdatedAt: "2026-10-01T12:00:00.000Z",
       });
 
       expect(res.status).toBe("success");
-      expect(auditSpy).toHaveBeenCalledWith(
+      expect(resetSpy).toHaveBeenCalledWith(
         expect.objectContaining({
+          targetUserId: "target-user-id",
           actorId: adminPrincipal.userId,
-          action: "USER_PASSWORD_RESET",
-          entityType: "user",
-          entityId: "target-user-id",
-          metadata: {
-            resetByAdmin: true,
-            sessionsRevoked: true,
-          },
+          expectedUpdatedAt: "2026-10-01T12:00:00.000Z",
         })
       );
-      const payloadStr = JSON.stringify(auditSpy.mock.calls[0][0]);
-      expect(payloadStr).not.toContain("novaSenhaSegura1");
-      expect(payloadStr).not.toContain("password");
-      expect(payloadStr).not.toContain("hash");
     });
   });
 });

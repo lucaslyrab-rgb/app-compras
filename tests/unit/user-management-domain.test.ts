@@ -79,11 +79,17 @@ describe("Gestão de Usuários - Domínio e Validações V1", () => {
       await expect(verifyPassword("errada123", hash)).resolves.toBe(false);
     });
 
-    it("senhas longas de usuários existentes continuam verificáveis pelo algoritmo", async () => {
-      // Usuário existente com senha longa de 24 caracteres
-      const longPwd = "senha-super-segura-1234-longa";
-      const hash = await hashPassword(longPwd);
-      await expect(verifyPassword(longPwd, hash)).resolves.toBe(true);
+    it("senhas de usuários existentes com hashes legados continuam verificáveis via fixture fixa", async () => {
+      // Fixture de hash scrypt fixo (gerado no formato scrypt$32768$8$1$) para credencial puramente fictícia de teste
+      const testPassword = "senha-teste-legada-2026";
+      const fixedLegacyHashFixture =
+        "scrypt$32768$8$1$Etc4WyNFnKOcga_B8bBuHw$6T13YH4INFfwIi2BIL-7uMu8HrnLfMu9-CNEe__YZi9WvRpyAiEsmlOjzR321BcY2uCA1HqY1Jt1Gyb9MuDteg";
+
+      // Deve verificar com sucesso a credencial correspondente
+      await expect(verifyPassword(testPassword, fixedLegacyHashFixture)).resolves.toBe(true);
+
+      // Deve rejeitar senha incorreta contra o hash fixo
+      await expect(verifyPassword("senha-incorreta-qualquer", fixedLegacyHashFixture)).resolves.toBe(false);
     });
   });
 

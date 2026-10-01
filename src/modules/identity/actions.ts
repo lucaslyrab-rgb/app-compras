@@ -13,31 +13,16 @@ import {
   type UpdateUserInput,
   type ResetUserPasswordInput,
 } from "./repository";
-import { recordAudit } from "./audit";
 import { log } from "@/shared/logging";
 
-export async function createUserAction(input: CreateUserInput) {
+export async function createUserAction(input: Omit<CreateUserInput, "actorId">) {
   const principal = await currentPrincipal();
   if (!principal || !hasPermission(principal, "gestor:usuarios")) {
     return { status: "error" as const, message: "Acesso negado: permissão gestor:usuarios necessária." };
   }
 
   try {
-    const user = await createUser(input);
-
-    await recordAudit({
-      actorId: principal.userId,
-      action: "USER_CREATED",
-      entityType: "user",
-      entityId: user.id,
-      metadata: {
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        storeId: user.storeId,
-        permissions: user.permissions,
-      },
-    });
+    const user = await createUser({ ...input, actorId: principal.userId });
 
     revalidatePath("/gestor/usuarios");
     revalidatePath("/");
@@ -56,48 +41,14 @@ export async function createUserAction(input: CreateUserInput) {
   }
 }
 
-export async function updateUserAction(input: UpdateUserInput) {
+export async function updateUserAction(input: Omit<UpdateUserInput, "actorId">) {
   const principal = await currentPrincipal();
   if (!principal || !hasPermission(principal, "gestor:usuarios")) {
     return { status: "error" as const, message: "Acesso negado: permissão gestor:usuarios necessária." };
   }
 
   try {
-    const { user, previous } = await updateUser(input);
-
-    const changedFields: string[] = [];
-    if (previous.name !== user.name) changedFields.push("name");
-    if (previous.email !== user.email) changedFields.push("email");
-    if (previous.role !== user.role) changedFields.push("role");
-    if (previous.storeId !== user.storeId) changedFields.push("storeId");
-    if (previous.active !== user.active) changedFields.push("active");
-    if (JSON.stringify(previous.permissions) !== JSON.stringify(user.permissions)) changedFields.push("permissions");
-
-    await recordAudit({
-      actorId: principal.userId,
-      action: "USER_UPDATED",
-      entityType: "user",
-      entityId: user.id,
-      metadata: {
-        changedFields,
-        previous: {
-          name: previous.name,
-          email: previous.email,
-          role: previous.role,
-          storeId: previous.storeId,
-          permissions: previous.permissions,
-          active: previous.active,
-        },
-        current: {
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          storeId: user.storeId,
-          permissions: user.permissions,
-          active: user.active,
-        },
-      },
-    });
+    const { user } = await updateUser({ ...input, actorId: principal.userId });
 
     revalidatePath("/gestor/usuarios");
     revalidatePath("/");
@@ -130,18 +81,7 @@ export async function toggleUserActiveAction(input: {
   }
 
   try {
-    const { user } = await toggleUserActive(input);
-
-    await recordAudit({
-      actorId: principal.userId,
-      action: user.active ? "USER_ACTIVATED" : "USER_DEACTIVATED",
-      entityType: "user",
-      entityId: user.id,
-      metadata: {
-        active: user.active,
-        sessionsRevoked: !user.active,
-      },
-    });
+    const { user } = await toggleUserActive({ ...input, actorId: principal.userId });
 
     revalidatePath("/gestor/usuarios");
     revalidatePath("/");
@@ -163,35 +103,27 @@ export async function toggleUserActiveAction(input: {
   }
 }
 
-export async function resetUserPasswordAction(input: ResetUserPasswordInput) {
+export async function resetUserPasswordAction(input: Omit<ResetUserPasswordInput, "actorId">) {
   const principal = await currentPrincipal();
   if (!principal || !hasPermission(principal, "gestor:usuarios")) {
     return { status: "error" as const, message: "Acesso negado: permissão gestor:usuarios necessária." };
   }
 
   try {
-    const result = await resetUserPassword(input);
-
-    await recordAudit({
-      actorId: principal.userId,
-      action: "USER_PASSWORD_RESET",
-      entityType: "user",
-      entityId: result.targetUserId,
-      metadata: {
-        resetByAdmin: true,
-        sessionsRevoked: true,
-      },
-    });
+    const result = await resetUserPassword({ ...input, actorId: principal.userId });
 
     revalidatePath("/gestor/usuarios");
     revalidatePath("/");
 
     return { status: "success" as const, targetUserId: result.targetUserId };
   } catch (error) {
+    if (error instanceof UserConflictError) {
+      const freshUsers = await listUsersForManagement();
+      return { status: "conflict" as const, message: error.message, freshUsers };
+    }
     if (
       error instanceof UserValidationError ||
-      error instanceof LastAdminProtectionError ||
-      error instanceof UserConflictError
+      error instanceof LastAdminProtectionError
     ) {
       return { status: "error" as const, message: error.message };
     }

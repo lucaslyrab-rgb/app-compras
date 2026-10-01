@@ -1,6 +1,7 @@
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { database } from "@/db/client";
 import { sessions, stores, users } from "@/db/schema";
+import { recordAudit } from "./audit";
 import {
   assertPassword,
   assertStoreUserInvariant,
@@ -78,8 +79,11 @@ export async function revokeSession(token: string) {
   await database().db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.tokenHash, hashToken(token)));
 }
 
-export async function revokeAllUserSessions(userId: string) {
-  await database().db
+export async function revokeAllUserSessions(
+  userId: string,
+  dbClient: ReturnType<typeof database>["db"] = database().db
+) {
+  await dbClient
     .update(sessions)
     .set({ revokedAt: new Date() })
     .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
@@ -125,12 +129,14 @@ export async function listActiveStores(): Promise<ActiveStoreOption[]> {
     .orderBy(stores.name);
 }
 
-export type TransactionClient = Parameters<Parameters<ReturnType<typeof database>["db"]["transaction"]>[0]>[0];
+export type AdminAssertionExecutor = {
+  execute: (query: ReturnType<typeof sql>) => Promise<unknown>;
+};
 
-export async function assertRemainingActiveAdmins(tx: TransactionClient) {
-  const result = await tx.execute(
+export async function assertRemainingActiveAdmins(tx: AdminAssertionExecutor) {
+  const result = (await tx.execute(
     sql`SELECT count(*)::int AS count FROM users WHERE active = true AND 'gestor:usuarios' = ANY(permissions);`
-  );
+  )) as Array<{ count?: number | string }>;
   const count = Number(result[0]?.count ?? 0);
   if (count < 1) {
     throw new LastAdminProtectionError(
@@ -147,9 +153,13 @@ export type CreateUserInput = {
   permissions: Permission[];
   password: string;
   passwordConfirmation: string;
+  actorId: string;
 };
 
-export async function createUser(input: CreateUserInput): Promise<ManagedUser> {
+export async function createUser(
+  input: CreateUserInput,
+  dbClient: ReturnType<typeof database>["db"] = database().db
+): Promise<ManagedUser> {
   const name = input.name.trim();
   if (name.length < 2) {
     throw new UserValidationError("O nome deve ter pelo menos 2 caracteres.");
@@ -167,7 +177,7 @@ export async function createUser(input: CreateUserInput): Promise<ManagedUser> {
 
   const passwordHash = await hashPassword(input.password);
 
-  return database().db.transaction(async (tx) => {
+  return dbClient.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${USER_MANAGEMENT_ADVISORY_LOCK_ID});`);
 
     const [existing] = await tx
@@ -190,6 +200,7 @@ export async function createUser(input: CreateUserInput): Promise<ManagedUser> {
         permissions: input.permissions,
         passwordHash,
         active: true,
+        updatedAt: sql`date_trunc('milliseconds', clock_timestamp())`,
       })
       .returning({
         id: users.id,
@@ -202,6 +213,23 @@ export async function createUser(input: CreateUserInput): Promise<ManagedUser> {
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
       });
+
+    await recordAudit(
+      {
+        actorId: input.actorId,
+        action: "user_created",
+        entityType: "user",
+        entityId: created.id,
+        metadata: {
+          email: created.email,
+          name: created.name,
+          role: created.role,
+          storeId: created.storeId,
+          permissions: created.permissions,
+        },
+      },
+      tx
+    );
 
     let storeName: string | null = null;
     if (normalizedStoreId) {
@@ -237,9 +265,13 @@ export type UpdateUserInput = {
   permissions: Permission[];
   active: boolean;
   expectedUpdatedAt: string | Date;
+  actorId: string;
 };
 
-export async function updateUser(input: UpdateUserInput): Promise<{
+export async function updateUser(
+  input: UpdateUserInput,
+  dbClient: ReturnType<typeof database>["db"] = database().db
+): Promise<{
   user: ManagedUser;
   previous: {
     name: string;
@@ -266,7 +298,7 @@ export async function updateUser(input: UpdateUserInput): Promise<{
     throw new UserValidationError("Timestamp de versão inválido.");
   }
 
-  return database().db.transaction(async (tx) => {
+  return dbClient.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${USER_MANAGEMENT_ADVISORY_LOCK_ID});`);
 
     const [currentUser] = await tx
@@ -288,12 +320,6 @@ export async function updateUser(input: UpdateUserInput): Promise<{
       throw new UserValidationError("Usuário não encontrado.");
     }
 
-    if (currentUser.updatedAt.getTime() !== expectedDate.getTime()) {
-      throw new UserConflictError(
-        "Este usuário foi alterado por outro administrador. Os dados mais recentes foram carregados."
-      );
-    }
-
     const [existingWithEmail] = await tx
       .select({ id: users.id })
       .from(users)
@@ -304,7 +330,8 @@ export async function updateUser(input: UpdateUserInput): Promise<{
       throw new UserValidationError("Já existe um usuário cadastrado com este e-mail.");
     }
 
-    const [updated] = await tx
+    // Real CAS update condition on id and updated_at
+    const updatedRows = await tx
       .update(users)
       .set({
         name,
@@ -313,9 +340,14 @@ export async function updateUser(input: UpdateUserInput): Promise<{
         storeId: normalizedStoreId,
         permissions: input.permissions,
         active: input.active,
-        updatedAt: new Date(),
+        updatedAt: sql`date_trunc('milliseconds', GREATEST(clock_timestamp(), ${users.updatedAt} + INTERVAL '1 millisecond'))`,
       })
-      .where(eq(users.id, input.id))
+      .where(
+        and(
+          eq(users.id, input.id),
+          sql`date_trunc('milliseconds', ${users.updatedAt}) = date_trunc('milliseconds', ${expectedDate.toISOString()}::timestamptz)`
+        )
+      )
       .returning({
         id: users.id,
         email: users.email,
@@ -328,6 +360,14 @@ export async function updateUser(input: UpdateUserInput): Promise<{
         updatedAt: users.updatedAt,
       });
 
+    if (updatedRows.length === 0) {
+      throw new UserConflictError(
+        "Este usuário foi alterado por outro administrador. Os dados mais recentes foram carregados."
+      );
+    }
+
+    const updated = updatedRows[0];
+
     if (currentUser.active && !input.active) {
       await tx
         .update(sessions)
@@ -336,6 +376,43 @@ export async function updateUser(input: UpdateUserInput): Promise<{
     }
 
     await assertRemainingActiveAdmins(tx);
+
+    const changedFields: string[] = [];
+    if (currentUser.name !== updated.name) changedFields.push("name");
+    if (currentUser.email !== updated.email) changedFields.push("email");
+    if (currentUser.role !== updated.role) changedFields.push("role");
+    if (currentUser.storeId !== updated.storeId) changedFields.push("storeId");
+    if (currentUser.active !== updated.active) changedFields.push("active");
+    if (JSON.stringify(currentUser.permissions) !== JSON.stringify(updated.permissions)) changedFields.push("permissions");
+
+    await recordAudit(
+      {
+        actorId: input.actorId,
+        action: "user_updated",
+        entityType: "user",
+        entityId: updated.id,
+        metadata: {
+          changedFields,
+          previous: {
+            name: currentUser.name,
+            email: currentUser.email,
+            role: currentUser.role,
+            storeId: currentUser.storeId,
+            permissions: currentUser.permissions,
+            active: currentUser.active,
+          },
+          current: {
+            name: updated.name,
+            email: updated.email,
+            role: updated.role,
+            storeId: updated.storeId,
+            permissions: updated.permissions,
+            active: updated.active,
+          },
+        },
+      },
+      tx
+    );
 
     let storeName: string | null = null;
     if (normalizedStoreId) {
@@ -372,51 +449,37 @@ export async function updateUser(input: UpdateUserInput): Promise<{
   });
 }
 
-export async function toggleUserActive(input: {
+export type ToggleUserActiveInput = {
   id: string;
   active: boolean;
   expectedUpdatedAt: string | Date;
-}): Promise<{ user: ManagedUser; previousActive: boolean }> {
+  actorId: string;
+};
+
+export async function toggleUserActive(
+  input: ToggleUserActiveInput,
+  dbClient: ReturnType<typeof database>["db"] = database().db
+): Promise<{ user: ManagedUser; previousActive: boolean }> {
   const expectedDate = new Date(input.expectedUpdatedAt);
   if (isNaN(expectedDate.getTime())) {
     throw new UserValidationError("Timestamp de versão inválido.");
   }
 
-  return database().db.transaction(async (tx) => {
+  return dbClient.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${USER_MANAGEMENT_ADVISORY_LOCK_ID});`);
 
-    const [currentUser] = await tx
-      .select({
-        id: users.id,
-        email: users.email,
-        name: users.name,
-        role: users.role,
-        storeId: users.storeId,
-        permissions: users.permissions,
-        active: users.active,
-        updatedAt: users.updatedAt,
-      })
-      .from(users)
-      .where(eq(users.id, input.id))
-      .limit(1);
-
-    if (!currentUser) {
-      throw new UserValidationError("Usuário não encontrado.");
-    }
-
-    if (currentUser.updatedAt.getTime() !== expectedDate.getTime()) {
-      throw new UserConflictError(
-        "Este usuário foi alterado por outro administrador. Os dados mais recentes foram carregados."
-      );
-    }
-
-    const [updated] = await tx
+    const updatedRows = await tx
       .update(users)
       .set({
         active: input.active,
-        updatedAt: new Date(),
+        updatedAt: sql`date_trunc('milliseconds', GREATEST(clock_timestamp(), ${users.updatedAt} + INTERVAL '1 millisecond'))`,
       })
-      .where(eq(users.id, input.id))
+      .where(
+        and(
+          eq(users.id, input.id),
+          sql`date_trunc('milliseconds', ${users.updatedAt}) = date_trunc('milliseconds', ${expectedDate.toISOString()}::timestamptz)`
+        )
+      )
       .returning({
         id: users.id,
         email: users.email,
@@ -429,14 +492,40 @@ export async function toggleUserActive(input: {
         updatedAt: users.updatedAt,
       });
 
-    if (currentUser.active && !input.active) {
+    if (updatedRows.length === 0) {
+      const [existing] = await tx.select({ id: users.id }).from(users).where(eq(users.id, input.id)).limit(1);
+      if (!existing) {
+        throw new UserValidationError("Usuário não encontrado.");
+      }
+      throw new UserConflictError(
+        "Este usuário foi alterado por outro administrador. Os dados mais recentes foram carregados."
+      );
+    }
+
+    const updated = updatedRows[0];
+
+    if (!input.active) {
       await tx
         .update(sessions)
         .set({ revokedAt: new Date() })
         .where(and(eq(sessions.userId, input.id), isNull(sessions.revokedAt)));
+
+      await assertRemainingActiveAdmins(tx);
     }
 
-    await assertRemainingActiveAdmins(tx);
+    await recordAudit(
+      {
+        actorId: input.actorId,
+        action: input.active ? "user_activated" : "user_deactivated",
+        entityType: "user",
+        entityId: updated.id,
+        metadata: {
+          active: updated.active,
+          sessionsRevoked: !updated.active,
+        },
+      },
+      tx
+    );
 
     let storeName: string | null = null;
     if (updated.storeId) {
@@ -461,7 +550,7 @@ export async function toggleUserActive(input: {
         createdAt: updated.createdAt.toISOString(),
         updatedAt: updated.updatedAt.toISOString(),
       },
-      previousActive: currentUser.active,
+      previousActive: !input.active,
     };
   });
 }
@@ -470,9 +559,14 @@ export type ResetUserPasswordInput = {
   targetUserId: string;
   newPassword: string;
   passwordConfirmation: string;
+  actorId: string;
+  expectedUpdatedAt?: string | Date;
 };
 
-export async function resetUserPassword(input: ResetUserPasswordInput): Promise<{
+export async function resetUserPassword(
+  input: ResetUserPasswordInput,
+  dbClient: ReturnType<typeof database>["db"] = database().db
+): Promise<{
   targetUserId: string;
   targetEmail: string;
 }> {
@@ -483,31 +577,73 @@ export async function resetUserPassword(input: ResetUserPasswordInput): Promise<
 
   const newHash = await hashPassword(input.newPassword);
 
-  return database().db.transaction(async (tx) => {
+  return dbClient.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${USER_MANAGEMENT_ADVISORY_LOCK_ID});`);
 
-    const [target] = await tx
-      .select({ id: users.id, email: users.email, active: users.active })
-      .from(users)
-      .where(eq(users.id, input.targetUserId))
-      .limit(1);
+    let updatedRows;
+    if (input.expectedUpdatedAt) {
+      const expectedDate = new Date(input.expectedUpdatedAt);
+      if (isNaN(expectedDate.getTime())) {
+        throw new UserValidationError("Timestamp de versão inválido.");
+      }
+      updatedRows = await tx
+        .update(users)
+        .set({
+          passwordHash: newHash,
+          updatedAt: sql`date_trunc('milliseconds', GREATEST(clock_timestamp(), ${users.updatedAt} + INTERVAL '1 millisecond'))`,
+        })
+        .where(
+          and(
+            eq(users.id, input.targetUserId),
+            sql`date_trunc('milliseconds', ${users.updatedAt}) = date_trunc('milliseconds', ${expectedDate.toISOString()}::timestamptz)`
+          )
+        )
+        .returning({ id: users.id, email: users.email });
 
-    if (!target) {
-      throw new UserValidationError("Usuário não encontrado.");
+      if (updatedRows.length === 0) {
+        const [existing] = await tx.select({ id: users.id }).from(users).where(eq(users.id, input.targetUserId)).limit(1);
+        if (!existing) {
+          throw new UserValidationError("Usuário não encontrado.");
+        }
+        throw new UserConflictError(
+          "Este usuário foi alterado por outro administrador. Os dados mais recentes foram carregados."
+        );
+      }
+    } else {
+      updatedRows = await tx
+        .update(users)
+        .set({
+          passwordHash: newHash,
+          updatedAt: sql`date_trunc('milliseconds', GREATEST(clock_timestamp(), ${users.updatedAt} + INTERVAL '1 millisecond'))`,
+        })
+        .where(eq(users.id, input.targetUserId))
+        .returning({ id: users.id, email: users.email });
+
+      if (updatedRows.length === 0) {
+        throw new UserValidationError("Usuário não encontrado.");
+      }
     }
 
-    await tx
-      .update(users)
-      .set({
-        passwordHash: newHash,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, input.targetUserId));
+    const target = updatedRows[0];
 
     await tx
       .update(sessions)
       .set({ revokedAt: new Date() })
       .where(and(eq(sessions.userId, input.targetUserId), isNull(sessions.revokedAt)));
+
+    await recordAudit(
+      {
+        actorId: input.actorId,
+        action: "user_password_reset_by_admin",
+        entityType: "user",
+        entityId: target.id,
+        metadata: {
+          resetByAdmin: true,
+          sessionsRevoked: true,
+        },
+      },
+      tx
+    );
 
     return { targetUserId: target.id, targetEmail: target.email };
   });

@@ -15,6 +15,17 @@ describe("identidade", () => {
     await expect(verifyPassword("qualquer", "invalido")).resolves.toBe(false);
   });
 
+  it("permite verificar credencial legada válida sem bloqueio da nova política de criação/reset", async () => {
+    // Hash scrypt fixo gerado para a senha legada "curta" (que não atende à nova política de 8 caracteres)
+    const legacyShortPassword = "curta";
+    const storedLegacyHash =
+      "scrypt$32768$8$1$bGVnYWN5X3NhbHRfMTIz$ZhSZcNEDpIXbxXJt0b-zhfnZM-MIuy1dIWCo5aYBdVtLQGYf3YLS92IdzEbkXKNMnZFsVf2ZQtfqhVU1e4e0rw";
+
+    // verifyPassword deve validar a credencial normalmente contra o hash armazenado
+    await expect(verifyPassword(legacyShortPassword, storedLegacyHash)).resolves.toBe(true);
+    await expect(verifyPassword("outra", storedLegacyHash)).resolves.toBe(false);
+  });
+
   it("gera token opaco e hash determinístico", () => {
     const session = createSessionToken();
     expect(session.token).not.toBe(session.tokenHash);

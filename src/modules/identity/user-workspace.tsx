@@ -315,6 +315,7 @@ export function UserWorkspace({
         targetUserId: resettingUser.id,
         newPassword: resetForm.newPassword,
         passwordConfirmation: resetForm.passwordConfirmation,
+        expectedUpdatedAt: resettingUser.updatedAt,
       });
 
       if (res.status === "success") {
@@ -323,6 +324,10 @@ export function UserWorkspace({
           type: "success",
           message: `Senha de ${resettingUser.name} redefinida com sucesso. Sessões anteriores foram revogadas.`,
         });
+      } else if (res.status === "conflict") {
+        setResettingUser(null);
+        setUsers(res.freshUsers);
+        setFeedback({ type: "error", message: res.message });
       } else {
         setFeedback({ type: "error", message: res.message });
       }

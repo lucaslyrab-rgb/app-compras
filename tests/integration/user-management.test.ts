@@ -1,5 +1,6 @@
 import path from "node:path";
 import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runMigrations } from "../../scripts/migration-runner.mjs";
 import {
@@ -9,6 +10,7 @@ import {
   resetUserPassword,
   listUsersForManagement,
   listActiveStores,
+  USER_MANAGEMENT_ADVISORY_LOCK_ID,
 } from "../../src/modules/identity/repository";
 import {
   LastAdminProtectionError,
@@ -20,12 +22,14 @@ import {
 } from "../../src/modules/identity/domain";
 import { database } from "../../src/db/client";
 import { sessions } from "../../src/db/schema";
+import * as schema from "../../src/db/schema";
 
 const integration = process.env.DATABASE_URL ? describe : describe.skip;
 
 integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
   const stamp = Date.now();
   let testStoreId: string;
+  let actorId: string;
 
   beforeAll(async () => {
     // Insere lojas de teste caso não existam
@@ -39,6 +43,14 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
       VALUES (${`loja-teste-dois-${stamp}`}, 'Loja Teste Dois', true);
     `;
     testStoreId = store1.id;
+
+    // Insere usuário ator para satisfazer FK de audit_events
+    const [actorUser] = await database().sql<{ id: string }[]>`
+      INSERT INTO users (email, name, password_hash, role, active, permissions)
+      VALUES (${`actor-admin-${stamp}@example.com`}, 'Actor Admin', 'dummy', 'GESTOR', true, ARRAY['gestor:usuarios']::text[])
+      RETURNING id;
+    `;
+    actorId = actorUser.id;
   });
 
   afterAll(async () => {
@@ -49,7 +61,7 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
   });
 
   describe("Criação de Usuários", () => {
-    it("cria usuário LOJA com loja vinculada e permissões de loja", async () => {
+    it("cria usuário LOJA com loja vinculada, permissões de loja e grava auditoria atômica", async () => {
       const email = `loja-${stamp}@example.com`;
       const created = await createUser({
         name: "Operador Loja",
@@ -59,6 +71,7 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         permissions: ["pedidos:criar", "pedidos:historico"],
         password: "LojaSenha2026",
         passwordConfirmation: "LojaSenha2026",
+        actorId,
       });
 
       expect(created.id).toBeDefined();
@@ -75,6 +88,21 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
       `;
       expect(dbRow.password_hash).toMatch(/^scrypt\$32768\$8\$1\$/);
       await expect(verifyPassword("LojaSenha2026", dbRow.password_hash)).resolves.toBe(true);
+
+      // Confirma gravação atômica da auditoria correspondente
+      const auditRows = await database().sql<{ action: string; metadata: unknown }[]>`
+        SELECT action, metadata FROM audit_events
+        WHERE entity_id = ${created.id} AND action = 'user_created';
+      `;
+      expect(auditRows.length).toBe(1);
+      const auditMeta = (
+        typeof auditRows[0].metadata === "string"
+          ? JSON.parse(auditRows[0].metadata)
+          : auditRows[0].metadata
+      ) as Record<string, unknown>;
+      expect(auditMeta.email).toBe(email);
+      expect(JSON.stringify(auditMeta)).not.toContain("LojaSenha2026");
+      expect(JSON.stringify(auditMeta)).not.toContain("password");
     });
 
     it("cria usuário COMPRADOR sem loja e permissões de comprador", async () => {
@@ -87,6 +115,7 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         permissions: ["compras:consolidado", "compras:custos"],
         password: "compras2026",
         passwordConfirmation: "compras2026",
+        actorId,
       });
 
       expect(created.role).toBe("COMPRADOR");
@@ -104,6 +133,7 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         permissions: ["compras:consolidado"],
         password: "senhaValida1",
         passwordConfirmation: "senhaValida1",
+        actorId,
       });
 
       // Tenta criar com maiúsculas
@@ -115,6 +145,7 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
           permissions: ["compras:consolidado"],
           password: "senhaValida1",
           passwordConfirmation: "senhaValida1",
+          actorId,
         })
       ).rejects.toThrow(/Já existe um usuário cadastrado com este e-mail/);
     });
@@ -130,6 +161,7 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
           permissions: ["pedidos:criar"],
           password: "senhaValida1",
           passwordConfirmation: "senhaValida1",
+          actorId,
         })
       ).rejects.toThrow(UserValidationError);
 
@@ -143,6 +175,7 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
           permissions: ["compras:consolidado"],
           password: "senhaValida1",
           passwordConfirmation: "senhaValida1",
+          actorId,
         })
       ).rejects.toThrow(UserValidationError);
     });
@@ -156,14 +189,15 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
           permissions: ["compras:consolidado"],
           password: "abc1",
           passwordConfirmation: "abc1",
+          actorId,
         })
       ).rejects.toThrow(/8 caracteres/);
     });
   });
 
-  describe("Edição de Usuários e Concorrência Otimista", () => {
-    it("edita usuário com sucesso quando expectedUpdatedAt coincide", async () => {
-      const email = `editar-${stamp}@example.com`;
+  describe("Edição de Usuários e Concorrência Otimista (CAS Real)", () => {
+    it("edição com watermark atual avança timestamp e reutilização do watermark antigo gera conflito", async () => {
+      const email = `cas-${stamp}@example.com`;
       const created = await createUser({
         name: "Nome Antes",
         email,
@@ -171,66 +205,82 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         permissions: ["compras:consolidado"],
         password: "senhaValida1",
         passwordConfirmation: "senhaValida1",
+        actorId,
       });
 
-      const { user: updated, previous } = await updateUser({
+      // 1. Edição com watermark atual → sucesso
+      const { user: updated1, previous } = await updateUser({
         id: created.id,
         name: "Nome Depois",
-        email: `editado-${stamp}@example.com`,
+        email: `cas-editado-${stamp}@example.com`,
         role: "COMPRADOR",
         permissions: ["compras:consolidado", "compras:custos"],
         active: true,
         expectedUpdatedAt: created.updatedAt,
+        actorId,
       });
 
       expect(previous.name).toBe("Nome Antes");
-      expect(updated.name).toBe("Nome Depois");
-      expect(updated.email).toBe(`editado-${stamp}@example.com`);
-      expect(updated.permissions).toEqual(["compras:consolidado", "compras:custos"]);
-      expect(new Date(updated.updatedAt).getTime()).toBeGreaterThanOrEqual(
+      expect(updated1.name).toBe("Nome Depois");
+      expect(updated1.email).toBe(`cas-editado-${stamp}@example.com`);
+      expect(new Date(updated1.updatedAt).getTime()).toBeGreaterThan(
         new Date(created.updatedAt).getTime()
       );
-    });
 
-    it("detecta conflito de concorrência e rejeita alteração quando expectedUpdatedAt é desatualizado", async () => {
-      const email = `concorrente-${stamp}@example.com`;
-      const created = await createUser({
-        name: "Original",
-        email,
-        role: "COMPRADOR",
-        permissions: ["compras:consolidado"],
-        password: "senhaValida1",
-        passwordConfirmation: "senhaValida1",
-      });
-
-      // Primeiro admin atualiza o usuário
-      await updateUser({
-        id: created.id,
-        name: "Alteração Admin A",
-        email,
-        role: "COMPRADOR",
-        permissions: ["compras:consolidado"],
-        active: true,
-        expectedUpdatedAt: created.updatedAt,
-      });
-
-      // Segundo admin tenta atualizar usando o timestamp antigo
+      // 2. Reutilização do watermark antigo → conflito (UserConflictError)
       await expect(
         updateUser({
           id: created.id,
-          name: "Alteração Admin B (Conflito)",
-          email,
+          name: "Tentativa com Watermark Antigo",
+          email: `cas-editado-${stamp}@example.com`,
           role: "COMPRADOR",
           permissions: ["compras:consolidado"],
           active: true,
-          expectedUpdatedAt: created.updatedAt, // Timestamp antigo!
+          expectedUpdatedAt: created.updatedAt, // Timestamp inicial defasado!
+          actorId,
         })
       ).rejects.toThrow(UserConflictError);
+
+      // 3. Duas alterações rápidas não deixam watermark reutilizável e avançam monotonicamente
+      const { user: updated2 } = await updateUser({
+        id: created.id,
+        name: "Nome Rápido 2",
+        email: `cas-editado-${stamp}@example.com`,
+        role: "COMPRADOR",
+        permissions: ["compras:consolidado"],
+        active: true,
+        expectedUpdatedAt: updated1.updatedAt,
+        actorId,
+      });
+
+      expect(new Date(updated2.updatedAt).getTime()).toBeGreaterThan(
+        new Date(updated1.updatedAt).getTime()
+      );
+
+      // 4. Nenhuma alteração obsoleta sobrescreve estado novo
+      await expect(
+        updateUser({
+          id: created.id,
+          name: "Tentativa Obsoleta",
+          email: `cas-editado-${stamp}@example.com`,
+          role: "COMPRADOR",
+          permissions: ["compras:consolidado"],
+          active: true,
+          expectedUpdatedAt: updated1.updatedAt, // Watermark intermediário obsoleto!
+          actorId,
+        })
+      ).rejects.toThrow(UserConflictError);
+
+      // Confirma que o estado final permaneceu o mais recente (updated2)
+      const [finalDb] = await database().sql<{ name: string }[]>`
+        SELECT name FROM users WHERE id = ${created.id}::uuid;
+      `;
+      expect(finalDb.name).toBe("Nome Rápido 2");
     });
   });
 
   describe("Sessões, Ativação, Inativação e Reset de Senha", () => {
-    it("inativação revoga imediatamente todas as sessões abertas do usuário", async () => {
+    it("inativação atômica revoga imediatamente todas as sessões abertas do usuário e grava auditoria", async () => {
       const email = `inativar-${stamp}@example.com`;
       const user = await createUser({
         name: "Usuario Para Inativar",
@@ -239,11 +289,12 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         permissions: ["compras:consolidado"],
         password: "senhaValida1",
         passwordConfirmation: "senhaValida1",
+        actorId,
       });
 
       // Cria sessões simuladas para o usuário
-      const token1 = "token-user-1";
-      const token2 = "token-user-2";
+      const token1 = `token-user-1-${stamp}`;
+      const token2 = `token-user-2-${stamp}`;
       const exp = sessionExpiries();
       await database().db.insert(sessions).values([
         { userId: user.id, tokenHash: hashToken(token1), ...exp },
@@ -255,6 +306,7 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         id: user.id,
         active: false,
         expectedUpdatedAt: user.updatedAt,
+        actorId,
       });
       expect(deactivated.active).toBe(false);
 
@@ -264,11 +316,19 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
       `;
       expect(activeSessions.length).toBe(0);
 
+      // Confirma gravação da auditoria correspondente
+      const auditDeact = await database().sql<{ action: string }[]>`
+        SELECT action FROM audit_events
+        WHERE entity_id = ${user.id} AND action = 'user_deactivated';
+      `;
+      expect(auditDeact.length).toBe(1);
+
       // Reativação do usuário não reativa sessões antigas
       const { user: reactivated } = await toggleUserActive({
         id: user.id,
         active: true,
         expectedUpdatedAt: deactivated.updatedAt,
+        actorId,
       });
       expect(reactivated.active).toBe(true);
 
@@ -278,7 +338,7 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
       expect(stillRevoked.length).toBe(0);
     });
 
-    it("reset de senha revoga todas as sessões do usuário alvo e preserva sessões de terceiros", async () => {
+    it("reset de senha revoga todas as sessões do usuário alvo, preserva sessões de terceiros e grava auditoria atômica", async () => {
       const emailTarget = `target-${stamp}@example.com`;
       const emailOther = `other-${stamp}@example.com`;
 
@@ -289,6 +349,7 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         permissions: ["compras:consolidado"],
         password: "senhaAntiga123",
         passwordConfirmation: "senhaAntiga123",
+        actorId,
       });
 
       const other = await createUser({
@@ -298,19 +359,22 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         permissions: ["compras:consolidado"],
         password: "senhaOutro123",
         passwordConfirmation: "senhaOutro123",
+        actorId,
       });
 
       const exp = sessionExpiries();
       await database().db.insert(sessions).values([
-        { userId: target.id, tokenHash: hashToken("target-token"), ...exp },
-        { userId: other.id, tokenHash: hashToken("other-token"), ...exp },
+        { userId: target.id, tokenHash: hashToken(`target-token-${stamp}`), ...exp },
+        { userId: other.id, tokenHash: hashToken(`other-token-${stamp}`), ...exp },
       ]);
 
-      // Executa reset de senha no target
+      // Executa reset de senha no target com expectedUpdatedAt
       await resetUserPassword({
         targetUserId: target.id,
         newPassword: "novaSenha456",
         passwordConfirmation: "novaSenha456",
+        actorId,
+        expectedUpdatedAt: target.updatedAt,
       });
 
       // Confirma que sessão do target foi revogada
@@ -331,14 +395,25 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
       `;
       await expect(verifyPassword("novaSenha456", updatedTarget.password_hash)).resolves.toBe(true);
       await expect(verifyPassword("senhaAntiga123", updatedTarget.password_hash)).resolves.toBe(false);
+
+      // Confirma auditoria sem vazar credenciais
+      const auditReset = await database().sql<{ action: string; metadata: unknown }[]>`
+        SELECT action, metadata FROM audit_events
+        WHERE entity_id = ${target.id} AND action = 'user_password_reset_by_admin';
+      `;
+      expect(auditReset.length).toBe(1);
+      const str = JSON.stringify(auditReset[0].metadata);
+      expect(str).not.toContain("novaSenha456");
+      expect(str).not.toContain("senhaAntiga123");
+      expect(str).not.toContain("password");
+      expect(str).not.toContain("hash");
     });
   });
 
-  describe("Proteção do Último Administrador (Transacional + Advisory Lock)", () => {
-    it("impede inativação do último administrador com gestor:usuarios", async () => {
-      // Cria um schema isolado para testar o cenário de último admin estrito
+  describe("Atomicidade e Rollback quando a Auditoria Falha", () => {
+    it("garante rollback completo da mutação se a inserção da auditoria falhar", async () => {
       const rootSql = postgres(process.env.DATABASE_URL!, { max: 1 });
-      const schemaName = `test_last_admin_${stamp}`;
+      const schemaName = `test_audit_rollback_${stamp}`;
       await rootSql.unsafe(`CREATE SCHEMA "${schemaName}"`);
       await rootSql.end();
 
@@ -350,57 +425,178 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         migrationsDirectory: path.resolve("migrations"),
       });
 
-      const isoSql = postgres(isolatedUrl.toString(), { max: 2 });
+      const isoClient = postgres(isolatedUrl.toString(), { max: 2 });
+      const isoDb = drizzle(isoClient, { schema });
+
       try {
-        // Insere exatamente UM admin ativo
-        const [singleAdmin] = await isoSql<{ id: string; updated_at: Date }[]>`
-          INSERT INTO users (email, name, password_hash, role, active, permissions)
-          VALUES ('solitario@example.com', 'Admin Solitário', 'dummy', 'GESTOR', true, ARRAY['gestor:usuarios']::text[])
-          RETURNING id, updated_at;
+        // Cria um trigger em audit_events que falha propositalmente
+        await isoClient.unsafe(`
+          CREATE OR REPLACE FUNCTION fail_audit_test() RETURNS trigger AS $$
+          BEGIN
+            RAISE EXCEPTION 'Simulated audit event failure for rollback test';
+          END;
+          $$ LANGUAGE plpgsql;
+
+          CREATE TRIGGER trigger_fail_audit
+          BEFORE INSERT ON "${schemaName}".audit_events
+          FOR EACH ROW EXECUTE FUNCTION fail_audit_test();
+        `);
+
+        // Insere ator no schema isolado para satisfazer a FK de audit_events
+        const [isoActor] = await isoClient<{ id: string }[]>`
+          INSERT INTO "${isoClient.unsafe(schemaName)}".users (email, name, password_hash, role, active, permissions)
+          VALUES ('isoactor@example.com', 'Iso Actor', 'dummy', 'GESTOR', true, ARRAY['gestor:usuarios']::text[])
+          RETURNING id;
         `;
 
-        // Testa proteção no nível transacional diretamente
+        const email = `fail-audit-${stamp}@example.com`;
+        let failureError: (Error & { cause?: { message?: string } }) | null = null;
+        try {
+          await createUser(
+            {
+              name: "Tentativa de Criação",
+              email,
+              role: "COMPRADOR",
+              permissions: ["compras:consolidado"],
+              password: "senhaValida123",
+              passwordConfirmation: "senhaValida123",
+              actorId: isoActor.id,
+            },
+            isoDb
+          );
+        } catch (err: unknown) {
+          failureError = err as Error & { cause?: { message?: string } };
+        }
+
+        expect(failureError).toBeDefined();
+        expect(`${failureError?.message ?? ""} ${failureError?.cause?.message ?? ""}`).toMatch(/audit/i);
+
+        // Confirma no banco que o usuário NÃO foi criado (rollback garantido!)
+        const checkUser = await isoClient<{ count: number }[]>`
+          SELECT count(*)::int as count FROM "${isoClient.unsafe(schemaName)}".users WHERE email = ${email};
+        `;
+        expect(Number(checkUser[0].count)).toBe(0);
+      } finally {
+        await isoClient.end();
+        const cleanupSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+        await cleanupSql.unsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+        await cleanupSql.end();
+      }
+    });
+  });
+
+  describe("Proteção Real do Último Administrador (Funções da Aplicação e Advisory Lock Real)", () => {
+    it("confirma que o advisory lock da aplicação está configurado", () => {
+      expect(USER_MANAGEMENT_ADVISORY_LOCK_ID).toBe(42424201);
+    });
+    it("Caso A: impede inativação do único administrador ativo via toggleUserActive real", async () => {
+      const rootSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+      const schemaName = `test_last_admin_a_${stamp}`;
+      await rootSql.unsafe(`CREATE SCHEMA "${schemaName}"`);
+      await rootSql.end();
+
+      const isolatedUrl = new URL(process.env.DATABASE_URL!);
+      isolatedUrl.searchParams.set("options", `-csearch_path=${schemaName},public`);
+
+      await runMigrations({
+        databaseUrl: isolatedUrl.toString(),
+        migrationsDirectory: path.resolve("migrations"),
+      });
+
+      const isoClient = postgres(isolatedUrl.toString(), { max: 2 });
+      const isoDb = drizzle(isoClient, { schema });
+
+      try {
+        // Insere exatamente UM admin ativo no schema isolado
+        const [singleAdmin] = await isoClient<{ id: string; updated_at: Date; email: string }[]>`
+          INSERT INTO "${isoClient.unsafe(schemaName)}".users (email, name, password_hash, role, active, permissions)
+          VALUES ('solitario@example.com', 'Admin Solitário', 'dummy', 'GESTOR', true, ARRAY['gestor:usuarios']::text[])
+          RETURNING id, updated_at, email;
+        `;
+
+        // Executa a função REAL toggleUserActive tentando inativar o único admin
         await expect(
-          isoSql.begin(async (tx) => {
-            await tx`SELECT pg_advisory_xact_lock(hashtext('user_management_mutation_lock'))`;
-            await tx`UPDATE users SET active = false WHERE id = ${singleAdmin.id}::uuid`;
-            const [{ count }] = await tx<[{ count: number }]>`
-              SELECT count(*)::int AS count FROM users WHERE active = true AND 'gestor:usuarios' = ANY(permissions);
-            `;
-            if (count < 1) {
-              throw new LastAdminProtectionError("Impossível remover último admin");
-            }
-          })
+          toggleUserActive(
+            {
+              id: singleAdmin.id,
+              active: false,
+              expectedUpdatedAt: singleAdmin.updated_at,
+              actorId: singleAdmin.id,
+            },
+            isoDb
+          )
         ).rejects.toThrow(LastAdminProtectionError);
 
         // Confirma que rollback ocorreu e o admin continua ativo
-        const [stillActive] = await isoSql<{ active: boolean }[]>`
-          SELECT active FROM users WHERE id = ${singleAdmin.id}::uuid;
+        const [stillActive] = await isoClient<{ active: boolean }[]>`
+          SELECT active FROM "${isoClient.unsafe(schemaName)}".users WHERE id = ${singleAdmin.id}::uuid;
         `;
         expect(stillActive.active).toBe(true);
-
-        // Testa proteção ao tentar remover a permissão gestor:usuarios
-        await expect(
-          isoSql.begin(async (tx) => {
-            await tx`SELECT pg_advisory_xact_lock(hashtext('user_management_mutation_lock'))`;
-            await tx`UPDATE users SET permissions = ARRAY['gestor:produtos']::text[] WHERE id = ${singleAdmin.id}::uuid`;
-            const [{ count }] = await tx<[{ count: number }]>`
-              SELECT count(*)::int AS count FROM users WHERE active = true AND 'gestor:usuarios' = ANY(permissions);
-            `;
-            if (count < 1) {
-              throw new LastAdminProtectionError("Impossível remover último admin");
-            }
-          })
-        ).rejects.toThrow(LastAdminProtectionError);
       } finally {
-        await isoSql.end();
+        await isoClient.end();
         const cleanupSql = postgres(process.env.DATABASE_URL!, { max: 1 });
         await cleanupSql.unsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
         await cleanupSql.end();
       }
     });
 
-    it("duas transações concorrentes não podem deixar o sistema sem administrador", async () => {
+    it("Caso B: impede remoção de gestor:usuarios do único administrador ativo via updateUser real", async () => {
+      const rootSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+      const schemaName = `test_last_admin_b_${stamp}`;
+      await rootSql.unsafe(`CREATE SCHEMA "${schemaName}"`);
+      await rootSql.end();
+
+      const isolatedUrl = new URL(process.env.DATABASE_URL!);
+      isolatedUrl.searchParams.set("options", `-csearch_path=${schemaName},public`);
+
+      await runMigrations({
+        databaseUrl: isolatedUrl.toString(),
+        migrationsDirectory: path.resolve("migrations"),
+      });
+
+      const isoClient = postgres(isolatedUrl.toString(), { max: 2 });
+      const isoDb = drizzle(isoClient, { schema });
+
+      try {
+        // Insere exatamente UM admin ativo
+        const [singleAdmin] = await isoClient<{ id: string; updated_at: Date; email: string }[]>`
+          INSERT INTO "${isoClient.unsafe(schemaName)}".users (email, name, password_hash, role, active, permissions)
+          VALUES ('solitario2@example.com', 'Admin Solitário 2', 'dummy', 'GESTOR', true, ARRAY['gestor:usuarios']::text[])
+          RETURNING id, updated_at, email;
+        `;
+
+        // Executa a função REAL updateUser tentando remover a permissão gestor:usuarios
+        await expect(
+          updateUser(
+            {
+              id: singleAdmin.id,
+              name: "Admin Solitário 2",
+              email: singleAdmin.email,
+              role: "GESTOR",
+              storeId: null,
+              permissions: ["gestor:produtos"], // Removendo gestor:usuarios!
+              active: true,
+              expectedUpdatedAt: singleAdmin.updated_at,
+              actorId: singleAdmin.id,
+            },
+            isoDb
+          )
+        ).rejects.toThrow(LastAdminProtectionError);
+
+        // Confirma que rollback ocorreu e o admin permanece com gestor:usuarios
+        const [stillHasPerm] = await isoClient<{ permissions: string[] }[]>`
+          SELECT permissions FROM "${isoClient.unsafe(schemaName)}".users WHERE id = ${singleAdmin.id}::uuid;
+        `;
+        expect(stillHasPerm.permissions).toContain("gestor:usuarios");
+      } finally {
+        await isoClient.end();
+        const cleanupSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+        await cleanupSql.unsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+        await cleanupSql.end();
+      }
+    });
+
+    it("Caso C: duas operações concorrentes reais não deixam o sistema sem administrador", async () => {
       const rootSql = postgres(process.env.DATABASE_URL!, { max: 1 });
       const schemaName = `test_concurrent_admin_${stamp}`;
       await rootSql.unsafe(`CREATE SCHEMA "${schemaName}"`);
@@ -415,35 +611,29 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
       });
 
       const client1 = postgres(isolatedUrl.toString(), { max: 1 });
+      const db1 = drizzle(client1, { schema });
       const client2 = postgres(isolatedUrl.toString(), { max: 1 });
+      const db2 = drizzle(client2, { schema });
 
       try {
         // Insere exatamente DOIS administradores ativos
-        const [admin1, admin2] = await client1<{ id: string }[]>`
-          INSERT INTO users (email, name, password_hash, role, active, permissions)
+        const [admin1, admin2] = await client1<{ id: string; updated_at: Date }[]>`
+          INSERT INTO "${client1.unsafe(schemaName)}".users (email, name, password_hash, role, active, permissions)
           VALUES ('admin1@example.com', 'Admin 1', 'dummy', 'GESTOR', true, ARRAY['gestor:usuarios']::text[]),
                  ('admin2@example.com', 'Admin 2', 'dummy', 'GESTOR', true, ARRAY['gestor:usuarios']::text[])
-          RETURNING id;
+          RETURNING id, updated_at;
         `;
 
-        // Função de mutação transacional com advisory lock
-        const inactivateUser = async (client: typeof client1, targetId: string) => {
-          return client.begin(async (tx) => {
-            await tx`SELECT pg_advisory_xact_lock(hashtext('user_management_mutation_lock'))`;
-            await tx`UPDATE users SET active = false WHERE id = ${targetId}::uuid`;
-            const [{ count }] = await tx<[{ count: number }]>`
-              SELECT count(*)::int AS count FROM users WHERE active = true AND 'gestor:usuarios' = ANY(permissions);
-            `;
-            if (count < 1) {
-              throw new LastAdminProtectionError("Impossível remover último admin");
-            }
-          });
-        };
-
-        // Dispara simultaneamente: client1 tenta inativar admin1 e client2 tenta inativar admin2
+        // Dispara simultaneamente as funções REAIS toggleUserActive através de conexões paralelas
         const [res1, res2] = await Promise.allSettled([
-          inactivateUser(client1, admin1.id),
-          inactivateUser(client2, admin2.id),
+          toggleUserActive(
+            { id: admin1.id, active: false, expectedUpdatedAt: admin1.updated_at, actorId: admin1.id },
+            db1
+          ),
+          toggleUserActive(
+            { id: admin2.id, active: false, expectedUpdatedAt: admin2.updated_at, actorId: admin2.id },
+            db2
+          ),
         ]);
 
         // Exatamente um deve ter sucesso e um deve ser rejeitado com LastAdminProtectionError
@@ -455,11 +645,12 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         expect(successes.length).toBe(1);
         expect(failures.length).toBe(1);
 
-        // Confirma no banco que resta exatamente 1 admin ativo
+        // Confirma no banco que resta obrigatoriamente count(active users with gestor:usuarios) >= 1
         const [{ remaining_count }] = await client1<[{ remaining_count: number }]>`
-          SELECT count(*)::int AS remaining_count FROM users WHERE active = true AND 'gestor:usuarios' = ANY(permissions);
+          SELECT count(*)::int AS remaining_count FROM "${client1.unsafe(schemaName)}".users
+          WHERE active = true AND 'gestor:usuarios' = ANY(permissions);
         `;
-        expect(remaining_count).toBe(1);
+        expect(remaining_count).toBeGreaterThanOrEqual(1);
       } finally {
         await client1.end();
         await client2.end();
