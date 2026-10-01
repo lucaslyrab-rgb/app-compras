@@ -28,15 +28,15 @@ describe("Roteamento operacional e prevenção de loops", () => {
       expect(hasOperationalRoute(user)).toBe(false);
     });
 
-    it("retorna null e false para usuário contendo exclusivamente gestor:usuarios", () => {
+    it("retorna /gestor/usuarios e true para usuário contendo exclusivamente gestor:usuarios", () => {
       const user: Principal = {
         userId: "u-user-admin",
         role: "GESTOR",
         storeId: null,
         permissions: ["gestor:usuarios"],
       };
-      expect(resolveOperationalRoute(user)).toBeNull();
-      expect(hasOperationalRoute(user)).toBe(false);
+      expect(resolveOperationalRoute(user)).toBe("/gestor/usuarios");
+      expect(hasOperationalRoute(user)).toBe(true);
     });
 
     it("retorna null para usuário com pedidos:criar sem storeId", () => {
@@ -136,7 +136,7 @@ describe("Roteamento operacional e prevenção de loops", () => {
       }
     });
 
-    it("redireciona para /sem-acesso quando possui apenas gestor:usuarios", async () => {
+    it("redireciona para /gestor/usuarios quando possui apenas gestor:usuarios", async () => {
       vi.spyOn(sessionModule, "requirePrincipal").mockResolvedValue({
         userId: "u-gestor-usuarios",
         role: "GESTOR",
@@ -150,8 +150,8 @@ describe("Roteamento operacional e prevenção de loops", () => {
       } catch (err: unknown) {
         const error = err as { message: string; digest: string };
         expect(error.message).toBe("NEXT_REDIRECT");
-        expect(error.digest).toContain("/sem-acesso");
-        expect(error.digest).not.toContain("/login");
+        expect(error.digest).toContain("/gestor/usuarios");
+        expect(error.digest).not.toContain("/sem-acesso");
       }
     });
   });
@@ -194,9 +194,9 @@ describe("Roteamento operacional e prevenção de loops", () => {
     it("garante término do fluxo sem repetição cíclica para usuário autenticado sem rota", async () => {
       const userWithoutRoutes: Principal = {
         userId: "u-no-routes",
-        role: "GESTOR",
+        role: "COMPRADOR",
         storeId: null,
-        permissions: ["gestor:usuarios"],
+        permissions: [],
       };
 
       vi.spyOn(sessionModule, "requirePrincipal").mockResolvedValue(userWithoutRoutes);

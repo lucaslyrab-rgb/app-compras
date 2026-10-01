@@ -74,6 +74,45 @@ export function canManageGestor(principal: Principal) {
   ]);
 }
 
+export const ROLE_DEFAULT_PERMISSIONS: Record<Role, readonly Permission[]> = {
+  LOJA: ["pedidos:criar", "pedidos:historico"],
+  COMPRADOR: ["compras:consolidado", "compras:custos"],
+  GESTOR: [
+    "compras:consolidado",
+    "compras:custos",
+    "gestor:produtos",
+    "gestor:precificacao",
+    "gestor:configuracoes",
+    "gestor:usuarios",
+  ],
+};
+
+export const PERMISSION_GROUPS = [
+  {
+    group: "Loja",
+    permissions: [
+      { id: "pedidos:criar", label: "Fazer pedidos" },
+      { id: "pedidos:historico", label: "Histórico da loja" },
+    ],
+  },
+  {
+    group: "Comprador",
+    permissions: [
+      { id: "compras:consolidado", label: "Consolidado" },
+      { id: "compras:custos", label: "Lançamento de custos" },
+    ],
+  },
+  {
+    group: "Gestor",
+    permissions: [
+      { id: "gestor:produtos", label: "Produtos" },
+      { id: "gestor:precificacao", label: "Precificação" },
+      { id: "gestor:configuracoes", label: "Configurações" },
+      { id: "gestor:usuarios", label: "Usuários" },
+    ],
+  },
+] as const;
+
 export function resolveOperationalRoute(principal: Principal): string | null {
   if (hasPermission(principal, "pedidos:criar") && Boolean(principal.storeId)) {
     return "/";
@@ -83,6 +122,7 @@ export function resolveOperationalRoute(principal: Principal): string | null {
   if (hasPermission(principal, "compras:custos")) return "/comprador/custos";
   if (hasPermission(principal, "gestor:precificacao")) return "/gestor/precificacao";
   if (hasPermission(principal, "gestor:configuracoes")) return "/gestor/configuracoes";
+  if (hasPermission(principal, "gestor:usuarios")) return "/gestor/usuarios";
   if (hasPermission(principal, "pedidos:historico") && Boolean(principal.storeId)) {
     return "/historico";
   }
@@ -109,6 +149,14 @@ export class AuthorizationError extends Error {
 
 export class UserValidationError extends Error {
   override name = "UserValidationError";
+}
+
+export class LastAdminProtectionError extends Error {
+  override name = "LastAdminProtectionError";
+}
+
+export class UserConflictError extends Error {
+  override name = "UserConflictError";
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -168,8 +216,48 @@ export function assertStoreUserInvariant(
   }
 }
 
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+export const PASSWORD_POLICY_MESSAGE =
+  "A senha deve ter pelo menos 8 caracteres e conter pelo menos uma letra e um número.";
+
+export function validatePassword(password: string): { valid: boolean; reason?: string } {
+  if (typeof password !== "string" || password.length < 8) {
+    return { valid: false, reason: PASSWORD_POLICY_MESSAGE };
+  }
+  const hasLetter = /[a-zA-Z]/.test(password) || /\p{L}/u.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  if (!hasLetter || !hasNumber) {
+    return { valid: false, reason: PASSWORD_POLICY_MESSAGE };
+  }
+  return { valid: true };
+}
+
+export function assertPassword(password: string): void {
+  const result = validatePassword(password);
+  if (!result.valid) {
+    throw new UserValidationError(result.reason ?? PASSWORD_POLICY_MESSAGE);
+  }
+}
+
+export function validatePasswordConfirmation(
+  password: string,
+  confirmation: string
+): { valid: boolean; reason?: string } {
+  if (password !== confirmation) {
+    return { valid: false, reason: "As senhas não coincidem." };
+  }
+  return { valid: true };
+}
+
 export async function hashPassword(password: string) {
-  if (password.length < 16) throw new Error("A senha deve ter pelo menos 16 caracteres");
+  assertPassword(password);
   const salt = randomBytes(16);
   const derived = await scrypt(password, salt, 64, { N: 32768, r: 8, p: 1 });
   return `scrypt$32768$8$1$${salt.toString("base64url")}$${derived.toString("base64url")}`;

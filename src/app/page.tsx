@@ -34,6 +34,7 @@ export default async function HomePage() {
   if (hasPermission(principal, "compras:custos")) redirect("/comprador/custos");
   if (hasPermission(principal, "gestor:precificacao")) redirect("/gestor/precificacao");
   if (hasPermission(principal, "gestor:configuracoes")) redirect("/gestor/configuracoes");
+  if (hasPermission(principal, "gestor:usuarios")) redirect("/gestor/usuarios");
   if (hasPermission(principal, "pedidos:historico") && principal.storeId) redirect("/historico");
 
   redirect("/sem-acesso");

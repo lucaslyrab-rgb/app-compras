@@ -19,7 +19,7 @@ export function LoginForm() {
       </div>
       <div className="field">
         <label htmlFor="password">Senha</label>
-        <input id="password" name="password" type="password" autoComplete="current-password" minLength={16} required />
+        <input id="password" name="password" type="password" autoComplete="current-password" minLength={8} required />
       </div>
       <button className="btn" type="submit" disabled={pending}>{pending ? "Entrando…" : "Entrar"}</button>
     </form>

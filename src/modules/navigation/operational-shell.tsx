@@ -17,6 +17,7 @@ const managerItems: (NavItem & { permission: Permission })[] = [
   { href: "/gestor/produtos", label: "Produtos", icon: "•", permission: "gestor:produtos" },
   { href: "/gestor/precificacao", label: "Precificação", icon: "•", permission: "gestor:precificacao" },
   { href: "/gestor/configuracoes", label: "Configurações", icon: "⚙", permission: "gestor:configuracoes" },
+  { href: "/gestor/usuarios", label: "Usuários", icon: "👤", permission: "gestor:usuarios" },
 ];
 
 function NavLink({ item, close }: { item: NavItem; close: () => void }) {

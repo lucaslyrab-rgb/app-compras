@@ -11,7 +11,7 @@ describe("identidade", () => {
   });
 
   it("recusa senha curta e formatos inválidos", async () => {
-    await expect(hashPassword("curta")).rejects.toThrow(/16 caracteres/);
+    await expect(hashPassword("curta")).rejects.toThrow(/8 caracteres/);
     await expect(verifyPassword("qualquer", "invalido")).resolves.toBe(false);
   });
 
