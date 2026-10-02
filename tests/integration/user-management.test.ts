@@ -1310,5 +1310,329 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
       expect(auth1 !== auth2).toBe(true);
       expect(auth1 || auth2).toBe(true);
     });
+
+    it("concorrência real: Minha senha × Reset administrativo com duas conexões independentes sob disputa do advisory lock", async () => {
+      const rootSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+      const schemaName = `test_conc_self_reset_${Date.now()}`;
+      await rootSql.unsafe(`CREATE SCHEMA "${schemaName}"`);
+      await rootSql.end();
+
+      const isolatedUrl = new URL(process.env.DATABASE_URL!);
+      isolatedUrl.searchParams.set("options", `-csearch_path=${schemaName},public`);
+
+      await runMigrations({
+        databaseUrl: isolatedUrl.toString(),
+        migrationsDirectory: path.resolve("migrations"),
+      });
+
+      const clientAdmin = postgres(isolatedUrl.toString(), { max: 1 });
+      const clientGate = postgres(isolatedUrl.toString(), { max: 1 });
+      const clientInspector = postgres(isolatedUrl.toString(), { max: 1 });
+      const client1 = postgres(isolatedUrl.toString(), { max: 1 });
+      const client2 = postgres(isolatedUrl.toString(), { max: 1 });
+
+      const db1 = drizzle(client1, { schema });
+      const db2 = drizzle(client2, { schema });
+
+      try {
+        await clientGate`SELECT 1`;
+        await clientInspector`SELECT 1`;
+        await client1`SELECT 1`;
+        await client2`SELECT 1`;
+        await clientAdmin`SELECT 1`;
+
+        const initialPwd = "SenhaOriginal123";
+        const initialHash = await hashPassword(initialPwd);
+        const [adminUser] = await clientAdmin<{ id: string }[]>`
+          INSERT INTO users (email, name, password_hash, role, active, permissions)
+          VALUES ('admin-conc-reset@example.com', 'Admin Reset', 'dummy', 'GESTOR', true, ARRAY['gestor:usuarios']::text[])
+          RETURNING id;
+        `;
+        const [targetUser] = await clientAdmin<{ id: string; updated_at: Date; email: string }[]>`
+          INSERT INTO users (email, name, password_hash, role, active, permissions)
+          VALUES ('target-conc-reset@example.com', 'Target Concurrency Reset', ${initialHash}, 'COMPRADOR', true, ARRAY['compras:consolidado']::text[])
+          RETURNING id, updated_at, email;
+        `;
+
+        const exp = sessionExpiries();
+        await clientAdmin`
+          INSERT INTO sessions (user_id, token_hash, idle_expires_at, absolute_expires_at, last_seen_at)
+          VALUES (${targetUser.id}::uuid, ${hashToken("tok-target-reset")}, ${exp.idleExpiresAt.toISOString()}::timestamptz, ${exp.absoluteExpiresAt.toISOString()}::timestamptz, now()),
+                 (${adminUser.id}::uuid, ${hashToken("tok-admin-reset")}, ${exp.idleExpiresAt.toISOString()}::timestamptz, ${exp.absoluteExpiresAt.toISOString()}::timestamptz, now());
+        `;
+
+        let releaseGate!: () => void;
+        const gatePromise = new Promise<void>((resolve) => {
+          releaseGate = resolve;
+        });
+
+        const gateTx = clientGate.begin(async (sqlGate) => {
+          await sqlGate`SELECT pg_advisory_xact_lock(${USER_MANAGEMENT_ADVISORY_LOCK_ID})`;
+          await gatePromise;
+        });
+
+        for (let i = 0; i < 50; i++) {
+          const rows = await clientInspector`
+            SELECT pid FROM pg_locks
+            WHERE locktype = 'advisory' AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID} AND granted = true;
+          `;
+          if (rows.length > 0) break;
+          await new Promise((r) => setTimeout(r, 20));
+        }
+
+        const p1 = changeOwnPassword(
+          {
+            userId: targetUser.id,
+            currentPassword: initialPwd,
+            newPassword: "NovaSenhaSelf123",
+            passwordConfirmation: "NovaSenhaSelf123",
+          },
+          db1
+        );
+
+        const p2 = resetUserPassword(
+          {
+            targetUserId: targetUser.id,
+            newPassword: "NovaSenhaAdmin456",
+            passwordConfirmation: "NovaSenhaAdmin456",
+            actorId: adminUser.id,
+            expectedUpdatedAt: targetUser.updated_at,
+          },
+          db2
+        );
+
+        let waiters = 0;
+        for (let i = 0; i < 100; i++) {
+          const rows = await clientInspector`
+            SELECT pid FROM pg_locks
+            WHERE locktype = 'advisory' AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID} AND granted = false;
+          `;
+          waiters = rows.length;
+          if (waiters >= 2) break;
+          await new Promise((r) => setTimeout(r, 20));
+        }
+        expect(waiters).toBe(2);
+
+        releaseGate();
+        await gateTx;
+
+        const [res1, res2] = await Promise.allSettled([p1, p2]);
+
+        const successes = [res1, res2].filter((r) => r.status === "fulfilled");
+        expect(successes.length).toBe(1);
+
+        const [dbUser] = await clientAdmin<{ password_hash: string; updated_at: Date }[]>`
+          SELECT password_hash, updated_at FROM users WHERE id = ${targetUser.id}::uuid;
+        `;
+
+        const isSelfPassword = await verifyPassword("NovaSenhaSelf123", dbUser.password_hash);
+        const isAdminPassword = await verifyPassword("NovaSenhaAdmin456", dbUser.password_hash);
+
+        const targetAudits = await clientAdmin<{ action: string }[]>`
+          SELECT action FROM audit_events WHERE entity_id = ${targetUser.id} ORDER BY created_at;
+        `;
+
+        if (res1.status === "fulfilled") {
+          expect(res2.status).toBe("rejected");
+          expect((res2 as PromiseRejectedResult).reason).toBeInstanceOf(UserConflictError);
+          expect(isSelfPassword).toBe(true);
+          expect(isAdminPassword).toBe(false);
+          expect(targetAudits.map((a) => a.action)).toEqual(["user_password_changed"]);
+        } else {
+          expect(res1.status).toBe("rejected");
+          expect((res1 as PromiseRejectedResult).reason).toBeInstanceOf(UserValidationError);
+          expect(((res1 as PromiseRejectedResult).reason as Error).message).toContain(
+            "A senha atual informada está incorreta."
+          );
+          expect(isAdminPassword).toBe(true);
+          expect(isSelfPassword).toBe(false);
+          expect(targetAudits.map((a) => a.action)).toEqual(["user_password_reset_by_admin"]);
+        }
+
+        const targetSessions = await clientAdmin<{ id: string; revoked_at: Date | null }[]>`
+          SELECT id, revoked_at FROM sessions WHERE user_id = ${targetUser.id}::uuid;
+        `;
+        expect(targetSessions.length).toBe(1);
+        expect(targetSessions[0].revoked_at).not.toBeNull();
+
+        const adminSessions = await clientAdmin<{ id: string; revoked_at: Date | null }[]>`
+          SELECT id, revoked_at FROM sessions WHERE user_id = ${adminUser.id}::uuid;
+        `;
+        expect(adminSessions.length).toBe(1);
+        expect(adminSessions[0].revoked_at).toBeNull();
+      } finally {
+        await clientGate.end();
+        await clientInspector.end();
+        await client1.end();
+        await client2.end();
+        await clientAdmin.end();
+        const cleanupSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+        await cleanupSql.unsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+        await cleanupSql.end();
+      }
+    });
+
+    it("concorrência real: Minha senha × Inativação com duas conexões independentes sob disputa do advisory lock", async () => {
+      const rootSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+      const schemaName = `test_conc_self_inact_${Date.now()}`;
+      await rootSql.unsafe(`CREATE SCHEMA "${schemaName}"`);
+      await rootSql.end();
+
+      const isolatedUrl = new URL(process.env.DATABASE_URL!);
+      isolatedUrl.searchParams.set("options", `-csearch_path=${schemaName},public`);
+
+      await runMigrations({
+        databaseUrl: isolatedUrl.toString(),
+        migrationsDirectory: path.resolve("migrations"),
+      });
+
+      const clientAdmin = postgres(isolatedUrl.toString(), { max: 1 });
+      const clientGate = postgres(isolatedUrl.toString(), { max: 1 });
+      const clientInspector = postgres(isolatedUrl.toString(), { max: 1 });
+      const client1 = postgres(isolatedUrl.toString(), { max: 1 });
+      const client2 = postgres(isolatedUrl.toString(), { max: 1 });
+
+      const db1 = drizzle(client1, { schema });
+      const db2 = drizzle(client2, { schema });
+
+      try {
+        await clientGate`SELECT 1`;
+        await clientInspector`SELECT 1`;
+        await client1`SELECT 1`;
+        await client2`SELECT 1`;
+        await clientAdmin`SELECT 1`;
+
+        const initialPwd = "SenhaOriginal123";
+        const initialHash = await hashPassword(initialPwd);
+        const [adminUser] = await clientAdmin<{ id: string }[]>`
+          INSERT INTO users (email, name, password_hash, role, active, permissions)
+          VALUES ('admin-conc-inact@example.com', 'Admin Inact', 'dummy', 'GESTOR', true, ARRAY['gestor:usuarios']::text[])
+          RETURNING id;
+        `;
+        const [targetUser] = await clientAdmin<{ id: string; updated_at: Date; email: string }[]>`
+          INSERT INTO users (email, name, password_hash, role, active, permissions)
+          VALUES ('target-conc-inact@example.com', 'Target Concurrency Inact', ${initialHash}, 'COMPRADOR', true, ARRAY['compras:consolidado']::text[])
+          RETURNING id, updated_at, email;
+        `;
+
+        const exp = sessionExpiries();
+        await clientAdmin`
+          INSERT INTO sessions (user_id, token_hash, idle_expires_at, absolute_expires_at, last_seen_at)
+          VALUES (${targetUser.id}::uuid, ${hashToken("tok-target-inact")}, ${exp.idleExpiresAt.toISOString()}::timestamptz, ${exp.absoluteExpiresAt.toISOString()}::timestamptz, now()),
+                 (${adminUser.id}::uuid, ${hashToken("tok-admin-inact")}, ${exp.idleExpiresAt.toISOString()}::timestamptz, ${exp.absoluteExpiresAt.toISOString()}::timestamptz, now());
+        `;
+
+        let releaseGate!: () => void;
+        const gatePromise = new Promise<void>((resolve) => {
+          releaseGate = resolve;
+        });
+
+        const gateTx = clientGate.begin(async (sqlGate) => {
+          await sqlGate`SELECT pg_advisory_xact_lock(${USER_MANAGEMENT_ADVISORY_LOCK_ID})`;
+          await gatePromise;
+        });
+
+        for (let i = 0; i < 50; i++) {
+          const rows = await clientInspector`
+            SELECT pid FROM pg_locks
+            WHERE locktype = 'advisory' AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID} AND granted = true;
+          `;
+          if (rows.length > 0) break;
+          await new Promise((r) => setTimeout(r, 20));
+        }
+
+        const p1 = changeOwnPassword(
+          {
+            userId: targetUser.id,
+            currentPassword: initialPwd,
+            newPassword: "NovaSenhaSelf789",
+            passwordConfirmation: "NovaSenhaSelf789",
+          },
+          db1
+        );
+
+        const p2 = toggleUserActive(
+          {
+            id: targetUser.id,
+            active: false,
+            expectedUpdatedAt: targetUser.updated_at,
+            actorId: adminUser.id,
+          },
+          db2
+        );
+
+        let waiters = 0;
+        for (let i = 0; i < 100; i++) {
+          const rows = await clientInspector`
+            SELECT pid FROM pg_locks
+            WHERE locktype = 'advisory' AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID} AND granted = false;
+          `;
+          waiters = rows.length;
+          if (waiters >= 2) break;
+          await new Promise((r) => setTimeout(r, 20));
+        }
+        expect(waiters).toBe(2);
+
+        releaseGate();
+        await gateTx;
+
+        const [res1, res2] = await Promise.allSettled([p1, p2]);
+
+        const successes = [res1, res2].filter((r) => r.status === "fulfilled");
+        expect(successes.length).toBe(1);
+
+        const [dbUser] = await clientAdmin<{ active: boolean; password_hash: string; updated_at: Date }[]>`
+          SELECT active, password_hash, updated_at FROM users WHERE id = ${targetUser.id}::uuid;
+        `;
+
+        const isSelfPassword = await verifyPassword("NovaSenhaSelf789", dbUser.password_hash);
+        const isOriginalPassword = await verifyPassword(initialPwd, dbUser.password_hash);
+
+        const targetAudits = await clientAdmin<{ action: string }[]>`
+          SELECT action FROM audit_events WHERE entity_id = ${targetUser.id} ORDER BY created_at;
+        `;
+
+        if (res1.status === "fulfilled") {
+          expect(res2.status).toBe("rejected");
+          expect((res2 as PromiseRejectedResult).reason).toBeInstanceOf(UserConflictError);
+          expect(dbUser.active).toBe(true);
+          expect(isSelfPassword).toBe(true);
+          expect(isOriginalPassword).toBe(false);
+          expect(targetAudits.map((a) => a.action)).toEqual(["user_password_changed"]);
+        } else {
+          expect(res2.status).toBe("fulfilled");
+          expect(res1.status).toBe("rejected");
+          expect((res1 as PromiseRejectedResult).reason).toBeInstanceOf(UserValidationError);
+          expect(((res1 as PromiseRejectedResult).reason as Error).message).toContain(
+            "Usuário inativo ou não autorizado."
+          );
+          expect(dbUser.active).toBe(false);
+          expect(isOriginalPassword).toBe(true);
+          expect(isSelfPassword).toBe(false);
+          expect(targetAudits.map((a) => a.action)).toEqual(["user_deactivated"]);
+        }
+
+        const targetSessions = await clientAdmin<{ id: string; revoked_at: Date | null }[]>`
+          SELECT id, revoked_at FROM sessions WHERE user_id = ${targetUser.id}::uuid;
+        `;
+        expect(targetSessions.length).toBe(1);
+        expect(targetSessions[0].revoked_at).not.toBeNull();
+
+        const adminSessions = await clientAdmin<{ id: string; revoked_at: Date | null }[]>`
+          SELECT id, revoked_at FROM sessions WHERE user_id = ${adminUser.id}::uuid;
+        `;
+        expect(adminSessions.length).toBe(1);
+        expect(adminSessions[0].revoked_at).toBeNull();
+      } finally {
+        await clientGate.end();
+        await clientInspector.end();
+        await client1.end();
+        await client2.end();
+        await clientAdmin.end();
+        const cleanupSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+        await cleanupSql.unsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+        await cleanupSql.end();
+      }
+    });
   });
 });
