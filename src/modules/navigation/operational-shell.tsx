@@ -75,9 +75,12 @@ export function OperationalShell({
             </details>
           ) : null}
         </nav>
-        <form action={logoutAction} className="ops-logout">
-          <button type="submit"><span aria-hidden="true">↪</span> Sair</button>
-        </form>
+        <div className="ops-sidebar-footer">
+          <NavLink item={{ href: "/minha-senha", label: "Minha senha", icon: "🔑" }} close={close} />
+          <form action={logoutAction} className="ops-logout">
+            <button type="submit"><span aria-hidden="true">↪</span> Sair</button>
+          </form>
+        </div>
       </aside>
       <div className="ops-content">{children}</div>
     </div>

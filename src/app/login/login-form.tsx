@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { loginAction } from "./actions";
 import Image from "next/image";
 
-export function LoginForm() {
+export function LoginForm({ changed }: { changed?: boolean }) {
   const [state, action, pending] = useActionState(loginAction, { error: undefined });
   return (
     <form action={action} className="panel stack" aria-describedby={state.error ? "login-error" : undefined}>
@@ -12,6 +12,11 @@ export function LoginForm() {
         <h1>Entrar no MultiShow FLV</h1>
         <p className="muted">Use as credenciais fornecidas pelo Gestor.</p>
       </div>
+      {changed ? (
+        <p className="success" role="status">
+          Senha alterada com sucesso. Entre novamente com sua nova senha.
+        </p>
+      ) : null}
       {state.error ? <p id="login-error" className="error" role="alert">{state.error}</p> : null}
       <div className="field">
         <label htmlFor="email">E-mail</label>

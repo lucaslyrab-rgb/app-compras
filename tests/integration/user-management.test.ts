@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runMigrations } from "../../scripts/migration-runner.mjs";
 import {
+  changeOwnPassword,
   createUser,
   updateUser,
   toggleUserActive,
@@ -944,6 +945,370 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
       const storesList = await listActiveStores();
       expect(storesList.length).toBeGreaterThanOrEqual(2);
       expect(storesList.some((s) => s.id === testStoreId)).toBe(true);
+    });
+  });
+
+  describe("Minha Senha (changeOwnPassword) - Integração no PostgreSQL", () => {
+    it("altera a própria senha com sucesso, revoga todas as sessões do próprio usuário, preserva as de outros e grava auditoria atômica", async () => {
+      const email = `self-pwd-${stamp}@example.com`;
+      const otherEmail = `other-user-${stamp}@example.com`;
+
+      const user = await createUser({
+        name: "Usuario Autoatendimento",
+        email,
+        role: "COMPRADOR",
+        permissions: ["compras:consolidado"],
+        password: "SenhaOriginal123",
+        passwordConfirmation: "SenhaOriginal123",
+        actorId,
+      });
+
+      const otherUser = await createUser({
+        name: "Outro Usuario",
+        email: otherEmail,
+        role: "LOJA",
+        storeId: testStoreId,
+        permissions: ["pedidos:criar", "pedidos:historico"],
+        password: "OutraSenhaOriginal123",
+        passwordConfirmation: "OutraSenhaOriginal123",
+        actorId,
+      });
+
+      // Cria 2 sessões ativas para o usuário alvo
+      const exp = sessionExpiries();
+      await database().db.insert(sessions).values([
+        { userId: user.id, tokenHash: hashToken(`token-s1-${stamp}`), ...exp },
+        { userId: user.id, tokenHash: hashToken(`token-s2-${stamp}`), ...exp },
+      ]);
+
+      // Cria 1 sessão ativa para o outro usuário
+      await database().db.insert(sessions).values([
+        { userId: otherUser.id, tokenHash: hashToken(`token-other-${stamp}`), ...exp },
+      ]);
+
+      const watermarkAntes = user.updatedAt;
+
+      // Executa alteração da própria senha
+      const res = await changeOwnPassword({
+        userId: user.id,
+        currentPassword: "SenhaOriginal123",
+        newPassword: "NovaSenha4567",
+        passwordConfirmation: "NovaSenha4567",
+      });
+
+      expect(res.userId).toBe(user.id);
+      expect(new Date(res.updatedAt).getTime()).toBeGreaterThan(new Date(watermarkAntes).getTime());
+
+      // 1. Confirma que senha antiga não autentica mais e nova senha autentica
+      const [u] = await database().sql<{ password_hash: string; updated_at: Date }[]>`
+        SELECT password_hash, updated_at FROM users WHERE id = ${user.id}::uuid;
+      `;
+      await expect(verifyPassword("SenhaOriginal123", u.password_hash)).resolves.toBe(false);
+      await expect(verifyPassword("NovaSenha4567", u.password_hash)).resolves.toBe(true);
+
+      // 2. Confirma que updated_at no banco avançou
+      expect(new Date(u.updated_at).getTime()).toBeGreaterThan(new Date(watermarkAntes).getTime());
+
+      // 3. Confirma que todas as sessões do próprio usuário foram revogadas
+      const activeUserSessions = await database().sql<{ id: string }[]>`
+        SELECT id FROM sessions WHERE user_id = ${user.id}::uuid AND revoked_at IS NULL;
+      `;
+      expect(activeUserSessions.length).toBe(0);
+
+      const revokedUserSessions = await database().sql<{ id: string }[]>`
+        SELECT id FROM sessions WHERE user_id = ${user.id}::uuid AND revoked_at IS NOT NULL;
+      `;
+      expect(revokedUserSessions.length).toBe(2);
+
+      // 4. Confirma que as sessões do outro usuário permanecem ativas
+      const activeOtherSessions = await database().sql<{ id: string }[]>`
+        SELECT id FROM sessions WHERE user_id = ${otherUser.id}::uuid AND revoked_at IS NULL;
+      `;
+      expect(activeOtherSessions.length).toBe(1);
+
+      // 5. Confirma auditoria sanitizada gravada atomicamente
+      const auditRows = await database().sql<
+        { actor_id: string; action: string; entity_type: string; entity_id: string; metadata: unknown }[]
+      >`
+        SELECT actor_id, action, entity_type, entity_id, metadata
+        FROM audit_events
+        WHERE entity_id = ${user.id} AND action = 'user_password_changed';
+      `;
+      expect(auditRows.length).toBe(1);
+      const audit = auditRows[0];
+      expect(audit.actor_id).toBe(user.id);
+      expect(audit.entity_type).toBe("user");
+      expect(audit.entity_id).toBe(user.id);
+
+      const metadataObj = typeof audit.metadata === "string" ? JSON.parse(audit.metadata) : audit.metadata;
+      expect(metadataObj).toEqual({ selfService: true, sessionsRevoked: true });
+
+      // Garante que nenhum segredo vazou para auditoria
+      const auditStr = JSON.stringify(audit);
+      expect(auditStr).not.toContain("SenhaOriginal123");
+      expect(auditStr).not.toContain("NovaSenha4567");
+      expect(auditStr).not.toContain("scrypt");
+      expect(auditStr).not.toContain("token-s1");
+    });
+
+    it("rejeita com UserValidationError quando a senha atual for incorreta e preserva estado integral (rollback)", async () => {
+      const email = `self-wrong-${stamp}@example.com`;
+      const user = await createUser({
+        name: "Usuario Senha Errada",
+        email,
+        role: "COMPRADOR",
+        permissions: ["compras:custos"],
+        password: "SenhaCorreta123",
+        passwordConfirmation: "SenhaCorreta123",
+        actorId,
+      });
+
+      const exp = sessionExpiries();
+      await database().db.insert(sessions).values([
+        { userId: user.id, tokenHash: hashToken(`token-wrong-${stamp}`), ...exp },
+      ]);
+
+      const watermarkAntes = user.updatedAt;
+
+      await expect(
+        changeOwnPassword({
+          userId: user.id,
+          currentPassword: "SenhaTotalmenteIncorreta999",
+          newPassword: "NovaSenha4567",
+          passwordConfirmation: "NovaSenha4567",
+        })
+      ).rejects.toThrow(new UserValidationError("A senha atual informada está incorreta."));
+
+      // Confirma que a senha original permanece inalterada
+      const [u] = await database().sql<{ password_hash: string; updated_at: Date }[]>`
+        SELECT password_hash, updated_at FROM users WHERE id = ${user.id}::uuid;
+      `;
+      await expect(verifyPassword("SenhaCorreta123", u.password_hash)).resolves.toBe(true);
+      await expect(verifyPassword("NovaSenha4567", u.password_hash)).resolves.toBe(false);
+      expect(new Date(u.updated_at).getTime()).toBe(new Date(watermarkAntes).getTime());
+
+      // Confirma que a sessão permanece ativa
+      const activeSessions = await database().sql<{ id: string }[]>`
+        SELECT id FROM sessions WHERE user_id = ${user.id}::uuid AND revoked_at IS NULL;
+      `;
+      expect(activeSessions.length).toBe(1);
+
+      // Confirma que nenhuma auditoria de user_password_changed foi gravada
+      const auditRows = await database().sql<{ id: string }[]>`
+        SELECT id FROM audit_events WHERE entity_id = ${user.id} AND action = 'user_password_changed';
+      `;
+      expect(auditRows.length).toBe(0);
+    });
+
+    it("rejeita tentativa de alteração de senha de usuário inativo", async () => {
+      const email = `self-inactive-${stamp}@example.com`;
+      const user = await createUser({
+        name: "Usuario Inativo",
+        email,
+        role: "COMPRADOR",
+        permissions: ["compras:custos"],
+        password: "SenhaCorreta123",
+        passwordConfirmation: "SenhaCorreta123",
+        actorId,
+      });
+
+      await toggleUserActive({
+        id: user.id,
+        active: false,
+        expectedUpdatedAt: user.updatedAt,
+        actorId,
+      });
+
+      await expect(
+        changeOwnPassword({
+          userId: user.id,
+          currentPassword: "SenhaCorreta123",
+          newPassword: "NovaSenha4567",
+          passwordConfirmation: "NovaSenha4567",
+        })
+      ).rejects.toThrow(new UserValidationError("Usuário inativo ou não autorizado."));
+    });
+
+    it("garante rollback completo de hash, updated_at e revogação se a inserção de auditoria falhar", async () => {
+      const rootSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+      const schemaName = `test_self_pwd_audit_fail_${Date.now()}`;
+      await rootSql.unsafe(`CREATE SCHEMA "${schemaName}"`);
+      await rootSql.end();
+
+      const isolatedUrl = new URL(process.env.DATABASE_URL!);
+      isolatedUrl.searchParams.set("options", `-csearch_path=${schemaName},public`);
+
+      await runMigrations({
+        databaseUrl: isolatedUrl.toString(),
+        migrationsDirectory: path.resolve("migrations"),
+      });
+
+      const isoClient = postgres(isolatedUrl.toString(), { max: 2 });
+      const isoDb = drizzle(isoClient, { schema });
+
+      try {
+        const initialPwd = "SenhaOriginal123";
+        const initialHash = await hashPassword(initialPwd);
+        const [targetUser] = await isoClient<{ id: string; updated_at: Date; password_hash: string }[]>`
+          INSERT INTO "${isoClient.unsafe(schemaName)}".users (email, name, password_hash, role, active, permissions)
+          VALUES ('fail-audit-self@example.com', 'Fail Audit Self User', ${initialHash}, 'COMPRADOR', true, ARRAY['compras:consolidado']::text[])
+          RETURNING id, updated_at, password_hash;
+        `;
+
+        const exp = sessionExpiries();
+        await isoClient`
+          INSERT INTO "${isoClient.unsafe(schemaName)}".sessions (user_id, token_hash, idle_expires_at, absolute_expires_at, last_seen_at)
+          VALUES (${targetUser.id}::uuid, ${hashToken("token-fail-self-pwd")}, ${exp.idleExpiresAt.toISOString()}::timestamptz, ${exp.absoluteExpiresAt.toISOString()}::timestamptz, now());
+        `;
+
+        // Instala trigger para simular falha na auditoria
+        await isoClient.unsafe(`
+          CREATE OR REPLACE FUNCTION fail_self_audit_trigger()
+          RETURNS trigger AS $$
+          BEGIN
+            IF NEW.action = 'user_password_changed' THEN
+              RAISE EXCEPTION 'simulated audit failure';
+            END IF;
+            RETURN NEW;
+          END;
+          $$ LANGUAGE plpgsql;
+
+          CREATE TRIGGER trg_fail_self_audit
+          BEFORE INSERT ON "${schemaName}".audit_events
+          FOR EACH ROW EXECUTE FUNCTION fail_self_audit_trigger();
+        `);
+
+        // Tenta changeOwnPassword
+        let failureError: (Error & { cause?: { message?: string } }) | null = null;
+        try {
+          await changeOwnPassword(
+            {
+              userId: targetUser.id,
+              currentPassword: initialPwd,
+              newPassword: "NovaSenha2026",
+              passwordConfirmation: "NovaSenha2026",
+            },
+            isoDb
+          );
+        } catch (err: unknown) {
+          failureError = err as Error & { cause?: { message?: string } };
+        }
+
+        expect(failureError).toBeDefined();
+        expect(`${failureError?.message ?? ""} ${failureError?.cause?.message ?? ""}`).toMatch(/simulated audit failure/i);
+
+        // Confirma que a senha NÃO foi alterada (rollback garantido!)
+        const [uAfter] = await isoClient<{ password_hash: string; updated_at: Date }[]>`
+          SELECT password_hash, updated_at FROM "${isoClient.unsafe(schemaName)}".users WHERE id = ${targetUser.id}::uuid;
+        `;
+        expect(uAfter.password_hash).toBe(initialHash);
+        await expect(verifyPassword(initialPwd, uAfter.password_hash)).resolves.toBe(true);
+        await expect(verifyPassword("NovaSenha2026", uAfter.password_hash)).resolves.toBe(false);
+        expect(new Date(uAfter.updated_at).getTime()).toBe(new Date(targetUser.updated_at).getTime());
+
+        // Confirma que a sessão NÃO foi revogada (continua ativa!)
+        const activeSessions = await isoClient<{ id: string }[]>`
+          SELECT id FROM "${isoClient.unsafe(schemaName)}".sessions WHERE user_id = ${targetUser.id}::uuid AND revoked_at IS NULL;
+        `;
+        expect(activeSessions.length).toBe(1);
+      } finally {
+        await isoClient.end();
+        const cleanupSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+        await cleanupSql.unsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+        await cleanupSql.end();
+      }
+    });
+
+    it("concorrência: alteração da própria senha avança updated_at e impede reset administrativo com watermark obsoleto", async () => {
+      const email = `self-vs-reset-${stamp}@example.com`;
+      const user = await createUser({
+        name: "Usuario Concorrencia Reset",
+        email,
+        role: "COMPRADOR",
+        permissions: ["compras:consolidado"],
+        password: "SenhaOriginal123",
+        passwordConfirmation: "SenhaOriginal123",
+        actorId,
+      });
+
+      const watermarkOriginal = user.updatedAt;
+
+      // Usuário altera a própria senha
+      await changeOwnPassword({
+        userId: user.id,
+        currentPassword: "SenhaOriginal123",
+        newPassword: "MinhaNovaSenha456",
+        passwordConfirmation: "MinhaNovaSenha456",
+      });
+
+      // Admin tenta reset administrativo usando watermarkOriginal que agora está obsoleto
+      await expect(
+        resetUserPassword({
+          targetUserId: user.id,
+          newPassword: "SenhaAdminNova789",
+          passwordConfirmation: "SenhaAdminNova789",
+          expectedUpdatedAt: watermarkOriginal,
+          actorId,
+        })
+      ).rejects.toThrow(UserConflictError);
+
+      // Confirma que a senha do usuário permaneceu "MinhaNovaSenha456"
+      const [u] = await database().sql<{ password_hash: string }[]>`
+        SELECT password_hash FROM users WHERE id = ${user.id}::uuid;
+      `;
+      await expect(verifyPassword("MinhaNovaSenha456", u.password_hash)).resolves.toBe(true);
+      await expect(verifyPassword("SenhaAdminNova789", u.password_hash)).resolves.toBe(false);
+    });
+
+    it("concorrência: duas sessões do mesmo usuário trocando senha simultaneamente garante que apenas uma completa e a segunda é rejeitada elegantemente", async () => {
+      const email = `self-two-sess-${stamp}@example.com`;
+      const user = await createUser({
+        name: "Usuario Duas Sessoes",
+        email,
+        role: "COMPRADOR",
+        permissions: ["compras:consolidado"],
+        password: "SenhaBase1234",
+        passwordConfirmation: "SenhaBase1234",
+        actorId,
+      });
+
+      // Ambas as chamadas usam a mesma senha atual "SenhaBase1234"
+      const p1 = changeOwnPassword({
+        userId: user.id,
+        currentPassword: "SenhaBase1234",
+        newPassword: "NovaSenhaSessao1",
+        passwordConfirmation: "NovaSenhaSessao1",
+      });
+
+      const p2 = changeOwnPassword({
+        userId: user.id,
+        currentPassword: "SenhaBase1234",
+        newPassword: "NovaSenhaSessao2",
+        passwordConfirmation: "NovaSenhaSessao2",
+      });
+
+      const [res1, res2] = await Promise.allSettled([p1, p2]);
+
+      const successes = [res1, res2].filter((r) => r.status === "fulfilled");
+      const failures = [res1, res2].filter(
+        (r) =>
+          r.status === "rejected" &&
+          r.reason instanceof UserValidationError &&
+          r.reason.message.includes("A senha atual informada está incorreta")
+      );
+
+      // Exatamente uma teve sucesso e a outra falhou porque a senha atual mudou sob lock
+      expect(successes.length).toBe(1);
+      expect(failures.length).toBe(1);
+
+      // Confirma consistência no banco: exatamente uma das duas novas senhas está gravada
+      const [u] = await database().sql<{ password_hash: string }[]>`
+        SELECT password_hash FROM users WHERE id = ${user.id}::uuid;
+      `;
+      const auth1 = await verifyPassword("NovaSenhaSessao1", u.password_hash);
+      const auth2 = await verifyPassword("NovaSenhaSessao2", u.password_hash);
+      expect(auth1 !== auth2).toBe(true);
+      expect(auth1 || auth2).toBe(true);
     });
   });
 });

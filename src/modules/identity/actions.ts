@@ -1,9 +1,17 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { currentPrincipal } from "./session";
-import { hasPermission, LastAdminProtectionError, UserConflictError, UserValidationError } from "./domain";
+import { currentPrincipal, SESSION_COOKIE } from "./session";
 import {
+  hasPermission,
+  LastAdminProtectionError,
+  UserConflictError,
+  UserValidationError,
+  validateChangeOwnPasswordInput,
+} from "./domain";
+import {
+  changeOwnPassword,
   createUser,
   updateUser,
   toggleUserActive,
@@ -138,5 +146,49 @@ export async function resetUserPasswordAction(input: Omit<ResetUserPasswordInput
     }
     log("error", "Falha ao resetar senha do usuário", { error: error instanceof Error ? error.message : "unknown" });
     return { status: "error" as const, message: "Não foi possível redefinir a senha do usuário." };
+  }
+}
+
+export async function changeOwnPasswordAction(input: {
+  currentPassword: string;
+  newPassword: string;
+  passwordConfirmation: string;
+}) {
+  const principal = await currentPrincipal();
+  if (!principal) {
+    return { status: "error" as const, message: "Acesso negado: usuário não autenticado." };
+  }
+
+  const validation = validateChangeOwnPasswordInput(input);
+  if (!validation.valid) {
+    return { status: "error" as const, message: validation.reason ?? "Dados inválidos." };
+  }
+
+  try {
+    await changeOwnPassword({
+      userId: principal.userId,
+      currentPassword: input.currentPassword,
+      newPassword: input.newPassword,
+      passwordConfirmation: input.passwordConfirmation,
+    });
+
+    const cookieStore = await cookies();
+    cookieStore.delete(SESSION_COOKIE);
+
+    revalidatePath("/");
+    revalidatePath("/gestor/usuarios");
+
+    return { status: "success" as const };
+  } catch (error) {
+    if (error instanceof UserValidationError) {
+      return { status: "error" as const, message: error.message };
+    }
+    log("error", "Falha ao alterar a própria senha", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+    return {
+      status: "error" as const,
+      message: "Não foi possível alterar sua senha. Tente novamente.",
+    };
   }
 }

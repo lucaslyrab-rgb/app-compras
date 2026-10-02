@@ -3,6 +3,7 @@ import { database } from "@/db/client";
 import { sessions, stores, users } from "@/db/schema";
 import { recordAudit } from "./audit";
 import {
+  assertChangeOwnPasswordInput,
   assertPassword,
   assertStoreUserInvariant,
   createSessionToken,
@@ -16,6 +17,7 @@ import {
   UserConflictError,
   UserValidationError,
   verifyPassword,
+  type ChangeOwnPasswordInput,
   type Permission,
   type Principal,
   type Role,
@@ -640,6 +642,92 @@ export async function resetUserPassword(
       targetUserId: target.id,
       targetEmail: target.email,
       updatedAt: target.updatedAt.toISOString(),
+    };
+  });
+}
+
+export async function changeOwnPassword(
+  input: ChangeOwnPasswordInput,
+  dbClient: ReturnType<typeof database>["db"] = database().db
+): Promise<{
+  userId: string;
+  updatedAt: string;
+}> {
+  if (!input.userId || typeof input.userId !== "string") {
+    throw new UserValidationError("Identificador de usuário inválido.");
+  }
+
+  assertChangeOwnPasswordInput({
+    currentPassword: input.currentPassword,
+    newPassword: input.newPassword,
+    passwordConfirmation: input.passwordConfirmation,
+  });
+
+  const newHash = await hashPassword(input.newPassword);
+
+  return dbClient.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${USER_MANAGEMENT_ADVISORY_LOCK_ID});`);
+
+    const [user] = await tx
+      .select({
+        id: users.id,
+        passwordHash: users.passwordHash,
+        active: users.active,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .for("update");
+
+    if (!user) {
+      throw new UserValidationError("Usuário não encontrado.");
+    }
+    if (!user.active) {
+      throw new UserValidationError("Usuário inativo ou não autorizado.");
+    }
+
+    const isCurrentValid = await verifyPassword(input.currentPassword, user.passwordHash);
+    if (!isCurrentValid) {
+      throw new UserValidationError("A senha atual informada está incorreta.");
+    }
+
+    const updatedRows = await tx
+      .update(users)
+      .set({
+        passwordHash: newHash,
+        updatedAt: sql`date_trunc('milliseconds', GREATEST(clock_timestamp(), ${users.updatedAt} + INTERVAL '1 millisecond'))`,
+      })
+      .where(eq(users.id, input.userId))
+      .returning({ id: users.id, updatedAt: users.updatedAt });
+
+    if (updatedRows.length === 0) {
+      throw new UserValidationError("Não foi possível atualizar o usuário.");
+    }
+
+    const updatedUser = updatedRows[0];
+
+    await tx
+      .update(sessions)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(sessions.userId, input.userId), isNull(sessions.revokedAt)));
+
+    await recordAudit(
+      {
+        actorId: input.userId,
+        action: "user_password_changed",
+        entityType: "user",
+        entityId: input.userId,
+        metadata: {
+          selfService: true,
+          sessionsRevoked: true,
+        },
+      },
+      tx
+    );
+
+    return {
+      userId: updatedUser.id,
+      updatedAt: updatedUser.updatedAt.toISOString(),
     };
   });
 }

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/login/actions";
 import { hasOperationalRoute } from "@/modules/identity";
@@ -70,20 +71,36 @@ export default async function SemAcessoPage() {
           acessar nenhuma área operacional do sistema. Entre em contato com um
           administrador.
         </p>
-        <form action={logoutAction}>
-          <button
-            type="submit"
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <Link
+            href="/minha-senha"
             className="btn btn--secondary"
             style={{
               width: "100%",
               padding: "0.75rem",
               fontWeight: 600,
-              cursor: "pointer",
+              textAlign: "center",
+              textDecoration: "none",
+              display: "block",
             }}
           >
-            Sair da conta
-          </button>
-        </form>
+            Minha senha
+          </Link>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="btn btn--secondary"
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Sair da conta
+            </button>
+          </form>
+        </div>
       </div>
     </main>
   );

@@ -288,3 +288,42 @@ export function sessionExpiries(now = new Date()) {
     absoluteExpiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
   };
 }
+
+export type ChangeOwnPasswordInput = {
+  userId: string;
+  currentPassword: string;
+  newPassword: string;
+  passwordConfirmation: string;
+};
+
+export function validateChangeOwnPasswordInput(
+  input: Omit<ChangeOwnPasswordInput, "userId">
+): { valid: boolean; reason?: string } {
+  if (!input.currentPassword || typeof input.currentPassword !== "string") {
+    return { valid: false, reason: "Informe a senha atual." };
+  }
+  if (!input.newPassword || typeof input.newPassword !== "string") {
+    return { valid: false, reason: "Informe a nova senha." };
+  }
+  const confirmationResult = validatePasswordConfirmation(input.newPassword, input.passwordConfirmation);
+  if (!confirmationResult.valid) {
+    return confirmationResult;
+  }
+  const policyResult = validatePassword(input.newPassword);
+  if (!policyResult.valid) {
+    return policyResult;
+  }
+  if (input.currentPassword === input.newPassword) {
+    return { valid: false, reason: "A nova senha deve ser diferente da senha atual." };
+  }
+  return { valid: true };
+}
+
+export function assertChangeOwnPasswordInput(
+  input: Omit<ChangeOwnPasswordInput, "userId">
+): void {
+  const result = validateChangeOwnPasswordInput(input);
+  if (!result.valid) {
+    throw new UserValidationError(result.reason ?? "Dados de alteração de senha inválidos.");
+  }
+}
