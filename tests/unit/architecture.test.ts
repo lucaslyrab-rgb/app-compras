@@ -146,4 +146,19 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(managerStyles).toMatch(/@media \(min-width: 1181px\)[\s\S]*position: sticky/);
     expect(shellStyles).not.toContain("brightness(0) invert(1)");
   });
+
+  it("mantém o painel de produtos sticky no desktop e a tabela de produtos compacta", async () => {
+    const [productWorkspace, managerStyles] = await Promise.all([
+      readFile("src/modules/pricing/parameters/product-workspace.tsx", "utf8"),
+      readFile("src/app/gestor/styles.css", "utf8"),
+    ]);
+    expect(productWorkspace).toContain('className="manager-two-column product-columns"');
+    expect(productWorkspace).toContain('className="manager-table manager-product-table"');
+    expect(managerStyles).toMatch(
+      /\.product-columns\s*>\s*\.manager-editor[\s\S]*?position:\s*sticky[\s\S]*?top:\s*18px[\s\S]*?overflow-y:\s*auto/,
+    );
+    expect(managerStyles).toMatch(/\.manager-product-table\s+th,\s*\.manager-product-table\s+td[\s\S]*?padding:\s*5px\s+6px/);
+    expect(managerStyles).toMatch(/\.manager-product-table\s+\.manager-icon-button[\s\S]*?height:\s*26px/);
+    expect(managerStyles).toMatch(/\.manager-product-table\s+\.manager-status-button[\s\S]*?height:\s*26px/);
+  });
 });
