@@ -39,7 +39,12 @@ jobs:
       - run: npm run db:import-products
       - run: npm run test:integration
       - run: npm run build
-      - run: npm audit --audit-level=high
+      # Exceção temporária: docs/operacao/excecoes-seguranca-dependencias.md
+      - name: Full dependency audit (GHSA-vfj7-8cjw-p6xm visibility)
+        continue-on-error: true
+        run: npm audit --audit-level=high
+      - name: Audit production dependencies (blocking)
+        run: npm audit --omit=dev --audit-level=high
       - name: Scan repository for secrets
         shell: bash
         run: |
