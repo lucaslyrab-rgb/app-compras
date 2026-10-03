@@ -48,6 +48,13 @@ export function filterReportItems<T extends { quantity: number | string }>(items
   return items.filter((item) => Number(item.quantity) > 0);
 }
 
+export const ORDER_PRINT_TWO_COLUMN_THRESHOLD = 15;
+
+export function splitReportItems<T>(items: T[]): [T[], T[]] {
+  const mid = Math.ceil(items.length / 2);
+  return [items.slice(0, mid), items.slice(mid)];
+}
+
 export function sortReportItems<T extends { name: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 }
