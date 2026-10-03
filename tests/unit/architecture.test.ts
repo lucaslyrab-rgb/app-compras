@@ -1,7 +1,10 @@
 import { readdir, readFile, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { ProductPhoto } from "../../src/components/product-photo";
 import { discoverMigrations } from "../../scripts/migration-runner.mjs";
 
 describe("arquitetura e isolamento de módulos", () => {
@@ -168,10 +171,61 @@ describe("arquitetura e isolamento de módulos", () => {
       readFile("src/modules/pricing/parameters/product-editor.tsx", "utf8"),
       readFile("src/app/gestor/styles.css", "utf8"),
     ]);
+
+    // Contratos de código fonte
+    expect(productPhotoComponent).toContain('variant?: ProductPhotoVariant');
     expect(productPhotoComponent).toContain('fit?: "cover" | "contain"');
-    expect(productPhotoComponent).toContain('fit = "cover"');
-    expect(productPhotoComponent).toContain("objectFit: fit");
+    expect(productPhotoComponent).toContain('variant = "thumb"');
+    expect(productEditor).toContain('variant="preview"');
     expect(productEditor).toContain('fit="contain"');
-    expect(managerStyles).toMatch(/\.manager-photo-preview-wrap\s+img[\s\S]*?object-fit:\s*contain/);
+    expect(managerStyles).toMatch(/\.manager-photo-preview-wrap\s+img[\s\S]*?object-fit:\s*contain\s*!important/);
+    expect(managerStyles).toMatch(/\.manager-photo-preview-wrap\s+img[\s\S]*?width:\s*100%\s*!important/);
+
+    // Estrutura DOM renderizada: Preview (sem crop, 100% responsivo, contain, sem px fixo inline)
+    const previewHtml = renderToStaticMarkup(
+      React.createElement(ProductPhoto, {
+        productId: "5fbccc06-83e3-47ca-bbab-4701811eeedc",
+        photoKey: "test-photo-key",
+        productName: "ABACAXI UN",
+        size: "xl",
+        variant: "preview",
+        fit: "contain",
+      }),
+    );
+    expect(previewHtml).toContain("product-photo-img--preview");
+    expect(previewHtml).toContain("object-fit:contain");
+    expect(previewHtml).toContain("object-position:center");
+    expect(previewHtml).toContain("width:100%");
+    expect(previewHtml).toContain("height:100%");
+    expect(previewHtml).not.toContain("width:120px");
+    expect(previewHtml).not.toContain("aspect-ratio");
+
+    // Estrutura DOM renderizada: Placeholder de preview
+    const previewPlaceholderHtml = renderToStaticMarkup(
+      React.createElement(ProductPhoto, {
+        productName: "PRODUTO SEM FOTO",
+        variant: "preview",
+      }),
+    );
+    expect(previewPlaceholderHtml).toContain("product-photo-placeholder--preview");
+    expect(previewPlaceholderHtml).toContain("width:55%");
+    expect(previewPlaceholderHtml).toContain("height:55%");
+
+    // Estrutura DOM renderizada: Thumbnail de lista/tabela/precificação (preserva 100% cover e tamanho fixo)
+    const thumbHtml = renderToStaticMarkup(
+      React.createElement(ProductPhoto, {
+        productId: "5fbccc06-83e3-47ca-bbab-4701811eeedc",
+        photoKey: "test-photo-key",
+        productName: "ABACAXI UN",
+        size: 36,
+        thumbnailClassName: "manager-photo-thumb",
+      }),
+    );
+    expect(thumbHtml).toContain('class="manager-photo-thumb"');
+    expect(thumbHtml).toContain("object-fit:cover");
+    expect(thumbHtml).toContain("width:36px");
+    expect(thumbHtml).toContain("height:36px");
+    expect(thumbHtml).toContain("aspect-ratio:1 / 1");
+    expect(thumbHtml).not.toContain("product-photo-img--preview");
   });
 });

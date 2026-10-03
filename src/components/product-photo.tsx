@@ -2,6 +2,8 @@ import Image from "next/image";
 
 export type ProductPhotoSize = "sm" | "md" | "lg" | "xl" | number;
 
+export type ProductPhotoVariant = "thumb" | "preview";
+
 export type ProductPhotoProps = {
   productId?: string;
   name?: string;
@@ -17,6 +19,8 @@ export type ProductPhotoProps = {
   alt?: string;
   priority?: boolean;
   fit?: "cover" | "contain";
+  variant?: ProductPhotoVariant;
+  style?: React.CSSProperties;
 };
 
 function resolveDimensions(size?: ProductPhotoSize, width?: number, height?: number): { w: number; h: number } {
@@ -50,10 +54,14 @@ export function ProductPhoto({
   thumbnailClassName,
   alt,
   priority = false,
-  fit = "cover",
+  fit,
+  variant = "thumb",
+  style,
 }: ProductPhotoProps) {
   const displayName = name || productName || "Produto";
   const { w, h } = resolveDimensions(size, width, height);
+  const isPreview = variant === "preview";
+  const resolvedFit = fit ?? (isPreview ? "contain" : "cover");
 
   let src: string | null = null;
 
@@ -73,6 +81,42 @@ export function ProductPhoto({
     src = imageUrl;
   }
 
+  const imageStyle: React.CSSProperties = isPreview
+    ? {
+        objectFit: resolvedFit,
+        objectPosition: "center",
+        width: "100%",
+        height: "100%",
+        maxWidth: "100%",
+        maxHeight: "100%",
+        ...style,
+      }
+    : {
+        objectFit: resolvedFit,
+        width: `${w}px`,
+        height: `${h}px`,
+        aspectRatio: "1 / 1",
+        ...style,
+      };
+
+  const svgStyle: React.CSSProperties = isPreview
+    ? {
+        width: "55%",
+        height: "55%",
+        maxWidth: "100%",
+        maxHeight: "100%",
+        ...style,
+      }
+    : {
+        width: `${w}px`,
+        height: `${h}px`,
+        aspectRatio: "1 / 1",
+        ...style,
+      };
+
+  const imgClassName = `product-photo-img ${isPreview ? "product-photo-img--preview " : ""}${className}`.trim();
+  const svgClassName = `product-photo-placeholder ${isPreview ? "product-photo-placeholder--preview " : ""}${className}`.trim();
+
   const content = src ? (
     <Image
       src={src}
@@ -81,13 +125,8 @@ export function ProductPhoto({
       height={h}
       unoptimized
       priority={priority}
-      className={`product-photo-img ${className}`}
-      style={{
-        objectFit: fit,
-        width: `${w}px`,
-        height: `${h}px`,
-        aspectRatio: "1 / 1",
-      }}
+      className={imgClassName}
+      style={imageStyle}
     />
   ) : (
     <svg
@@ -97,12 +136,8 @@ export function ProductPhoto({
       strokeWidth="1.5"
       focusable="false"
       aria-hidden="true"
-      className={`product-photo-placeholder ${className}`}
-      style={{
-        width: `${w}px`,
-        height: `${h}px`,
-        aspectRatio: "1 / 1",
-      }}
+      className={svgClassName}
+      style={svgStyle}
     >
       <rect x="3" y="3" width="18" height="18" rx="3" />
       <circle cx="8" cy="8" r="1.5" />
