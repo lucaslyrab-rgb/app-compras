@@ -16,6 +16,7 @@ export type ProductPhotoProps = {
   thumbnailClassName?: string;
   alt?: string;
   priority?: boolean;
+  fit?: "cover" | "contain";
 };
 
 function resolveDimensions(size?: ProductPhotoSize, width?: number, height?: number): { w: number; h: number } {
@@ -49,6 +50,7 @@ export function ProductPhoto({
   thumbnailClassName,
   alt,
   priority = false,
+  fit = "cover",
 }: ProductPhotoProps) {
   const displayName = name || productName || "Produto";
   const { w, h } = resolveDimensions(size, width, height);
@@ -81,7 +83,7 @@ export function ProductPhoto({
       priority={priority}
       className={`product-photo-img ${className}`}
       style={{
-        objectFit: "cover",
+        objectFit: fit,
         width: `${w}px`,
         height: `${h}px`,
         aspectRatio: "1 / 1",

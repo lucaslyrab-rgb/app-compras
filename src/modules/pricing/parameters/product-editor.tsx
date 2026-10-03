@@ -323,6 +323,7 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
                 photoUpdatedAt={photoUpdatedAt}
                 productName={product.name}
                 size="xl"
+                fit="contain"
               />
             </div>
             <div className="manager-photo-controls">

@@ -326,149 +326,155 @@
   .product-columns > .manager-editor,
   .manager-two-column > .manager-editor {
     position: sticky;
-    top: 18px;
-    max-height: calc(100vh - 36px);
+    top: 14px;
+    max-height: calc(100vh - 28px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 10px;
+    padding: 8px 10px;
   }
   .product-columns > .manager-editor .manager-editor__title,
   .manager-two-column > .manager-editor .manager-editor__title {
     gap: 8px;
-    margin-bottom: 8px;
-    padding: 8px 10px;
+    margin-bottom: 6px;
+    padding: 6px 8px;
   }
   .product-columns > .manager-editor .manager-placeholder,
   .product-columns > .manager-editor .manager-photo-thumb,
   .manager-two-column > .manager-editor .manager-placeholder,
   .manager-two-column > .manager-editor .manager-photo-thumb {
-    width: 36px;
-    height: 36px;
-    flex-basis: 36px;
-    font-size: 1.1rem;
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    font-size: 1rem;
   }
   .product-columns > .manager-editor .manager-product-identity,
   .manager-two-column > .manager-editor .manager-product-identity {
-    gap: 8px;
+    gap: 7px;
   }
   .product-columns > .manager-editor .manager-product-identity h2,
   .manager-two-column > .manager-editor .manager-product-identity h2 {
-    font-size: .98rem;
+    font-size: .92rem;
   }
   .product-columns > .manager-editor .manager-product-identity p,
   .manager-two-column > .manager-editor .manager-product-identity p {
-    margin-top: 2px;
-    font-size: .72rem;
+    margin-top: 1px;
+    font-size: .69rem;
   }
   .product-columns > .manager-editor .manager-badge,
   .manager-two-column > .manager-editor .manager-badge {
-    padding: 3px 6px;
-    font-size: .64rem;
+    padding: 2px 5px;
+    font-size: .62rem;
   }
   .product-columns > .manager-editor .manager-form,
   .manager-two-column > .manager-editor .manager-form {
-    gap: 10px;
+    gap: 6px;
   }
   .product-columns > .manager-editor .manager-form-section,
   .manager-two-column > .manager-editor .manager-form-section {
-    gap: 8px;
-    padding: 9px 10px;
+    gap: 6px;
+    padding: 6px 9px;
   }
   .product-columns > .manager-editor .manager-form-section > legend,
   .manager-two-column > .manager-editor .manager-form-section > legend {
-    font-size: .76rem;
+    font-size: .74rem;
   }
   .product-columns > .manager-editor .manager-form-section > label,
   .product-columns > .manager-editor .manager-form-grid label,
   .manager-two-column > .manager-editor .manager-form-section > label,
   .manager-two-column > .manager-editor .manager-form-grid label {
-    gap: 4px;
-    font-size: .74rem;
+    gap: 2px;
+    font-size: .72rem;
   }
   .product-columns > .manager-editor .manager-form-grid,
   .manager-two-column > .manager-editor .manager-form-grid {
-    gap: 8px;
+    gap: 6px;
   }
   .product-columns > .manager-editor .manager-form input,
   .manager-two-column > .manager-editor .manager-form input {
-    min-height: 36px;
-    padding: 6px 9px;
-    font-size: .84rem;
+    min-height: 32px;
+    padding: 4px 8px;
+    font-size: .81rem;
   }
   .product-columns > .manager-editor .manager-input-group em,
   .manager-two-column > .manager-editor .manager-input-group em {
-    min-width: 40px;
-    min-height: 36px;
-    padding: 6px 8px;
-    font-size: .78rem;
+    min-width: 36px;
+    min-height: 32px;
+    padding: 4px 6px;
+    font-size: .75rem;
   }
   .product-columns > .manager-editor .manager-margin-options,
   .manager-two-column > .manager-editor .manager-margin-options {
-    gap: 4px;
+    gap: 3px;
   }
   .product-columns > .manager-editor .manager-margin-options legend,
   .manager-two-column > .manager-editor .manager-margin-options legend {
-    margin-bottom: 4px;
-    font-size: .74rem;
+    margin-bottom: 2px;
+    font-size: .72rem;
   }
   .product-columns > .manager-editor .manager-margin-options > label,
   .manager-two-column > .manager-editor .manager-margin-options > label {
-    gap: 6px;
-    min-height: 32px;
-    font-size: .74rem;
+    gap: 5px;
+    min-height: 26px;
+    font-size: .72rem;
   }
   .product-columns > .manager-editor .manager-photo-section,
   .manager-two-column > .manager-editor .manager-photo-section {
-    gap: 8px;
+    gap: 6px;
   }
   .product-columns > .manager-editor .manager-photo-manager,
   .manager-two-column > .manager-editor .manager-photo-manager {
-    gap: 12px;
+    gap: 10px;
   }
   .product-columns > .manager-editor .manager-photo-preview-wrap,
   .manager-two-column > .manager-editor .manager-photo-preview-wrap {
-    width: 84px;
-    height: 84px;
+    width: 68px;
+    height: 68px;
+    border-radius: 6px;
+  }
+  .product-columns > .manager-editor .manager-photo-preview-wrap img,
+  .manager-two-column > .manager-editor .manager-photo-preview-wrap img {
+    object-fit: contain;
+    object-position: center;
   }
   .product-columns > .manager-editor .manager-photo-controls,
   .manager-two-column > .manager-editor .manager-photo-controls {
-    gap: 6px;
+    gap: 4px;
   }
   .product-columns > .manager-editor .manager-photo-help,
   .manager-two-column > .manager-editor .manager-photo-help {
-    font-size: .71rem;
-    line-height: 1.35;
+    font-size: .67rem;
+    line-height: 1.25;
   }
   .product-columns > .manager-editor .manager-photo-actions,
   .manager-two-column > .manager-editor .manager-photo-actions {
-    gap: 6px;
+    gap: 5px;
   }
   .product-columns > .manager-editor .manager-photo-actions .manager-primary,
   .product-columns > .manager-editor .manager-photo-actions .manager-secondary,
   .manager-two-column > .manager-editor .manager-photo-actions .manager-primary,
   .manager-two-column > .manager-editor .manager-photo-actions .manager-secondary {
-    min-height: 32px;
-    padding: 4px 10px;
-    font-size: .74rem;
+    min-height: 28px;
+    padding: 3px 8px;
+    font-size: .72rem;
   }
   .product-columns > .manager-editor .manager-photo-disabled-notice,
   .manager-two-column > .manager-editor .manager-photo-disabled-notice {
-    padding: 8px 10px;
-    gap: 8px;
-    font-size: .76rem;
+    padding: 6px 8px;
+    gap: 6px;
+    font-size: .73rem;
   }
   .product-columns > .manager-editor .manager-form-actions,
   .manager-two-column > .manager-editor .manager-form-actions {
-    margin-top: 4px;
+    margin-top: 2px;
     gap: 6px;
   }
   .product-columns > .manager-editor .manager-form-actions .manager-primary,
   .product-columns > .manager-editor .manager-form-actions .manager-secondary,
   .manager-two-column > .manager-editor .manager-form-actions .manager-primary,
   .manager-two-column > .manager-editor .manager-form-actions .manager-secondary {
-    min-height: 36px;
-    padding: 6px 14px;
-    font-size: .8rem;
+    min-height: 32px;
+    padding: 5px 13px;
+    font-size: .78rem;
   }
   .product-columns .manager-metrics article {
     min-height: 68px;
@@ -545,7 +551,8 @@
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
 }
 .manager-photo-controls {
   flex: 1;

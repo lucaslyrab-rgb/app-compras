@@ -155,10 +155,23 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(productWorkspace).toContain('className="manager-two-column product-columns"');
     expect(productWorkspace).toContain('className="manager-table manager-product-table"');
     expect(managerStyles).toMatch(
-      /\.product-columns\s*>\s*\.manager-editor[\s\S]*?position:\s*sticky[\s\S]*?top:\s*18px[\s\S]*?overflow-y:\s*auto/,
+      /\.product-columns\s*>\s*\.manager-editor[\s\S]*?position:\s*sticky[\s\S]*?top:\s*(?:14|18)px[\s\S]*?overflow-y:\s*auto/,
     );
     expect(managerStyles).toMatch(/\.manager-product-table\s+th,\s*\.manager-product-table\s+td[\s\S]*?padding:\s*5px\s+6px/);
     expect(managerStyles).toMatch(/\.manager-product-table\s+\.manager-icon-button[\s\S]*?height:\s*26px/);
     expect(managerStyles).toMatch(/\.manager-product-table\s+\.manager-status-button[\s\S]*?height:\s*26px/);
+  });
+
+  it("renderiza preview de gerenciamento de foto com contain sem afetar miniaturas da lista ou precificação", async () => {
+    const [productPhotoComponent, productEditor, managerStyles] = await Promise.all([
+      readFile("src/components/product-photo.tsx", "utf8"),
+      readFile("src/modules/pricing/parameters/product-editor.tsx", "utf8"),
+      readFile("src/app/gestor/styles.css", "utf8"),
+    ]);
+    expect(productPhotoComponent).toContain('fit?: "cover" | "contain"');
+    expect(productPhotoComponent).toContain('fit = "cover"');
+    expect(productPhotoComponent).toContain("objectFit: fit");
+    expect(productEditor).toContain('fit="contain"');
+    expect(managerStyles).toMatch(/\.manager-photo-preview-wrap\s+img[\s\S]*?object-fit:\s*contain/);
   });
 });
