@@ -316,6 +316,250 @@
   display: none;
 }
 
+@media (min-width: 901px) {
+  .cost-page {
+    padding: 8px 16px 24px;
+  }
+
+  .cost-title {
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+
+  .cost-title h1 {
+    margin: 2px 0;
+    font-size: 1.3rem;
+  }
+
+  .cost-title p {
+    font-size: 0.82rem;
+  }
+
+  .cost-cycle {
+    gap: 6px;
+  }
+
+  .cost-cycle .btn {
+    min-height: 32px;
+    padding: 3px 10px;
+    font-size: 0.84rem;
+  }
+
+  .cost-cycle select {
+    min-height: 32px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+  }
+
+  .cost-metrics {
+    gap: 8px;
+    margin: 6px 0;
+  }
+
+  .cost-metrics p {
+    padding: 6px 12px;
+    font-size: 0.76rem;
+    border-radius: 6px;
+  }
+
+  .cost-metrics strong {
+    margin-bottom: 1px;
+    font-size: 1.2rem;
+    line-height: 1.1;
+  }
+
+  .cost-tools {
+    gap: 8px;
+  }
+
+  .cost-tools .search {
+    min-height: 34px;
+    padding: 5px 10px;
+    font-size: 0.82rem;
+    border-radius: 6px;
+  }
+
+  .cost-tools .filters {
+    gap: 4px;
+  }
+
+  .cost-tools .filter {
+    min-height: 30px;
+    padding: 4px 12px;
+    font-size: 0.74rem;
+    border-radius: 6px;
+  }
+
+  .cost-list-status {
+    margin: 4px 0 6px;
+    font-size: 0.74rem;
+  }
+
+  .cost-table {
+    font-size: 0.76rem;
+  }
+
+  .cost-table thead th {
+    padding: 5px 4px;
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .cost-table thead th:nth-child(1) { width: 6%; }
+  .cost-table thead th:nth-child(2) { width: 22%; }
+  .cost-table thead th:nth-child(3) { width: 6%; }
+  .cost-table thead th:nth-last-child(4) { width: 10%; }
+  .cost-table thead th:nth-last-child(3) { width: 9%; }
+  .cost-table thead th:nth-last-child(2) { width: 14%; }
+  .cost-table thead th:nth-last-child(1) { width: 10%; }
+
+  .cost-table th,
+  .cost-table td {
+    padding: 3px 4px;
+  }
+
+  .cost-table tbody td:first-child {
+    font-size: 0.74rem;
+    color: var(--ink-700);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cost-table .cost-product-name {
+    gap: 6px;
+  }
+
+  .cost-table .cost-product-name > span:last-child {
+    line-height: 1.2;
+  }
+
+  .cost-table .cost-thumbnail {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+  }
+
+  .cost-table .cost-thumbnail svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .cost-table .cost-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .cost-table .exclusive-badge {
+    margin: 0 0 0 4px;
+    padding: 1px 4px;
+    font-size: 0.54rem;
+    vertical-align: 1px;
+  }
+
+  .cost-table tbody td:nth-child(3) {
+    font-size: 0.74rem;
+    font-weight: 600;
+  }
+
+  .cost-table td[class*="store-"] {
+    font-size: 0.76rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cost-table .cost-total {
+    font-size: 0.78rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .cost-table tbody td:nth-last-child(3) {
+    font-size: 0.76rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cost-table .cost-input-wrap {
+    grid-template-columns: auto minmax(58px, 1fr);
+    gap: 3px;
+  }
+
+  .cost-table .cost-input-wrap > span {
+    font-size: 0.65rem;
+  }
+
+  .cost-table .cost-input {
+    height: 28px;
+    min-height: 28px;
+    padding: 2px 6px;
+    font-size: 0.82rem;
+    border-radius: 5px;
+    line-height: 22px;
+  }
+
+  .cost-table .cost-input-wrap small {
+    font-size: 0.56rem;
+    line-height: 1;
+    margin-top: 1px;
+  }
+
+  .cost-table .cost-basis-toggle {
+    gap: 3px;
+    min-height: auto;
+    margin-top: 2px;
+    font-size: 0.58rem;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .cost-table .cost-basis-toggle input {
+    width: 13px;
+    height: 13px;
+    min-height: 13px;
+    flex: 0 0 13px;
+    margin: 0;
+    accent-color: var(--brand-700);
+  }
+
+  .cost-table .cost-save-status {
+    min-height: 0;
+    margin-top: 1px;
+    font-size: 0.58rem;
+    line-height: 1;
+  }
+
+  .cost-table .cost-save-status:empty {
+    display: none;
+  }
+
+  .cost-table .purchase-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .cost-table .purchase-toggle input {
+    width: 16px;
+    height: 16px;
+    min-height: 16px;
+    flex: 0 0 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--brand-700);
+  }
+
+  .cost-table .purchase-toggle span {
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+}
+
 @media (max-width: 900px) {
   .cost-shell .topbar {
     padding: 10px 12px;

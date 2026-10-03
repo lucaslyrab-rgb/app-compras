@@ -228,4 +228,34 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(thumbHtml).toContain("aspect-ratio:1 / 1");
     expect(thumbHtml).not.toContain("product-photo-img--preview");
   });
+
+  it("compacta a tabela de lançamento de custos no desktop preservando integralmente o layout mobile", async () => {
+    const costStyles = await readFile("src/app/comprador/custos/styles.css", "utf8");
+
+    // 1. Regras compactas delimitadas exclusivamente ao desktop (min-width: 901px)
+    expect(costStyles).toMatch(/@media \(min-width:\s*901px\)[\s\S]*?\.cost-table/);
+
+    // 2. Tabela desktop compacta: thumbnail 28px, inputs e toggles compactos
+    const desktopMatch = costStyles.match(/@media \(min-width:\s*901px\)[\s\S]*?(?=@media \(max-width:\s*900px\))/);
+    expect(desktopMatch).not.toBeNull();
+    const desktopCss = desktopMatch![0];
+
+    expect(desktopCss).toMatch(/\.cost-table\s+\.cost-thumbnail[\s\S]*?width:\s*28px/);
+    expect(desktopCss).toMatch(/\.cost-table\s+\.cost-thumbnail[\s\S]*?height:\s*28px/);
+    expect(desktopCss).toMatch(/\.cost-table\s+\.cost-input[\s\S]*?height:\s*28px/);
+    expect(desktopCss).toMatch(/\.cost-table\s+\.cost-basis-toggle[\s\S]*?min-height:\s*auto/);
+    expect(desktopCss).toMatch(/\.cost-table\s+\.purchase-toggle[\s\S]*?display:\s*inline-flex/);
+    expect(desktopCss).toMatch(/\.cost-metrics[\s\S]*?padding:\s*6px\s+12px/);
+
+    // 3. Layout mobile homologado preservado intacto (max-width: 900px e max-width: 600px)
+    const mobileMatch = costStyles.match(/@media \(max-width:\s*900px\)[\s\S]*/);
+    expect(mobileMatch).not.toBeNull();
+    const mobileCss = mobileMatch![0];
+
+    expect(mobileCss).toMatch(/\.cost-card-summary\s*>\s*\.cost-thumbnail[\s\S]*?width:\s*58px/);
+    expect(mobileCss).toMatch(/\.cost-card-summary\s*>\s*\.cost-thumbnail[\s\S]*?height:\s*58px/);
+    expect(mobileCss).toMatch(/\.cost-card-fields\s+\.cost-input[\s\S]*?font-size:\s*16px/);
+    expect(mobileCss).toMatch(/\.cost-card-fields\s+\.cost-basis-toggle--mobile[\s\S]*?min-height:\s*44px/);
+    expect(mobileCss).toMatch(/\.cost-card-fields\s+\.purchase-toggle[\s\S]*?min-height:\s*44px/);
+  });
 });
