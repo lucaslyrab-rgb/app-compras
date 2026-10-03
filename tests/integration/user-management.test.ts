@@ -1312,34 +1312,49 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
     });
 
     it("concorrência real: Minha senha × Reset administrativo com duas conexões independentes sob disputa do advisory lock", async () => {
-      const rootSql = postgres(process.env.DATABASE_URL!, { max: 1 });
       const schemaName = `test_conc_self_reset_${Date.now()}`;
-      await rootSql.unsafe(`CREATE SCHEMA "${schemaName}"`);
-      await rootSql.end();
-
-      const isolatedUrl = new URL(process.env.DATABASE_URL!);
-      isolatedUrl.searchParams.set("options", `-csearch_path=${schemaName},public`);
-
-      await runMigrations({
-        databaseUrl: isolatedUrl.toString(),
-        migrationsDirectory: path.resolve("migrations"),
-      });
-
-      const clientAdmin = postgres(isolatedUrl.toString(), { max: 1 });
-      const clientGate = postgres(isolatedUrl.toString(), { max: 1 });
-      const clientInspector = postgres(isolatedUrl.toString(), { max: 1 });
-      const client1 = postgres(isolatedUrl.toString(), { max: 1 });
-      const client2 = postgres(isolatedUrl.toString(), { max: 1 });
-
-      const db1 = drizzle(client1, { schema });
-      const db2 = drizzle(client2, { schema });
+      let schemaCreated = false;
+      let rootSql: postgres.Sql | null = null;
+      let clientAdmin: postgres.Sql | null = null;
+      let clientGate: postgres.Sql | null = null;
+      let clientInspector: postgres.Sql | null = null;
+      let client1: postgres.Sql | null = null;
+      let client2: postgres.Sql | null = null;
+      const gateControl = { release: null as (() => void) | null };
+      let gateTxPromise: Promise<unknown> | null = null;
+      let concurrentPromises: Promise<unknown>[] = [];
 
       try {
-        await clientGate`SELECT 1`;
-        await clientInspector`SELECT 1`;
-        await client1`SELECT 1`;
-        await client2`SELECT 1`;
-        await clientAdmin`SELECT 1`;
+        rootSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+        await rootSql.unsafe(`CREATE SCHEMA "${schemaName}"`);
+        schemaCreated = true;
+        await rootSql.end({ timeout: 2 });
+        rootSql = null;
+
+        const isolatedUrl = new URL(process.env.DATABASE_URL!);
+        isolatedUrl.searchParams.set("options", `-csearch_path=${schemaName},public`);
+
+        await runMigrations({
+          databaseUrl: isolatedUrl.toString(),
+          migrationsDirectory: path.resolve("migrations"),
+        });
+
+        clientAdmin = postgres(isolatedUrl.toString(), { max: 1 });
+        clientGate = postgres(isolatedUrl.toString(), { max: 1 });
+        clientInspector = postgres(isolatedUrl.toString(), { max: 1 });
+        client1 = postgres(isolatedUrl.toString(), { max: 1 });
+        client2 = postgres(isolatedUrl.toString(), { max: 1 });
+
+        // Identifica explicitamente os backend PIDs das conexões dedicadas (FINDING 2)
+        const [{ pid: gatePid }] = await clientGate<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+        const [{ pid: p1Pid }] = await client1<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+        const [{ pid: p2Pid }] = await client2<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+        const [{ db_oid: dbOid }] = await clientInspector<{ db_oid: number }[]>`
+          SELECT oid AS db_oid FROM pg_database WHERE datname = current_database();
+        `;
+
+        const db1 = drizzle(client1, { schema });
+        const db2 = drizzle(client2, { schema });
 
         const initialPwd = "SenhaOriginal123";
         const initialHash = await hashPassword(initialPwd);
@@ -1361,23 +1376,36 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
                  (${adminUser.id}::uuid, ${hashToken("tok-admin-reset")}, ${exp.idleExpiresAt.toISOString()}::timestamptz, ${exp.absoluteExpiresAt.toISOString()}::timestamptz, now());
         `;
 
-        let releaseGate!: () => void;
         const gatePromise = new Promise<void>((resolve) => {
-          releaseGate = resolve;
+          gateControl.release = resolve;
         });
 
-        const gateTx = clientGate.begin(async (sqlGate) => {
+        gateTxPromise = clientGate.begin(async (sqlGate) => {
           await sqlGate`SELECT pg_advisory_xact_lock(${USER_MANAGEMENT_ADVISORY_LOCK_ID})`;
           await gatePromise;
         });
 
-        for (let i = 0; i < 50; i++) {
-          const rows = await clientInspector`
-            SELECT pid FROM pg_locks
-            WHERE locktype = 'advisory' AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID} AND granted = true;
+        // Aguarda clientGate adquirir o advisory lock com timeout determinístico
+        const gateStartTime = Date.now();
+        let gateLocked = false;
+        while (Date.now() - gateStartTime < 5000) {
+          const rows = await clientInspector<{ granted: boolean }[]>`
+            SELECT granted FROM pg_locks
+            WHERE locktype = 'advisory'
+              AND database = ${dbOid}
+              AND classid = 0
+              AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID}
+              AND objsubid = 1
+              AND pid = ${gatePid};
           `;
-          if (rows.length > 0) break;
+          if (rows.length > 0 && rows[0].granted === true) {
+            gateLocked = true;
+            break;
+          }
           await new Promise((r) => setTimeout(r, 20));
+        }
+        if (!gateLocked) {
+          throw new Error(`Timeout (5000ms) aguardando clientGate (PID ${gatePid}) adquirir o advisory lock`);
         }
 
         const p1 = changeOwnPassword(
@@ -1401,22 +1429,67 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
           db2
         );
 
-        let waiters = 0;
-        for (let i = 0; i < 100; i++) {
-          const rows = await clientInspector`
-            SELECT pid FROM pg_locks
-            WHERE locktype = 'advisory' AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID} AND granted = false;
-          `;
-          waiters = rows.length;
-          if (waiters >= 2) break;
-          await new Promise((r) => setTimeout(r, 20));
-        }
-        expect(waiters).toBe(2);
+        concurrentPromises = [p1, p2];
 
-        releaseGate();
-        await gateTx;
+        // Inspeciona pg_locks comprovando que client1 e client2 aguardam exatamente o lock do gate (FINDING 2)
+        const pollStartTime = Date.now();
+        let bothWaiting = false;
+        let lastWaitersState: unknown = null;
+
+        while (Date.now() - pollStartTime < 5000) {
+          const rows = await clientInspector<{
+            pid: number;
+            granted: boolean;
+            locktype: string;
+            database: number;
+            classid: number;
+            objid: number;
+            objsubid: number;
+            mode: string;
+          }[]>`
+            SELECT locktype, database, classid, objid, objsubid, mode, granted, pid
+            FROM pg_locks
+            WHERE locktype = 'advisory'
+              AND database = ${dbOid}
+              AND classid = 0
+              AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID}
+              AND objsubid = 1
+              AND pid IN (${gatePid}, ${p1Pid}, ${p2Pid});
+          `;
+
+          lastWaitersState = rows;
+          const gateLock = rows.find((r) => r.pid === gatePid);
+          const p1Lock = rows.find((r) => r.pid === p1Pid);
+          const p2Lock = rows.find((r) => r.pid === p2Pid);
+
+          if (
+            gateLock?.granted === true &&
+            p1Lock?.granted === false &&
+            p2Lock?.granted === false
+          ) {
+            bothWaiting = true;
+            break;
+          }
+
+          await new Promise((r) => setTimeout(r, 25));
+        }
+
+        if (!bothWaiting) {
+          throw new Error(
+            `Timeout (5000ms) aguardando contenção do advisory lock em pg_locks (gatePid: ${gatePid}, p1Pid: ${p1Pid}, p2Pid: ${p2Pid}). Estado observado: ${JSON.stringify(lastWaitersState)}`
+          );
+        }
+
+        // Libera a barreira para serialização no PostgreSQL
+        if (gateControl.release) {
+          gateControl.release();
+          gateControl.release = null;
+        }
+        await gateTxPromise;
+        gateTxPromise = null;
 
         const [res1, res2] = await Promise.allSettled([p1, p2]);
+        concurrentPromises = [];
 
         const successes = [res1, res2].filter((r) => r.status === "fulfilled");
         expect(successes.length).toBe(1);
@@ -1424,6 +1497,12 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         const [dbUser] = await clientAdmin<{ password_hash: string; updated_at: Date }[]>`
           SELECT password_hash, updated_at FROM users WHERE id = ${targetUser.id}::uuid;
         `;
+
+        const initialMillis = new Date(targetUser.updated_at).getTime();
+        const finalMillis = new Date(dbUser.updated_at).getTime();
+
+        // Validação rigorosa de updated_at (FINDING adicional)
+        expect(finalMillis).toBeGreaterThan(initialMillis);
 
         const isSelfPassword = await verifyPassword("NovaSenhaSelf123", dbUser.password_hash);
         const isAdminPassword = await verifyPassword("NovaSenhaAdmin456", dbUser.password_hash);
@@ -1433,12 +1512,20 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         `;
 
         if (res1.status === "fulfilled") {
+          // changeOwnPassword venceu
+          const winningVal = (res1 as PromiseFulfilledResult<{ updatedAt: string }>).value;
+          expect(finalMillis).toBe(new Date(winningVal.updatedAt).getTime());
+
           expect(res2.status).toBe("rejected");
           expect((res2 as PromiseRejectedResult).reason).toBeInstanceOf(UserConflictError);
           expect(isSelfPassword).toBe(true);
           expect(isAdminPassword).toBe(false);
           expect(targetAudits.map((a) => a.action)).toEqual(["user_password_changed"]);
         } else {
+          // resetUserPassword venceu
+          const winningVal = (res2 as PromiseFulfilledResult<{ updatedAt: string }>).value;
+          expect(finalMillis).toBe(new Date(winningVal.updatedAt).getTime());
+
           expect(res1.status).toBe("rejected");
           expect((res1 as PromiseRejectedResult).reason).toBeInstanceOf(UserValidationError);
           expect(((res1 as PromiseRejectedResult).reason as Error).message).toContain(
@@ -1461,46 +1548,98 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         expect(adminSessions.length).toBe(1);
         expect(adminSessions[0].revoked_at).toBeNull();
       } finally {
-        await clientGate.end();
-        await clientInspector.end();
-        await client1.end();
-        await client2.end();
-        await clientAdmin.end();
-        const cleanupSql = postgres(process.env.DATABASE_URL!, { max: 1 });
-        await cleanupSql.unsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
-        await cleanupSql.end();
+        if (gateControl.release) {
+          try {
+            gateControl.release();
+          } catch {
+            // ignore
+          }
+        }
+        if (gateTxPromise) {
+          try {
+            await Promise.race([
+              gateTxPromise,
+              new Promise((_, reject) => setTimeout(() => reject(new Error("cleanup gate timeout")), 2000)),
+            ]);
+          } catch {
+            // ignore
+          }
+        }
+        if (concurrentPromises.length > 0) {
+          try {
+            await Promise.race([
+              Promise.allSettled(concurrentPromises),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("cleanup concurrent ops timeout")), 2000)),
+            ]);
+          } catch {
+            // ignore
+          }
+        }
+        const clients = [clientGate, clientInspector, client1, client2, clientAdmin, rootSql];
+        for (const c of clients) {
+          if (c) {
+            try {
+              await c.end({ timeout: 2 });
+            } catch {
+              // ignore
+            }
+          }
+        }
+        if (schemaCreated) {
+          const cleanupSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+          try {
+            await cleanupSql.unsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+          } finally {
+            await cleanupSql.end({ timeout: 2 });
+          }
+        }
       }
     });
 
     it("concorrência real: Minha senha × Inativação com duas conexões independentes sob disputa do advisory lock", async () => {
-      const rootSql = postgres(process.env.DATABASE_URL!, { max: 1 });
       const schemaName = `test_conc_self_inact_${Date.now()}`;
-      await rootSql.unsafe(`CREATE SCHEMA "${schemaName}"`);
-      await rootSql.end();
-
-      const isolatedUrl = new URL(process.env.DATABASE_URL!);
-      isolatedUrl.searchParams.set("options", `-csearch_path=${schemaName},public`);
-
-      await runMigrations({
-        databaseUrl: isolatedUrl.toString(),
-        migrationsDirectory: path.resolve("migrations"),
-      });
-
-      const clientAdmin = postgres(isolatedUrl.toString(), { max: 1 });
-      const clientGate = postgres(isolatedUrl.toString(), { max: 1 });
-      const clientInspector = postgres(isolatedUrl.toString(), { max: 1 });
-      const client1 = postgres(isolatedUrl.toString(), { max: 1 });
-      const client2 = postgres(isolatedUrl.toString(), { max: 1 });
-
-      const db1 = drizzle(client1, { schema });
-      const db2 = drizzle(client2, { schema });
+      let schemaCreated = false;
+      let rootSql: postgres.Sql | null = null;
+      let clientAdmin: postgres.Sql | null = null;
+      let clientGate: postgres.Sql | null = null;
+      let clientInspector: postgres.Sql | null = null;
+      let client1: postgres.Sql | null = null;
+      let client2: postgres.Sql | null = null;
+      const gateControl = { release: null as (() => void) | null };
+      let gateTxPromise: Promise<unknown> | null = null;
+      let concurrentPromises: Promise<unknown>[] = [];
 
       try {
-        await clientGate`SELECT 1`;
-        await clientInspector`SELECT 1`;
-        await client1`SELECT 1`;
-        await client2`SELECT 1`;
-        await clientAdmin`SELECT 1`;
+        rootSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+        await rootSql.unsafe(`CREATE SCHEMA "${schemaName}"`);
+        schemaCreated = true;
+        await rootSql.end({ timeout: 2 });
+        rootSql = null;
+
+        const isolatedUrl = new URL(process.env.DATABASE_URL!);
+        isolatedUrl.searchParams.set("options", `-csearch_path=${schemaName},public`);
+
+        await runMigrations({
+          databaseUrl: isolatedUrl.toString(),
+          migrationsDirectory: path.resolve("migrations"),
+        });
+
+        clientAdmin = postgres(isolatedUrl.toString(), { max: 1 });
+        clientGate = postgres(isolatedUrl.toString(), { max: 1 });
+        clientInspector = postgres(isolatedUrl.toString(), { max: 1 });
+        client1 = postgres(isolatedUrl.toString(), { max: 1 });
+        client2 = postgres(isolatedUrl.toString(), { max: 1 });
+
+        // Identifica explicitamente os backend PIDs das conexões dedicadas (FINDING 2)
+        const [{ pid: gatePid }] = await clientGate<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+        const [{ pid: p1Pid }] = await client1<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+        const [{ pid: p2Pid }] = await client2<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+        const [{ db_oid: dbOid }] = await clientInspector<{ db_oid: number }[]>`
+          SELECT oid AS db_oid FROM pg_database WHERE datname = current_database();
+        `;
+
+        const db1 = drizzle(client1, { schema });
+        const db2 = drizzle(client2, { schema });
 
         const initialPwd = "SenhaOriginal123";
         const initialHash = await hashPassword(initialPwd);
@@ -1522,23 +1661,36 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
                  (${adminUser.id}::uuid, ${hashToken("tok-admin-inact")}, ${exp.idleExpiresAt.toISOString()}::timestamptz, ${exp.absoluteExpiresAt.toISOString()}::timestamptz, now());
         `;
 
-        let releaseGate!: () => void;
         const gatePromise = new Promise<void>((resolve) => {
-          releaseGate = resolve;
+          gateControl.release = resolve;
         });
 
-        const gateTx = clientGate.begin(async (sqlGate) => {
+        gateTxPromise = clientGate.begin(async (sqlGate) => {
           await sqlGate`SELECT pg_advisory_xact_lock(${USER_MANAGEMENT_ADVISORY_LOCK_ID})`;
           await gatePromise;
         });
 
-        for (let i = 0; i < 50; i++) {
-          const rows = await clientInspector`
-            SELECT pid FROM pg_locks
-            WHERE locktype = 'advisory' AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID} AND granted = true;
+        // Aguarda clientGate adquirir o advisory lock com timeout determinístico
+        const gateStartTime = Date.now();
+        let gateLocked = false;
+        while (Date.now() - gateStartTime < 5000) {
+          const rows = await clientInspector<{ granted: boolean }[]>`
+            SELECT granted FROM pg_locks
+            WHERE locktype = 'advisory'
+              AND database = ${dbOid}
+              AND classid = 0
+              AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID}
+              AND objsubid = 1
+              AND pid = ${gatePid};
           `;
-          if (rows.length > 0) break;
+          if (rows.length > 0 && rows[0].granted === true) {
+            gateLocked = true;
+            break;
+          }
           await new Promise((r) => setTimeout(r, 20));
+        }
+        if (!gateLocked) {
+          throw new Error(`Timeout (5000ms) aguardando clientGate (PID ${gatePid}) adquirir o advisory lock`);
         }
 
         const p1 = changeOwnPassword(
@@ -1561,56 +1713,163 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
           db2
         );
 
-        let waiters = 0;
-        for (let i = 0; i < 100; i++) {
-          const rows = await clientInspector`
-            SELECT pid FROM pg_locks
-            WHERE locktype = 'advisory' AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID} AND granted = false;
-          `;
-          waiters = rows.length;
-          if (waiters >= 2) break;
-          await new Promise((r) => setTimeout(r, 20));
-        }
-        expect(waiters).toBe(2);
+        concurrentPromises = [p1, p2];
 
-        releaseGate();
-        await gateTx;
+        // Inspeciona pg_locks comprovando que client1 e client2 aguardam exatamente o lock do gate (FINDING 2)
+        const pollStartTime = Date.now();
+        let bothWaiting = false;
+        let lastWaitersState: unknown = null;
+
+        while (Date.now() - pollStartTime < 5000) {
+          const rows = await clientInspector<{
+            pid: number;
+            granted: boolean;
+            locktype: string;
+            database: number;
+            classid: number;
+            objid: number;
+            objsubid: number;
+            mode: string;
+          }[]>`
+            SELECT locktype, database, classid, objid, objsubid, mode, granted, pid
+            FROM pg_locks
+            WHERE locktype = 'advisory'
+              AND database = ${dbOid}
+              AND classid = 0
+              AND objid = ${USER_MANAGEMENT_ADVISORY_LOCK_ID}
+              AND objsubid = 1
+              AND pid IN (${gatePid}, ${p1Pid}, ${p2Pid});
+          `;
+
+          lastWaitersState = rows;
+          const gateLock = rows.find((r) => r.pid === gatePid);
+          const p1Lock = rows.find((r) => r.pid === p1Pid);
+          const p2Lock = rows.find((r) => r.pid === p2Pid);
+
+          if (
+            gateLock?.granted === true &&
+            p1Lock?.granted === false &&
+            p2Lock?.granted === false
+          ) {
+            bothWaiting = true;
+            break;
+          }
+
+          await new Promise((r) => setTimeout(r, 25));
+        }
+
+        if (!bothWaiting) {
+          throw new Error(
+            `Timeout (5000ms) aguardando contenção do advisory lock em pg_locks (gatePid: ${gatePid}, p1Pid: ${p1Pid}, p2Pid: ${p2Pid}). Estado observado: ${JSON.stringify(lastWaitersState)}`
+          );
+        }
+
+        // Libera a barreira para serialização no PostgreSQL
+        if (gateControl.release) {
+          gateControl.release();
+          gateControl.release = null;
+        }
+        await gateTxPromise;
+        gateTxPromise = null;
 
         const [res1, res2] = await Promise.allSettled([p1, p2]);
+        concurrentPromises = [];
 
         const successes = [res1, res2].filter((r) => r.status === "fulfilled");
         expect(successes.length).toBe(1);
 
-        const [dbUser] = await clientAdmin<{ active: boolean; password_hash: string; updated_at: Date }[]>`
-          SELECT active, password_hash, updated_at FROM users WHERE id = ${targetUser.id}::uuid;
-        `;
+        const initialMillis = new Date(targetUser.updated_at).getTime();
 
-        const isSelfPassword = await verifyPassword("NovaSenhaSelf789", dbUser.password_hash);
-        const isOriginalPassword = await verifyPassword(initialPwd, dbUser.password_hash);
-
-        const targetAudits = await clientAdmin<{ action: string }[]>`
-          SELECT action FROM audit_events WHERE entity_id = ${targetUser.id} ORDER BY created_at;
-        `;
-
-        if (res1.status === "fulfilled") {
-          expect(res2.status).toBe("rejected");
-          expect((res2 as PromiseRejectedResult).reason).toBeInstanceOf(UserConflictError);
-          expect(dbUser.active).toBe(true);
-          expect(isSelfPassword).toBe(true);
-          expect(isOriginalPassword).toBe(false);
-          expect(targetAudits.map((a) => a.action)).toEqual(["user_password_changed"]);
-        } else {
-          expect(res2.status).toBe("fulfilled");
+        if (res2.status === "fulfilled") {
+          // Cenário A: toggleUserActive venceu inicialmente o lock
+          // changeOwnPassword falhou com UserValidationError pois encontrou o usuário inativo
           expect(res1.status).toBe("rejected");
           expect((res1 as PromiseRejectedResult).reason).toBeInstanceOf(UserValidationError);
           expect(((res1 as PromiseRejectedResult).reason as Error).message).toContain(
             "Usuário inativo ou não autorizado."
           );
+
+          const [dbUser] = await clientAdmin<{ active: boolean; password_hash: string; updated_at: Date }[]>`
+            SELECT active, password_hash, updated_at FROM users WHERE id = ${targetUser.id}::uuid;
+          `;
+
           expect(dbUser.active).toBe(false);
+          const isOriginalPassword = await verifyPassword(initialPwd, dbUser.password_hash);
+          const isSelfPassword = await verifyPassword("NovaSenhaSelf789", dbUser.password_hash);
           expect(isOriginalPassword).toBe(true);
           expect(isSelfPassword).toBe(false);
+
+          // updated_at deve corresponder à vitória do toggleUserActive
+          const winningVal = (res2 as PromiseFulfilledResult<{ user: { updatedAt: string } }>).value;
+          expect(new Date(dbUser.updated_at).getTime()).toBe(new Date(winningVal.user.updatedAt).getTime());
+          expect(new Date(dbUser.updated_at).getTime()).toBeGreaterThan(initialMillis);
+
+          const targetAudits = await clientAdmin<{ action: string }[]>`
+            SELECT action FROM audit_events WHERE entity_id = ${targetUser.id} ORDER BY created_at;
+          `;
           expect(targetAudits.map((a) => a.action)).toEqual(["user_deactivated"]);
+        } else {
+          // Cenário B: changeOwnPassword venceu inicialmente o lock
+          // toggleUserActive falhou com UserConflictError pois expectedUpdatedAt ficou obsoleto
+          expect(res1.status).toBe("fulfilled");
+          expect(res2.status).toBe("rejected");
+          expect((res2 as PromiseRejectedResult).reason).toBeInstanceOf(UserConflictError);
+
+          // 1. Lê novamente o usuário após a operação vencedora (FINDING 1)
+          const [refreshedUser] = await clientAdmin<{ id: string; updated_at: Date; active: boolean; password_hash: string }[]>`
+            SELECT id, updated_at, active, password_hash FROM users WHERE id = ${targetUser.id}::uuid;
+          `;
+          expect(refreshedUser.active).toBe(true);
+          const winningChangeVal = (res1 as PromiseFulfilledResult<{ updatedAt: string }>).value;
+          expect(new Date(refreshedUser.updated_at).getTime()).toBe(new Date(winningChangeVal.updatedAt).getTime());
+          expect(new Date(refreshedUser.updated_at).getTime()).toBeGreaterThan(initialMillis);
+
+          // Antes do retry: nenhuma auditoria da tentativa CAS rejeitada foi gravada
+          const auditsBeforeRetry = await clientAdmin<{ action: string }[]>`
+            SELECT action FROM audit_events WHERE entity_id = ${targetUser.id} ORDER BY created_at;
+          `;
+          expect(auditsBeforeRetry.map((a) => a.action)).toEqual(["user_password_changed"]);
+
+          // 2. Executa nova chamada real a toggleUserActive(active:false) com o watermark atualizado
+          // Essa chamada representa o Gestor confirmando novamente a inativação após o conflito (FINDING 1)
+          const retryToggle = await toggleUserActive(
+            {
+              id: targetUser.id,
+              active: false,
+              expectedUpdatedAt: refreshedUser.updated_at,
+              actorId: adminUser.id,
+            },
+            db2
+          );
+
+          expect(retryToggle.user.active).toBe(false);
+
+          // 3. Valida o estado final pós-confirmação
+          const [finalDbUser] = await clientAdmin<{ active: boolean; password_hash: string; updated_at: Date }[]>`
+            SELECT active, password_hash, updated_at FROM users WHERE id = ${targetUser.id}::uuid;
+          `;
+
+          expect(finalDbUser.active).toBe(false);
+          const isSelfPassword = await verifyPassword("NovaSenhaSelf789", finalDbUser.password_hash);
+          const isOriginalPassword = await verifyPassword(initialPwd, finalDbUser.password_hash);
+          expect(isSelfPassword).toBe(true);
+          expect(isOriginalPassword).toBe(false);
+
+          // updated_at deve avançar monotonicamente para o timestamp da inativação confirmada
+          expect(new Date(finalDbUser.updated_at).getTime()).toBe(new Date(retryToggle.user.updatedAt).getTime());
+          expect(new Date(finalDbUser.updated_at).getTime()).toBeGreaterThan(new Date(refreshedUser.updated_at).getTime());
+
+          const auditsAfterRetry = await clientAdmin<{ action: string }[]>`
+            SELECT action FROM audit_events WHERE entity_id = ${targetUser.id} ORDER BY created_at;
+          `;
+          expect(auditsAfterRetry.map((a) => a.action)).toEqual(["user_password_changed", "user_deactivated"]);
         }
+
+        // Em ambos os casos, o usuário alvo termina inativo com sessões revogadas e admin intacto
+        const [finalUserCheck] = await clientAdmin<{ active: boolean }[]>`
+          SELECT active FROM users WHERE id = ${targetUser.id}::uuid;
+        `;
+        expect(finalUserCheck.active).toBe(false);
 
         const targetSessions = await clientAdmin<{ id: string; revoked_at: Date | null }[]>`
           SELECT id, revoked_at FROM sessions WHERE user_id = ${targetUser.id}::uuid;
@@ -1624,14 +1883,51 @@ integration("Gestão de Usuários V1 - Integração no PostgreSQL", () => {
         expect(adminSessions.length).toBe(1);
         expect(adminSessions[0].revoked_at).toBeNull();
       } finally {
-        await clientGate.end();
-        await clientInspector.end();
-        await client1.end();
-        await client2.end();
-        await clientAdmin.end();
-        const cleanupSql = postgres(process.env.DATABASE_URL!, { max: 1 });
-        await cleanupSql.unsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
-        await cleanupSql.end();
+        if (gateControl.release) {
+          try {
+            gateControl.release();
+          } catch {
+            // ignore
+          }
+        }
+        if (gateTxPromise) {
+          try {
+            await Promise.race([
+              gateTxPromise,
+              new Promise((_, reject) => setTimeout(() => reject(new Error("cleanup gate timeout")), 2000)),
+            ]);
+          } catch {
+            // ignore
+          }
+        }
+        if (concurrentPromises.length > 0) {
+          try {
+            await Promise.race([
+              Promise.allSettled(concurrentPromises),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("cleanup concurrent ops timeout")), 2000)),
+            ]);
+          } catch {
+            // ignore
+          }
+        }
+        const clients = [clientGate, clientInspector, client1, client2, clientAdmin, rootSql];
+        for (const c of clients) {
+          if (c) {
+            try {
+              await c.end({ timeout: 2 });
+            } catch {
+              // ignore
+            }
+          }
+        }
+        if (schemaCreated) {
+          const cleanupSql = postgres(process.env.DATABASE_URL!, { max: 1 });
+          try {
+            await cleanupSql.unsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+          } finally {
+            await cleanupSql.end({ timeout: 2 });
+          }
+        }
       }
     });
   });
