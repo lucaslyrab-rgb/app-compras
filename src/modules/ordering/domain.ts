@@ -25,3 +25,53 @@ export function nextRevision(existing: number[]) {
 export function conferenceItems<T extends { quantity: number }>(items: T[]) {
   return items.filter((item) => item.quantity > 0);
 }
+
+export interface OrderReportItem {
+  erpCode: number;
+  name: string;
+  unit: string;
+  quantity: number | string;
+  stock?: number | string;
+}
+
+export interface OrderReportHeader {
+  id: string;
+  orderDate: string;
+  purchaseCycleDate: string;
+  revision: number;
+  submittedAt: Date;
+  cancelledAt: Date | null;
+  cancellationReason: string | null;
+}
+
+export function filterReportItems<T extends { quantity: number | string }>(items: T[]): T[] {
+  return items.filter((item) => Number(item.quantity) > 0);
+}
+
+export function sortReportItems<T extends { name: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
+}
+
+export function formatOrderQuantity(value: number | string): string {
+  const num = typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(num)) return String(value);
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(num);
+}
+
+export function formatCycleDate(dateStr: string): string {
+  const [year, month, day] = dateStr.split("-");
+  if (!year || !month || !day) return dateStr;
+  return `${day}/${month}/${year}`;
+}
+
+export function formatDateTime(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
+  }).format(d);
+}
