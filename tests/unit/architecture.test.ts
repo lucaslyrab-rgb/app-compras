@@ -112,9 +112,15 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(detail).not.toContain("dateLabel(analysis.officialCost.purchasedAt)");
   });
 
-  it("remonta o detalhe ao trocar o produto selecionado", async () => {
-    const workspace = await readFile("src/modules/pricing/analysis/pricing-workspace.tsx", "utf8");
+  it("remonta o detalhe ao trocar o produto selecionado e exibe foto do produto", async () => {
+    const [workspace, detail] = await Promise.all([
+      readFile("src/modules/pricing/analysis/pricing-workspace.tsx", "utf8"),
+      readFile("src/modules/pricing/analysis/pricing-detail.tsx", "utf8"),
+    ]);
     expect(workspace).toContain("<PricingDetail key={selected.id} analysis={selected} />");
+    expect(detail).toContain("<ProductPhoto");
+    expect(detail).toContain('thumbnailClassName="manager-photo-thumb"');
+    expect(detail).not.toContain('<span className="manager-placeholder"');
   });
 
   it("não utiliza suggested_price como fallback para preço decidido", async () => {

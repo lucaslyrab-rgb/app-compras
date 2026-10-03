@@ -174,7 +174,8 @@
     margin-bottom: 4px;
     padding: 4px;
   }
-  .pricing-columns > .pricing-detail .manager-placeholder {
+  .pricing-columns > .pricing-detail .manager-placeholder,
+  .pricing-columns > .pricing-detail .manager-photo-thumb {
     width: 36px;
     height: 36px;
     flex-basis: 36px;
@@ -322,6 +323,7 @@
   overflow: hidden;
   background: #f1f4f6;
   border: 1px solid var(--border);
+  color: var(--ink-600);
 }
 .manager-photo-thumb img,
 .manager-photo-thumb svg {

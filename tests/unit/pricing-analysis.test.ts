@@ -33,6 +33,8 @@ function source(overrides: Partial<PricingAnalysisSource> = {}): PricingAnalysis
     id: "11111111-1111-4111-8111-111111111111",
     erpCode: 1010,
     name: "REPOLHO VERDE",
+    photoKey: overrides.photoKey ?? null,
+    photoUpdatedAt: overrides.photoUpdatedAt ?? null,
     purchaseFormat: "CX",
     saleUnit: "KG",
     conversionQuantity: "20.000000",
@@ -405,5 +407,21 @@ describe("análise de precificação", () => {
       reviewed: 1,
     });
     expect(printablePricingAnalyses([pending, stale, reviewed])).toEqual([reviewed]);
+  });
+
+  it("preserva metadados de foto do produto na análise de precificação", () => {
+    const withPhoto = buildPricingAnalysis(source({
+      photoKey: "products/11111111-1111-4111-8111-111111111111/photo-123.webp",
+      photoUpdatedAt: "2026-09-30T10:00:00.000Z",
+    }));
+    expect(withPhoto.photoKey).toBe("products/11111111-1111-4111-8111-111111111111/photo-123.webp");
+    expect(withPhoto.photoUpdatedAt).toBe("2026-09-30T10:00:00.000Z");
+
+    const withoutPhoto = buildPricingAnalysis(source({
+      photoKey: null,
+      photoUpdatedAt: null,
+    }));
+    expect(withoutPhoto.photoKey).toBeNull();
+    expect(withoutPhoto.photoUpdatedAt).toBeNull();
   });
 });

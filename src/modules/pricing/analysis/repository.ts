@@ -8,6 +8,8 @@ type AnalysisRow = {
   id: string;
   erpCode: number;
   name: string;
+  photoKey: string | null;
+  photoUpdatedAt: Date | string | null;
   purchaseFormat: string;
   saleUnit: string;
   conversionQuantity: string;
@@ -61,6 +63,8 @@ function source(row: AnalysisRow, history: PreviousOfficialCost[]): PricingAnaly
     id: row.id,
     erpCode: row.erpCode,
     name: row.name,
+    photoKey: row.photoKey ?? null,
+    photoUpdatedAt: row.photoUpdatedAt ? new Date(row.photoUpdatedAt).toISOString() : null,
     purchaseFormat: row.purchaseFormat,
     saleUnit: row.saleUnit,
     conversionQuantity: row.conversionQuantity,
@@ -114,6 +118,7 @@ export async function readPricingAnalysisSources(principal: Principal, operation
           AND c.purchase_cycle_date <= ${operationalDate}::date
       )
       SELECT p.id, p.erp_code AS "erpCode", p.name,
+             p.photo_key AS "photoKey", p.photo_updated_at AS "photoUpdatedAt",
              p.purchase_format AS "purchaseFormat",
              pp.sale_unit AS "saleUnit",
              pp.conversion_quantity::text AS "conversionQuantity",

@@ -48,7 +48,7 @@ export type LatestReview = {
 } | null;
 
 export type PricingAnalysisSource = Pick<PricingProduct,
-  "id" | "erpCode" | "name" | "purchaseFormat" | "saleUnit" | "conversionQuantity" |
+  "id" | "erpCode" | "name" | "photoKey" | "photoUpdatedAt" | "purchaseFormat" | "saleUnit" | "conversionQuantity" |
   "conversionOrigin" | "beneficiationLossPercent" | "specificMarginPercent" | "version" | "updatedAt"
 > & {
   settings: PricingSettings;
