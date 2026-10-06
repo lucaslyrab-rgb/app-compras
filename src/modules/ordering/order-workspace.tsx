@@ -3,6 +3,7 @@
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { logoutAction } from "@/app/login/actions";
 import { saveDraftAction, submitOrderAction, type State } from "./actions";
+import { parseQuantityInput, validateOrderQuantity } from "./domain";
 import Link from "next/link";
 import Image from "next/image";
 import { ProductPhoto } from "@/components/product-photo";
@@ -12,6 +13,7 @@ type Product = {
   erpCode: number;
   name: string;
   unit: string;
+  purchaseFormat?: string | null;
   photoKey?: string | null;
   photoUpdatedAt?: string | null;
   imageUrl?: string | null;
@@ -22,6 +24,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [values, setValues] = useState<Record<string, { stock: string; quantity: string }>>(() => Object.fromEntries(initialDraft.items.map((item) => [item.productId, { stock: String(item.stock), quantity: String(item.quantity) }])));
+  const [validationBanner, setValidationBanner] = useState<string | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const dialogRef = useRef<HTMLElement | null>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -29,9 +32,27 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
   const [submitState, submitAction, submitting] = useActionState(submitOrderAction, {});
   const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
   const [revisionSubmitting, setRevisionSubmitting] = useState(false);
+
+  const quantityErrors = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const product of products) {
+      const value = values[product.id];
+      const rawQty = value?.quantity ?? "";
+      const result = validateOrderQuantity(rawQty, product.purchaseFormat ?? product.unit);
+      if (!result.valid && result.error) {
+        map[product.id] = result.error;
+      }
+    }
+    return map;
+  }, [products, values]);
+
+  const hasErrors = Object.keys(quantityErrors).length > 0;
+  const activeValidationBanner = hasErrors ? validationBanner : null;
+
   const visibleProducts = useMemo(() => products.filter((product) => {
     const value = values[product.id];
-    const filled = Number(value?.quantity ?? 0) > 0;
+    const parsedQty = parseQuantityInput(value?.quantity) ?? 0;
+    const filled = parsedQty > 0;
     const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
     return (!normalizedQuery || product.name.toLocaleLowerCase("pt-BR").includes(normalizedQuery) || String(product.erpCode).includes(normalizedQuery)) && (filter === "all" || (filter === "filled" ? filled : !filled));
   }), [filter, products, query, values]);
@@ -47,6 +68,30 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
   }
   const feedback: State = submitState.message ? submitState : state;
   const currentVersion = submitState.version ?? state.version ?? initialDraft.version;
+
+  const handleValidateBeforeAction = useCallback((event: React.SyntheticEvent) => {
+    const invalidIds = Object.keys(quantityErrors);
+    if (invalidIds.length > 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      setValidationBanner("Há campos com quantidade inválida no pedido. Corrija-os para continuar.");
+      const firstInvalidId = invalidIds[0]!;
+      if (!visibleProducts.some((p) => p.id === firstInvalidId)) {
+        setFilter("all");
+        setQuery("");
+      }
+      requestAnimationFrame(() => {
+        const input = inputRefs.current[`${firstInvalidId}:quantity`];
+        if (input) {
+          input.scrollIntoView({ behavior: "smooth", block: "center" });
+          input.focus();
+          input.select();
+        }
+      });
+      return false;
+    }
+    return true;
+  }, [quantityErrors, visibleProducts]);
 
   const closeRevisionDialog = useCallback(() => {
     if (revisionSubmitting) return;
@@ -87,6 +132,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
 
   function confirmRevision() {
     if (revisionSubmitting || submitting) return;
+    if (Object.keys(quantityErrors).length > 0) return;
     setRevisionSubmitting(true);
     setRevisionDialogOpen(false);
     const formData = new FormData();
@@ -107,7 +153,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
     <div className="shell order-workspace">
       <header className="topbar no-print"><div className="topbar__inner"><div className="brand"><Image className="brand__logo" src="/brand/MS-H.png" alt="MultiShow FLV" width={170} height={43} priority /><div><h1>MultiShow FLV</h1><p>{storeName} · Pedido da loja</p></div></div><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Link href="/minha-senha" className="btn btn--secondary">Minha senha</Link><form action={logoutAction}><button className="btn btn--secondary">Sair</button></form></div></div></header>
       {submitState.status === "success" || submitState.status === "error" ? <div className={`floating-feedback floating-feedback--${submitState.status}`} role="status" aria-live="polite">{submitState.message}</div> : null}
-      <form action={saveAction}>
+      <form action={saveAction} onSubmit={handleValidateBeforeAction}>
         <input type="hidden" name="storeId" value={storeId} />
         <input type="hidden" name="orderDate" value={date} />
         <input type="hidden" name="version" value={currentVersion} />
@@ -115,7 +161,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
         <main className="page stack">
           <section className="panel stack no-print">
             <div className="row"><div><h2>Pedido de hoje</h2><p className="muted">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(`${date}T12:00:00`))}</p><p className="muted">Compra: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(`${cycleDate}T12:00:00`))} · prazo para alterações: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(cutoffAt))}</p></div><div className="row"><Link href="/contagem" target="_blank" rel="noopener noreferrer" className="btn btn--secondary">Imprimir contagem</Link><Link href="/historico" className="btn btn--secondary">Histórico</Link></div></div>
-            {feedback.message ? <p className={feedback.status === "error" ? "error" : feedback.status === "confirm" ? "warning" : "success"} role="status">{feedback.message}</p> : null}
+            {activeValidationBanner ? <p className="error" role="alert">{activeValidationBanner}</p> : feedback.message ? <p className={feedback.status === "error" ? "error" : feedback.status === "confirm" ? "warning" : "success"} role="status">{feedback.message}</p> : null}
             <label className="field"><span className="visually-hidden">Buscar produto</span><input className="search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar produto…" /></label>
             <div className="filters" aria-label="Filtrar produtos">
               {(["all", "empty", "filled"] as const).map((value) => <button key={value} className="filter" type="button" aria-pressed={filter === value} onClick={() => setFilter(value)}>{value === "all" ? "Todos" : value === "empty" ? "Sem pedido" : "Com pedido"}</button>)}
@@ -126,7 +172,10 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
             {visibleProducts.length === 0 ? <p className="muted empty-list">Nenhum produto encontrado para a busca/filtro atual.</p> : null}
             {visibleProducts.map((product) => {
               const value = values[product.id] ?? { stock: "", quantity: "" };
-              return <article className="product-card" data-filled={Number(value.quantity) > 0} key={product.id}>
+              const productError = quantityErrors[product.id];
+              const isInvalid = Boolean(productError);
+              const isFilled = (parseQuantityInput(value.quantity) ?? 0) > 0;
+              return <article className="product-card" data-filled={isFilled} key={product.id}>
                 <div className="product-name">
                   <ProductPhoto
                     productId={product.id}
@@ -142,13 +191,21 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
                 <input type="hidden" name="productId" value={product.id} />
                 <div className="product-fields">
                   <label className="field"><span aria-hidden="true">Est.</span><input ref={(element) => { inputRefs.current[`${product.id}:stock`] = element; }} aria-label={`Estoque atual de ${product.name}`} name="stock" inputMode="decimal" type="text" value={value.stock} onFocus={(event) => event.currentTarget.select()} onKeyDown={handleEnter(`${product.id}:stock`)} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, stock: event.target.value } }))} /></label>
-                  <label className="field"><span aria-hidden="true">Pedido</span><input ref={(element) => { inputRefs.current[`${product.id}:quantity`] = element; }} aria-label={`Pedido de ${product.name}`} name="quantity" inputMode="decimal" type="text" value={value.quantity} onFocus={(event) => event.currentTarget.select()} onKeyDown={handleEnter(`${product.id}:quantity`)} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, quantity: event.target.value } }))} /></label>
+                  <label className="field"><span aria-hidden="true">Pedido</span><input ref={(element) => { inputRefs.current[`${product.id}:quantity`] = element; }} aria-label={`Pedido de ${product.name}`} aria-invalid={isInvalid} aria-errormessage={isInvalid ? `error-${product.id}` : undefined} className={isInvalid ? "is-invalid" : undefined} name="quantity" inputMode="decimal" type="text" value={value.quantity} onFocus={(event) => event.currentTarget.select()} onKeyDown={handleEnter(`${product.id}:quantity`)} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, quantity: event.target.value } }))} /></label>
                 </div>
+                {productError ? <div className="product-card__error" id={`error-${product.id}`} role="alert">{productError}</div> : null}
               </article>;
             })}
           </section>
         </main>
-        <footer className="sticky-actions no-print"><div className="sticky-actions__inner"><button className="btn btn--secondary" type="button" onClick={() => setValues({})}>Limpar</button><button className="btn" type="submit" disabled={pending || submitting}>{pending ? "Salvando…" : "Salvar rascunho"}</button><button className="btn" formAction={submitAction} disabled={pending || submitting}>{submitting ? "Enviando…" : "Enviar pedido"}</button></div></footer>
+        <footer className="sticky-actions no-print">
+          {activeValidationBanner ? <div className="sticky-actions__validation-error" role="alert">{activeValidationBanner}</div> : null}
+          <div className="sticky-actions__inner">
+            <button className="btn btn--secondary" type="button" onClick={() => { setValues({}); setValidationBanner(null); }}>Limpar</button>
+            <button className="btn" type="submit" disabled={pending || submitting} onClick={handleValidateBeforeAction}>{pending ? "Salvando…" : "Salvar rascunho"}</button>
+            <button className="btn" formAction={submitAction} disabled={pending || submitting} onClick={handleValidateBeforeAction}>{submitting ? "Enviando…" : "Enviar pedido"}</button>
+          </div>
+        </footer>
       </form>
       {revisionDialogOpen && submitState.status === "confirm" ? <div className="dialog-backdrop" role="presentation"><section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="revision-dialog-title" ref={dialogRef} tabIndex={-1}>
         <h2 id="revision-dialog-title">Já existe um pedido para esta compra</h2>

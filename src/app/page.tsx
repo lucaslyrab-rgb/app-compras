@@ -19,6 +19,7 @@ export default async function HomePage() {
       erpCode: product.erpCode,
       name: product.name,
       unit: product.unit,
+      purchaseFormat: product.purchaseFormat,
       photoKey: product.photoKey,
       photoUpdatedAt: toIsoDateString(product.photoUpdatedAt),
     }));

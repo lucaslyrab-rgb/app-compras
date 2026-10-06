@@ -3,7 +3,7 @@ import { database } from "@/db/client";
 import { orderDraftItems, orderDrafts, orderItems, orders, products, stores } from "@/db/schema";
 import { assertPermission, assertStoreAccess, type Principal } from "@/modules/identity";
 import { currentPurchaseCycle } from "./calendar/service";
-import { DraftConflictError, validateDraft, type DraftItem } from "./domain";
+import { DraftConflictError, OrderValidationError, getPurchaseFormatLabel, isDiscretePurchaseFormat, validateDraft, type DraftItem } from "./domain";
 
 export class ExistingOrderError extends Error {
   constructor(public readonly submittedAt: Date, public readonly purchaseCycleDate: string) {
@@ -31,7 +31,18 @@ export async function saveDraft(principal: Principal, storeId: string, date: str
       if (!created) throw new Error("Falha ao criar rascunho");
       draftId = created.id;
     }
-    if (parsed.length) await tx.insert(orderDraftItems).values(parsed.map((item) => ({ draftId, productId: item.productId, stock: String(item.stock), quantity: String(item.quantity) })));
+    if (parsed.length) {
+      const productRows = await tx.select({ id: products.id, name: products.name, purchaseFormat: products.purchaseFormat }).from(products).where(inArray(products.id, parsed.map((item) => item.productId)));
+      const byId = new Map(productRows.map((p) => [p.id, p]));
+      for (const item of parsed) {
+        const prod = byId.get(item.productId);
+        if (prod && isDiscretePurchaseFormat(prod.purchaseFormat) && !Number.isInteger(item.quantity)) {
+          const label = getPurchaseFormatLabel(prod.purchaseFormat);
+          throw new OrderValidationError(`Informe uma quantidade inteira. Para ${prod.name} não é permitido quantidade fracionada em ${label}.`);
+        }
+      }
+      await tx.insert(orderDraftItems).values(parsed.map((item) => ({ draftId, productId: item.productId, stock: String(item.stock), quantity: String(item.quantity) })));
+    }
     return { id: draftId, version };
   });
 }
@@ -60,11 +71,19 @@ export async function submitDraft(principal: Principal, storeId: string, date: s
     const [order] = await tx.insert(orders).values({ storeId, orderDate: date, purchaseCycleDate: cycle.cycleDate, cutoffAt: cycle.cutoffAt, revision: (maxRevision ?? 0) + 1, submittedBy: principal.userId }).returning();
     if (!order) throw new Error("Falha ao enviar pedido");
     if (items.length) {
-      const productRows = await tx.select({ id: products.id, erpCode: products.erpCode, name: products.name, unit: products.unit }).from(products).where(inArray(products.id, items.map((item) => item.productId)));
+      const productRows = await tx.select({ id: products.id, erpCode: products.erpCode, name: products.name, unit: products.unit, purchaseFormat: products.purchaseFormat }).from(products).where(inArray(products.id, items.map((item) => item.productId)));
       const byId = new Map(productRows.map((product) => [product.id, product]));
-      await tx.insert(orderItems).values(items.map((item) => {
+      for (const item of items) {
         const product = byId.get(item.productId);
         if (!product) throw new Error("Produto não encontrado");
+        const numQty = Number(item.quantity);
+        if (isDiscretePurchaseFormat(product.purchaseFormat) && !Number.isInteger(numQty)) {
+          const label = getPurchaseFormatLabel(product.purchaseFormat);
+          throw new OrderValidationError(`Informe uma quantidade inteira. Para ${product.name} não é permitido quantidade fracionada em ${label}.`);
+        }
+      }
+      await tx.insert(orderItems).values(items.map((item) => {
+        const product = byId.get(item.productId)!;
         return { orderId: order.id, productId: item.productId, stock: item.stock, quantity: item.quantity, snapshotErpCode: product.erpCode, snapshotName: product.name, snapshotUnit: product.unit };
       }));
     }
