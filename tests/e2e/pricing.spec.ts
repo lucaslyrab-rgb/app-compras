@@ -118,10 +118,27 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
   await expect(pricingList.getByText(/Sem compra no ciclo .* usando custo oficial do ciclo/).first()).toBeVisible();
   await page.getByRole("button", { name: /^Não revisados/ }).click();
   await expect(pricingList.getByText(/Não revisado|Custo alterado|Parâmetros alterados/, { exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: /^Todos/ }).click();
-  const detailHref = await page.locator('a[href^="/gestor/precificacao/"]').filter({ hasText: "Analisar precificação" }).first().getAttribute("href");
+  await page.getByRole("button", { name: /^Custos alterados/ }).click();
+  await expect(page.getByRole("button", { name: /^Custos alterados/ })).toHaveAttribute("aria-pressed", "true");
+  expect(page.url()).toContain("filter=cost-changed");
+
+  const detailLink = page.locator('.manager-mobile-cards a[href^="/gestor/precificacao/"]').first();
+  const detailHref = await detailLink.getAttribute("href");
   expect(detailHref).toBeTruthy();
-  await page.goto(detailHref!);
+  expect(detailHref).toContain("filter=cost-changed");
+
+  if (testInfo.project.name === "mobile") {
+    await detailLink.click();
+  } else {
+    await page.goto(detailHref!);
+  }
+
+  await expect(page).toHaveURL(/\/gestor\/precificacao\/[0-9a-f-]+/);
+  const backLink = page.getByRole("link", { name: "← Precificação" });
+  await expect(backLink).toBeVisible();
+  const backHref = await backLink.getAttribute("href");
+  expect(backHref).toContain("filter=cost-changed");
+
   const reviewedProductName = await page.locator(".pricing-detail h2").textContent();
   const reviewedProductErp = (await page.locator(".pricing-detail__header .manager-product-identity p").textContent())?.replace("ERP: ", "");
   expect(reviewedProductName).toBeTruthy();
@@ -136,7 +153,11 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
     await review.click();
     await expect(page.getByText("Decisão manual registrada.")).toBeVisible();
   }
-  await page.goto("/gestor/precificacao");
+  await backLink.click();
+  await expect(page).toHaveURL(/\/gestor\/precificacao\?.*filter=cost-changed/);
+  await expect(page.getByRole("button", { name: /^Custos alterados/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: /^Todos/ }).click();
+
   if (testInfo.project.name === "desktop") {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const pricingDetail = page.locator(".pricing-columns > .pricing-detail");

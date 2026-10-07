@@ -449,3 +449,54 @@ export function formatPricingNumber(value: string, digits = 2) {
   const [whole, fraction = ""] = value.split(".");
   return `${BigInt(whole)},${fraction.padEnd(digits, "0").slice(0, digits)}`;
 }
+
+export const PRICING_FILTERS: readonly PricingFilter[] = [
+  "all",
+  "cost-changed",
+  "stale-purchase",
+  "not-reviewed",
+  "reviewed",
+] as const;
+
+export function isValidPricingFilter(value: unknown): value is PricingFilter {
+  return typeof value === "string" && (PRICING_FILTERS as readonly string[]).includes(value);
+}
+
+export function parsePricingFilter(value: unknown): PricingFilter {
+  return isValidPricingFilter(value) ? value : "all";
+}
+
+export function sanitizePricingQuery(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, 100);
+}
+
+export function buildPricingSearchParams(filter: PricingFilter, query: string): URLSearchParams {
+  const params = new URLSearchParams();
+  if (filter !== "all") {
+    params.set("filter", filter);
+  }
+  const cleanQuery = sanitizePricingQuery(query);
+  if (cleanQuery) {
+    params.set("q", cleanQuery);
+  }
+  return params;
+}
+
+export function buildPricingListHref(filter: PricingFilter, query: string): string {
+  const params = buildPricingSearchParams(filter, query);
+  const qs = params.toString();
+  return qs ? `/gestor/precificacao?${qs}` : "/gestor/precificacao";
+}
+
+export function buildPricingDetailHref(productId: string, filter: PricingFilter, query: string): string {
+  const params = buildPricingSearchParams(filter, query);
+  const qs = params.toString();
+  return qs ? `/gestor/precificacao/${productId}?${qs}` : `/gestor/precificacao/${productId}`;
+}
+
+export function resolvePricingBackHref(params?: { filter?: string; q?: string }): string {
+  const filter = parsePricingFilter(params?.filter);
+  const query = sanitizePricingQuery(params?.q);
+  return buildPricingListHref(filter, query);
+}
