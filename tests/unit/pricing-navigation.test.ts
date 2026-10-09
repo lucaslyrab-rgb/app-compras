@@ -47,7 +47,17 @@ describe("navegação e preservação de contexto da precificação", () => {
     expect(isValidPricingFilter("invalid-status")).toBe(false);
   });
 
-  it("6. query longa é tratada com segurança e limitada a 100 caracteres", () => {
+  it("6. query com exatamente 100 caracteres é preservada integralmente", () => {
+    const exactly100 = "x".repeat(100);
+    const sanitized = sanitizePricingQuery(exactly100);
+    expect(sanitized.length).toBe(100);
+    expect(sanitized).toBe(exactly100);
+
+    const href = buildPricingListHref("all", exactly100);
+    expect(href).toBe(`/gestor/precificacao?q=${exactly100}`);
+  });
+
+  it("7. tentativa de ultrapassar 100 caracteres é limitada com segurança a 100", () => {
     const longQuery = "a".repeat(150);
     const sanitized = sanitizePricingQuery(longQuery);
     expect(sanitized.length).toBe(100);
@@ -57,7 +67,41 @@ describe("navegação e preservação de contexto da precificação", () => {
     expect(sanitizePricingQuery(spacedQuery)).toBe("b".repeat(100));
   });
 
-  it("7. mudança de filtro gera URL sincronizada sem poluir defaults", () => {
+  it("8. termo composto e espaços internos são preservados naturalmente", () => {
+    const compound = "BATATA DOCE EXTRA";
+    expect(sanitizePricingQuery(compound)).toBe("BATATA DOCE EXTRA");
+    expect(sanitizePricingQuery("   BATATA   DOCE   EXTRA   ")).toBe("BATATA   DOCE   EXTRA");
+
+    const params = buildPricingSearchParams("cost-changed", compound);
+    expect(params.get("q")).toBe("BATATA DOCE EXTRA");
+  });
+
+  it("9. ida ao detalhe e retorno preservam q identicamente (round-trip)", () => {
+    const originalQuery = "BANANA PRATA";
+    const detailHref = buildPricingDetailHref("prod-99", "cost-changed", originalQuery);
+    expect(detailHref).toContain("/gestor/precificacao/prod-99?");
+    expect(detailHref).toContain("filter=cost-changed");
+    expect(detailHref).toContain("q=BANANA+PRATA");
+
+    // Extrai os search params da URL do detalhe
+    const url = new URL(detailHref, "http://localhost");
+    const extractedFilter = url.searchParams.get("filter") ?? undefined;
+    const extractedQ = url.searchParams.get("q") ?? undefined;
+
+    // Resolução do backHref no detalhe
+    const backHref = resolvePricingBackHref({ filter: extractedFilter, q: extractedQ });
+    expect(backHref).toBe("/gestor/precificacao?filter=cost-changed&q=BANANA+PRATA");
+
+    // Decodificação na página de listagem
+    const backUrl = new URL(backHref, "http://localhost");
+    const restoredFilter = parsePricingFilter(backUrl.searchParams.get("filter"));
+    const restoredQuery = sanitizePricingQuery(backUrl.searchParams.get("q"));
+
+    expect(restoredFilter).toBe("cost-changed");
+    expect(restoredQuery).toBe(originalQuery);
+  });
+
+  it("10. mudança de filtro gera URL sincronizada sem poluir defaults", () => {
     expect(buildPricingListHref("cost-changed", "")).toBe("/gestor/precificacao?filter=cost-changed");
     expect(buildPricingListHref("stale-purchase", "")).toBe("/gestor/precificacao?filter=stale-purchase");
     expect(buildPricingListHref("not-reviewed", "")).toBe("/gestor/precificacao?filter=not-reviewed");
@@ -65,17 +109,17 @@ describe("navegação e preservação de contexto da precificação", () => {
     expect(buildPricingListHref("all", "")).toBe("/gestor/precificacao");
   });
 
-  it("8. mudança de busca gera URL sincronizada mantendo o filtro atual", () => {
+  it("11. mudança de busca gera URL sincronizada mantendo o filtro atual", () => {
     expect(buildPricingListHref("cost-changed", "CENOURA")).toBe("/gestor/precificacao?filter=cost-changed&q=CENOURA");
     expect(buildPricingListHref("all", "TOMATE")).toBe("/gestor/precificacao?q=TOMATE");
   });
 
-  it("9. link mobile para detalhe transporta o filtro selecionado", () => {
+  it("12. link mobile para detalhe transporta o filtro selecionado", () => {
     const href = buildPricingDetailHref("prod-123", "cost-changed", "");
     expect(href).toBe("/gestor/precificacao/prod-123?filter=cost-changed");
   });
 
-  it("10. link mobile para detalhe transporta filtro e busca", () => {
+  it("13. link mobile para detalhe transporta filtro e busca", () => {
     const href = buildPricingDetailHref("prod-123", "cost-changed", "BATATA");
     expect(href).toBe("/gestor/precificacao/prod-123?filter=cost-changed&q=BATATA");
 
@@ -84,7 +128,7 @@ describe("navegação e preservação de contexto da precificação", () => {
     expect(defaultHref).toBe("/gestor/precificacao/prod-123");
   });
 
-  it("11. ← Precificação reconstrói deterministicamente a URL a partir dos search params", () => {
+  it("14. ← Precificação reconstrói deterministicamente a URL a partir dos search params", () => {
     expect(resolvePricingBackHref({ filter: "cost-changed", q: "BATATA" })).toBe(
       "/gestor/precificacao?filter=cost-changed&q=BATATA",
     );
@@ -93,13 +137,13 @@ describe("navegação e preservação de contexto da precificação", () => {
     expect(resolvePricingBackHref({ filter: "invalid-filter", q: "BATATA" })).toBe("/gestor/precificacao?q=BATATA");
   });
 
-  it("12. acesso direto ao detalhe sem params continua retornando para /gestor/precificacao puro", () => {
+  it("15. acesso direto ao detalhe sem params continua retornando para /gestor/precificacao puro", () => {
     expect(resolvePricingBackHref(undefined)).toBe("/gestor/precificacao");
     expect(resolvePricingBackHref({})).toBe("/gestor/precificacao");
     expect(resolvePricingBackHref({ filter: "all", q: "" })).toBe("/gestor/precificacao");
   });
 
-  it("13. produto revisado desaparece de Custos alterados sem alterar a regra do filtro", () => {
+  it("16. produto revisado desaparece de Custos alterados sem alterar a regra do filtro", () => {
     const itemPending = {
       id: "prod-1",
       name: "BATATA INGLESA",
@@ -143,7 +187,7 @@ describe("navegação e preservação de contexto da precificação", () => {
     expect(listAfter.map((i) => i.id)).toEqual(["prod-2"]);
   });
 
-  it("14. todos os filtros existentes são suportados de forma bidirecional", () => {
+  it("17. todos os filtros existentes são suportados de forma bidirecional", () => {
     const allFilters: PricingFilter[] = ["all", "cost-changed", "stale-purchase", "not-reviewed", "reviewed"];
     for (const f of allFilters) {
       expect(isValidPricingFilter(f)).toBe(true);

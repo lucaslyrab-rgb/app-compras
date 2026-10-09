@@ -16,7 +16,6 @@ export default async function PricingPage({
   const initialQuery = sanitizePricingQuery(params?.q);
   return (
     <PricingWorkspace
-      key={`${initialFilter}:${initialQuery}`}
       analyses={await loadPricingAnalyses(principal)}
       initialFilter={initialFilter}
       initialQuery={initialQuery}

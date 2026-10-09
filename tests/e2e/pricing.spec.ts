@@ -118,57 +118,81 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
   await expect(pricingList.getByText(/Sem compra no ciclo .* usando custo oficial do ciclo/).first()).toBeVisible();
   await page.getByRole("button", { name: /^Não revisados/ }).click();
   await expect(pricingList.getByText(/Não revisado|Custo alterado|Parâmetros alterados/, { exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: /^Custos alterados/ }).click();
-  await expect(page.getByRole("button", { name: /^Custos alterados/ })).toHaveAttribute("aria-pressed", "true");
-  expect(page.url()).toContain("filter=cost-changed");
-
-  const detailLink = page.locator('.manager-mobile-cards a[href^="/gestor/precificacao/"]').first();
-  const detailHref = await detailLink.getAttribute("href");
-  expect(detailHref).toBeTruthy();
-  expect(detailHref).toContain("filter=cost-changed");
-
   if (testInfo.project.name === "mobile") {
+    await page.getByRole("button", { name: /^Custos alterados/ }).click();
+    await expect(page.getByRole("button", { name: /^Custos alterados/ })).toHaveAttribute("aria-pressed", "true");
+    expect(page.url()).toContain("filter=cost-changed");
+
+    const targetCard = page.locator(".manager-mobile-cards .pricing-card").first();
+    const targetProductName = (await targetCard.locator("h2").textContent())?.trim();
+    expect(targetProductName).toBeTruthy();
+
+    await page.getByPlaceholder("Buscar por produto, ERP ou formato...").fill(targetProductName!);
+    await expect(page).toHaveURL(/filter=cost-changed/);
+    await expect(page).toHaveURL(/q=/);
+
+    const detailLink = targetCard.getByRole("link", { name: "Analisar precificação" });
+    const detailHref = await detailLink.getAttribute("href");
+    expect(detailHref).toBeTruthy();
+    expect(detailHref).toContain("filter=cost-changed");
+    expect(detailHref).toContain("q=");
+
     await detailLink.click();
-  } else {
-    await page.goto(detailHref!);
-  }
+    await expect(page).toHaveURL(/\/gestor\/precificacao\/[0-9a-f-]+/);
 
-  await expect(page).toHaveURL(/\/gestor\/precificacao\/[0-9a-f-]+/);
-  const backLink = page.getByRole("link", { name: "← Precificação" });
-  await expect(backLink).toBeVisible();
-  const backHref = await backLink.getAttribute("href");
-  expect(backHref).toContain("filter=cost-changed");
+    const backLink = page.getByRole("link", { name: "← Precificação" });
+    await expect(backLink).toBeVisible();
+    const backHref = await backLink.getAttribute("href");
+    expect(backHref).toContain("filter=cost-changed");
+    expect(backHref).toContain("q=");
 
-  const reviewedProductName = await page.locator(".pricing-detail h2").textContent();
-  const reviewedProductErp = (await page.locator(".pricing-detail__header .manager-product-identity p").textContent())?.replace("ERP: ", "");
-  expect(reviewedProductName).toBeTruthy();
-  expect(reviewedProductErp).toBeTruthy();
-  await expect(page.getByText("Preço sugerido", { exact: true })).toBeVisible();
-  const simulated = page.getByLabel("Preço decidido");
-  await simulated.fill("5,99");
-  await expect(page.getByText("Margem líquida", { exact: true })).toBeVisible();
-  await expect(page.getByText("Markup sobre custo", { exact: true })).toBeVisible();
-  const review = page.getByRole("button", { name: "Registrar decisão" });
-  if (testInfo.project.name === "desktop" && await review.isVisible()) {
-    await review.click();
-    await expect(page.getByText("Decisão manual registrada.")).toBeVisible();
+    await backLink.click();
+    await expect(page).toHaveURL(/\/gestor\/precificacao\?.*filter=cost-changed/);
+    await expect(page).toHaveURL(/q=/);
+    await expect(page.getByRole("button", { name: /^Custos alterados/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByPlaceholder("Buscar por produto, ERP ou formato...")).toHaveValue(targetProductName!);
+    await expect(page.locator(".manager-mobile-cards .pricing-card h2").first()).toHaveText(targetProductName!);
+
+    await page.getByPlaceholder("Buscar por produto, ERP ou formato...").fill("");
+    await page.getByRole("button", { name: /^Todos/ }).click();
   }
-  await backLink.click();
-  await expect(page).toHaveURL(/\/gestor\/precificacao\?.*filter=cost-changed/);
-  await expect(page.getByRole("button", { name: /^Custos alterados/ })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: /^Todos/ }).click();
 
   if (testInfo.project.name === "desktop") {
     await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.getByRole("button", { name: /^Custos alterados/ }).click();
+    await expect(page.getByRole("button", { name: /^Custos alterados/ })).toHaveAttribute("aria-pressed", "true");
+    expect(page.url()).toContain("filter=cost-changed");
+
+    const reviewedRow = page.locator(".pricing-table tbody tr").filter({ hasText: "Custo alterado" }).first();
+    const desktopProdName = (await reviewedRow.locator("th").textContent())?.trim();
+    const desktopProdErp = (await reviewedRow.locator("td").first().textContent())?.trim();
+    expect(desktopProdName).toBeTruthy();
+    expect(desktopProdErp).toBeTruthy();
+
+    await reviewedRow.getByRole("button", { name: `Analisar ${desktopProdName}` }).click();
+
     const pricingDetail = page.locator(".pricing-columns > .pricing-detail");
-    const reviewedRow = page.locator(".pricing-table tbody tr").filter({
-      has: page.getByRole("cell", { name: reviewedProductErp!, exact: true }),
-    });
-    await reviewedRow.getByRole("button", { name: `Analisar ${reviewedProductName}` }).click();
-    await expect(pricingDetail.getByText("Último preço decidido", { exact: true })).toBeVisible();
+    await expect(pricingDetail.locator("h2")).toHaveText(desktopProdName!);
+    await expect(pricingDetail.getByText(`ERP: ${desktopProdErp}`)).toBeVisible();
+
+    await expect(pricingDetail.getByText("Preço sugerido", { exact: true })).toBeVisible();
+    const simulated = pricingDetail.getByLabel("Preço decidido");
+    await simulated.fill("5,99");
+    await expect(pricingDetail.getByText("Margem líquida", { exact: true })).toBeVisible();
+    await expect(pricingDetail.getByText("Markup sobre custo", { exact: true })).toBeVisible();
+
+    const reviewBtn = pricingDetail.getByRole("button", { name: "Registrar decisão" });
+    await reviewBtn.click();
+    await expect(pricingDetail.getByText("Decisão manual registrada.")).toBeVisible();
+
+    // router.refresh() preserva PricingWorkspace, selectedId e link de impressão
+    await expect(pricingDetail.locator("h2")).toHaveText(desktopProdName!);
+    await expect(pricingDetail.getByRole("link", { name: "Imprimir esta decisão" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Custos alterados/ })).toHaveAttribute("aria-pressed", "true");
+
     expect(await pricingDetail.evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
     await page.evaluate(() => window.scrollTo(0, 400));
-    await expect(pricingDetail.getByRole("button", { name: "Registrar decisão" })).toBeInViewport();
+    await expect(reviewBtn).toBeInViewport();
     const panelFit = await pricingDetail.evaluate((element) => ({
       clientHeight: element.clientHeight,
       scrollHeight: element.scrollHeight,
@@ -176,10 +200,12 @@ test("Precificação exibe estados, cálculo, simulação, revisão e impressão
     }));
     expect(panelFit.scrollHeight).toBeLessThanOrEqual(panelFit.clientHeight + 1);
     expect(panelFit.bottomGap).toBeGreaterThanOrEqual(40);
+
     await page.getByRole("button", { name: /^Revisados/ }).click();
     await expect(page.locator(".manager-table-wrap").getByText("Revisado", { exact: true }).first()).toBeVisible();
     await page.getByRole("button", { name: /^Todos/ }).click();
   }
+
   const popupPromise = page.waitForEvent("popup");
   await page.getByRole("link", { name: /Imprimir alterações de preço/ }).click();
   const report = await popupPromise;
