@@ -117,10 +117,10 @@ export function resolveOperationalRoute(principal: Principal): string | null {
   if (hasPermission(principal, "pedidos:criar") && Boolean(principal.storeId)) {
     return "/";
   }
+  if (hasPermission(principal, "gestor:precificacao")) return "/gestor/precificacao";
   if (hasPermission(principal, "gestor:produtos")) return "/gestor/produtos";
   if (hasPermission(principal, "compras:consolidado")) return "/comprador/consolidado";
   if (hasPermission(principal, "compras:custos")) return "/comprador/custos";
-  if (hasPermission(principal, "gestor:precificacao")) return "/gestor/precificacao";
   if (hasPermission(principal, "gestor:configuracoes")) return "/gestor/configuracoes";
   if (hasPermission(principal, "gestor:usuarios")) return "/gestor/usuarios";
   if (hasPermission(principal, "pedidos:historico") && Boolean(principal.storeId)) {

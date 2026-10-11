@@ -164,8 +164,8 @@ describe("Gestão de Usuários - Domínio e Validações V1", () => {
           "gestor:usuarios",
         ],
       };
-      // gestor:produtos tem precedência sobre gestor:usuarios
-      expect(resolveOperationalRoute(principalGestorFull)).toBe("/gestor/produtos");
+      // gestor:precificacao tem precedência como página inicial preferencial
+      expect(resolveOperationalRoute(principalGestorFull)).toBe("/gestor/precificacao");
     });
   });
 

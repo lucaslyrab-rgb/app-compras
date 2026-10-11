@@ -1,5 +1,5 @@
 import { requirePrincipal } from "@/modules/identity/session";
-import { hasPermission } from "@/modules/identity";
+import { hasPermission, resolveOperationalRoute } from "@/modules/identity";
 import { listActiveProducts } from "@/modules/catalog/repository";
 import { toIsoDateString } from "@/modules/catalog/domain";
 import { currentPurchaseCycle } from "@/modules/ordering/calendar/service";
@@ -30,13 +30,10 @@ export default async function HomePage() {
     return <OrderWorkspace products={products} storeId={principal.storeId} storeName={storeName} initialDraft={draft} date={date} cycleDate={cycle.cycleDate} cutoffAt={cycle.cutoffAt.toISOString()} />;
   }
 
-  if (hasPermission(principal, "gestor:produtos")) redirect("/gestor/produtos");
-  if (hasPermission(principal, "compras:consolidado")) redirect("/comprador/consolidado");
-  if (hasPermission(principal, "compras:custos")) redirect("/comprador/custos");
-  if (hasPermission(principal, "gestor:precificacao")) redirect("/gestor/precificacao");
-  if (hasPermission(principal, "gestor:configuracoes")) redirect("/gestor/configuracoes");
-  if (hasPermission(principal, "gestor:usuarios")) redirect("/gestor/usuarios");
-  if (hasPermission(principal, "pedidos:historico") && principal.storeId) redirect("/historico");
+  const destination = resolveOperationalRoute(principal);
+  if (destination && destination !== "/") {
+    redirect(destination);
+  }
 
   redirect("/sem-acesso");
 }

@@ -114,9 +114,101 @@ describe("Roteamento operacional e prevenção de loops", () => {
         })
       ).toBe("/historico");
     });
+
+    it("prioriza /gestor/precificacao para Gestor com todas as permissões padrão", () => {
+      expect(
+        resolveOperationalRoute({
+          userId: "u-gestor-padrao",
+          role: "GESTOR",
+          storeId: null,
+          permissions: [
+            "gestor:produtos",
+            "gestor:precificacao",
+            "gestor:configuracoes",
+            "gestor:usuarios",
+          ],
+        })
+      ).toBe("/gestor/precificacao");
+    });
+
+    it("preserva /gestor/produtos para Gestor sem permissão de precificação", () => {
+      expect(
+        resolveOperationalRoute({
+          userId: "u-gestor-sem-precificacao",
+          role: "GESTOR",
+          storeId: null,
+          permissions: ["gestor:produtos", "gestor:configuracoes"],
+        })
+      ).toBe("/gestor/produtos");
+    });
+
+    it("prioriza /gestor/precificacao para perfil misto com precificação e compras", () => {
+      expect(
+        resolveOperationalRoute({
+          userId: "u-misto-precificacao-compras",
+          role: "GESTOR",
+          storeId: null,
+          permissions: ["compras:consolidado", "gestor:precificacao"],
+        })
+      ).toBe("/gestor/precificacao");
+    });
   });
 
-  describe("HomePage (/) com usuário sem rota operacional", () => {
+  describe("HomePage (/) com diferentes perfis e permissões", () => {
+    it("redireciona Gestor com permissão de precificação para /gestor/precificacao", async () => {
+      vi.spyOn(sessionModule, "requirePrincipal").mockResolvedValue({
+        userId: "u-gestor",
+        role: "GESTOR",
+        storeId: null,
+        permissions: ["gestor:produtos", "gestor:precificacao"],
+      });
+
+      try {
+        await HomePage();
+        expect.fail("Deveria ter redirecionado");
+      } catch (err: unknown) {
+        const error = err as { message: string; digest: string };
+        expect(error.message).toBe("NEXT_REDIRECT");
+        expect(error.digest).toContain("/gestor/precificacao");
+      }
+    });
+
+    it("redireciona Gestor sem precificação para /gestor/produtos", async () => {
+      vi.spyOn(sessionModule, "requirePrincipal").mockResolvedValue({
+        userId: "u-gestor-produtos-only",
+        role: "GESTOR",
+        storeId: null,
+        permissions: ["gestor:produtos"],
+      });
+
+      try {
+        await HomePage();
+        expect.fail("Deveria ter redirecionado");
+      } catch (err: unknown) {
+        const error = err as { message: string; digest: string };
+        expect(error.message).toBe("NEXT_REDIRECT");
+        expect(error.digest).toContain("/gestor/produtos");
+      }
+    });
+
+    it("redireciona Comprador para /comprador/consolidado", async () => {
+      vi.spyOn(sessionModule, "requirePrincipal").mockResolvedValue({
+        userId: "u-comprador",
+        role: "COMPRADOR",
+        storeId: null,
+        permissions: ["compras:consolidado"],
+      });
+
+      try {
+        await HomePage();
+        expect.fail("Deveria ter redirecionado");
+      } catch (err: unknown) {
+        const error = err as { message: string; digest: string };
+        expect(error.message).toBe("NEXT_REDIRECT");
+        expect(error.digest).toContain("/comprador/consolidado");
+      }
+    });
+
     it("redireciona para /sem-acesso (e NUNCA para /login) quando permissions = []", async () => {
       vi.spyOn(sessionModule, "requirePrincipal").mockResolvedValue({
         userId: "u-empty",
