@@ -69,8 +69,12 @@ describe("pedidos", () => {
       expect(formatDateTime(midnightUtc)).toMatch(/^08\/10\/2026[,\s]+00:00$/);
     });
 
-    it("garante consistência de formatação entre Histórico, Detalhes e Consolidado", () => {
+    it("garante consistência de formatação entre Modal de Revisão (OrderWorkspace), Detalhes, Histórico e Consolidado", () => {
       const submissionUtc = "2026-10-07T19:42:14.671Z";
+
+      // Formatação no Modal de Revisão (OrderWorkspace) via formatDateTime
+      const revisionModalDateTime = formatDateTime(submissionUtc);
+      expect(revisionModalDateTime).toMatch(/^07\/10\/2026[,\s]+16:42$/);
 
       // Formatação no Histórico da Loja (formatTime)
       const historyTime = formatTime(submissionUtc);
@@ -104,9 +108,21 @@ describe("pedidos", () => {
       expect(consolidatedMobile).toBe("07/10 16:42");
 
       // Todos convergem exatamente para 16:42
+      expect(revisionModalDateTime).toBe(detailsDateTime);
+      expect(revisionModalDateTime).toContain(historyTime);
       expect(detailsDateTime).toContain(historyTime);
       expect(consolidatedDesktop).toContain(historyTime);
       expect(consolidatedMobile).toContain(historyTime);
+    });
+
+    it("mantém independência do timezone do ambiente ou dispositivo", () => {
+      const submissionUtc = "2026-10-07T19:42:14.671Z";
+      expect(formatDateTime(submissionUtc)).toMatch(/^07\/10\/2026[,\s]+16:42$/);
+      expect(formatDateTime(new Date(submissionUtc))).toMatch(/^07\/10\/2026[,\s]+16:42$/);
+
+      // Virada de dia preserva a data local em São Paulo
+      const lateNightUtc = "2026-10-08T01:30:00.000Z";
+      expect(formatDateTime(lateNightUtc)).toMatch(/^07\/10\/2026[,\s]+22:30$/);
     });
   });
 });

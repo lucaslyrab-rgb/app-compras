@@ -3,7 +3,7 @@
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { logoutAction } from "@/app/login/actions";
 import { saveDraftAction, submitOrderAction, type State } from "./actions";
-import { parseQuantityInput, validateOrderQuantity } from "./domain";
+import { formatDateTime, parseQuantityInput, validateOrderQuantity } from "./domain";
 import Link from "next/link";
 import Image from "next/image";
 import { ProductPhoto } from "@/components/product-photo";
@@ -210,7 +210,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
       {revisionDialogOpen && submitState.status === "confirm" ? <div className="dialog-backdrop" role="presentation"><section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="revision-dialog-title" ref={dialogRef} tabIndex={-1}>
         <h2 id="revision-dialog-title">Já existe um pedido para esta compra</h2>
         <p>Já existe um pedido enviado para este ciclo.</p>
-        {submitState.existingSubmittedAt ? <p>Pedido enviado em: <strong>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(submitState.existingSubmittedAt))}</strong></p> : null}
+        {submitState.existingSubmittedAt ? <p>Pedido enviado em: <strong>{formatDateTime(submitState.existingSubmittedAt)}</strong></p> : null}
         {submitState.purchaseCycleDate ? <p>Compra: <strong>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(`${submitState.purchaseCycleDate}T12:00:00`))}</strong></p> : null}
         <p>Deseja alterar o pedido existente?</p>
         <div className="row dialog-actions"><button className="btn btn--secondary" type="button" onClick={closeRevisionDialog} disabled={revisionSubmitting}>Voltar</button><button className="btn" type="button" onClick={confirmRevision} disabled={revisionSubmitting || submitting}>{revisionSubmitting ? "Alterando pedido…" : "Alterar pedido"}</button></div>
