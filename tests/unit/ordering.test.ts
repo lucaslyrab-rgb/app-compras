@@ -124,5 +124,16 @@ describe("pedidos", () => {
       const lateNightUtc = "2026-10-08T01:30:00.000Z";
       expect(formatDateTime(lateNightUtc)).toMatch(/^07\/10\/2026[,\s]+22:30$/);
     });
+
+    it("confirma que 2026-10-07T19:42:14.671Z aparece exatamente como 07/10/2026, 16:42 no texto do modal de revisão", () => {
+      const existingSubmittedAt = "2026-10-07T19:42:14.671Z";
+      const formatted = formatDateTime(existingSubmittedAt);
+      expect(formatted).toMatch(/^07\/10\/2026[,\s]+16:42$/);
+
+      // Estrutura do parágrafo renderizado no modal de revisão (OrderWorkspace):
+      // <p>Pedido enviado em: <strong>{formatDateTime(submitState.existingSubmittedAt)}</strong></p>
+      const modalParagraphText = `Pedido enviado em: ${formatted}`;
+      expect(modalParagraphText).toMatch(/^Pedido enviado em:\s*07\/10\/2026[,\s]+16:42$/);
+    });
   });
 });

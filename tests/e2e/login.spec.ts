@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+test.use({ timezoneId: "Asia/Tokyo" });
+
 test("login é acessível e não causa overflow horizontal", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Entrar no MultiShow FLV" })).toBeVisible();
@@ -60,12 +62,15 @@ test("Loja salva, recupera e envia pedido móvel", async ({ page }, testInfo) =>
   await page.getByRole("button", { name: "Enviar pedido" }).click();
   const revisionDialog = page.getByRole("dialog", { name: "Já existe um pedido para esta compra" });
   await expect(revisionDialog).toBeVisible();
+  await expect(revisionDialog.locator("p", { hasText: "Pedido enviado em:" })).toBeVisible();
+  await expect(revisionDialog.locator("p", { hasText: "Pedido enviado em:" })).toContainText(/Pedido enviado em:\s*\d{2}\/\d{2}\/\d{4}[,\s]+\d{2}:\d{2}/);
   await revisionDialog.getByRole("button", { name: "Voltar" }).click();
   await expect(revisionDialog).toHaveCount(0);
   await page.reload();
   await expect(page.locator(".product-card").first().getByLabel(/Pedido/)).toHaveValue("20");
   await page.getByRole("button", { name: "Enviar pedido" }).click();
   await expect(revisionDialog).toBeVisible();
+  await expect(revisionDialog.locator("p", { hasText: "Pedido enviado em:" })).toBeVisible();
   await revisionDialog.getByRole("button", { name: "Alterar pedido" }).click();
   await expect(page.locator(".floating-feedback--success").getByText(/Pedido enviado/)).toBeVisible();
   await page.getByRole("link", { name: "Histórico" }).click();
