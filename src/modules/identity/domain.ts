@@ -8,8 +8,10 @@ export const PERMISSIONS = [
   "pedidos:historico",
   "compras:consolidado",
   "compras:custos",
+  "compras:fornecedores",
   "gestor:produtos",
   "gestor:precificacao",
+  "gestor:fornecedores",
   "gestor:configuracoes",
   "gestor:usuarios",
 ] as const;
@@ -65,10 +67,19 @@ export function canManageUsers(principal: Principal) {
   return hasPermission(principal, "gestor:usuarios");
 }
 
+export function canManageSuppliers(principal: Principal) {
+  return hasAnyPermission(principal, ["compras:fornecedores", "gestor:fornecedores"]);
+}
+
+export function canToggleSupplierStatus(principal: Principal) {
+  return principal.role === "GESTOR" && hasPermission(principal, "gestor:fornecedores");
+}
+
 export function canManageGestor(principal: Principal) {
   return hasAnyPermission(principal, [
     "gestor:produtos",
     "gestor:precificacao",
+    "gestor:fornecedores",
     "gestor:configuracoes",
     "gestor:usuarios",
   ]);
@@ -76,12 +87,14 @@ export function canManageGestor(principal: Principal) {
 
 export const ROLE_DEFAULT_PERMISSIONS: Record<Role, readonly Permission[]> = {
   LOJA: ["pedidos:criar", "pedidos:historico"],
-  COMPRADOR: ["compras:consolidado", "compras:custos"],
+  COMPRADOR: ["compras:consolidado", "compras:custos", "compras:fornecedores"],
   GESTOR: [
     "compras:consolidado",
     "compras:custos",
+    "compras:fornecedores",
     "gestor:produtos",
     "gestor:precificacao",
+    "gestor:fornecedores",
     "gestor:configuracoes",
     "gestor:usuarios",
   ],
@@ -100,6 +113,7 @@ export const PERMISSION_GROUPS = [
     permissions: [
       { id: "compras:consolidado", label: "Consolidado" },
       { id: "compras:custos", label: "Lançamento de custos" },
+      { id: "compras:fornecedores", label: "Fornecedores" },
     ],
   },
   {
@@ -107,6 +121,7 @@ export const PERMISSION_GROUPS = [
     permissions: [
       { id: "gestor:produtos", label: "Produtos" },
       { id: "gestor:precificacao", label: "Precificação" },
+      { id: "gestor:fornecedores", label: "Fornecedores" },
       { id: "gestor:configuracoes", label: "Configurações" },
       { id: "gestor:usuarios", label: "Usuários" },
     ],
@@ -121,6 +136,8 @@ export function resolveOperationalRoute(principal: Principal): string | null {
   if (hasPermission(principal, "gestor:produtos")) return "/gestor/produtos";
   if (hasPermission(principal, "compras:consolidado")) return "/comprador/consolidado";
   if (hasPermission(principal, "compras:custos")) return "/comprador/custos";
+  if (hasPermission(principal, "gestor:fornecedores")) return "/gestor/fornecedores";
+  if (hasPermission(principal, "compras:fornecedores")) return "/comprador/fornecedores";
   if (hasPermission(principal, "gestor:configuracoes")) return "/gestor/configuracoes";
   if (hasPermission(principal, "gestor:usuarios")) return "/gestor/usuarios";
   if (hasPermission(principal, "pedidos:historico") && Boolean(principal.storeId)) {

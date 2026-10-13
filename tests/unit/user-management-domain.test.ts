@@ -111,12 +111,14 @@ describe("Gestão de Usuários - Domínio e Validações V1", () => {
   describe("Templates de Perfil e Agrupamentos", () => {
     it("fornece templates padrão corretos para cada perfil", () => {
       expect(ROLE_DEFAULT_PERMISSIONS.LOJA).toEqual(["pedidos:criar", "pedidos:historico"]);
-      expect(ROLE_DEFAULT_PERMISSIONS.COMPRADOR).toEqual(["compras:consolidado", "compras:custos"]);
+      expect(ROLE_DEFAULT_PERMISSIONS.COMPRADOR).toEqual(["compras:consolidado", "compras:custos", "compras:fornecedores"]);
       expect(ROLE_DEFAULT_PERMISSIONS.GESTOR).toEqual([
         "compras:consolidado",
         "compras:custos",
+        "compras:fornecedores",
         "gestor:produtos",
         "gestor:precificacao",
+        "gestor:fornecedores",
         "gestor:configuracoes",
         "gestor:usuarios",
       ]);
@@ -130,8 +132,10 @@ describe("Gestão de Usuários - Domínio e Validações V1", () => {
         "pedidos:historico",
         "compras:consolidado",
         "compras:custos",
+        "compras:fornecedores",
         "gestor:produtos",
         "gestor:precificacao",
+        "gestor:fornecedores",
         "gestor:configuracoes",
         "gestor:usuarios",
       ]);

@@ -107,6 +107,24 @@ describe("Roteamento operacional e prevenção de loops", () => {
 
       expect(
         resolveOperationalRoute({
+          userId: "u-gestor-forn",
+          role: "GESTOR",
+          storeId: null,
+          permissions: ["gestor:fornecedores"],
+        })
+      ).toBe("/gestor/fornecedores");
+
+      expect(
+        resolveOperationalRoute({
+          userId: "u-buyer-forn",
+          role: "COMPRADOR",
+          storeId: null,
+          permissions: ["compras:fornecedores"],
+        })
+      ).toBe("/comprador/fornecedores");
+
+      expect(
+        resolveOperationalRoute({
           userId: "u-loja-hist",
           role: "LOJA",
           storeId: "store-1",
