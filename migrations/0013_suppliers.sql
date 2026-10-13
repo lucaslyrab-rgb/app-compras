@@ -52,15 +52,21 @@ ALTER TABLE users ADD CONSTRAINT users_permissions_valid_check CHECK (
   ]::text[]
 );
 
--- Backfill seguro: adiciona compras:fornecedores aos compradores existentes
+-- Backfill seguro e idempotente: adiciona compras:fornecedores aos compradores existentes
 UPDATE users
 SET permissions = array_append(permissions, 'compras:fornecedores')
 WHERE role = 'COMPRADOR'
   AND NOT ('compras:fornecedores' = ANY(permissions));
 
--- Backfill seguro: adiciona compras:fornecedores e gestor:fornecedores aos gestores existentes
+-- Backfill seguro e idempotente: adiciona compras:fornecedores aos gestores existentes
 UPDATE users
-SET permissions = array_cat(permissions, ARRAY['compras:fornecedores', 'gestor:fornecedores']::text[])
+SET permissions = array_append(permissions, 'compras:fornecedores')
+WHERE role = 'GESTOR'
+  AND NOT ('compras:fornecedores' = ANY(permissions));
+
+-- Backfill seguro e idempotente: adiciona gestor:fornecedores aos gestores existentes
+UPDATE users
+SET permissions = array_append(permissions, 'gestor:fornecedores')
 WHERE role = 'GESTOR'
   AND NOT ('gestor:fornecedores' = ANY(permissions));
 
