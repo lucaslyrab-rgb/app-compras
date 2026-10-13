@@ -12,10 +12,12 @@ type NavItem = { href: string; label: string; icon: string; permission?: Permiss
 const buyerItems: (NavItem & { permission: Permission })[] = [
   { href: "/comprador/consolidado", label: "Consolidado", icon: "▤", permission: "compras:consolidado" },
   { href: "/comprador/custos", label: "Lançamento de Custos", icon: "▣", permission: "compras:custos" },
+  { href: "/comprador/fornecedores", label: "Fornecedores", icon: "🏢", permission: "compras:fornecedores" },
 ];
 const managerItems: (NavItem & { permission: Permission })[] = [
   { href: "/gestor/produtos", label: "Produtos", icon: "•", permission: "gestor:produtos" },
   { href: "/gestor/precificacao", label: "Precificação", icon: "•", permission: "gestor:precificacao" },
+  { href: "/gestor/fornecedores", label: "Fornecedores", icon: "🏢", permission: "gestor:fornecedores" },
   { href: "/gestor/configuracoes", label: "Configurações", icon: "⚙", permission: "gestor:configuracoes" },
   { href: "/gestor/usuarios", label: "Usuários", icon: "👤", permission: "gestor:usuarios" },
 ];

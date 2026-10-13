@@ -9,6 +9,8 @@ import {
   canManageProducts,
   canManageSettings,
   canManageUsers,
+  canManageSuppliers,
+  canToggleSupplierStatus,
   hasAllPermissions,
   hasAnyPermission,
   hasPermission,
@@ -22,14 +24,16 @@ import {
 } from "@/modules/identity/domain";
 
 describe("Fundação de Permissões V1", () => {
-  it("contém exatamente as 8 permissões oficiais V1", () => {
+  it("contém exatamente as 10 permissões oficiais", () => {
     expect(PERMISSIONS).toEqual([
       "pedidos:criar",
       "pedidos:historico",
       "compras:consolidado",
       "compras:custos",
+      "compras:fornecedores",
       "gestor:produtos",
       "gestor:precificacao",
+      "gestor:fornecedores",
       "gestor:configuracoes",
       "gestor:usuarios",
     ]);
@@ -152,6 +156,25 @@ describe("Fundação de Permissões V1", () => {
       };
       expect(canManageUsers(usersOnly)).toBe(true);
       expect(canManageGestor(usersOnly)).toBe(true);
+
+      const buyerSupplier: Principal = {
+        userId: "p5",
+        role: "COMPRADOR",
+        storeId: null,
+        permissions: ["compras:fornecedores"],
+      };
+      expect(canManageSuppliers(buyerSupplier)).toBe(true);
+      expect(canToggleSupplierStatus(buyerSupplier)).toBe(false);
+
+      const managerSupplier: Principal = {
+        userId: "p6",
+        role: "GESTOR",
+        storeId: null,
+        permissions: ["gestor:fornecedores"],
+      };
+      expect(canManageSuppliers(managerSupplier)).toBe(true);
+      expect(canToggleSupplierStatus(managerSupplier)).toBe(true);
+      expect(canManageGestor(managerSupplier)).toBe(true);
 
       expect(canManageGestor(compradorPrincipal)).toBe(false);
       expect(canManageGestor(lojaPrincipal)).toBe(false);

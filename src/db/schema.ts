@@ -24,7 +24,7 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 }, (table) => [
   uniqueIndex("users_email_ci_unique").on(sql`lower(${table.email})`),
-  check("users_permissions_valid_check", sql`${table.permissions} <@ ARRAY['pedidos:criar', 'pedidos:historico', 'compras:consolidado', 'compras:custos', 'gestor:produtos', 'gestor:precificacao', 'gestor:configuracoes', 'gestor:usuarios']::text[]`),
+  check("users_permissions_valid_check", sql`${table.permissions} <@ ARRAY['pedidos:criar', 'pedidos:historico', 'compras:consolidado', 'compras:custos', 'compras:fornecedores', 'gestor:produtos', 'gestor:precificacao', 'gestor:fornecedores', 'gestor:configuracoes', 'gestor:usuarios']::text[]`),
   check("users_store_permission_check", sql`(ARRAY['pedidos:criar', 'pedidos:historico']::text[] && ${table.permissions} AND ${table.storeId} IS NOT NULL) OR (NOT (ARRAY['pedidos:criar', 'pedidos:historico']::text[] && ${table.permissions}) AND ${table.storeId} IS NULL)`)
 ]);
 
@@ -233,4 +233,34 @@ export const auditEvents = pgTable("audit_events", {
 export const usersRelations = relations(users, ({ one, many }) => ({
   store: one(stores, { fields: [users.storeId], references: [stores.id] }),
   sessions: many(sessions)
+}));
+
+export const suppliers = pgTable("suppliers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  corporateName: text("corporate_name").notNull(),
+  tradeName: text("trade_name"),
+  taxId: text("tax_id"),
+  taxIdType: text("tax_id_type").notNull().default("NOT_INFORMED"),
+  taxInvoiceRule: text("tax_invoice_rule").notNull().default("STANDARD"),
+  contactName: text("contact_name"),
+  contactPhone: text("contact_phone"),
+  notes: text("notes"),
+  active: boolean("active").notNull().default(true),
+  version: integer("version").notNull().default(1),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("suppliers_tax_id_unique").on(table.taxId).where(sql`${table.taxId} IS NOT NULL AND btrim(${table.taxId}) <> ''`),
+  index("suppliers_active_name_idx").on(table.active, table.corporateName),
+  check("suppliers_corporate_name_check", sql`btrim(${table.corporateName}) <> ''`),
+  check("suppliers_tax_id_type_check", sql`${table.taxIdType} IN ('CNPJ', 'CPF', 'NOT_INFORMED')`),
+  check("suppliers_tax_invoice_rule_check", sql`${table.taxInvoiceRule} IN ('STANDARD', 'AFTER_WEIGHING', 'SPECIAL_REGIME')`),
+  check("suppliers_version_check", sql`${table.version} > 0`)
+]);
+
+export const suppliersRelations = relations(suppliers, ({ one }) => ({
+  creator: one(users, { fields: [suppliers.createdBy], references: [users.id] }),
+  updater: one(users, { fields: [suppliers.updatedBy], references: [users.id] })
 }));

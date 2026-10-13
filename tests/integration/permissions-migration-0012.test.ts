@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import postgres from "postgres";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   discoverMigrations,
   runMigrations,
@@ -19,8 +20,21 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
   const schemaC = `test_perm_c_${stamp}`;
   const schemaD = `test_perm_d_${stamp}`;
   const schemaD2 = `test_perm_d2_${stamp}`;
+  let migrations0012Dir = "";
+
+  beforeAll(async () => {
+    migrations0012Dir = await mkdtemp(path.join(os.tmpdir(), "migrations-0012-"));
+    const allFiles = await discoverMigrations(path.resolve("migrations"));
+    const filesUpTo0012 = allFiles.filter((f) => f <= "0012_user_permissions_and_management.sql");
+    for (const file of filesUpTo0012) {
+      await cp(path.join(path.resolve("migrations"), file), path.join(migrations0012Dir, file));
+    }
+  });
 
   afterAll(async () => {
+    if (migrations0012Dir) {
+      await rm(migrations0012Dir, { recursive: true, force: true });
+    }
     if (process.env.DATABASE_URL) {
       const sql = postgres(process.env.DATABASE_URL, { max: 1 });
       await sql.unsafe(`DROP SCHEMA IF EXISTS "${schemaA}" CASCADE`);
@@ -40,7 +54,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
     const isolatedUrl = new URL(process.env.DATABASE_URL!);
     isolatedUrl.searchParams.set("options", `-csearch_path=${schemaA},public`);
 
-    const result = await runMigrations({ databaseUrl: isolatedUrl.toString(), migrationsDirectory: path.resolve("migrations") });
+    const result = await runMigrations({ databaseUrl: isolatedUrl.toString(), migrationsDirectory: migrations0012Dir });
     expect(result).toHaveLength(12);
     expect(result[11]).toBe("0012_user_permissions_and_management.sql");
 
@@ -83,8 +97,8 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
     const client = postgres(isolatedUrl.toString(), { max: 1 });
     try {
       // 1. Aplica migrations 0001 até 0011 manualmente e registra em schema_migrations
-      const allFiles = await discoverMigrations(path.resolve("migrations"));
-      const filesUpTo0011 = allFiles.filter((f) => !f.startsWith("0012"));
+      const allFiles = await discoverMigrations(migrations0012Dir);
+      const filesUpTo0011 = allFiles.filter((f) => f < "0012");
       expect(filesUpTo0011).toHaveLength(11);
 
       await client.unsafe(`
@@ -97,7 +111,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
       `);
 
       for (const file of filesUpTo0011) {
-        const sqlContent = await readFile(path.join(path.resolve("migrations"), file), "utf8");
+        const sqlContent = await readFile(path.join(migrations0012Dir, file), "utf8");
         await client.unsafe(sqlContent);
         const checksum = createHash("sha256").update(sqlContent).digest("hex");
         await client`
@@ -142,7 +156,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
       const newlyApplied: string[] = [];
       const applied = await runMigrations({
         databaseUrl: isolatedUrl.toString(),
-        migrationsDirectory: path.resolve("migrations"),
+        migrationsDirectory: migrations0012Dir,
         onApplied: (f) => newlyApplied.push(f),
       });
       expect(applied).toHaveLength(12);
@@ -259,7 +273,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
       // 1. Aplica todas as 12 migrations normalmente
       const initialApplied = await runMigrations({
         databaseUrl: isolatedUrl.toString(),
-        migrationsDirectory: path.resolve("migrations"),
+        migrationsDirectory: migrations0012Dir,
       });
       expect(initialApplied).toHaveLength(12);
 
@@ -286,7 +300,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
       const freshlyApplied: string[] = [];
       const resumedApplied = await runMigrations({
         databaseUrl: isolatedUrl.toString(),
-        migrationsDirectory: path.resolve("migrations"),
+        migrationsDirectory: migrations0012Dir,
         onApplied: (f) => freshlyApplied.push(f),
       });
       expect(resumedApplied).toHaveLength(12);
@@ -319,7 +333,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
       const subsequentApplied: string[] = [];
       const subsequentRun = await runMigrations({
         databaseUrl: isolatedUrl.toString(),
-        migrationsDirectory: path.resolve("migrations"),
+        migrationsDirectory: migrations0012Dir,
         onApplied: (f) => subsequentApplied.push(f),
       });
       expect(subsequentRun).toHaveLength(12);
@@ -340,8 +354,8 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
     const client = postgres(isolatedUrl.toString(), { max: 1 });
     try {
       // 1. Aplica migrations 0001 até 0011
-      const allFiles = await discoverMigrations(path.resolve("migrations"));
-      const filesUpTo0011 = allFiles.filter((f) => !f.startsWith("0012"));
+      const allFiles = await discoverMigrations(migrations0012Dir);
+      const filesUpTo0011 = allFiles.filter((f) => f < "0012_user_permissions_and_management.sql");
 
       await client.unsafe(`
         CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -353,7 +367,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
       `);
 
       for (const file of filesUpTo0011) {
-        const sqlContent = await readFile(path.join(path.resolve("migrations"), file), "utf8");
+        const sqlContent = await readFile(path.join(migrations0012Dir, file), "utf8");
         await client.unsafe(sqlContent);
         const checksum = createHash("sha256").update(sqlContent).digest("hex");
         await client`
@@ -372,7 +386,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
       try {
         await runMigrations({
           databaseUrl: isolatedUrl.toString(),
-          migrationsDirectory: path.resolve("migrations"),
+          migrationsDirectory: migrations0012Dir,
         });
       } catch (err) {
         migrationError = err as Error;
@@ -419,7 +433,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
       const retryNewlyApplied: string[] = [];
       const retryApplied = await runMigrations({
         databaseUrl: isolatedUrl.toString(),
-        migrationsDirectory: path.resolve("migrations"),
+        migrationsDirectory: migrations0012Dir,
         onApplied: (f) => retryNewlyApplied.push(f),
       });
       expect(retryApplied).toHaveLength(12);
@@ -446,8 +460,8 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
     const client = postgres(isolatedUrl.toString(), { max: 1 });
     try {
       // 1. Aplica migrations 0001 até 0011
-      const allFiles = await discoverMigrations(path.resolve("migrations"));
-      const filesUpTo0011 = allFiles.filter((f) => !f.startsWith("0012"));
+      const allFiles = await discoverMigrations(migrations0012Dir);
+      const filesUpTo0011 = allFiles.filter((f) => f < "0012_user_permissions_and_management.sql");
 
       await client.unsafe(`
         CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -459,7 +473,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
       `);
 
       for (const file of filesUpTo0011) {
-        const sqlContent = await readFile(path.join(path.resolve("migrations"), file), "utf8");
+        const sqlContent = await readFile(path.join(migrations0012Dir, file), "utf8");
         await client.unsafe(sqlContent);
         const checksum = createHash("sha256").update(sqlContent).digest("hex");
         await client`
@@ -478,7 +492,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
       try {
         await runMigrations({
           databaseUrl: isolatedUrl.toString(),
-          migrationsDirectory: path.resolve("migrations"),
+          migrationsDirectory: migrations0012Dir,
         });
       } catch (err) {
         migrationError = err as Error;
@@ -503,7 +517,7 @@ integration("Migration 0012: permissões, backfill, retomada e segurança transa
       const retryNewlyApplied: string[] = [];
       const retryApplied = await runMigrations({
         databaseUrl: isolatedUrl.toString(),
-        migrationsDirectory: path.resolve("migrations"),
+        migrationsDirectory: migrations0012Dir,
         onApplied: (f) => retryNewlyApplied.push(f),
       });
       expect(retryApplied).toHaveLength(12);
