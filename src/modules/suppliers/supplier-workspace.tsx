@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import type { Role } from "@/modules/identity";
 import {
   createSupplierAction,
   toggleSupplierActiveAction,
   updateSupplierAction,
 } from "./actions";
+import { listSupplierProductsAction } from "./product-suppliers-actions";
+import type { SupplierProductLink } from "./product-suppliers-domain";
 import {
   formatPhone,
   formatTaxId,
@@ -63,6 +66,28 @@ export function SupplierWorkspace({
   });
 
   const [formError, setFormError] = useState<string | null>(null);
+  const [linkedProducts, setLinkedProducts] = useState<SupplierProductLink[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+
+  const editingSupplierId = editingSupplier?.id;
+
+  useEffect(() => {
+    if (!editingSupplierId) return;
+    let active = true;
+    listSupplierProductsAction(editingSupplierId)
+      .then((res) => {
+        if (active && res.status === "success") {
+          setLinkedProducts(res.products);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setIsLoadingProducts(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [editingSupplierId]);
 
   // Auto-masking helpers for inputs
   function maskTaxIdInput(value: string) {
@@ -142,6 +167,8 @@ export function SupplierWorkspace({
 
   function handleOpenEdit(supplier: Supplier) {
     setEditingSupplier(supplier);
+    setLinkedProducts([]);
+    setIsLoadingProducts(true);
     setEditForm({
       corporateName: supplier.corporateName,
       tradeName: supplier.tradeName ?? "",
@@ -489,6 +516,13 @@ export function SupplierWorkspace({
                   </td>
                   <td>
                     <div className="suppliers-actions-cell">
+                      <Link
+                        href={`/${role === "GESTOR" ? "gestor" : "comprador"}/fornecedores/${supplier.id}/faturamento`}
+                        className="suppliers-btn-billing"
+                        title="Visualizar faturamento e espelho de pedidos do ciclo"
+                      >
+                        Faturamento
+                      </Link>
                       <button
                         type="button"
                         className="suppliers-btn-edit"
@@ -570,6 +604,12 @@ export function SupplierWorkspace({
               </dl>
 
               <div className="suppliers-card-actions">
+                <Link
+                  href={`/${role === "GESTOR" ? "gestor" : "comprador"}/fornecedores/${supplier.id}/faturamento`}
+                  className="suppliers-btn-billing"
+                >
+                  Faturamento
+                </Link>
                 <button
                   type="button"
                   className="suppliers-btn-edit"
@@ -891,6 +931,95 @@ export function SupplierWorkspace({
                       }
                     />
                   </div>
+                </div>
+
+                <div className="suppliers-form-group suppliers-form-group--full">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <label style={{ margin: 0, fontWeight: 700, fontSize: "0.85rem" }}>
+                      Produtos Vinculados ({linkedProducts.length})
+                    </label>
+                    <Link
+                      href={`/${role === "GESTOR" ? "gestor" : "comprador"}/fornecedores/${editingSupplier.id}/faturamento`}
+                      className="suppliers-btn-billing"
+                      style={{ fontSize: "0.75rem", padding: "4px 8px" }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Espelho de Faturamento do Ciclo ↗
+                    </Link>
+                  </div>
+                  {isLoadingProducts ? (
+                    <div style={{ fontSize: "0.8rem", color: "var(--ink-600)", padding: "8px 0" }}>
+                      Carregando produtos vinculados...
+                    </div>
+                  ) : linkedProducts.length === 0 ? (
+                    <div style={{ fontSize: "0.8rem", color: "var(--ink-600)", padding: "8px 0", fontStyle: "italic" }}>
+                      Nenhum produto vinculado a este fornecedor. A vinculação é configurada no Cadastro de Produtos.
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        maxHeight: "150px",
+                        overflowY: "auto",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        background: "#fafbfc",
+                      }}
+                    >
+                      <table style={{ width: "100%", fontSize: "0.78rem", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ background: "#edf1f4", textAlign: "left" }}>
+                            <th style={{ padding: "6px 8px" }}>Cód. ERP</th>
+                            <th style={{ padding: "6px 8px" }}>Produto</th>
+                            <th style={{ padding: "6px 8px", textAlign: "center" }}>Tipo</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {linkedProducts.map((p) => (
+                            <tr key={p.id} style={{ borderTop: "1px solid #edf1f4" }}>
+                              <td style={{ padding: "6px 8px", fontWeight: 700 }}>{p.erpCode}</td>
+                              <td style={{ padding: "6px 8px" }}>{p.productName}</td>
+                              <td style={{ padding: "6px 8px", textAlign: "center" }}>
+                                {p.isExclusive ? (
+                                  <span
+                                    style={{
+                                      display: "inline-block",
+                                      padding: "2px 6px",
+                                      borderRadius: "999px",
+                                      fontSize: "0.7rem",
+                                      fontWeight: 700,
+                                      background: "#fef3c7",
+                                      color: "#92400e",
+                                    }}
+                                  >
+                                    Exclusivo
+                                  </span>
+                                ) : p.isPrimary ? (
+                                  <span
+                                    style={{
+                                      display: "inline-block",
+                                      padding: "2px 6px",
+                                      borderRadius: "999px",
+                                      fontSize: "0.7rem",
+                                      fontWeight: 700,
+                                      background: "#e0f2fe",
+                                      color: "#0369a1",
+                                    }}
+                                  >
+                                    Principal
+                                  </span>
+                                ) : (
+                                  <span style={{ color: "var(--ink-600)", fontSize: "0.7rem" }}>
+                                    Alternativo
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
                 <div className="suppliers-form-group suppliers-form-group--full">

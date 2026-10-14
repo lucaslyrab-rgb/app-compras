@@ -18,6 +18,7 @@ import {
 } from "./domain";
 import {
   createSupplier,
+  listSuppliers,
   toggleSupplierActive,
   updateSupplier,
 } from "./repository";
@@ -187,6 +188,31 @@ export async function toggleSupplierActiveAction(raw: unknown) {
     return {
       status: "error" as const,
       message: "Não foi possível alterar a situação do fornecedor.",
+    };
+  }
+}
+
+export async function listActiveSuppliersAction() {
+  const principal = await currentPrincipal();
+  if (!principal || !canManageSuppliers(principal)) {
+    return {
+      status: "error" as const,
+      message: "Acesso negado: permissão de fornecedores necessária.",
+      suppliers: [],
+    };
+  }
+
+  try {
+    const suppliers = await listSuppliers({ includeInactive: false });
+    return { status: "success" as const, suppliers };
+  } catch (error) {
+    log("error", "Falha ao listar fornecedores ativos", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+    return {
+      status: "error" as const,
+      message: "Não foi possível carregar fornecedores.",
+      suppliers: [],
     };
   }
 }

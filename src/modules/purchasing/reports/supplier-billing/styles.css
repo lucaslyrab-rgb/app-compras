@@ -1,0 +1,228 @@
+.billing-report {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+  background-color: var(--color-surface, #ffffff);
+  color: var(--color-text, #1e293b);
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+}
+
+.billing-report__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.billing-report__actions-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.billing-report__cycle-select {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #cbd5e1);
+  background-color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.billing-report__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #0f172a;
+}
+
+.billing-report__brand h1 {
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 8px 0 4px 0;
+  color: #0f172a;
+}
+
+.billing-report__subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.billing-report__supplier-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #f8fafc;
+  margin-bottom: 24px;
+}
+
+.billing-report__supplier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.billing-report__supplier-field dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.billing-report__supplier-field dd {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+
+.billing-section {
+  margin-bottom: 32px;
+}
+
+.billing-section__title {
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.billing-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.billing-table th,
+.billing-table td {
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  text-align: left;
+}
+
+.billing-table th {
+  background-color: #f1f5f9;
+  font-weight: 600;
+  color: #334155;
+}
+
+.billing-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.billing-table .center {
+  text-align: center;
+}
+
+.billing-table tfoot td {
+  font-weight: 700;
+  background-color: #f8fafc;
+  border-top: 2px solid #0f172a;
+}
+
+.billing-store-card {
+  margin-bottom: 24px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+
+.billing-store-card__header {
+  background-color: #f8fafc;
+  padding: 10px 14px;
+  border-bottom: 1px solid #cbd5e1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.billing-store-card__header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.billing-store-card__meta {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.billing-store-empty {
+  padding: 16px;
+  background-color: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.billing-zero-demand {
+  margin-top: 24px;
+  padding: 14px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.billing-zero-demand ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .billing-report {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .billing-store-card {
+    border: 1px solid #000;
+    page-break-inside: avoid;
+    margin-bottom: 18mm;
+  }
+
+  .billing-table th,
+  .billing-table td {
+    border: 1px solid #666;
+    padding: 6px 8px;
+  }
+
+  .billing-table th {
+    background-color: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

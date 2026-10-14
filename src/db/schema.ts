@@ -260,7 +260,36 @@ export const suppliers = pgTable("suppliers", {
   check("suppliers_version_check", sql`${table.version} > 0`)
 ]);
 
-export const suppliersRelations = relations(suppliers, ({ one }) => ({
+export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
   creator: one(users, { fields: [suppliers.createdBy], references: [users.id] }),
-  updater: one(users, { fields: [suppliers.updatedBy], references: [users.id] })
+  updater: one(users, { fields: [suppliers.updatedBy], references: [users.id] }),
+  productLinks: many(productSuppliers)
+}));
+
+export const productSuppliers = pgTable("product_suppliers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  supplierId: uuid("supplier_id").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
+  isPrimary: boolean("is_primary").notNull().default(false),
+  isExclusive: boolean("is_exclusive").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("product_suppliers_unique").on(table.productId, table.supplierId),
+  uniqueIndex("product_suppliers_single_primary_idx").on(table.productId).where(sql`${table.isPrimary} = true`),
+  uniqueIndex("product_suppliers_single_exclusive_idx").on(table.productId).where(sql`${table.isExclusive} = true`),
+  index("product_suppliers_product_idx").on(table.productId),
+  index("product_suppliers_supplier_idx").on(table.supplierId),
+  check("product_suppliers_exclusive_implies_primary", sql`NOT ${table.isExclusive} OR ${table.isPrimary}`)
+]);
+
+export const productSuppliersRelations = relations(productSuppliers, ({ one }) => ({
+  product: one(products, { fields: [productSuppliers.productId], references: [products.id] }),
+  supplier: one(suppliers, { fields: [productSuppliers.supplierId], references: [suppliers.id] }),
+  creator: one(users, { fields: [productSuppliers.createdBy], references: [users.id] }),
+  updater: one(users, { fields: [productSuppliers.updatedBy], references: [users.id] })
 }));

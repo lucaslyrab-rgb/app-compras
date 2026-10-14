@@ -277,6 +277,28 @@
   border-color: #92a3b0;
 }
 
+.suppliers-btn-billing {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.suppliers-btn-billing:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
 .suppliers-btn-toggle {
   min-height: 32px;
   padding: 4px 10px;
