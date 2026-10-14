@@ -6,6 +6,7 @@ import { formatPricingNumber } from "../analysis/domain";
 import { createProductAction, saveProductPricingAction } from "./actions";
 import { uploadProductPhotoAction, removeProductPhotoAction } from "@/modules/catalog/actions";
 import { ProductPhoto } from "@/components/product-photo";
+import { ProductSuppliersSection } from "./product-suppliers-section";
 import type { PricingProduct, PricingSettings } from "./domain";
 
 type Props = {
@@ -312,6 +313,14 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
           Fornecedor exclusivo
         </label>
       </fieldset>
+      {product ? (
+        <ProductSuppliersSection
+          productId={product.id}
+          erpCode={product.erpCode}
+          productName={product.name}
+          onExclusiveChanged={(isExclusive) => setExclusiveSupplier(isExclusive)}
+        />
+      ) : null}
       <fieldset className="manager-form-section manager-photo-section">
         <legend>Foto do produto</legend>
         {product ? (
