@@ -63,7 +63,9 @@ export function SupplierBillingView({
           <Image src="/brand/MS-H.png" alt="MultiShow FLV" width={170} height={43} priority />
           <h1>Relatório de Faturamento por Fornecedor</h1>
           <p className="billing-report__subtitle">
-            Instrução de faturamento e separação de pedidos exclusivos por loja
+            {report.hasAllocations
+              ? "Instrução de faturamento baseada na destinação operacional do comprador"
+              : "Instrução de faturamento e separação de pedidos exclusivos por loja"}
           </p>
         </div>
         <div style={{ textAlign: "right" }}>
@@ -131,7 +133,12 @@ export function SupplierBillingView({
               consolidatedProducts.map((item) => (
                 <tr key={item.productId}>
                   <td>{item.erpCode}</td>
-                  <td><strong>{item.productName}</strong></td>
+                  <td>
+                    <strong>{item.productName}</strong>
+                    {item.isAdditional ? (
+                      <span className="billing-badge-additional">Sem pedido</span>
+                    ) : null}
+                  </td>
                   <td className="center">{item.unit}</td>
                   <td className="center">{item.purchaseFormat}</td>
                   {stores.map((s) => (
@@ -149,7 +156,9 @@ export function SupplierBillingView({
             ) : (
               <tr>
                 <td colSpan={5 + stores.length} style={{ textAlign: "center", padding: "16px" }}>
-                  Nenhum produto exclusivo teve solicitação de compra neste ciclo.
+                  {report.hasAllocations
+                    ? "Nenhum produto destinado para este fornecedor neste ciclo."
+                    : "Nenhum produto exclusivo teve solicitação de compra neste ciclo."}
                 </td>
               </tr>
             )}
@@ -217,11 +226,27 @@ export function SupplierBillingView({
                     {store.items.map((item) => (
                       <tr key={item.productId}>
                         <td>{item.erpCode}</td>
-                        <td>{item.productName}</td>
+                        <td>
+                          {item.productName}
+                          {item.isAdditional ? (
+                            <span className="billing-badge-additional">Adicional</span>
+                          ) : null}
+                        </td>
                         <td className="center">{item.unit}</td>
                         <td className="center">{item.purchaseFormat}</td>
                         <td className="num">
                           <strong>{formatQuantityPtBr(item.quantity)} {item.purchaseFormat}</strong>
+                          {item.difference && item.difference !== "+0.00" ? (
+                            <span
+                              className={`billing-item-diff ${
+                                item.difference.startsWith("-")
+                                  ? "billing-item-diff--cut"
+                                  : "billing-item-diff--surplus"
+                              }`}
+                            >
+                              Ped: {formatQuantityPtBr(item.orderedQuantity ?? 0)} ({item.difference})
+                            </span>
+                          ) : null}
                         </td>
                       </tr>
                     ))}
@@ -237,7 +262,9 @@ export function SupplierBillingView({
                 </table>
               ) : (
                 <p className="billing-store-empty">
-                  Esta loja enviou pedido para o ciclo, mas nenhum dos produtos exclusivos deste fornecedor foi solicitado.
+                  {report.hasAllocations
+                    ? "Nenhum produto destinado para esta loja neste fornecedor."
+                    : "Esta loja enviou pedido para o ciclo, mas nenhum dos produtos exclusivos deste fornecedor foi solicitado."}
                 </p>
               )
             ) : (
@@ -249,17 +276,28 @@ export function SupplierBillingView({
         ))}
       </section>
 
-      {/* SEÇÃO 3: PRODUTOS EXCLUSIVOS SEM DEMANDA NO CICLO */}
+      {/* SEÇÃO 3: PRODUTOS VINCULADOS SEM FATURAMENTO NO CICLO */}
       {productsWithoutOrders.length > 0 ? (
         <aside className="billing-zero-demand">
-          <strong>Produtos exclusivos sem solicitação no ciclo ({productsWithoutOrders.length} itens):</strong>
+          <strong>
+            {report.hasAllocations
+              ? `Produtos vinculados sem faturamento/destinação neste ciclo (${productsWithoutOrders.length} itens):`
+              : `Produtos exclusivos sem solicitação no ciclo (${productsWithoutOrders.length} itens):`}
+          </strong>
           <p style={{ margin: "4px 0 0 0" }}>
-            Os seguintes produtos estão atribuídos a este fornecedor como exclusivos, mas não receberam pedidos com quantidade em nenhuma das 3 lojas neste ciclo:
+            {report.hasAllocations
+              ? "Os seguintes produtos estão vinculados a este fornecedor, mas não tiveram volumes faturados ou destinados neste ciclo:"
+              : "Os seguintes produtos estão atribuídos a este fornecedor como exclusivos, mas não receberam pedidos com quantidade em nenhuma das 3 lojas neste ciclo:"}
           </p>
           <ul>
             {productsWithoutOrders.map((p) => (
               <li key={p.productId}>
                 ERP {p.erpCode}: <strong>{p.productName}</strong> ({p.purchaseFormat})
+                {p.reason === "not_bought" ? (
+                  <span style={{ color: "#dc2626", marginLeft: "6px", fontSize: "11px" }}>
+                    (Houve pedido da loja, mas não foi comprado/destinado)
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>

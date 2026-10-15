@@ -24,13 +24,14 @@ import {
 } from "@/modules/identity/domain";
 
 describe("Fundação de Permissões V1", () => {
-  it("contém exatamente as 10 permissões oficiais", () => {
+  it("contém exatamente as 11 permissões oficiais", () => {
     expect(PERMISSIONS).toEqual([
       "pedidos:criar",
       "pedidos:historico",
       "compras:consolidado",
       "compras:custos",
       "compras:fornecedores",
+      "compras:destinacao",
       "gestor:produtos",
       "gestor:precificacao",
       "gestor:fornecedores",

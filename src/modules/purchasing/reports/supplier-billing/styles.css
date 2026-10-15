@@ -188,6 +188,32 @@
   padding-left: 20px;
 }
 
+.billing-badge-additional {
+  display: inline-block;
+  background-color: #fef3c7;
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  margin-left: 6px;
+}
+
+.billing-item-diff {
+  font-size: 11px;
+  color: #64748b;
+  display: block;
+}
+
+.billing-item-diff--cut {
+  color: #dc2626;
+}
+
+.billing-item-diff--surplus {
+  color: #16a34a;
+}
+
 @media print {
   @page {
     size: A4 portrait;

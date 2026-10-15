@@ -85,7 +85,7 @@ export async function loadSupplierBillingReport(
   const cycleDate = requestedCycle ?? availableCycles[0] ?? new Date().toISOString().split("T")[0];
 
   // 3. Busca produtos vinculados como exclusivos ao fornecedor
-  let targetProducts = await db<TargetProduct[]>`
+  let targetProducts: TargetProduct[] = await db<TargetProduct[]>`
     SELECT
       p.id,
       p.erp_code,
@@ -156,7 +156,158 @@ export async function loadSupplierBillingReport(
     END, s.name ASC
   `;
 
-  // 5. Coleta itens dos pedidos para os produtos alvo
+  // 5. Verifica se existem alocações operacionais (Fase 3) para este fornecedor e ciclo
+  const allocationRows = await db<
+    {
+      product_id: string;
+      store_id: string;
+      ordered_quantity: string;
+      destined_quantity: string;
+      is_additional_purchase: boolean;
+    }[]
+  >`
+    SELECT
+      product_id,
+      store_id,
+      ordered_quantity::text,
+      destined_quantity::text,
+      is_additional_purchase
+    FROM purchase_cycle_product_allocations
+    WHERE supplier_id = ${supplierId}::uuid
+      AND purchase_cycle_date = ${cycleDate}::date
+  `;
+
+  const hasAllocations = allocationRows.length > 0;
+
+  if (hasAllocations) {
+    // Modo baseado em alocações operacionais do comprador (Fase 3)
+    const allocatedProductIds = [...new Set(allocationRows.map((a) => a.product_id))];
+    const targetProductIds = new Set(targetProducts.map((p) => p.id));
+    const missingProductIds = allocatedProductIds.filter((id) => !targetProductIds.has(id));
+
+    if (missingProductIds.length > 0) {
+      const extraProducts = await db<TargetProduct[]>`
+        SELECT id, erp_code, name, unit, purchase_format
+        FROM products
+        WHERE id IN ${db(missingProductIds)}
+        ORDER BY erp_code ASC
+      `;
+      targetProducts = [...targetProducts, ...extraProducts].sort((a, b) => a.erp_code - b.erp_code);
+    }
+
+    const allocMap = new Map<string, (typeof allocationRows)[0]>();
+    for (const a of allocationRows) {
+      allocMap.set(`${a.store_id}:${a.product_id}`, a);
+    }
+
+    const stores: BillingStoreSection[] = storeRows.map((store) => {
+      const hasOrder = Boolean(store.order_id);
+      const storeItems: BillingStoreItem[] = [];
+
+      for (const prod of targetProducts) {
+        const alloc = allocMap.get(`${store.id}:${prod.id}`);
+        if (alloc && Number(alloc.destined_quantity) > 0) {
+          const diffNum = Number(alloc.destined_quantity) - Number(alloc.ordered_quantity);
+          const diffSign = diffNum > 0 ? "+" : "";
+          storeItems.push({
+            productId: prod.id,
+            erpCode: prod.erp_code,
+            productName: prod.name,
+            unit: prod.unit,
+            purchaseFormat: prod.purchase_format,
+            quantity: Number(alloc.destined_quantity).toFixed(2),
+            orderedQuantity: Number(alloc.ordered_quantity).toFixed(2),
+            destinedQuantity: Number(alloc.destined_quantity).toFixed(2),
+            difference: `${diffSign}${diffNum.toFixed(2)}`,
+            isAdditional: alloc.is_additional_purchase,
+          });
+        }
+      }
+
+      const totalQuantity = sumQuantities(storeItems.map((i) => i.quantity));
+
+      return {
+        storeId: store.id,
+        storeSlug: store.slug,
+        storeName: store.name,
+        hasOrder: hasOrder || storeItems.length > 0,
+        orderId: store.order_id,
+        revision: store.revision,
+        submittedAt: store.submitted_at,
+        cutoffAt: store.cutoff_at,
+        items: storeItems,
+        totalQuantity,
+      };
+    });
+
+    const consolidatedProducts: ConsolidatedProductBilling[] = [];
+    const productsWithoutOrders: ProductWithoutDemand[] = [];
+
+    for (const prod of targetProducts) {
+      const storeQuantities: Record<string, string> = {};
+      const quantitiesToSum: string[] = [];
+      let prodTotalOrdered = 0;
+      let prodTotalDestined = 0;
+      let prodIsAdditional = false;
+
+      for (const store of storeRows) {
+        const alloc = allocMap.get(`${store.id}:${prod.id}`);
+        if (alloc) {
+          const dest = Number(alloc.destined_quantity);
+          const ord = Number(alloc.ordered_quantity);
+          prodTotalOrdered += ord;
+          prodTotalDestined += dest;
+          if (alloc.is_additional_purchase) prodIsAdditional = true;
+          storeQuantities[store.id] = dest > 0 ? dest.toFixed(2) : "0.00";
+          quantitiesToSum.push(alloc.destined_quantity);
+        } else {
+          storeQuantities[store.id] = "—";
+        }
+      }
+
+      const totalQuantity = sumQuantities(quantitiesToSum);
+
+      if (Number(totalQuantity) > 0) {
+        const diffNum = prodTotalDestined - prodTotalOrdered;
+        const diffSign = diffNum > 0 ? "+" : "";
+        consolidatedProducts.push({
+          productId: prod.id,
+          erpCode: prod.erp_code,
+          productName: prod.name,
+          unit: prod.unit,
+          purchaseFormat: prod.purchase_format,
+          storeQuantities,
+          totalQuantity,
+          totalOrdered: prodTotalOrdered.toFixed(2),
+          totalDestined: prodTotalDestined.toFixed(2),
+          totalDifference: `${diffSign}${diffNum.toFixed(2)}`,
+          isAdditional: prodIsAdditional && prodTotalOrdered === 0,
+        });
+      } else {
+        productsWithoutOrders.push({
+          productId: prod.id,
+          erpCode: prod.erp_code,
+          productName: prod.name,
+          purchaseFormat: prod.purchase_format,
+          unit: prod.unit,
+          reason: prodTotalOrdered > 0 ? "not_bought" : "not_demanded",
+        });
+      }
+    }
+
+    return {
+      supplier,
+      cycleDate,
+      availableCycles,
+      stores,
+      consolidatedProducts,
+      productsWithoutOrders,
+      hasAllocations: true,
+      loadedAt: new Date().toISOString(),
+    };
+  }
+
+  // 6. Fallback Histórico: Sem alocações no ciclo, baseia-se nos pedidos originais das lojas
   const orderIds = storeRows.map((s) => s.order_id).filter((id): id is string => Boolean(id));
 
   type RawItem = {
@@ -182,7 +333,6 @@ export async function loadSupplierBillingReport(
     itemsByOrderAndProduct.set(`${item.order_id}:${item.product_id}`, item.quantity);
   }
 
-  // 6. Constrói as seções de cada loja
   const stores: BillingStoreSection[] = storeRows.map((store) => {
     const hasOrder = Boolean(store.order_id);
     const storeItems: BillingStoreItem[] = [];
@@ -191,7 +341,6 @@ export async function loadSupplierBillingReport(
       for (const prod of targetProducts) {
         const rawQty = itemsByOrderAndProduct.get(`${store.order_id}:${prod.id}`) ?? "0";
         const numQty = Number(rawQty);
-        // Inclui itens solicitados com quantidade > 0 para faturamento
         if (numQty > 0) {
           storeItems.push({
             productId: prod.id,
@@ -221,7 +370,6 @@ export async function loadSupplierBillingReport(
     };
   });
 
-  // 7. Constrói a tabela consolidada e identifica itens com demanda zero
   const consolidatedProducts: ConsolidatedProductBilling[] = [];
   const productsWithoutOrders: ProductWithoutDemand[] = [];
 
@@ -269,6 +417,7 @@ export async function loadSupplierBillingReport(
     stores,
     consolidatedProducts,
     productsWithoutOrders,
+    hasAllocations: false,
     loadedAt: new Date().toISOString(),
   };
 }

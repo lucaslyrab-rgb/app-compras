@@ -293,3 +293,64 @@ export const productSuppliersRelations = relations(productSuppliers, ({ one }) =
   creator: one(users, { fields: [productSuppliers.createdBy], references: [users.id] }),
   updater: one(users, { fields: [productSuppliers.updatedBy], references: [users.id] })
 }));
+
+export const purchaseCycleProductAllocations = pgTable("purchase_cycle_product_allocations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  purchaseCycleDate: date("purchase_cycle_date").notNull(),
+  supplierId: uuid("supplier_id").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "restrict" }),
+  orderedQuantity: numeric("ordered_quantity", { precision: 12, scale: 2 }).notNull().default("0"),
+  destinedQuantity: numeric("destined_quantity", { precision: 12, scale: 2 }).notNull(),
+  purchaseFormat: text("purchase_format").notNull(),
+  isAdditionalPurchase: boolean("is_additional_purchase").notNull().default(false),
+  conversionFactorKg: numeric("conversion_factor_kg", { precision: 12, scale: 3 }),
+  conversionOrigin: text("conversion_origin"),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("allocations_cycle_supp_prod_store_unique").on(table.purchaseCycleDate, table.supplierId, table.productId, table.storeId),
+  index("allocations_cycle_idx").on(table.purchaseCycleDate),
+  index("allocations_supplier_cycle_idx").on(table.supplierId, table.purchaseCycleDate),
+  index("allocations_product_cycle_idx").on(table.productId, table.purchaseCycleDate),
+  index("allocations_store_cycle_idx").on(table.storeId, table.purchaseCycleDate),
+  check("allocations_quantities_nonnegative", sql`${table.orderedQuantity} >= 0 AND ${table.destinedQuantity} >= 0`),
+  check("allocations_version_check", sql`${table.version} > 0`)
+]);
+
+export const purchaseCycleProductAllocationsRelations = relations(purchaseCycleProductAllocations, ({ one }) => ({
+  supplier: one(suppliers, { fields: [purchaseCycleProductAllocations.supplierId], references: [suppliers.id] }),
+  product: one(products, { fields: [purchaseCycleProductAllocations.productId], references: [products.id] }),
+  store: one(stores, { fields: [purchaseCycleProductAllocations.storeId], references: [stores.id] }),
+  creator: one(users, { fields: [purchaseCycleProductAllocations.createdBy], references: [users.id] }),
+  updater: one(users, { fields: [purchaseCycleProductAllocations.updatedBy], references: [users.id] })
+}));
+
+export const purchaseCycleBuyerClosures = pgTable("purchase_cycle_buyer_closures", {
+  purchaseCycleDate: date("purchase_cycle_date").primaryKey(),
+  status: text("status").notNull().default("OPEN"),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+  closedBy: uuid("closed_by").references(() => users.id, { onDelete: "set null" }),
+  reopenedAt: timestamp("reopened_at", { withTimezone: true }),
+  reopenedBy: uuid("reopened_by").references(() => users.id, { onDelete: "set null" }),
+  reopenReason: text("reopen_reason"),
+  totalPurchasedProducts: integer("total_purchased_products").notNull().default(0),
+  totalAllocatedProducts: integer("total_allocated_products").notNull().default(0),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("closures_version_check", sql`${table.version} > 0`),
+  check("closures_status_check", sql`${table.status} IN ('OPEN', 'CLOSED')`),
+  check("closures_closed_check", sql`(${table.status} = 'CLOSED' AND ${table.closedAt} IS NOT NULL AND ${table.closedBy} IS NOT NULL) OR (${table.status} = 'OPEN')`)
+]);
+
+export const purchaseCycleBuyerClosuresRelations = relations(purchaseCycleBuyerClosures, ({ one }) => ({
+  closer: one(users, { fields: [purchaseCycleBuyerClosures.closedBy], references: [users.id] }),
+  reopener: one(users, { fields: [purchaseCycleBuyerClosures.reopenedBy], references: [users.id] })
+}));
+

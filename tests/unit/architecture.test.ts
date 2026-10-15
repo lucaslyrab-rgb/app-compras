@@ -22,10 +22,10 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0014", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0015", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 14 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 15 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
   });
 
@@ -36,6 +36,14 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(migration).toContain("product_suppliers_single_primary_idx");
     expect(migration).toContain("product_suppliers_single_exclusive_idx");
     expect(migration).toContain("product_suppliers_exclusive_implies_primary");
+  });
+
+  it("mantém a 0015 aditiva com alocações e fechamento do comprador", async () => {
+    const migration = await readFile("migrations/0015_purchase_allocations.sql", "utf8");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_product_allocations");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_buyer_closures");
+    expect(migration).toContain("allocations_cycle_supp_prod_store_unique");
+    expect(migration).toContain("compras:destinacao");
   });
 
   it("mantém a 0013 aditiva com cadastro de fornecedores e regras documentais", async () => {

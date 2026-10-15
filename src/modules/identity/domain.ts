@@ -9,6 +9,7 @@ export const PERMISSIONS = [
   "compras:consolidado",
   "compras:custos",
   "compras:fornecedores",
+  "compras:destinacao",
   "gestor:produtos",
   "gestor:precificacao",
   "gestor:fornecedores",
@@ -71,6 +72,10 @@ export function canManageSuppliers(principal: Principal) {
   return hasAnyPermission(principal, ["compras:fornecedores", "gestor:fornecedores"]);
 }
 
+export function canManageDestinations(principal: Principal) {
+  return hasPermission(principal, "compras:destinacao");
+}
+
 export function canToggleSupplierStatus(principal: Principal) {
   return principal.role === "GESTOR" && hasPermission(principal, "gestor:fornecedores");
 }
@@ -87,10 +92,11 @@ export function canManageGestor(principal: Principal) {
 
 export const ROLE_DEFAULT_PERMISSIONS: Record<Role, readonly Permission[]> = {
   LOJA: ["pedidos:criar", "pedidos:historico"],
-  COMPRADOR: ["compras:consolidado", "compras:custos", "compras:fornecedores"],
+  COMPRADOR: ["compras:consolidado", "compras:custos", "compras:destinacao", "compras:fornecedores"],
   GESTOR: [
     "compras:consolidado",
     "compras:custos",
+    "compras:destinacao",
     "compras:fornecedores",
     "gestor:produtos",
     "gestor:precificacao",
@@ -113,6 +119,7 @@ export const PERMISSION_GROUPS = [
     permissions: [
       { id: "compras:consolidado", label: "Consolidado" },
       { id: "compras:custos", label: "Lançamento de custos" },
+      { id: "compras:destinacao", label: "Destinação de compras" },
       { id: "compras:fornecedores", label: "Fornecedores" },
     ],
   },
@@ -136,6 +143,7 @@ export function resolveOperationalRoute(principal: Principal): string | null {
   if (hasPermission(principal, "gestor:produtos")) return "/gestor/produtos";
   if (hasPermission(principal, "compras:consolidado")) return "/comprador/consolidado";
   if (hasPermission(principal, "compras:custos")) return "/comprador/custos";
+  if (hasPermission(principal, "compras:destinacao")) return "/comprador/destinacao";
   if (hasPermission(principal, "gestor:fornecedores")) return "/gestor/fornecedores";
   if (hasPermission(principal, "compras:fornecedores")) return "/comprador/fornecedores";
   if (hasPermission(principal, "gestor:configuracoes")) return "/gestor/configuracoes";

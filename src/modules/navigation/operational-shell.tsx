@@ -12,6 +12,7 @@ type NavItem = { href: string; label: string; icon: string; permission?: Permiss
 const buyerItems: (NavItem & { permission: Permission })[] = [
   { href: "/comprador/consolidado", label: "Consolidado", icon: "▤", permission: "compras:consolidado" },
   { href: "/comprador/custos", label: "Lançamento de Custos", icon: "▣", permission: "compras:custos" },
+  { href: "/comprador/destinacao", label: "Destinação", icon: "🚚", permission: "compras:destinacao" },
   { href: "/comprador/fornecedores", label: "Fornecedores", icon: "🏢", permission: "compras:fornecedores" },
 ];
 const managerItems: (NavItem & { permission: Permission })[] = [

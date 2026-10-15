@@ -5,6 +5,10 @@ export type BillingStoreItem = {
   unit: string;
   purchaseFormat: string;
   quantity: string;
+  orderedQuantity?: string;
+  destinedQuantity?: string;
+  difference?: string;
+  isAdditional?: boolean;
 };
 
 export type BillingStoreSection = {
@@ -28,6 +32,10 @@ export type ConsolidatedProductBilling = {
   purchaseFormat: string;
   storeQuantities: Record<string, string>;
   totalQuantity: string;
+  totalOrdered?: string;
+  totalDestined?: string;
+  totalDifference?: string;
+  isAdditional?: boolean;
 };
 
 export type ProductWithoutDemand = {
@@ -36,6 +44,7 @@ export type ProductWithoutDemand = {
   productName: string;
   purchaseFormat: string;
   unit: string;
+  reason?: "not_demanded" | "not_bought";
 };
 
 export type SupplierBillingHeader = {
@@ -56,6 +65,7 @@ export type SupplierBillingReport = {
   stores: BillingStoreSection[];
   consolidatedProducts: ConsolidatedProductBilling[];
   productsWithoutOrders: ProductWithoutDemand[];
+  hasAllocations?: boolean;
   loadedAt: string;
 };
 
