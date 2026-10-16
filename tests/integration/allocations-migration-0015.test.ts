@@ -461,7 +461,10 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
     expect(saveRes.success).toBe(true);
 
     // Confirma auditoria de criação de oportunidade
-    const [auditCreate] = await db<{ action: string; metadata: any }[]>`
+    const [auditCreate] = await db<{
+      action: string;
+      metadata: { destinedQuantity: string; isOpportunityConfirmed: boolean };
+    }[]>`
       SELECT action, metadata
       FROM audit_events
       WHERE entity_type = 'purchase_cycle_product_allocation'
@@ -501,7 +504,7 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
     expect(zeroRes.success).toBe(true);
 
     // Confirma que foi registrado evento ALLOCATION_ZEROED na tabela audit_events
-    const [auditZero] = await db<{ action: string; actor_id: string; metadata: any }[]>`
+    const [auditZero] = await db<{ action: string; actor_id: string; metadata: Record<string, unknown> }[]>`
       SELECT action, actor_id, metadata
       FROM audit_events
       WHERE entity_type = 'purchase_cycle_product_allocation'
@@ -593,7 +596,11 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
     expect(zeroRes.success).toBe(true);
 
     // Confirma rastreabilidade completa no audit_events
-    const [auditZero] = await db<{ action: string; actor_id: string; metadata: any }[]>`
+    const [auditZero] = await db<{
+      action: string;
+      actor_id: string;
+      metadata: { previousDestinedQuantity: string; newDestinedQuantity: string; reason: string };
+    }[]>`
       SELECT action, actor_id, metadata
       FROM audit_events
       WHERE entity_type = 'purchase_cycle_product_allocation'
@@ -762,5 +769,261 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
     } else {
       expect(resSave.status).toBe("fulfilled");
     }
+  });
+
+  it("9. Auditoria completa de destinações: criação, alteração positiva (5 CX -> 3 CX), zeramento, mudança de fornecedor e deduplicação", async () => {
+    const cycleDate = "2026-10-28";
+    const [store] = await db<{ id: string; name: string }[]>`
+      SELECT id, name FROM stores WHERE slug = 'ponta-da-fruta'
+    `;
+
+    const [supplierGordinho] = await db<{ id: string }[]>`
+      INSERT INTO suppliers (corporate_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES ('Fornecedor Gordinho Ltda', '77777777000177', 'CNPJ', 'STANDARD', true)
+      RETURNING id
+    `;
+
+    const [supplierBenassi] = await db<{ id: string }[]>`
+      INSERT INTO suppliers (corporate_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES ('Fornecedor Benassi Ltda', '88888888000188', 'CNPJ', 'STANDARD', true)
+      RETURNING id
+    `;
+
+    const [productMaracuja] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (7001, 'Maracujá Azedo Especial', 'CX', 'KG', 40.00, true)
+      RETURNING id
+    `;
+
+    // Custo marcado como comprado
+    await db`
+      INSERT INTO purchase_cycle_product_costs (
+        product_id, purchase_cycle_date, cost, purchased, purchased_at, updated_by
+      )
+      VALUES (
+        ${productMaracuja.id}, ${cycleDate}::date, 45.00, true, now(), ${buyerPrincipal.userId}::uuid
+      )
+    `;
+
+    // Pedido da loja Ponta da Fruta para o Maracujá: 5 CX
+    const [order] = await db<{ id: string }[]>`
+      INSERT INTO orders (store_id, order_date, purchase_cycle_date, revision, submitted_by, submitted_at, cutoff_at)
+      VALUES (${store.id}::uuid, ${cycleDate}::date, ${cycleDate}::date, 1, ${buyerPrincipal.userId}::uuid, now(), now() + interval '1 hour')
+      RETURNING id
+    `;
+
+    await db`
+      INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+      VALUES (${order.id}::uuid, ${productMaracuja.id}::uuid, 0, 5.00, 7001, 'Maracujá Azedo Especial', 'CX')
+    `;
+
+    // ETAPA 1: Criação de destinação normal inicial (0.00 -> 5.00 CX) no Fornecedor Gordinho
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplierGordinho.id,
+      allocations: [
+        {
+          productId: productMaracuja.id,
+          stores: [{ storeId: store.id, destinedQuantity: "5.00", notes: "Lote selecionado na Ceasa" }],
+        },
+      ],
+    });
+
+    const eventsStep1 = await db<
+      {
+        action: string;
+        actor_id: string;
+        created_at: Date;
+        metadata: {
+          cycleDate: string;
+          supplierId: string;
+          supplierName: string;
+          productId: string;
+          productName: string;
+          storeId: string;
+          storeName: string;
+          previousDestinedQuantity: string;
+          newDestinedQuantity: string;
+          reason: string;
+        };
+      }[]
+    >`
+      SELECT action, actor_id, created_at, metadata
+      FROM audit_events
+      WHERE entity_type = 'purchase_cycle_product_allocation'
+        AND metadata->>'productId' = ${productMaracuja.id}
+      ORDER BY created_at ASC
+    `;
+
+    expect(eventsStep1).toHaveLength(1);
+    expect(eventsStep1[0].action).toBe("ALLOCATION_CREATED");
+    expect(eventsStep1[0].actor_id).toBe(buyerPrincipal.userId);
+    expect(eventsStep1[0].metadata.cycleDate).toBe(cycleDate);
+    expect(eventsStep1[0].metadata.supplierId).toBe(supplierGordinho.id);
+    expect(eventsStep1[0].metadata.supplierName).toBe("Fornecedor Gordinho Ltda");
+    expect(eventsStep1[0].metadata.storeId).toBe(store.id);
+    expect(eventsStep1[0].metadata.storeName).toBe(store.name);
+    expect(eventsStep1[0].metadata.previousDestinedQuantity).toBe("0.00");
+    expect(eventsStep1[0].metadata.newDestinedQuantity).toBe("5.00");
+    expect(eventsStep1[0].metadata.reason).toBe("Lote selecionado na Ceasa");
+
+    // ETAPA 2: Alteração de quantidade positiva para outra positiva (5.00 CX -> 3.00 CX)
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplierGordinho.id,
+      allocations: [
+        {
+          productId: productMaracuja.id,
+          stores: [{ storeId: store.id, destinedQuantity: "3.00", notes: "Ajuste de corte na doca" }],
+        },
+      ],
+    });
+
+    const eventsStep2 = await db<
+      {
+        action: string;
+        actor_id: string;
+        created_at: Date;
+        metadata: {
+          previousDestinedQuantity: string;
+          newDestinedQuantity: string;
+          supplierId: string;
+          reason: string;
+        };
+      }[]
+    >`
+      SELECT action, actor_id, created_at, metadata
+      FROM audit_events
+      WHERE entity_type = 'purchase_cycle_product_allocation'
+        AND metadata->>'productId' = ${productMaracuja.id}
+      ORDER BY created_at ASC
+    `;
+
+    expect(eventsStep2).toHaveLength(2);
+    expect(eventsStep2[1].action).toBe("ALLOCATION_UPDATED");
+    expect(eventsStep2[1].actor_id).toBe(buyerPrincipal.userId);
+    expect(eventsStep2[1].metadata.previousDestinedQuantity).toBe("5.00");
+    expect(eventsStep2[1].metadata.newDestinedQuantity).toBe("3.00");
+    expect(eventsStep2[1].metadata.supplierId).toBe(supplierGordinho.id);
+    expect(eventsStep2[1].metadata.reason).toBe("Ajuste de corte na doca");
+
+    // ETAPA 3: Deduplicação - salvar novamente 3.00 CX sem alteração de quantidade não gera evento duplicado
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplierGordinho.id,
+      allocations: [
+        {
+          productId: productMaracuja.id,
+          stores: [{ storeId: store.id, destinedQuantity: "3.00", notes: "Sem alteração" }],
+        },
+      ],
+    });
+
+    const eventsStep3 = await db`
+      SELECT id FROM audit_events
+      WHERE entity_type = 'purchase_cycle_product_allocation'
+        AND metadata->>'productId' = ${productMaracuja.id}
+    `;
+    expect(eventsStep3).toHaveLength(2); // Inalterado!
+
+    // ETAPA 4: Mudança de fornecedor (Transferência de Gordinho para Benassi)
+    // 4.1: Zeramento no fornecedor Gordinho (3.00 CX -> 0.00 CX)
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplierGordinho.id,
+      allocations: [
+        {
+          productId: productMaracuja.id,
+          stores: [{ storeId: store.id, destinedQuantity: "0.00", notes: "Transferido para Benassi por melhor preço" }],
+        },
+      ],
+    });
+
+    const eventsStep4A = await db<
+      {
+        action: string;
+        metadata: {
+          previousDestinedQuantity: string;
+          newDestinedQuantity: string;
+          supplierId: string;
+          reason: string;
+        };
+      }[]
+    >`
+      SELECT action, metadata
+      FROM audit_events
+      WHERE entity_type = 'purchase_cycle_product_allocation'
+        AND metadata->>'productId' = ${productMaracuja.id}
+      ORDER BY created_at ASC
+    `;
+
+    expect(eventsStep4A).toHaveLength(3);
+    expect(eventsStep4A[2].action).toBe("ALLOCATION_ZEROED");
+    expect(eventsStep4A[2].metadata.previousDestinedQuantity).toBe("3.00");
+    expect(eventsStep4A[2].metadata.newDestinedQuantity).toBe("0.00");
+    expect(eventsStep4A[2].metadata.supplierId).toBe(supplierGordinho.id);
+    expect(eventsStep4A[2].metadata.reason).toBe("Transferido para Benassi por melhor preço");
+
+    // 4.2: Inclusão no novo fornecedor Benassi (0.00 -> 3.00 CX)
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplierBenassi.id,
+      allocations: [
+        {
+          productId: productMaracuja.id,
+          stores: [{ storeId: store.id, destinedQuantity: "3.00", notes: "Entrada pelo Fornecedor Benassi" }],
+        },
+      ],
+    });
+
+    const eventsStep4B = await db<
+      {
+        action: string;
+        metadata: {
+          cycleDate: string;
+          supplierId: string;
+          supplierName: string;
+          storeId: string;
+          storeName: string;
+          previousDestinedQuantity: string;
+          newDestinedQuantity: string;
+          reason: string;
+        };
+      }[]
+    >`
+      SELECT action, metadata
+      FROM audit_events
+      WHERE entity_type = 'purchase_cycle_product_allocation'
+        AND metadata->>'productId' = ${productMaracuja.id}
+      ORDER BY created_at ASC
+    `;
+
+    // Total de 4 eventos no histórico com rastreabilidade cronológica completa
+    expect(eventsStep4B).toHaveLength(4);
+
+    // Evento 1: Criação em Gordinho
+    expect(eventsStep4B[0].action).toBe("ALLOCATION_CREATED");
+    expect(eventsStep4B[0].metadata.supplierId).toBe(supplierGordinho.id);
+    expect(eventsStep4B[0].metadata.newDestinedQuantity).toBe("5.00");
+
+    // Evento 2: Redução em Gordinho (5 -> 3)
+    expect(eventsStep4B[1].action).toBe("ALLOCATION_UPDATED");
+    expect(eventsStep4B[1].metadata.supplierId).toBe(supplierGordinho.id);
+    expect(eventsStep4B[1].metadata.previousDestinedQuantity).toBe("5.00");
+    expect(eventsStep4B[1].metadata.newDestinedQuantity).toBe("3.00");
+
+    // Evento 3: Zeramento em Gordinho (3 -> 0)
+    expect(eventsStep4B[2].action).toBe("ALLOCATION_ZEROED");
+    expect(eventsStep4B[2].metadata.supplierId).toBe(supplierGordinho.id);
+    expect(eventsStep4B[2].metadata.previousDestinedQuantity).toBe("3.00");
+    expect(eventsStep4B[2].metadata.newDestinedQuantity).toBe("0.00");
+
+    // Evento 4: Criação em Benassi (0 -> 3)
+    expect(eventsStep4B[3].action).toBe("ALLOCATION_CREATED");
+    expect(eventsStep4B[3].metadata.supplierId).toBe(supplierBenassi.id);
+    expect(eventsStep4B[3].metadata.supplierName).toBe("Fornecedor Benassi Ltda");
+    expect(eventsStep4B[3].metadata.previousDestinedQuantity).toBe("0.00");
+    expect(eventsStep4B[3].metadata.newDestinedQuantity).toBe("3.00");
+    expect(eventsStep4B[3].metadata.reason).toBe("Entrada pelo Fornecedor Benassi");
   });
 });

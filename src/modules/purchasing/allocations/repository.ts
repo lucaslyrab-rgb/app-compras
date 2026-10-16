@@ -711,6 +711,11 @@ export async function saveSupplierAllocations(
       storeOriginalOrderMap.set(`${item.store_id}:${item.product_id}`, item.quantity);
     }
 
+    const storeRows = await tx<{ id: string; name: string }[]>`
+      SELECT id, name FROM stores
+    `;
+    const storeNameMap = new Map<string, string>(storeRows.map((s) => [s.id, s.name]));
+
     // 5. Itera sobre os produtos para validações de exclusividade e gravação
     let affectedCount = 0;
 
@@ -850,11 +855,16 @@ export async function saveSupplierAllocations(
         const existingAlloc = existingStoreMap.get(storeInput.storeId);
         const previousDestinedNum = existingAlloc ? parseQuantity(existingAlloc.destined_quantity) : 0;
 
-        const isAdditional =
-          totalCycleOrdersNum === 0 || (originalOrderNum === 0 && destinedNum > 0);
+        const isOpportunity = totalCycleOrdersNum === 0 && !isPurchasedInCosts;
+        const isAdditional = isOpportunity || (originalOrderNum === 0 && destinedNum > 0);
 
-        // Auditoria: se a destinação anterior era positiva e agora foi zerada
-        if (previousDestinedNum > 0 && destinedNum === 0) {
+        const prevCents = Math.round(previousDestinedNum * 100);
+        const newCents = Math.round(destinedNum * 100);
+        const storeName = storeNameMap.get(storeInput.storeId) ?? "Loja";
+
+        // Auditoria Transacional Completa:
+        // Caso 1: Destinação anterior era positiva e agora foi zerada
+        if (prevCents > 0 && newCents === 0) {
           const reason =
             storeInput.notes ??
             productInput.notes ??
@@ -878,7 +888,7 @@ export async function saveSupplierAllocations(
               ${principal.userId}::uuid,
               'ALLOCATION_ZEROED',
               'purchase_cycle_product_allocation',
-              ${existingAlloc?.id ?? null}::text,
+              ${existingAlloc?.id ?? prodRow.id}::text,
               ${JSON.stringify({
                 cycleDate: input.cycleDate,
                 supplierId: input.supplierId,
@@ -887,7 +897,8 @@ export async function saveSupplierAllocations(
                 productName: prodRow.name,
                 productErpCode: prodRow.erp_code,
                 storeId: storeInput.storeId,
-                previousDestinedQuantity: existingAlloc?.destined_quantity ?? "0.00",
+                storeName,
+                previousDestinedQuantity: existingAlloc?.destined_quantity ?? previousDestinedNum.toFixed(2),
                 newDestinedQuantity: "0.00",
                 previousOrderedQuantity: existingAlloc?.ordered_quantity ?? originalOrderStr,
                 isAdditionalPurchase: existingAlloc?.is_additional_purchase ?? false,
@@ -897,8 +908,8 @@ export async function saveSupplierAllocations(
               now()
             )
           `;
-        } else if (destinedNum > 0 && totalCycleOrdersNum === 0 && !isPurchasedInCosts && (!existingAlloc || parseQuantity(existingAlloc.destined_quantity) === 0)) {
-          // Auditoria: registro de inclusão de compra de oportunidade
+        } else if (newCents > 0 && isOpportunity && (!existingAlloc || prevCents === 0)) {
+          // Caso 2: Criação de nova compra de oportunidade
           await tx`
             INSERT INTO audit_events (
               id,
@@ -913,7 +924,7 @@ export async function saveSupplierAllocations(
               ${principal.userId}::uuid,
               'OPPORTUNITY_ALLOCATION_CREATED',
               'purchase_cycle_product_allocation',
-              ${prodRow.id}::text,
+              ${existingAlloc?.id ?? prodRow.id}::text,
               ${JSON.stringify({
                 cycleDate: input.cycleDate,
                 supplierId: input.supplierId,
@@ -922,14 +933,98 @@ export async function saveSupplierAllocations(
                 productName: prodRow.name,
                 productErpCode: prodRow.erp_code,
                 storeId: storeInput.storeId,
+                storeName,
+                previousDestinedQuantity: "0.00",
                 destinedQuantity: destinedNum.toFixed(2),
+                newDestinedQuantity: destinedNum.toFixed(2),
+                previousOrderedQuantity: "0.00",
+                isAdditionalPurchase: true,
                 isOpportunityConfirmed: true,
+                previousVersion: existingAlloc?.version ?? 0,
                 reason: storeInput.notes ?? productInput.notes ?? "Inclusão de compra de oportunidade sem pedido",
               })}::jsonb,
               now()
             )
           `;
+        } else if (newCents > 0 && !isOpportunity && (!existingAlloc || prevCents === 0)) {
+          // Caso 3: Criação de destinação normal inicial
+          await tx`
+            INSERT INTO audit_events (
+              id,
+              actor_id,
+              action,
+              entity_type,
+              entity_id,
+              metadata,
+              created_at
+            ) VALUES (
+              gen_random_uuid(),
+              ${principal.userId}::uuid,
+              'ALLOCATION_CREATED',
+              'purchase_cycle_product_allocation',
+              ${existingAlloc?.id ?? prodRow.id}::text,
+              ${JSON.stringify({
+                cycleDate: input.cycleDate,
+                supplierId: input.supplierId,
+                supplierName: supplier.corporate_name,
+                productId: prodRow.id,
+                productName: prodRow.name,
+                productErpCode: prodRow.erp_code,
+                storeId: storeInput.storeId,
+                storeName,
+                previousDestinedQuantity: "0.00",
+                newDestinedQuantity: destinedNum.toFixed(2),
+                previousOrderedQuantity: originalOrderStr,
+                isAdditionalPurchase: isAdditional,
+                previousVersion: existingAlloc?.version ?? 0,
+                reason: storeInput.notes ?? productInput.notes ?? "Criação de destinação de compras",
+              })}::jsonb,
+              now()
+            )
+          `;
+        } else if (prevCents > 0 && newCents > 0 && prevCents !== newCents) {
+          // Caso 4: Alteração de quantidade positiva para outra quantidade positiva (ex: 5 CX -> 3 CX)
+          const defaultReason =
+            destinedNum < previousDestinedNum
+              ? `Redução de destinação (${previousDestinedNum.toFixed(2)} -> ${destinedNum.toFixed(2)})`
+              : `Aumento de destinação (${previousDestinedNum.toFixed(2)} -> ${destinedNum.toFixed(2)})`;
+
+          await tx`
+            INSERT INTO audit_events (
+              id,
+              actor_id,
+              action,
+              entity_type,
+              entity_id,
+              metadata,
+              created_at
+            ) VALUES (
+              gen_random_uuid(),
+              ${principal.userId}::uuid,
+              'ALLOCATION_UPDATED',
+              'purchase_cycle_product_allocation',
+              ${existingAlloc?.id ?? prodRow.id}::text,
+              ${JSON.stringify({
+                cycleDate: input.cycleDate,
+                supplierId: input.supplierId,
+                supplierName: supplier.corporate_name,
+                productId: prodRow.id,
+                productName: prodRow.name,
+                productErpCode: prodRow.erp_code,
+                storeId: storeInput.storeId,
+                storeName,
+                previousDestinedQuantity: existingAlloc?.destined_quantity ?? previousDestinedNum.toFixed(2),
+                newDestinedQuantity: destinedNum.toFixed(2),
+                previousOrderedQuantity: existingAlloc?.ordered_quantity ?? originalOrderStr,
+                isAdditionalPurchase: existingAlloc?.is_additional_purchase ?? isAdditional,
+                previousVersion: existingAlloc?.version ?? 1,
+                reason: storeInput.notes ?? productInput.notes ?? defaultReason,
+              })}::jsonb,
+              now()
+            )
+          `;
         }
+        // Caso 5: Se prevCents === newCents, não gera evento duplicado (inalterado)
 
         if (destinedNum > 0 || originalOrderNum > 0) {
           productHadValidDestination = true;

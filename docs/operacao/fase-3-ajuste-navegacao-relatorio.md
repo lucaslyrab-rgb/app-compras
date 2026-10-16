@@ -219,7 +219,7 @@ Todas as verificações automatizadas foram executadas no ambiente isolado de de
 | :--- | :---: | :---: |
 | Testes Unitários de Destinação (`buyer-allocations-domain.test.ts`) | **32 testes** (Regras A, B, C, confirmação explícita e correções) | **APROVADO (100%)** |
 | Testes Globais do Sistema MultiShow (`npm test`) | **446 testes** em **35 arquivos** (88.98% coverage) | **APROVADO (100%)** |
-| Testes de Integração em PostgreSQL Isolado (`allocations-migration-0015.test.ts`) | **8 testes** (concorrência, auditoria, última revisão e split) | **APROVADO (100%)** |
+| Testes de Integração em PostgreSQL Isolado (`allocations-migration-0015.test.ts`) | **9 testes** (auditoria completa, concorrência, última revisão e split) | **APROVADO (100%)** |
 | Verificação Estática de Tipos (`npm run typecheck`) | TypeScript 5.9 | **0 erros** |
 | Análise de Código e Linter (`npm run lint`) | ESLint 9 | **0 warnings / 0 erros** |
 | Build e Empacotamento Next.js (`npm run build`) | Produção Turbopack | **Compilação bem-sucedida (1.7s)** |
@@ -278,33 +278,46 @@ Em atendimento à revisão técnica pré-deploy, foram investigados e sanados qu
   - A query de validação foi unificada com o padrão CTE `latest_orders` (`DISTINCT ON (store_id) ... ORDER BY store_id, submitted_at DESC, revision DESC, id DESC`), considerando apenas pedidos onde `cancelled_at IS NULL`.
   - Produtos cuja quantidade foi zerada na última revisão válida não bloqueiam indevidamente o fechamento operacional (`Test 7`).
 
-### 8.4. Auditoria e Rastreabilidade de Destinações Zeradas
-- **Problema:** Ao zerar uma destinação (`destinedQuantity = 0.00`), a operação realizava `DELETE` ou `UPDATE` sem registrar evento no histórico de auditoria, impossibilitando identificar quem zerou, quando, qual era a quantidade anterior e o motivo.
+### 8.4. Auditoria e Rastreabilidade Completa de Destinações
+- **Problema:** A função `saveSupplierAllocations` registrava apenas eventos `ALLOCATION_ZEROED` e `OPPORTUNITY_ALLOCATION_CREATED`. Era necessário garantir histórico de auditoria completo também quando uma destinação já salva muda de uma quantidade positiva para outra quantidade positiva (ex.: 5 CX -> 3 CX), quando uma destinação normal é criada, e quando há transferência entre fornecedores (zeramento no fornecedor de origem e alocação no novo fornecedor), sem gerar eventos duplicados caso a quantidade não seja alterada.
 - **Correção:**
-  - Integrada a tabela `audit_events` diretamente dentro da transação `tx` de `saveSupplierAllocations`.
-  - Ao zerar uma destinação existente com quantidade positiva, é gravado o evento `ALLOCATION_ZEROED` contendo:
-    - `actor_id`: usuário autenticado responsável pela alteração.
-    - `created_at`: timestamp oficial do PostgreSQL (`now()`).
-    - `metadata.previousDestinedQuantity`: quantidade exata antes de zerar.
-    - `metadata.newDestinedQuantity`: `"0.00"`.
-    - `metadata.reason`: justificativa fornecida ou motivo operacional inferido.
-    - `metadata.previousVersion`: versão do registro anterior.
-  - Ao incluir nova compra de oportunidade, é gravado o evento `OPPORTUNITY_ALLOCATION_CREATED`.
-  - Rastreabilidade validada e aprovada em testes automatizados (`Tests 5 e 6`).
+  - A tabela existente `audit_events` foi aproveitada sem nenhuma alteração de schema ou migrations adicionais.
+  - Implementada máquina de estados transacional completa com 5 casos em `saveSupplierAllocations`:
+    1. **`ALLOCATION_ZEROED` (Quantidade anterior > 0 e nova quantidade = 0):** Registra o corte ou remoção com `previousDestinedQuantity`, `newDestinedQuantity = "0.00"`, `reason` (informado pelo usuário ou inferido).
+    2. **`OPPORTUNITY_ALLOCATION_CREATED` (Nova quantidade > 0 em oportunidade sem pedido):** Registra a inclusão da oportunidade com `isOpportunityConfirmed = true`.
+    3. **`ALLOCATION_CREATED` (Nova quantidade > 0 em compra normal inicial):** Registra a criação inicial com `previousDestinedQuantity = "0.00"` e `newDestinedQuantity`.
+    4. **`ALLOCATION_UPDATED` (Quantidade anterior > 0 e nova quantidade > 0, com valores diferentes):** Registra a alteração positiva (ex.: Maracujá na Ponta da Fruta pelo Fornecedor Gordinho de 5 CX para 3 CX) com `previousDestinedQuantity = "5.00"`, `newDestinedQuantity = "3.00"` e `reason` (ex.: "Ajuste de corte na doca").
+    5. **Deduplicação / Invariante (Quantidade anterior = nova quantidade):** Não gera nenhum evento redundante quando a quantidade é mantida.
+  - **Metadados Completos Preservados em cada Evento:**
+    - `cycleDate`: data do ciclo operacional.
+    - `supplierId` e `supplierName`: identificação do fornecedor.
+    - `productId`, `productName` e `productErpCode`: identificação do produto.
+    - `storeId` e `storeName`: identificação da loja (resolvido dinamicamente no banco).
+    - `previousDestinedQuantity` e `newDestinedQuantity`: histórico quantitativo com precisão de centavos.
+    - `previousOrderedQuantity` e `isAdditionalPurchase`: contexto comercial do pedido original.
+    - `previousVersion`: versionamento do registro.
+    - `reason`: motivo ou justificativa da alteração.
+    - `actor_id`: usuário responsável pela operação (`principal.userId`).
+    - `created_at`: timestamp do PostgreSQL (`now()`).
+  - **Rastreabilidade de Mudança de Fornecedor:**
+    - Ao transferir um produto do Fornecedor A para o Fornecedor B, o fluxo gera atomicamente dois eventos correlacionados pelo mesmo ciclo/loja/produto:
+      1. `ALLOCATION_ZEROED` no Fornecedor A (ex.: 3 CX -> 0 CX com justificativa de transferência).
+      2. `ALLOCATION_CREATED` no Fornecedor B (ex.: 0 CX -> 3 CX com identificação do novo fornecedor).
+  - **Validação:** Aprovado no novo Teste 9 de integração em PostgreSQL isolado (`allocations-migration-0015.test.ts`), cobrindo criação, alteração positiva (5 CX -> 3 CX), deduplicação, zeramento e transferência entre fornecedores.
 
 ---
 
 ## 9. Conclusão e Avaliação de Segurança para Publicação
 
-Todas as pendências técnicas levantadas na revisão final de integridade foram completamente sanadas e verificadas:
+Todas as pendências técnicas levantadas na homologação e na revisão final de auditoria foram completamente sanadas e verificadas:
 1. **Confirmação de Oportunidades:** Contrato da Action e backend com verificação estrita e suporte a correção de oportunidades salvas.
 2. **Concorrência Serializada:** Advisory lock transacional por ciclo (`424242, hashtext(cycleDate)`) validado com teste de concorrência real.
 3. **Última Revisão Válida:** Consulta de pedidos unificada com CTE `latest_orders`.
-4. **Auditoria Transacional:** Eventos gravados em `audit_events` com rastreabilidade completa.
-5. **Qualidade do Código:** 446 testes unitários/domínio aprovados, 8 testes de integração em PostgreSQL aprovados, lint 0 warnings, typecheck 0 erros e build Next.js bem-sucedido.
+4. **Auditoria Transacional Completa:** Eventos gravados em `audit_events` com rastreabilidade completa para criação, alteração positiva, deduplicação, zeramento e transferência entre fornecedores.
+5. **Qualidade do Código:** 446 testes unitários/domínio aprovados, 9 testes de integração em PostgreSQL aprovados, lint 0 warnings, typecheck 0 erros e build Next.js bem-sucedido.
 
 > [!NOTE]
-> **Avaliação de Segurança:** A implementação encontra-se em estado ótimo de segurança, consistência transacional e blindagem de concorrência, pronta para prosseguir para a etapa de homologação em staging e futuro deploy sob autorização expressa do usuário.
+> **Avaliação de Segurança:** A implementação encontra-se em estado ótimo de segurança, rastreabilidade, consistência transacional e blindagem de concorrência, pronta para prosseguir para a etapa de homologação em staging e futuro deploy sob autorização expressa do usuário.
 
 
 Todos os três bugs reportados na homologação foram completamente solucionados e auditados:
