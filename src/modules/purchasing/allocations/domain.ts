@@ -130,6 +130,7 @@ export type SupplierSummaryOption = {
   active: boolean;
   hasAllocationsInCycle: boolean;
   totalDestinedQuantity: string;
+  destinedByStore: Record<string, string>;
 };
 
 export type CatalogSearchItem = {
@@ -140,11 +141,22 @@ export type CatalogSearchItem = {
   isExclusive: boolean;
   exclusiveSupplierId: string | null;
   exclusiveSupplierName: string | null;
+  purchasedInCosts?: boolean;
+  orderedQuantities?: Record<string, string>;
+};
+
+export type StoreSummaryData = {
+  storeId: string;
+  storeName: string;
+  storeSlug: string;
+  totalAllocatedProducts: number;
+  totalDestinedQuantity: string;
 };
 
 export type BuyerAllocationWorkspaceData = {
   cycleDate: string;
   cycles: string[];
+  selectedStoreId: string | null;
   selectedSupplierId: string | null;
   closure: BuyerCycleClosureSummary;
   suppliers: SupplierSummaryOption[];
@@ -152,6 +164,8 @@ export type BuyerAllocationWorkspaceData = {
   destinationData: SupplierDestinationData | null;
   unassignedPurchasedProducts: Array<{ id: string; erpCode: number; name: string; purchaseFormat: string }>;
   catalogSearchList: CatalogSearchItem[];
+  cycleStoreOrders: Record<string, Record<string, string>>;
+  storeSummary: Record<string, StoreSummaryData>;
   loadedAt: string;
 };
 
@@ -170,6 +184,7 @@ export type SaveProductAllocationInput = {
 export type SaveSupplierAllocationsInput = {
   cycleDate: string;
   supplierId: string;
+  storeId?: string;
   allocations: SaveProductAllocationInput[];
 };
 

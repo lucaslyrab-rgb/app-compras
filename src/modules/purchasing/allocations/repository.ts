@@ -17,6 +17,7 @@ import {
   type SaveSupplierAllocationsInput,
   type StoreAllocationData,
   type StoreInfo,
+  type StoreSummaryData,
   type SupplierDestinationData,
   type SupplierSummaryOption,
 } from "./domain";
@@ -28,6 +29,7 @@ export async function readBuyerAllocationWorkspace(
   principal: Principal,
   requestedCycle?: string,
   selectedSupplierId?: string | null,
+  selectedStoreId?: string | null,
 ): Promise<BuyerAllocationWorkspaceData> {
   assertPermission(principal, "compras:destinacao");
 
@@ -109,6 +111,9 @@ export async function readBuyerAllocationWorkspace(
     name: s.name,
   }));
 
+  const activeStore = stores.find((s) => s.id === selectedStoreId || s.slug === selectedStoreId) ?? stores[0] ?? null;
+  const currentSelectedStoreId = activeStore?.id ?? null;
+
   // 4. Busca pedidos válidos mais recentes das lojas para o ciclo
   const orderRows = await sql<
     {
@@ -151,11 +156,17 @@ export async function readBuyerAllocationWorkspace(
       `
     : [];
 
+  const cycleStoreOrders: Record<string, Record<string, string>> = {};
   const storeOrderQuantityMap = new Map<string, string>(); // key: `${storeId}:${productId}`
   const orderedProductIds = new Set<string>();
 
   for (const item of orderItemRows) {
     storeOrderQuantityMap.set(`${item.store_id}:${item.product_id}`, item.quantity);
+    if (!cycleStoreOrders[item.product_id]) {
+      cycleStoreOrders[item.product_id] = {};
+    }
+    cycleStoreOrders[item.product_id][item.store_id] = item.quantity;
+
     if (parseQuantity(item.quantity) > 0) {
       orderedProductIds.add(item.product_id);
     }
@@ -222,6 +233,7 @@ export async function readBuyerAllocationWorkspace(
   const allocationsBySupplierAndProduct = new Map<string, Array<(typeof allocationRows)[number]>>();
   const globallyAllocatedProductIds = new Set<string>();
   const supplierTotalDestinedMap = new Map<string, string[]>();
+  const supplierStoreDestinedMap = new Map<string, Map<string, string[]>>();
 
   for (const alloc of allocationRows) {
     const suppProdKey = `${alloc.supplier_id}:${alloc.product_id}`;
@@ -234,6 +246,15 @@ export async function readBuyerAllocationWorkspace(
       const suppList = supplierTotalDestinedMap.get(alloc.supplier_id) ?? [];
       suppList.push(alloc.destined_quantity);
       supplierTotalDestinedMap.set(alloc.supplier_id, suppList);
+
+      let storeMap = supplierStoreDestinedMap.get(alloc.supplier_id);
+      if (!storeMap) {
+        storeMap = new Map<string, string[]>();
+        supplierStoreDestinedMap.set(alloc.supplier_id, storeMap);
+      }
+      const storeList = storeMap.get(alloc.store_id) ?? [];
+      storeList.push(alloc.destined_quantity);
+      storeMap.set(alloc.store_id, storeList);
     }
   }
 
@@ -263,6 +284,13 @@ export async function readBuyerAllocationWorkspace(
     const destinedQuantities = supplierTotalDestinedMap.get(s.id) ?? [];
     const hasAllocations = destinedQuantities.length > 0;
     const totalDestinedQuantity = sumQuantities(destinedQuantities);
+
+    const destinedByStore: Record<string, string> = {};
+    for (const store of stores) {
+      const list = supplierStoreDestinedMap.get(s.id)?.get(store.id) ?? [];
+      destinedByStore[store.id] = sumQuantities(list);
+    }
+
     return {
       id: s.id,
       corporateName: s.corporate_name,
@@ -271,8 +299,30 @@ export async function readBuyerAllocationWorkspace(
       active: s.active,
       hasAllocationsInCycle: hasAllocations,
       totalDestinedQuantity,
+      destinedByStore,
     };
   });
+
+  const storeSummary: Record<string, StoreSummaryData> = {};
+  for (const store of stores) {
+    const allocatedProductIdsForStore = new Set<string>();
+    const destinedQuantitiesForStore: string[] = [];
+
+    for (const alloc of allocationRows) {
+      if (alloc.store_id === store.id && parseQuantity(alloc.destined_quantity) > 0) {
+        allocatedProductIdsForStore.add(alloc.product_id);
+        destinedQuantitiesForStore.push(alloc.destined_quantity);
+      }
+    }
+
+    storeSummary[store.id] = {
+      storeId: store.id,
+      storeName: store.name,
+      storeSlug: store.slug,
+      totalAllocatedProducts: allocatedProductIdsForStore.size,
+      totalDestinedQuantity: sumQuantities(destinedQuantitiesForStore),
+    };
+  };
 
   // 8. Busca parâmetros de conversão e produtos
   const allCatalogProducts = await sql<
@@ -328,6 +378,10 @@ export async function readBuyerAllocationWorkspace(
     const exclusiveSupplierId = prod.exclusive_supplier_id ?? (prod.legacy_exclusive && jebSupplier ? jebSupplier.id : null);
     const exclusiveSupplierName = prod.exclusive_supplier_name ?? (prod.legacy_exclusive && jebSupplier ? jebSupplier.corporate_name : null);
 
+    const costInfo = costMap.get(prod.id);
+    const purchasedInCosts = costInfo?.purchased ?? false;
+    const orderedQuantities = cycleStoreOrders[prod.id] ?? {};
+
     if (prod.active) {
       catalogSearchList.push({
         id: prod.id,
@@ -337,6 +391,8 @@ export async function readBuyerAllocationWorkspace(
         isExclusive,
         exclusiveSupplierId,
         exclusiveSupplierName,
+        purchasedInCosts,
+        orderedQuantities,
       });
     }
   }
@@ -360,157 +416,164 @@ export async function readBuyerAllocationWorkspace(
     }
   }
 
-  // 10. Se um fornecedor específico foi selecionado, constrói a visão de destinação dele
+  // 10. Se um fornecedor específico foi selecionado (ou se há fornecedores disponíveis), constrói a visão de destinação dele
+  const resolvedSupplierId =
+    selectedSupplierId !== undefined
+      ? selectedSupplierId
+      : (supplierOptions.find((s) => s.hasAllocationsInCycle)?.id ?? supplierOptions[0]?.id ?? null);
+
   let destinationData: SupplierDestinationData | null = null;
 
-  if (selectedSupplierId) {
-    const supplierRow = allSuppliers.find((s) => s.id === selectedSupplierId);
+  if (resolvedSupplierId) {
+    const supplierRow = allSuppliers.find((s) => s.id === resolvedSupplierId);
     if (!supplierRow) {
-      throw new AllocationValidationError("Fornecedor selecionado não encontrado.");
-    }
-
-    // Busca vínculos de produtos deste fornecedor
-    const supplierProductLinks = await sql<{ product_id: string }[]>`
-      SELECT product_id
-      FROM product_suppliers
-      WHERE supplier_id = ${selectedSupplierId}::uuid
-        AND active = true
-    `;
-    const linkedProductIds = new Set(supplierProductLinks.map((l) => l.product_id));
-
-    // Determina quais produtos devem aparecer para este fornecedor:
-    // 1. Produtos que já possuem alocações para este fornecedor neste ciclo
-    // 2. Produtos vinculados a este fornecedor
-    // 3. Se for a JEB, produtos legados com exclusive_supplier = true
-    const targetProductIds = new Set<string>();
-
-    for (const alloc of allocationRows) {
-      if (alloc.supplier_id === selectedSupplierId) {
-        targetProductIds.add(alloc.product_id);
+      if (selectedSupplierId) {
+        throw new AllocationValidationError("Fornecedor selecionado não encontrado.");
       }
-    }
+    } else {
+      // Busca vínculos de produtos deste fornecedor
+      const supplierProductLinks = await sql<{ product_id: string }[]>`
+        SELECT product_id
+        FROM product_suppliers
+        WHERE supplier_id = ${resolvedSupplierId}::uuid
+          AND active = true
+      `;
+      const linkedProductIds = new Set(supplierProductLinks.map((l) => l.product_id));
 
-    for (const pid of linkedProductIds) {
-      targetProductIds.add(pid);
-    }
+      // Determina quais produtos devem aparecer para este fornecedor:
+      // 1. Produtos que já possuem alocações para este fornecedor neste ciclo
+      // 2. Produtos vinculados a este fornecedor
+      // 3. Se for a JEB, produtos legados com exclusive_supplier = true
+      const targetProductIds = new Set<string>();
 
-    const isSelectedJeb =
-      supplierRow.tax_id === "48336863000160" ||
-      supplierRow.corporate_name.toUpperCase().includes("JEB DISTRIBUIDORA");
-
-    if (isSelectedJeb) {
-      for (const prod of allCatalogProducts) {
-        if (prod.legacy_exclusive) {
-          targetProductIds.add(prod.id);
+      for (const alloc of allocationRows) {
+        if (alloc.supplier_id === resolvedSupplierId) {
+          targetProductIds.add(alloc.product_id);
         }
       }
-    }
 
-    // Monta a lista de itens de destinação por produto
-    const products: ProductAllocationItem[] = [];
-
-    for (const pid of targetProductIds) {
-      const prod = catalogMap.get(pid);
-      if (!prod) continue;
-
-      const isExclusive = Boolean(prod.exclusive_supplier_id) || prod.legacy_exclusive;
-      const exclusiveSupplierId = prod.exclusive_supplier_id ?? (prod.legacy_exclusive && jebSupplier ? jebSupplier.id : null);
-      const exclusiveSupplierName = prod.exclusive_supplier_name ?? (prod.legacy_exclusive && jebSupplier ? jebSupplier.corporate_name : null);
-
-      const costInfo = costMap.get(pid);
-      const hasOfficialCost = Boolean(costInfo?.cost);
-      const officialCost = costInfo?.cost ?? null;
-      const purchasedInCosts = costInfo?.purchased ?? false;
-
-      const existingSupplierAllocs = allocationsBySupplierAndProduct.get(`${selectedSupplierId}:${pid}`) ?? [];
-      const allocByStore = new Map(existingSupplierAllocs.map((a) => [a.store_id, a]));
-
-      const storeAllocations: Record<string, StoreAllocationData> = {};
-      const orderedQtyList: string[] = [];
-      const destinedQtyList: string[] = [];
-      let itemVersion = 1;
-      let itemNotes: string | null = null;
-
-      for (const store of stores) {
-        const orderQty = storeOrderQuantityMap.get(`${store.id}:${pid}`) ?? "0.00";
-        const alloc = allocByStore.get(store.id);
-
-        let destinedQty: string;
-        let isAdditional = false;
-
-        if (alloc) {
-          destinedQty = alloc.destined_quantity;
-          isAdditional = alloc.is_additional_purchase;
-          if (alloc.version > itemVersion) itemVersion = alloc.version;
-          if (alloc.notes) itemNotes = alloc.notes;
-        } else {
-          // Se não há alocação salva ainda para esta loja:
-          // Se o produto foi comprado ou pedido, sugere a quantidade do pedido original
-          destinedQty = parseQuantity(orderQty) > 0 ? roundToTwoDecimals(orderQty) : "0.00";
-          isAdditional = parseQuantity(orderQty) === 0;
-        }
-
-        const diff = calculateDifference(destinedQty, orderQty);
-
-        storeAllocations[store.id] = {
-          storeId: store.id,
-          storeName: store.name,
-          storeSlug: store.slug,
-          orderedQuantity: roundToTwoDecimals(orderQty),
-          destinedQuantity: roundToTwoDecimals(destinedQty),
-          difference: diff,
-          isAdditionalPurchase: isAdditional,
-          notes: alloc?.notes ?? null,
-        };
-
-        orderedQtyList.push(orderQty);
-        destinedQtyList.push(destinedQty);
+      for (const pid of linkedProductIds) {
+        targetProductIds.add(pid);
       }
 
-      const totalOrdered = sumQuantities(orderedQtyList);
-      const totalDestined = sumQuantities(destinedQtyList);
-      const totalDiff = calculateDifference(totalDestined, totalOrdered);
-      const isAdditionalOverall = parseQuantity(totalOrdered) === 0 && parseQuantity(totalDestined) > 0;
+      const isSelectedJeb =
+        supplierRow.tax_id === "48336863000160" ||
+        supplierRow.corporate_name.toUpperCase().includes("JEB DISTRIBUIDORA");
 
-      // Mantém snapshot de conversão
-      const conversionFactorKg = prod.conversion_quantity;
-      const conversionOrigin = prod.conversion_origin;
+      if (isSelectedJeb) {
+        for (const prod of allCatalogProducts) {
+          if (prod.legacy_exclusive) {
+            targetProductIds.add(prod.id);
+          }
+        }
+      }
 
-      products.push({
-        productId: prod.id,
-        erpCode: prod.erp_code,
-        productName: prod.name,
-        purchaseFormat: prod.purchase_format,
-        isExclusive,
-        exclusiveSupplierId,
-        exclusiveSupplierName,
-        hasOfficialCost,
-        officialCost,
-        purchasedInCosts,
-        isAdditionalPurchase: isAdditionalOverall,
-        conversionFactorKg,
-        conversionOrigin,
-        stores: storeAllocations,
-        totalOrdered,
-        totalDestined,
-        totalDifference: totalDiff,
-        notes: itemNotes,
-        version: itemVersion,
-      });
+      // Monta a lista de itens de destinação por produto
+      const products: ProductAllocationItem[] = [];
+
+      for (const pid of targetProductIds) {
+        const prod = catalogMap.get(pid);
+        if (!prod) continue;
+
+        const isExclusive = Boolean(prod.exclusive_supplier_id) || prod.legacy_exclusive;
+        const exclusiveSupplierId = prod.exclusive_supplier_id ?? (prod.legacy_exclusive && jebSupplier ? jebSupplier.id : null);
+        const exclusiveSupplierName = prod.exclusive_supplier_name ?? (prod.legacy_exclusive && jebSupplier ? jebSupplier.corporate_name : null);
+
+        const costInfo = costMap.get(pid);
+        const hasOfficialCost = Boolean(costInfo?.cost);
+        const officialCost = costInfo?.cost ?? null;
+        const purchasedInCosts = costInfo?.purchased ?? false;
+
+        const existingSupplierAllocs = allocationsBySupplierAndProduct.get(`${resolvedSupplierId}:${pid}`) ?? [];
+        const allocByStore = new Map(existingSupplierAllocs.map((a) => [a.store_id, a]));
+
+        const storeAllocations: Record<string, StoreAllocationData> = {};
+        const orderedQtyList: string[] = [];
+        const destinedQtyList: string[] = [];
+        let itemVersion = 1;
+        let itemNotes: string | null = null;
+
+        for (const store of stores) {
+          const orderQty = storeOrderQuantityMap.get(`${store.id}:${pid}`) ?? "0.00";
+          const alloc = allocByStore.get(store.id);
+
+          let destinedQty: string;
+          let isAdditional = false;
+
+          if (alloc) {
+            destinedQty = alloc.destined_quantity;
+            isAdditional = alloc.is_additional_purchase;
+            if (alloc.version > itemVersion) itemVersion = alloc.version;
+            if (alloc.notes) itemNotes = alloc.notes;
+          } else {
+            // Se não há alocação salva ainda para esta loja:
+            // Se o produto foi comprado ou pedido, sugere a quantidade do pedido original
+            destinedQty = parseQuantity(orderQty) > 0 ? roundToTwoDecimals(orderQty) : "0.00";
+            isAdditional = parseQuantity(orderQty) === 0;
+          }
+
+          const diff = calculateDifference(destinedQty, orderQty);
+
+          storeAllocations[store.id] = {
+            storeId: store.id,
+            storeName: store.name,
+            storeSlug: store.slug,
+            orderedQuantity: roundToTwoDecimals(orderQty),
+            destinedQuantity: roundToTwoDecimals(destinedQty),
+            difference: diff,
+            isAdditionalPurchase: isAdditional,
+            notes: alloc?.notes ?? null,
+          };
+
+          orderedQtyList.push(orderQty);
+          destinedQtyList.push(destinedQty);
+        }
+
+        const totalOrdered = sumQuantities(orderedQtyList);
+        const totalDestined = sumQuantities(destinedQtyList);
+        const totalDiff = calculateDifference(totalDestined, totalOrdered);
+        const isAdditionalOverall = parseQuantity(totalOrdered) === 0 && parseQuantity(totalDestined) > 0;
+
+        // Mantém snapshot de conversão
+        const conversionFactorKg = prod.conversion_quantity;
+        const conversionOrigin = prod.conversion_origin;
+
+        products.push({
+          productId: prod.id,
+          erpCode: prod.erp_code,
+          productName: prod.name,
+          purchaseFormat: prod.purchase_format,
+          isExclusive,
+          exclusiveSupplierId,
+          exclusiveSupplierName,
+          hasOfficialCost,
+          officialCost,
+          purchasedInCosts,
+          isAdditionalPurchase: isAdditionalOverall,
+          conversionFactorKg,
+          conversionOrigin,
+          stores: storeAllocations,
+          totalOrdered,
+          totalDestined,
+          totalDifference: totalDiff,
+          notes: itemNotes,
+          version: itemVersion,
+        });
+      }
+
+      products.sort((a, b) => a.productName.localeCompare(b.productName, "pt-BR", { sensitivity: "base" }));
+
+      destinationData = {
+        supplierId: supplierRow.id,
+        corporateName: supplierRow.corporate_name,
+        tradeName: supplierRow.trade_name,
+        taxId: supplierRow.tax_id,
+        taxInvoiceRule: supplierRow.tax_invoice_rule,
+        products,
+        totalProductsCount: products.length,
+        totalDestinedQuantity: sumQuantities(products.map((p) => p.totalDestined)),
+      };
     }
-
-    products.sort((a, b) => a.productName.localeCompare(b.productName, "pt-BR", { sensitivity: "base" }));
-
-    destinationData = {
-      supplierId: supplierRow.id,
-      corporateName: supplierRow.corporate_name,
-      tradeName: supplierRow.trade_name,
-      taxId: supplierRow.tax_id,
-      taxInvoiceRule: supplierRow.tax_invoice_rule,
-      products,
-      totalProductsCount: products.length,
-      totalDestinedQuantity: sumQuantities(products.map((p) => p.totalDestined)),
-    };
   }
 
   // Validação para o fechamento
@@ -546,13 +609,16 @@ export async function readBuyerAllocationWorkspace(
   return {
     cycleDate,
     cycles,
-    selectedSupplierId: selectedSupplierId ?? null,
+    selectedStoreId: currentSelectedStoreId,
+    selectedSupplierId: resolvedSupplierId,
     closure,
     suppliers: supplierOptions,
     stores,
     destinationData,
     unassignedPurchasedProducts,
     catalogSearchList,
+    cycleStoreOrders,
+    storeSummary,
     loadedAt: new Date().toISOString(),
   };
 }
@@ -696,7 +762,11 @@ export async function saveSupplierAllocations(
 
       let productHadValidDestination = false;
 
-      for (const storeInput of productInput.stores) {
+      const targetStores = input.storeId
+        ? productInput.stores.filter((s) => s.storeId === input.storeId)
+        : productInput.stores;
+
+      for (const storeInput of targetStores) {
         const destinedNum = parseQuantity(storeInput.destinedQuantity);
         const originalOrderStr = storeOriginalOrderMap.get(`${storeInput.storeId}:${prodRow.id}`) ?? "0";
         const originalOrderNum = parseQuantity(originalOrderStr);

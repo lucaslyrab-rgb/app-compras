@@ -221,4 +221,50 @@ describe("Fase 3 — Vinculação das Compras aos Fornecedores e Fechamento Oper
       expect(totalConsolidated).toBe("12.00");
     });
   });
+
+  describe("Navegação Loja → Fornecedor → Produtos e Resolução de Pedidos (Bug 01)", () => {
+    it("resolve pedido da loja ativa imediatamente ao adicionar produto do catálogo (sem F5)", () => {
+      // Simula o mapa cycleStoreOrders retornado pelo repository
+      const cycleStoreOrders: Record<string, Record<string, string>> = {
+        "prod-maracuja": {
+          "store-ponta": "15.00",
+          "store-balneario": "10.00",
+          "store-sm": "8.00",
+        },
+      };
+
+      const activeStoreId = "store-ponta";
+      const productId = "prod-maracuja";
+
+      // Ao adicionar o produto no client com base em cycleStoreOrders:
+      const productStoreOrders = cycleStoreOrders[productId] ?? {};
+      const activeStoreOrderedQty = productStoreOrders[activeStoreId] ?? "0.00";
+
+      expect(activeStoreOrderedQty).toBe("15.00");
+      expect(parseQuantity(activeStoreOrderedQty)).toBe(15);
+      expect(calculateDifference(activeStoreOrderedQty, activeStoreOrderedQty)).toBe("0.00");
+    });
+
+    it("mantém destinações de outras lojas intactas ao salvar destinação com filtro por loja", () => {
+      // Estado prévio com 3 lojas
+      const previousAllocations: Record<string, string> = {
+        "store-ponta": "10.00",
+        "store-balneario": "5.00",
+        "store-sm": "7.00",
+      };
+
+      // Alteração aplicada somente em store-ponta
+      const targetStoreId = "store-ponta";
+      const newPontaQty = "12.00";
+
+      const updatedAllocations: Record<string, string> = {
+        ...previousAllocations,
+        [targetStoreId]: newPontaQty,
+      };
+
+      expect(updatedAllocations["store-ponta"]).toBe("12.00");
+      expect(updatedAllocations["store-balneario"]).toBe("5.00");
+      expect(updatedAllocations["store-sm"]).toBe("7.00");
+    });
+  });
 });

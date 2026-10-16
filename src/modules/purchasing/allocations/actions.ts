@@ -30,6 +30,7 @@ const productAllocationSchema = z.object({
 const saveAllocationsSchema = z.object({
   cycleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   supplierId: z.string().uuid(),
+  storeId: z.string().uuid().optional(),
   allocations: z.array(productAllocationSchema),
 });
 
