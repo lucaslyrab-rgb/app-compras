@@ -295,6 +295,8 @@ export function BuyerAllocationWorkspace({
         storeId: activeStoreId,
         allocations: products.map((prod) => ({
           productId: prod.productId,
+          isOpportunityConfirmed: prod.isOpportunityConfirmed ?? undefined,
+          notes: prod.notes ?? undefined,
           stores: [
             {
               storeId: activeStoreId,
@@ -459,6 +461,7 @@ export function BuyerAllocationWorkspace({
       officialCost: null,
       purchasedInCosts: false,
       isAdditionalPurchase: true,
+      isOpportunityConfirmed: true,
       conversionFactorKg: null,
       conversionOrigin: null,
       stores: newStoreAllocations,

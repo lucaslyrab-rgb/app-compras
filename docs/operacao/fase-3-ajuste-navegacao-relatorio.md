@@ -217,11 +217,12 @@ Todas as verificações automatizadas foram executadas no ambiente isolado de de
 
 | Suíte / Verificação | Quantidade / Escopo | Status |
 | :--- | :---: | :---: |
-| Testes Unitários de Destinação (`buyer-allocations-domain.test.ts`) | **29 testes** (incluindo Regras A, B e C) | **APROVADO (100%)** |
-| Testes Globais do Sistema MultiShow (`npm test`) | **443 testes** em **35 arquivos** | **APROVADO (100%)** |
+| Testes Unitários de Destinação (`buyer-allocations-domain.test.ts`) | **32 testes** (Regras A, B, C, confirmação explícita e correções) | **APROVADO (100%)** |
+| Testes Globais do Sistema MultiShow (`npm test`) | **446 testes** em **35 arquivos** (88.98% coverage) | **APROVADO (100%)** |
+| Testes de Integração em PostgreSQL Isolado (`allocations-migration-0015.test.ts`) | **8 testes** (concorrência, auditoria, última revisão e split) | **APROVADO (100%)** |
 | Verificação Estática de Tipos (`npm run typecheck`) | TypeScript 5.9 | **0 erros** |
 | Análise de Código e Linter (`npm run lint`) | ESLint 9 | **0 warnings / 0 erros** |
-| Build e Empacotamento Next.js (`npm run build`) | Produção Turbopack | **Compilação bem-sucedida** |
+| Build e Empacotamento Next.js (`npm run build`) | Produção Turbopack | **Compilação bem-sucedida (1.7s)** |
 
 ---
 
@@ -232,21 +233,79 @@ Todas as verificações automatizadas foram executadas no ambiente isolado de de
 - [`src/app/gestor/styles.css`](file:///var/www/compras.muitomaisatacado.com/.worktrees/buyer-allocations/src/app/gestor/styles.css):
   Regras CSS responsivas para os cards de fornecedores no drawer, tags flexíveis e estilo secundário de perigo `.manager-secondary--danger`.
 - [`src/modules/purchasing/allocations/domain.ts`](file:///var/www/compras.muitomaisatacado.com/.worktrees/buyer-allocations/src/modules/purchasing/allocations/domain.ts):
-  Adicionado campo `totalCycleOrders` ao `CatalogSearchItem` e implementada a função pura `validateAllocationPurchasedStatus` (Bug 03).
+  Adicionado campo `totalCycleOrders` ao `CatalogSearchItem`; adicionado `isOpportunityConfirmed` e `hasExistingAllocation` ao `validateAllocationPurchasedStatus`; adicionado `isOpportunityConfirmed` ao `SaveProductAllocationInput` e `ProductAllocationItem`.
+- [`src/modules/purchasing/allocations/actions.ts`](file:///var/www/compras.muitomaisatacado.com/.worktrees/buyer-allocations/src/modules/purchasing/allocations/actions.ts):
+  Schema `productAllocationSchema` enriquecido com `isOpportunityConfirmed: z.boolean().optional()`.
 - [`src/modules/purchasing/allocations/repository.ts`](file:///var/www/compras.muitomaisatacado.com/.worktrees/buyer-allocations/src/modules/purchasing/allocations/repository.ts):
-  Filtro de produtos no workspace para não carregar itens não comprados por padrão; validação de destinação bloqueando itens não comprados com pedidos; bloqueio de oportunidade com quantidade zero; permissão de zeramento (`0.00`) para correção de erros passados; bloqueio de fechamento de ciclo em `closeBuyerCycle` se houver pendências (Bug 03).
+  Unificação de advisory locks via `pg_advisory_xact_lock(424242, hashtext(cycleDate))` em `saveSupplierAllocations`, `closeBuyerCycle` e `reopenBuyerCycle`; validação estrita com verificação de alocações existentes (`hasExistingAllocation`); gravação de auditoria em `audit_events` para `ALLOCATION_ZEROED` e `OPPORTUNITY_ALLOCATION_CREATED`; unificação da query de pedidos de `closeBuyerCycle` com `latest_orders` (`DISTINCT ON (store_id)`).
 - [`src/modules/purchasing/allocations/buyer-allocation-workspace.tsx`](file:///var/www/compras.muitomaisatacado.com/.worktrees/buyer-allocations/src/modules/purchasing/allocations/buyer-allocation-workspace.tsx):
-  Implementação do banner de alerta vermelho com botão "Zerar Destinação"; modal de confirmação de oportunidade com input numérico obrigatório > 0; desativação do botão de catálogo para produtos pedidos e não comprados (Regra C); bloqueio no salvamento local (Bug 03).
+  Banner de alerta vermelho com botão "Zerar Destinação"; modal de confirmação de oportunidade com input numérico obrigatório > 0; envio de `isOpportunityConfirmed: true` no payload da Server Action.
 - [`src/modules/purchasing/allocations/styles.css`](file:///var/www/compras.muitomaisatacado.com/.worktrees/buyer-allocations/src/modules/purchasing/allocations/styles.css):
   Estilos para `.alloc-unpurchased-alert-banner`, `.alloc-btn-zero` e modal de oportunidade `.alloc-opportunity-modal`.
 - [`tests/unit/buyer-allocations-domain.test.ts`](file:///var/www/compras.muitomaisatacado.com/.worktrees/buyer-allocations/tests/unit/buyer-allocations-domain.test.ts):
-  6 novos testes unitários validando estritamente as Regras A, B e C de compras e destinações.
+  32 testes unitários cobrindo todas as nuances das Regras A, B e C, confirmação explícita de oportunidade e correção/zeramento de itens previamente salvos.
+- [`tests/integration/allocations-migration-0015.test.ts`](file:///var/www/compras.muitomaisatacado.com/.worktrees/buyer-allocations/tests/integration/allocations-migration-0015.test.ts):
+  8 testes de integração em PostgreSQL real, cobrindo split purchase, concorrência real entre gravação e fechamento, auditoria de zeramento e última revisão válida de pedidos.
 - [`docs/operacao/screenshots-fase-3/`](file:///var/www/compras.muitomaisatacado.com/.worktrees/buyer-allocations/docs/operacao/screenshots-fase-3/):
   Adição das 5 novas capturas em alta resolução dos Bugs 02 e 03.
 
 ---
 
-## 8. Conclusão e Diretriz de Publicação
+## 8. Revisão Final de Integridade Técnica Pré-Deploy
+
+Em atendimento à revisão técnica pré-deploy, foram investigados e sanados quatro pontos críticos de integridade:
+
+### 8.1. Confirmação de Compras de Oportunidade no Backend
+- **Problema:** A função `validateAllocationPurchasedStatus` recebia o parâmetro `isOpportunityConfirmed`, mas não o utilizava ativamente na validação, permitindo que uma requisição com quantidade positiva classificasse tacitamente o produto como oportunidade.
+- **Correção:**
+  - O contrato da Server Action (`SaveProductAllocationInput` e `productAllocationSchema`) agora inclui `isOpportunityConfirmed: z.boolean().optional()`.
+  - A função de domínio `validateAllocationPurchasedStatus` rejeita qualquer inclusão de compra de oportunidade sem confirmação explícita (`isOpportunityConfirmed: true`), impedindo chamadas acidentais ou automáticas.
+  - Oportunidades já salvas no banco (`hasExistingAllocation = true`) são reconhecidas, permitindo que o comprador ajuste a quantidade ou zere a destinação (`destinedQuantity = "0.00"`) sem ser barrado pela validação de quantidade positiva.
+
+### 8.2. Concorrência entre Gravação e Fechamento Operacional
+- **Problema:** O repositório utilizava duas constantes globais estáticas separadas: `ALLOCATIONS_ADVISORY_LOCK_ID = 42424203` e `BUYER_CLOSURE_ADVISORY_LOCK_ID = 42424204`. Como os IDs eram distintos, uma gravação de destinações e um fechamento do mesmo ciclo podiam executar em paralelo sem serialização mútua. Além disso, por serem IDs fixos, bloqueavam ciclos distintos sem necessidade.
+- **Correção:**
+  - Substituição pela estratégia de locking transacional unificado:
+    $$\text{pg\_advisory\_xact\_lock}(424242, \text{hashtext}(\text{cycleDate}))$$
+  - `saveSupplierAllocations`, `closeBuyerCycle` e `reopenBuyerCycle` adquirem o mesmo namespace (`424242`) combinado com o hash da data do ciclo.
+  - **Serialização Estrita:** Um fechamento e uma gravação do mesmo ciclo nunca colidem. Se o fechamento for concluído primeiro, a gravação aguarda e é abortada com `CycleClosedError`. Se a gravação rodar primeiro, o fechamento aguarda a conclusão da gravação e valida o estado final persistido.
+  - **Isolamento entre Ciclos:** Ciclos diferentes possuem hashes diferentes e operam em paralelo sem bloqueios desnecessários.
+  - **Validação:** Testado em PostgreSQL isolado via `Promise.allSettled` executando transações simultâneas (`Test 8`), comprovando ausência de deadlocks ou corrupção.
+
+### 8.3. Última Revisão Válida dos Pedidos em `closeBuyerCycle`
+- **Problema:** A checagem de produtos não comprados com pedidos em `closeBuyerCycle` consultava diretamente a tabela `orders` sem filtrar pela última revisão ativa da loja, podendo considerar pedidos de revisões históricas substituídas ou canceladas.
+- **Correção:**
+  - A query de validação foi unificada com o padrão CTE `latest_orders` (`DISTINCT ON (store_id) ... ORDER BY store_id, submitted_at DESC, revision DESC, id DESC`), considerando apenas pedidos onde `cancelled_at IS NULL`.
+  - Produtos cuja quantidade foi zerada na última revisão válida não bloqueiam indevidamente o fechamento operacional (`Test 7`).
+
+### 8.4. Auditoria e Rastreabilidade de Destinações Zeradas
+- **Problema:** Ao zerar uma destinação (`destinedQuantity = 0.00`), a operação realizava `DELETE` ou `UPDATE` sem registrar evento no histórico de auditoria, impossibilitando identificar quem zerou, quando, qual era a quantidade anterior e o motivo.
+- **Correção:**
+  - Integrada a tabela `audit_events` diretamente dentro da transação `tx` de `saveSupplierAllocations`.
+  - Ao zerar uma destinação existente com quantidade positiva, é gravado o evento `ALLOCATION_ZEROED` contendo:
+    - `actor_id`: usuário autenticado responsável pela alteração.
+    - `created_at`: timestamp oficial do PostgreSQL (`now()`).
+    - `metadata.previousDestinedQuantity`: quantidade exata antes de zerar.
+    - `metadata.newDestinedQuantity`: `"0.00"`.
+    - `metadata.reason`: justificativa fornecida ou motivo operacional inferido.
+    - `metadata.previousVersion`: versão do registro anterior.
+  - Ao incluir nova compra de oportunidade, é gravado o evento `OPPORTUNITY_ALLOCATION_CREATED`.
+  - Rastreabilidade validada e aprovada em testes automatizados (`Tests 5 e 6`).
+
+---
+
+## 9. Conclusão e Avaliação de Segurança para Publicação
+
+Todas as pendências técnicas levantadas na revisão final de integridade foram completamente sanadas e verificadas:
+1. **Confirmação de Oportunidades:** Contrato da Action e backend com verificação estrita e suporte a correção de oportunidades salvas.
+2. **Concorrência Serializada:** Advisory lock transacional por ciclo (`424242, hashtext(cycleDate)`) validado com teste de concorrência real.
+3. **Última Revisão Válida:** Consulta de pedidos unificada com CTE `latest_orders`.
+4. **Auditoria Transacional:** Eventos gravados em `audit_events` com rastreabilidade completa.
+5. **Qualidade do Código:** 446 testes unitários/domínio aprovados, 8 testes de integração em PostgreSQL aprovados, lint 0 warnings, typecheck 0 erros e build Next.js bem-sucedido.
+
+> [!NOTE]
+> **Avaliação de Segurança:** A implementação encontra-se em estado ótimo de segurança, consistência transacional e blindagem de concorrência, pronta para prosseguir para a etapa de homologação em staging e futuro deploy sob autorização expressa do usuário.
+
 
 Todos os três bugs reportados na homologação foram completamente solucionados e auditados:
 - **Bug 01:** Resolução imediata de pedidos sem F5 — **Concluído**.

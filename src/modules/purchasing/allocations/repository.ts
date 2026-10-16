@@ -23,8 +23,7 @@ import {
   type SupplierSummaryOption,
 } from "./domain";
 
-const ALLOCATIONS_ADVISORY_LOCK_ID = 42424203;
-const BUYER_CLOSURE_ADVISORY_LOCK_ID = 42424204;
+const BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE = 424242;
 
 export async function readBuyerAllocationWorkspace(
   principal: Principal,
@@ -650,8 +649,8 @@ export async function saveSupplierAllocations(
   const sql = database().sql;
 
   return await sql.begin(async (tx) => {
-    // 1. Lock transacional para evitar concorrência no ciclo
-    await tx`SELECT pg_advisory_xact_lock(${ALLOCATIONS_ADVISORY_LOCK_ID})`;
+    // 1. Lock transacional serializado por ciclo para evitar concorrência entre gravação e fechamento
+    await tx`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${input.cycleDate}::text))`;
 
     // 2. Verifica se o ciclo está fechado
     const [closure] = await tx<{ status: string }[]>`
@@ -805,7 +804,30 @@ export async function saveSupplierAllocations(
         0
       );
 
-      // Validação das regras de compra (Bug 03 - Regras A, B e C)
+      // Busca alocações existentes para este produto/fornecedor/ciclo
+      const existingAllocRows = await tx<
+        {
+          id: string;
+          store_id: string;
+          ordered_quantity: string;
+          destined_quantity: string;
+          is_additional_purchase: boolean;
+          notes: string | null;
+          version: number;
+        }[]
+      >`
+        SELECT id, store_id, ordered_quantity::text, destined_quantity::text, is_additional_purchase, notes, version
+        FROM purchase_cycle_product_allocations
+        WHERE purchase_cycle_date = ${input.cycleDate}::date
+          AND supplier_id = ${input.supplierId}::uuid
+          AND product_id = ${prodRow.id}::uuid
+      `;
+      const hasExistingAllocation = existingAllocRows.some(
+        (r) => parseQuantity(r.destined_quantity) > 0,
+      );
+      const existingStoreMap = new Map(existingAllocRows.map((r) => [r.store_id, r]));
+
+      // Validação das regras de compra (Bug 03 - Regras A, B e C com auditoria e confirmação explícita)
       const validation = validateAllocationPurchasedStatus({
         productName: prodRow.name,
         erpCode: prodRow.erp_code,
@@ -813,34 +835,101 @@ export async function saveSupplierAllocations(
         isPurchasedInCosts,
         totalCycleOrdersNum,
         totalDestinedNum: totalDestinedInRequest,
+        isOpportunityConfirmed: productInput.isOpportunityConfirmed,
+        hasExistingAllocation,
       });
 
       if (!validation.isValid) {
-        // Se a validação falhou, verifica se o usuário está zerando uma alocação anterior existente
-        if (totalDestinedInRequest === 0) {
-          const [existingAlloc] = await tx<{ id: string }[]>`
-            SELECT id FROM purchase_cycle_product_allocations
-            WHERE purchase_cycle_date = ${input.cycleDate}::date
-              AND supplier_id = ${input.supplierId}::uuid
-              AND product_id = ${prodRow.id}::uuid
-            LIMIT 1
-          `;
-          if (!existingAlloc) {
-            throw new AllocationValidationError(validation.errorMessage!);
-          }
-          // Se já existia alocação, permite zerar para corrigir destinação indevida!
-        } else {
-          throw new AllocationValidationError(validation.errorMessage!);
-        }
+        throw new AllocationValidationError(validation.errorMessage!);
       }
 
       for (const storeInput of targetStores) {
         const destinedNum = parseQuantity(storeInput.destinedQuantity);
         const originalOrderStr = storeOriginalOrderMap.get(`${storeInput.storeId}:${prodRow.id}`) ?? "0";
         const originalOrderNum = parseQuantity(originalOrderStr);
+        const existingAlloc = existingStoreMap.get(storeInput.storeId);
+        const previousDestinedNum = existingAlloc ? parseQuantity(existingAlloc.destined_quantity) : 0;
 
         const isAdditional =
           totalCycleOrdersNum === 0 || (originalOrderNum === 0 && destinedNum > 0);
+
+        // Auditoria: se a destinação anterior era positiva e agora foi zerada
+        if (previousDestinedNum > 0 && destinedNum === 0) {
+          const reason =
+            storeInput.notes ??
+            productInput.notes ??
+            (existingAlloc?.is_additional_purchase
+              ? "Remoção de compra de oportunidade"
+              : !isPurchasedInCosts
+              ? "Zerar destinação indevida de produto não comprado"
+              : "Zerar destinação / corte total da loja");
+
+          await tx`
+            INSERT INTO audit_events (
+              id,
+              actor_id,
+              action,
+              entity_type,
+              entity_id,
+              metadata,
+              created_at
+            ) VALUES (
+              gen_random_uuid(),
+              ${principal.userId}::uuid,
+              'ALLOCATION_ZEROED',
+              'purchase_cycle_product_allocation',
+              ${existingAlloc?.id ?? null}::text,
+              ${JSON.stringify({
+                cycleDate: input.cycleDate,
+                supplierId: input.supplierId,
+                supplierName: supplier.corporate_name,
+                productId: prodRow.id,
+                productName: prodRow.name,
+                productErpCode: prodRow.erp_code,
+                storeId: storeInput.storeId,
+                previousDestinedQuantity: existingAlloc?.destined_quantity ?? "0.00",
+                newDestinedQuantity: "0.00",
+                previousOrderedQuantity: existingAlloc?.ordered_quantity ?? originalOrderStr,
+                isAdditionalPurchase: existingAlloc?.is_additional_purchase ?? false,
+                previousVersion: existingAlloc?.version ?? 1,
+                reason,
+              })}::jsonb,
+              now()
+            )
+          `;
+        } else if (destinedNum > 0 && totalCycleOrdersNum === 0 && !isPurchasedInCosts && (!existingAlloc || parseQuantity(existingAlloc.destined_quantity) === 0)) {
+          // Auditoria: registro de inclusão de compra de oportunidade
+          await tx`
+            INSERT INTO audit_events (
+              id,
+              actor_id,
+              action,
+              entity_type,
+              entity_id,
+              metadata,
+              created_at
+            ) VALUES (
+              gen_random_uuid(),
+              ${principal.userId}::uuid,
+              'OPPORTUNITY_ALLOCATION_CREATED',
+              'purchase_cycle_product_allocation',
+              ${prodRow.id}::text,
+              ${JSON.stringify({
+                cycleDate: input.cycleDate,
+                supplierId: input.supplierId,
+                supplierName: supplier.corporate_name,
+                productId: prodRow.id,
+                productName: prodRow.name,
+                productErpCode: prodRow.erp_code,
+                storeId: storeInput.storeId,
+                destinedQuantity: destinedNum.toFixed(2),
+                isOpportunityConfirmed: true,
+                reason: storeInput.notes ?? productInput.notes ?? "Inclusão de compra de oportunidade sem pedido",
+              })}::jsonb,
+              now()
+            )
+          `;
+        }
 
         if (destinedNum > 0 || originalOrderNum > 0) {
           productHadValidDestination = true;
@@ -931,7 +1020,7 @@ export async function closeBuyerCycle(
   const sql = database().sql;
 
   return await sql.begin(async (tx) => {
-    await tx`SELECT pg_advisory_xact_lock(${BUYER_CLOSURE_ADVISORY_LOCK_ID})`;
+    await tx`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${cycleDate}::text))`;
 
     // 1. Verifica estado atual
     const [existing] = await tx<{ status: string }[]>`
@@ -976,7 +1065,20 @@ export async function closeBuyerCycle(
     }
 
     // 3.1 Proteção Bug 03: Rejeita fechamento se houver produto com pedidos das lojas, não comprado nos custos, com destinação ativa
+    // Utiliza a última revisão válida das lojas no ciclo (DISTINCT ON store_id)
     const invalidAllocatedRows = await tx<{ erp_code: number; name: string }[]>`
+      WITH latest_orders AS (
+        SELECT DISTINCT ON (store_id)
+          id,
+          store_id,
+          cancelled_at
+        FROM orders
+        WHERE purchase_cycle_date = ${cycleDate}::date
+        ORDER BY store_id, submitted_at DESC, revision DESC, id DESC
+      ),
+      valid_orders AS (
+        SELECT id FROM latest_orders WHERE cancelled_at IS NULL
+      )
       SELECT DISTINCT p.erp_code, p.name
       FROM purchase_cycle_product_allocations a
       JOIN products p ON p.id = a.product_id
@@ -989,10 +1091,8 @@ export async function closeBuyerCycle(
         AND EXISTS (
           SELECT 1
           FROM order_items oi
-          JOIN orders o ON o.id = oi.order_id
-          WHERE o.purchase_cycle_date = a.purchase_cycle_date
-            AND o.cancelled_at IS NULL
-            AND oi.product_id = a.product_id
+          JOIN valid_orders vo ON vo.id = oi.order_id
+          WHERE oi.product_id = a.product_id
             AND oi.quantity > 0
         )
     `;
@@ -1066,7 +1166,7 @@ export async function reopenBuyerCycle(
   const sql = database().sql;
 
   return await sql.begin(async (tx) => {
-    await tx`SELECT pg_advisory_xact_lock(${BUYER_CLOSURE_ADVISORY_LOCK_ID})`;
+    await tx`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${cycleDate}::text))`;
 
     const [existing] = await tx<{ status: string }[]>`
       SELECT status

@@ -25,6 +25,7 @@ const productAllocationSchema = z.object({
   productId: z.string().uuid(),
   stores: z.array(storeAllocationSchema),
   notes: z.string().optional(),
+  isOpportunityConfirmed: z.boolean().optional(),
 });
 
 const saveAllocationsSchema = z.object({

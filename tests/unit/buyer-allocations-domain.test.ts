@@ -298,7 +298,7 @@ describe("Fase 3 — Vinculação das Compras aos Fornecedores e Fechamento Oper
     });
 
     describe("REGRA B — Compras de oportunidade (adicionais, sem pedido)", () => {
-      it("permite destinação de oportunidade quando sem pedidos e com quantidade maior que zero", () => {
+      it("permite destinação de oportunidade quando sem pedidos, com confirmação explícita e quantidade maior que zero", () => {
         const result = validateAllocationPurchasedStatus({
           productName: "Melão Amarelo",
           erpCode: 42,
@@ -306,11 +306,28 @@ describe("Fase 3 — Vinculação das Compras aos Fornecedores e Fechamento Oper
           isPurchasedInCosts: false,
           totalCycleOrdersNum: 0,
           totalDestinedNum: 5,
+          isOpportunityConfirmed: true,
         });
         expect(result.isValid).toBe(true);
       });
 
-      it("bloqueia compra de oportunidade com quantidade destinada zero", () => {
+      it("bloqueia compra de oportunidade se não houver confirmação explícita de oportunidade", () => {
+        const result = validateAllocationPurchasedStatus({
+          productName: "Melão Amarelo",
+          erpCode: 42,
+          purchaseFormat: "CX",
+          isPurchasedInCosts: false,
+          totalCycleOrdersNum: 0,
+          totalDestinedNum: 5,
+          isOpportunityConfirmed: false,
+        });
+        expect(result.isValid).toBe(false);
+        expect(result.errorMessage).toContain(
+          'A inclusão do produto "Melão Amarelo" como compra de oportunidade sem pedido requer confirmação explícita do comprador.',
+        );
+      });
+
+      it("bloqueia nova compra de oportunidade com quantidade destinada zero", () => {
         const result = validateAllocationPurchasedStatus({
           productName: "Melão Amarelo",
           erpCode: 42,
@@ -318,11 +335,40 @@ describe("Fase 3 — Vinculação das Compras aos Fornecedores e Fechamento Oper
           isPurchasedInCosts: false,
           totalCycleOrdersNum: 0,
           totalDestinedNum: 0,
+          isOpportunityConfirmed: true,
+          hasExistingAllocation: false,
         });
         expect(result.isValid).toBe(false);
         expect(result.errorMessage).toContain(
           'A compra de oportunidade do produto "Melão Amarelo" deve possuir quantidade destinada maior que zero.',
         );
+      });
+
+      it("permite zerar destinação de oportunidade previamente salva (hasExistingAllocation = true) sem travar na validação de quantidade positiva", () => {
+        const result = validateAllocationPurchasedStatus({
+          productName: "Melão Amarelo",
+          erpCode: 42,
+          purchaseFormat: "CX",
+          isPurchasedInCosts: false,
+          totalCycleOrdersNum: 0,
+          totalDestinedNum: 0,
+          hasExistingAllocation: true,
+        });
+        expect(result.isValid).toBe(true);
+        expect(result.errorMessage).toBeUndefined();
+      });
+
+      it("permite alterar quantidade de oportunidade previamente salva (hasExistingAllocation = true)", () => {
+        const result = validateAllocationPurchasedStatus({
+          productName: "Melão Amarelo",
+          erpCode: 42,
+          purchaseFormat: "CX",
+          isPurchasedInCosts: false,
+          totalCycleOrdersNum: 0,
+          totalDestinedNum: 3,
+          hasExistingAllocation: true,
+        });
+        expect(result.isValid).toBe(true);
       });
     });
 
