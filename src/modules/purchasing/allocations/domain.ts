@@ -143,7 +143,49 @@ export type CatalogSearchItem = {
   exclusiveSupplierName: string | null;
   purchasedInCosts?: boolean;
   orderedQuantities?: Record<string, string>;
+  totalCycleOrders?: string;
 };
+
+/**
+ * Validação de integridade entre pedido, custos e destinação (Bug 03 - Regras A, B e C)
+ */
+export function validateAllocationPurchasedStatus(params: {
+  productName: string;
+  erpCode: number;
+  purchaseFormat: string;
+  isPurchasedInCosts: boolean;
+  totalCycleOrdersNum: number;
+  totalDestinedNum: number;
+  isOpportunityConfirmed?: boolean;
+}): { isValid: boolean; errorMessage?: string } {
+  const {
+    productName,
+    erpCode,
+    purchaseFormat,
+    isPurchasedInCosts,
+    totalCycleOrdersNum,
+    totalDestinedNum,
+  } = params;
+
+  // Regra C: Produto solicitado pelas lojas, mas NÃO marcado como comprado nos custos
+  if (totalCycleOrdersNum > 0 && !isPurchasedInCosts && totalDestinedNum > 0) {
+    return {
+      isValid: false,
+      errorMessage: `O produto "${productName}" (ERP ${erpCode}) possui pedido das lojas neste ciclo (${roundToTwoDecimals(totalCycleOrdersNum)} ${purchaseFormat}), mas não está marcado como comprado na tela de custos. Marque-o como comprado nos custos antes de realizar a destinação.`,
+    };
+  }
+
+  // Regra B: Compra de oportunidade (sem pedidos em nenhuma loja)
+  // "Compra adicional com quantidade zero: bloqueada"
+  if (totalCycleOrdersNum === 0 && !isPurchasedInCosts && totalDestinedNum === 0) {
+    return {
+      isValid: false,
+      errorMessage: `A compra de oportunidade do produto "${productName}" deve possuir quantidade destinada maior que zero.`,
+    };
+  }
+
+  return { isValid: true };
+}
 
 export type StoreSummaryData = {
   storeId: string;

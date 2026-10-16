@@ -9,6 +9,7 @@ import {
   parseQuantity,
   roundToTwoDecimals,
   sumQuantities,
+  validateAllocationPurchasedStatus,
   validateClosureReadiness,
   type BuyerAllocationWorkspaceData,
   type BuyerCycleClosureSummary,
@@ -381,6 +382,7 @@ export async function readBuyerAllocationWorkspace(
     const costInfo = costMap.get(prod.id);
     const purchasedInCosts = costInfo?.purchased ?? false;
     const orderedQuantities = cycleStoreOrders[prod.id] ?? {};
+    const totalCycleOrders = sumQuantities(Object.values(orderedQuantities));
 
     if (prod.active) {
       catalogSearchList.push({
@@ -393,6 +395,7 @@ export async function readBuyerAllocationWorkspace(
         exclusiveSupplierName,
         purchasedInCosts,
         orderedQuantities,
+        totalCycleOrders,
       });
     }
   }
@@ -441,19 +444,27 @@ export async function readBuyerAllocationWorkspace(
       const linkedProductIds = new Set(supplierProductLinks.map((l) => l.product_id));
 
       // Determina quais produtos devem aparecer para este fornecedor:
-      // 1. Produtos que já possuem alocações para este fornecedor neste ciclo
-      // 2. Produtos vinculados a este fornecedor
-      // 3. Se for a JEB, produtos legados com exclusive_supplier = true
+      // 1. Produtos que já possuem alocações para este fornecedor neste ciclo (permite ver/corrigir/zerar)
+      // 2. Produtos vinculados a este fornecedor SOMENTE se comprados nos custos (Regra A)
+      // 3. Se for a JEB, produtos legados com exclusive_supplier = true SOMENTE se comprados nos custos (Regra A)
       const targetProductIds = new Set<string>();
 
       for (const alloc of allocationRows) {
         if (alloc.supplier_id === resolvedSupplierId) {
-          targetProductIds.add(alloc.product_id);
+          const costInfo = costMap.get(alloc.product_id);
+          // Se for comprado nos custos, mantém na lista.
+          // Se NÃO for comprado nos custos, só mantém se ainda tiver destinação positiva (para permitir visualizar e zerar)
+          if (costInfo?.purchased || parseQuantity(alloc.destined_quantity) > 0) {
+            targetProductIds.add(alloc.product_id);
+          }
         }
       }
 
       for (const pid of linkedProductIds) {
-        targetProductIds.add(pid);
+        const costInfo = costMap.get(pid);
+        if (costInfo?.purchased) {
+          targetProductIds.add(pid);
+        }
       }
 
       const isSelectedJeb =
@@ -463,7 +474,10 @@ export async function readBuyerAllocationWorkspace(
       if (isSelectedJeb) {
         for (const prod of allCatalogProducts) {
           if (prod.legacy_exclusive) {
-            targetProductIds.add(prod.id);
+            const costInfo = costMap.get(prod.id);
+            if (costInfo?.purchased) {
+              targetProductIds.add(prod.id);
+            }
           }
         }
       }
@@ -706,6 +720,7 @@ export async function saveSupplierAllocations(
       const [prodRow] = await tx<
         {
           id: string;
+          erp_code: number;
           name: string;
           purchase_format: string;
           exclusive_supplier: boolean;
@@ -717,6 +732,7 @@ export async function saveSupplierAllocations(
       >`
         SELECT
           p.id,
+          p.erp_code,
           p.name,
           p.purchase_format,
           p.exclusive_supplier,
@@ -762,16 +778,69 @@ export async function saveSupplierAllocations(
 
       let productHadValidDestination = false;
 
+      // Verifica se o produto foi marcado como comprado nos custos deste ciclo
+      const [costRow] = await tx<{ purchased: boolean; cost: string | null }[]>`
+        SELECT purchased, cost
+        FROM purchase_cycle_product_costs
+        WHERE purchase_cycle_date = ${input.cycleDate}::date
+          AND product_id = ${prodRow.id}::uuid
+      `;
+      const isPurchasedInCosts = costRow?.purchased ?? false;
+
+      // Soma total de pedidos das lojas para este produto no ciclo
+      let totalCycleOrdersNum = 0;
+      for (const [key, qtyStr] of storeOriginalOrderMap.entries()) {
+        if (key.endsWith(`:${prodRow.id}`)) {
+          totalCycleOrdersNum += parseQuantity(qtyStr);
+        }
+      }
+
       const targetStores = input.storeId
         ? productInput.stores.filter((s) => s.storeId === input.storeId)
         : productInput.stores;
+
+      // Total destinado nesta requisição para este produto
+      const totalDestinedInRequest = targetStores.reduce(
+        (sum, s) => sum + parseQuantity(s.destinedQuantity),
+        0
+      );
+
+      // Validação das regras de compra (Bug 03 - Regras A, B e C)
+      const validation = validateAllocationPurchasedStatus({
+        productName: prodRow.name,
+        erpCode: prodRow.erp_code,
+        purchaseFormat: prodRow.purchase_format,
+        isPurchasedInCosts,
+        totalCycleOrdersNum,
+        totalDestinedNum: totalDestinedInRequest,
+      });
+
+      if (!validation.isValid) {
+        // Se a validação falhou, verifica se o usuário está zerando uma alocação anterior existente
+        if (totalDestinedInRequest === 0) {
+          const [existingAlloc] = await tx<{ id: string }[]>`
+            SELECT id FROM purchase_cycle_product_allocations
+            WHERE purchase_cycle_date = ${input.cycleDate}::date
+              AND supplier_id = ${input.supplierId}::uuid
+              AND product_id = ${prodRow.id}::uuid
+            LIMIT 1
+          `;
+          if (!existingAlloc) {
+            throw new AllocationValidationError(validation.errorMessage!);
+          }
+          // Se já existia alocação, permite zerar para corrigir destinação indevida!
+        } else {
+          throw new AllocationValidationError(validation.errorMessage!);
+        }
+      }
 
       for (const storeInput of targetStores) {
         const destinedNum = parseQuantity(storeInput.destinedQuantity);
         const originalOrderStr = storeOriginalOrderMap.get(`${storeInput.storeId}:${prodRow.id}`) ?? "0";
         const originalOrderNum = parseQuantity(originalOrderStr);
 
-        const isAdditional = originalOrderNum === 0 && destinedNum > 0;
+        const isAdditional =
+          totalCycleOrdersNum === 0 || (originalOrderNum === 0 && destinedNum > 0);
 
         if (destinedNum > 0 || originalOrderNum > 0) {
           productHadValidDestination = true;
@@ -903,6 +972,35 @@ export async function closeBuyerCycle(
       const extraCount = missingProducts.length > 5 ? ` e mais ${missingProducts.length - 5}` : "";
       throw new AllocationValidationError(
         `Não é possível fechar o ciclo. Existem ${missingProducts.length} produto(s) comprado(s) sem fornecedor/destinação atribuída: ${missingList}${extraCount}.`,
+      );
+    }
+
+    // 3.1 Proteção Bug 03: Rejeita fechamento se houver produto com pedidos das lojas, não comprado nos custos, com destinação ativa
+    const invalidAllocatedRows = await tx<{ erp_code: number; name: string }[]>`
+      SELECT DISTINCT p.erp_code, p.name
+      FROM purchase_cycle_product_allocations a
+      JOIN products p ON p.id = a.product_id
+      LEFT JOIN purchase_cycle_product_costs c
+        ON c.purchase_cycle_date = a.purchase_cycle_date
+       AND c.product_id = a.product_id
+      WHERE a.purchase_cycle_date = ${cycleDate}::date
+        AND a.destined_quantity > 0
+        AND COALESCE(c.purchased, false) = false
+        AND EXISTS (
+          SELECT 1
+          FROM order_items oi
+          JOIN orders o ON o.id = oi.order_id
+          WHERE o.purchase_cycle_date = a.purchase_cycle_date
+            AND o.cancelled_at IS NULL
+            AND oi.product_id = a.product_id
+            AND oi.quantity > 0
+        )
+    `;
+
+    if (invalidAllocatedRows.length > 0) {
+      const invalidList = invalidAllocatedRows.map((p) => `[${p.erp_code}] ${p.name}`).join(", ");
+      throw new AllocationValidationError(
+        `Não é possível fechar o ciclo. Há produto(s) com pedido das lojas não marcado(s) como comprado(s) nos custos que possuem destinação ativa: ${invalidList}. Zere a destinação ou marque como comprado nos custos.`,
       );
     }
 

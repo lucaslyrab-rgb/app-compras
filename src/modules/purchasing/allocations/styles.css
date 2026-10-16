@@ -906,3 +906,103 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Bug 03: Alertas e estilos para produtos não comprados e oportunidades */
+.alloc-unpurchased-alert-banner {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.alloc-unpurchased-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.alloc-unpurchased-alert-text {
+  font-size: 12px;
+  color: #7f1d1d;
+  margin: 4px 0 8px 0;
+  line-height: 1.4;
+}
+
+.alloc-unpurchased-alert-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px dashed #fca5a5;
+}
+
+.alloc-unpurchased-alert-destined-warning {
+  font-size: 12px;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.alloc-btn-zero {
+  min-height: 30px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.alloc-unpurchased-alert-cleared {
+  font-size: 12px;
+  color: #166534;
+  font-weight: 600;
+}
+
+.alloc-opp-item-info {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.alloc-opp-item-erp {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.alloc-opp-item-name {
+  color: #0f172a;
+}
+
+.alloc-opp-item-format {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.alloc-opp-store-target {
+  font-size: 13px;
+  color: #334155;
+  background-color: #f8fafc;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.alloc-opp-notice {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #92400e;
+}
+
+.alloc-opp-input-group {
+  margin-top: 4px;
+}
+

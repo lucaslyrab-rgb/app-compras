@@ -86,6 +86,12 @@ export function BuyerAllocationWorkspace({
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [catalogSearchQuery, setCatalogSearchQuery] = useState("");
 
+  // Modal de confirmação explícita de compra de oportunidade (Regra B)
+  const [pendingOpportunityItem, setPendingOpportunityItem] =
+    useState<CatalogSearchItem | null>(null);
+  const [opportunityQuantity, setOpportunityQuantity] = useState<string>("1");
+  const [opportunityError, setOpportunityError] = useState<string | null>(null);
+
   // Modal de confirmação de alterações não salvas (Unsaved Changes Guard)
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [pendingAction, setPendingAction] =
@@ -247,6 +253,37 @@ export function BuyerAllocationWorkspace({
   const handleSaveAllocations = async (onSuccessCallback?: () => void) => {
     if (!selectedSupplierId || isClosed || saving) return;
 
+    // Validações locais de integridade (Bug 03 - Regras B e C)
+    for (const prod of products) {
+      const storeData = prod.stores[activeStoreId];
+      const destinedNum = parseQuantity(storeData?.destinedQuantity ?? "0.00");
+      const totalCycleOrdersNum = parseQuantity(prod.totalOrdered);
+
+      // Regra C: Produto com pedido das lojas não marcado como comprado nos custos não pode ter destinação positiva
+      if (totalCycleOrdersNum > 0 && !prod.purchasedInCosts && destinedNum > 0) {
+        setErrorMessage(
+          `O produto "${prod.productName}" (ERP ${prod.erpCode}) possui pedido das lojas neste ciclo (${prod.totalOrdered} ${prod.purchaseFormat}), mas não está marcado como comprado na tela de custos. Zere a destinação para corrigir ou marque-o como comprado nos custos antes de salvar.`,
+        );
+        return;
+      }
+
+      // Regra B: Compra de oportunidade não pode ter quantidade zero (bloqueio de inclusão com zero)
+      const wasInDatabase = Boolean(
+        destinationData?.products.some((p) => p.productId === prod.productId),
+      );
+      if (
+        totalCycleOrdersNum === 0 &&
+        !prod.purchasedInCosts &&
+        destinedNum === 0 &&
+        !wasInDatabase
+      ) {
+        setErrorMessage(
+          `A compra de oportunidade do produto "${prod.productName}" deve possuir quantidade destinada maior que zero.`,
+        );
+        return;
+      }
+    }
+
     setSaving(true);
     setErrorMessage(null);
     setSaveMessage(null);
@@ -359,6 +396,82 @@ export function BuyerAllocationWorkspace({
     setProducts((prev) => [newProduct, ...prev]);
     setIsDirty(true);
     setSaveMessage(null);
+    setShowAddProductModal(false);
+    setCatalogSearchQuery("");
+  };
+
+  // Confirmação explícita de compra de oportunidade (Regra B)
+  const handleConfirmOpportunityPurchase = () => {
+    if (!pendingOpportunityItem) return;
+
+    const val = opportunityQuantity.replace(",", ".");
+    const numVal = parseQuantity(val);
+
+    if (numVal <= 0) {
+      setOpportunityError("A quantidade destinada deve ser maior que zero.");
+      return;
+    }
+
+    const item = pendingOpportunityItem;
+    if (products.some((p) => p.productId === item.id)) {
+      setPendingOpportunityItem(null);
+      setShowAddProductModal(false);
+      return;
+    }
+
+    const newStoreAllocations: Record<string, StoreAllocationData> = {};
+    const orderedQtyList: string[] = [];
+    const destinedQtyList: string[] = [];
+
+    for (const store of stores) {
+      const orderQty = cycleStoreOrders[item.id]?.[store.id] ?? "0.00";
+      const isTargetStore = store.id === activeStoreId;
+      const destinedQty = isTargetStore ? roundToTwoDecimals(numVal) : "0.00";
+      const diff = calculateDifference(destinedQty, orderQty);
+
+      newStoreAllocations[store.id] = {
+        storeId: store.id,
+        storeName: store.name,
+        storeSlug: store.slug,
+        orderedQuantity: "0.00",
+        destinedQuantity: destinedQty,
+        difference: diff,
+        isAdditionalPurchase: isTargetStore,
+      };
+
+      orderedQtyList.push(orderQty);
+      destinedQtyList.push(destinedQty);
+    }
+
+    const totalOrdered = sumQuantities(orderedQtyList);
+    const totalDestined = sumQuantities(destinedQtyList);
+    const totalDiff = calculateDifference(totalDestined, totalOrdered);
+
+    const newProduct: ProductAllocationItem = {
+      productId: item.id,
+      erpCode: item.erpCode,
+      productName: item.name,
+      purchaseFormat: item.purchaseFormat,
+      isExclusive: item.isExclusive,
+      exclusiveSupplierId: item.exclusiveSupplierId,
+      exclusiveSupplierName: item.exclusiveSupplierName,
+      hasOfficialCost: false,
+      officialCost: null,
+      purchasedInCosts: false,
+      isAdditionalPurchase: true,
+      conversionFactorKg: null,
+      conversionOrigin: null,
+      stores: newStoreAllocations,
+      totalOrdered,
+      totalDestined,
+      totalDifference: totalDiff,
+      version: 1,
+    };
+
+    setProducts((prev) => [newProduct, ...prev]);
+    setIsDirty(true);
+    setSaveMessage(null);
+    setPendingOpportunityItem(null);
     setShowAddProductModal(false);
     setCatalogSearchQuery("");
   };
@@ -724,6 +837,10 @@ export function BuyerAllocationWorkspace({
                 const hasOrder = parseQuantity(storeData.orderedQuantity) > 0;
                 const isDifferentFromOrder =
                   hasOrder && storeData.destinedQuantity !== storeData.orderedQuantity;
+                const isUnpurchasedWithOrders =
+                  !prod.purchasedInCosts && parseQuantity(prod.totalOrdered) > 0;
+                const hasDestinedInActiveStore =
+                  parseQuantity(storeData.destinedQuantity) > 0;
 
                 // Soma das outras lojas para referência rápida
                 const otherStoresDestined = sumQuantities(
@@ -746,6 +863,14 @@ export function BuyerAllocationWorkspace({
                           </span>
                         </div>
                         <div className="alloc-badges">
+                          {isUnpurchasedWithOrders ? (
+                            <span
+                              className="alloc-badge"
+                              style={{ backgroundColor: "#fee2e2", color: "#b91c1c", fontWeight: "700" }}
+                            >
+                              ⚠️ Não Comprado nos Custos
+                            </span>
+                          ) : null}
                           {prod.isExclusive ? (
                             <span className="alloc-badge alloc-badge--exclusive">
                               Exclusivo JEB
@@ -764,6 +889,38 @@ export function BuyerAllocationWorkspace({
                         </div>
                       </div>
                     </header>
+
+                    {/* BANNER DE ALERTA: PRODUTO COM PEDIDO NÃO COMPRADO NOS CUSTOS (BUG 03) */}
+                    {isUnpurchasedWithOrders ? (
+                      <div className="alloc-unpurchased-alert-banner">
+                        <div className="alloc-unpurchased-alert-header">
+                          <span role="img" aria-label="Alerta">⚠️</span>
+                          <span>PRODUTO NÃO COMPRADO NOS CUSTOS</span>
+                        </div>
+                        <p className="alloc-unpurchased-alert-text">
+                          Este produto possui pedido das lojas ({prod.totalOrdered} {prod.purchaseFormat}), mas não foi marcado como comprado na tela de custos. Para destiná-lo, marque-o como comprado nos custos primeiro.
+                        </p>
+                        {hasDestinedInActiveStore ? (
+                          <div className="alloc-unpurchased-alert-action-row">
+                            <span className="alloc-unpurchased-alert-destined-warning">
+                              Destinação indevida nesta loja: <strong>{storeData.destinedQuantity} {prod.purchaseFormat}</strong>
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn--danger alloc-btn-zero"
+                              onClick={() => handleQuantityChange(prod.productId, "0.00")}
+                              title="Zerar destinação indevida"
+                            >
+                              Zerar Destinação
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="alloc-unpurchased-alert-cleared">
+                            ✓ Destinação zerada nesta loja.
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
 
                     {/* ÁREA DE EDIÇÃO EXCLUSIVA DA LOJA ATIVA */}
                     <div className="alloc-single-store-panel">
@@ -800,7 +957,7 @@ export function BuyerAllocationWorkspace({
                             type="text"
                             inputMode="decimal"
                             className="alloc-stepper-input"
-                            disabled={isClosed}
+                            disabled={isClosed || (isUnpurchasedWithOrders && !hasDestinedInActiveStore)}
                             value={storeData.destinedQuantity}
                             onChange={(e) =>
                               handleQuantityChange(prod.productId, e.target.value)
@@ -809,16 +966,17 @@ export function BuyerAllocationWorkspace({
                           <button
                             type="button"
                             className="alloc-stepper-btn"
-                            disabled={isClosed}
+                            disabled={isClosed || isUnpurchasedWithOrders}
                             aria-label={`Aumentar quantidade`}
                             onClick={() => handleStepQuantity(prod.productId, 1)}
+                            title={isUnpurchasedWithOrders ? "Bloqueado: marque como comprado nos custos" : undefined}
                           >
                             +
                           </button>
                         </div>
 
                         {/* Botão de Sugestão Tátil de Pedido */}
-                        {isDifferentFromOrder && !isClosed ? (
+                        {isDifferentFromOrder && !isClosed && !isUnpurchasedWithOrders ? (
                           <button
                             type="button"
                             className="alloc-suggest-btn"
@@ -1199,47 +1357,127 @@ export function BuyerAllocationWorkspace({
                       const orderForActiveStore =
                         cycleStoreOrders[item.id]?.[activeStoreId] ?? "0.00";
                       const hasOrderInActive = parseQuantity(orderForActiveStore) > 0;
+                      const totalCycleOrdersNum = parseQuantity(item.totalCycleOrders ?? "0");
+                      const isPurchased = Boolean(item.purchasedInCosts);
+                      const isOrderedUnpurchased = !isPurchased && totalCycleOrdersNum > 0;
+                      const isOpportunity = !isPurchased && totalCycleOrdersNum === 0;
 
                       return (
                         <li
                           key={item.id}
                           className="alloc-modal-catalog-item"
                           style={{
-                            backgroundColor: isExclusiveToOther ? "#fff7ed" : "#fff",
+                            backgroundColor: isExclusiveToOther
+                              ? "#fff7ed"
+                              : isOrderedUnpurchased
+                              ? "#fef2f2"
+                              : "#fff",
                           }}
                         >
-                          <div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: "700", fontSize: "14px" }}>
                               [{item.erpCode}] {item.name}
                             </div>
-                            <div style={{ fontSize: "12px", color: "#64748b" }}>
+                            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
                               Formato: {item.purchaseFormat}
-                              {hasOrderInActive ? (
-                                <span style={{ color: "#006b4f", marginLeft: "6px", fontWeight: "600" }}>
-                                  • Pedido {activeStore.name.replace("MultiShow ", "")}: {orderForActiveStore}
-                                </span>
-                              ) : (
-                                <span style={{ color: "#b45309", marginLeft: "6px" }}>
-                                  • Sem pedido nesta loja (Oportunidade)
-                                </span>
-                              )}
                               {isExclusiveToOther ? (
                                 <span style={{ color: "#c2410c", marginLeft: "6px", fontWeight: "600" }}>
                                   (Exclusivo: {item.exclusiveSupplierName ?? "Outro fornecedor"})
                                 </span>
                               ) : null}
                             </div>
+
+                            {/* Detalhamento de compra e pedidos (Bug 03 - Regras A, B e C) */}
+                            {isOrderedUnpurchased ? (
+                              <div
+                                style={{
+                                  fontSize: "12px",
+                                  color: "#b91c1c",
+                                  marginTop: "4px",
+                                  backgroundColor: "#fee2e2",
+                                  padding: "6px 8px",
+                                  borderRadius: "6px",
+                                  lineHeight: "1.4",
+                                }}
+                              >
+                                ⚠️ <strong>Não comprado nos custos:</strong> Este produto possui pedido das lojas ({item.totalCycleOrders} {item.purchaseFormat}), mas não foi marcado como comprado na tela de custos. Para destiná-lo, marque-o como comprado nos custos primeiro.
+                              </div>
+                            ) : isOpportunity ? (
+                              <div style={{ fontSize: "12px", color: "#b45309", marginTop: "3px" }}>
+                                ⚡ Sem pedido nas lojas neste ciclo (Compra de Oportunidade)
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: "12px", color: "#166534", marginTop: "3px" }}>
+                                ✓ Comprado nos custos
+                                {hasOrderInActive ? (
+                                  <span style={{ marginLeft: "6px", fontWeight: "600" }}>
+                                    • Pedido {activeStore.name.replace("MultiShow ", "")}: {orderForActiveStore} {item.purchaseFormat}
+                                  </span>
+                                ) : (
+                                  <span style={{ marginLeft: "6px", color: "#64748b" }}>
+                                    • Sem pedido nesta unidade
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
 
-                          <button
-                            type="button"
-                            className="btn btn--primary"
-                            style={{ minHeight: "34px", padding: "4px 12px", fontSize: "13px" }}
-                            disabled={Boolean(isExclusiveToOther)}
-                            onClick={() => handleAddProductFromCatalog(item)}
-                          >
-                            {isExclusiveToOther ? "Bloqueado" : "+ Adicionar"}
-                          </button>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            {isExclusiveToOther ? (
+                              <button
+                                type="button"
+                                className="btn btn--secondary"
+                                style={{ minHeight: "34px", padding: "4px 12px", fontSize: "12px" }}
+                                disabled
+                              >
+                                Bloqueado
+                              </button>
+                            ) : isOrderedUnpurchased ? (
+                              <button
+                                type="button"
+                                className="btn btn--secondary"
+                                style={{
+                                  minHeight: "34px",
+                                  padding: "4px 12px",
+                                  fontSize: "12px",
+                                  color: "#dc2626",
+                                  borderColor: "#fca5a5",
+                                }}
+                                disabled
+                                title="Bloqueado: produto com pedido não comprado nos custos"
+                              >
+                                Bloqueado
+                              </button>
+                            ) : isOpportunity ? (
+                              <button
+                                type="button"
+                                className="btn btn--primary"
+                                style={{
+                                  minHeight: "34px",
+                                  padding: "4px 12px",
+                                  fontSize: "13px",
+                                  backgroundColor: "#d97706",
+                                  borderColor: "#b45309",
+                                }}
+                                onClick={() => {
+                                  setPendingOpportunityItem(item);
+                                  setOpportunityQuantity("1");
+                                  setOpportunityError(null);
+                                }}
+                              >
+                                + Oportunidade
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn--primary"
+                                style={{ minHeight: "34px", padding: "4px 12px", fontSize: "13px" }}
+                                onClick={() => handleAddProductFromCatalog(item)}
+                              >
+                                + Adicionar
+                              </button>
+                            )}
+                          </div>
                         </li>
                       );
                     })}
@@ -1258,6 +1496,118 @@ export function BuyerAllocationWorkspace({
                 onClick={() => setShowAddProductModal(false)}
               >
                 Fechar
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL: CONFIRMAR COMPRA DE OPORTUNIDADE (REGRA B) */}
+      {pendingOpportunityItem ? (
+        <div className="alloc-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="alloc-modal" style={{ maxWidth: "480px" }}>
+            <header className="alloc-modal__header">
+              <h2>Confirmar Compra de Oportunidade</h2>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                style={{ minHeight: "32px", padding: "4px 8px" }}
+                onClick={() => {
+                  setPendingOpportunityItem(null);
+                  setOpportunityError(null);
+                }}
+              >
+                ✕
+              </button>
+            </header>
+            <div className="alloc-modal__body">
+              <div className="alloc-opp-item-info">
+                <span className="alloc-opp-item-erp">[{pendingOpportunityItem.erpCode}]</span>
+                <strong className="alloc-opp-item-name">{pendingOpportunityItem.name}</strong>
+                <span className="alloc-opp-item-format">({pendingOpportunityItem.purchaseFormat})</span>
+              </div>
+
+              <div className="alloc-opp-store-target">
+                Destinação para: <strong>{activeStore.name}</strong>
+              </div>
+
+              <div className="alloc-opp-notice">
+                <strong>Nenhuma loja solicitou este produto neste ciclo.</strong>
+                <p style={{ margin: "4px 0 0 0", fontSize: "12px", color: "#92400e" }}>
+                  A inclusão será registrada como compra de oportunidade para {activeStore.name} e fará parte do fechamento operacional, sem necessidade de custo prévio na tela de custos.
+                </p>
+              </div>
+
+              <div className="alloc-opp-input-group">
+                <label
+                  htmlFor="opp-quantity"
+                  style={{ fontWeight: "700", fontSize: "13px", display: "block", marginBottom: "6px" }}
+                >
+                  Quantidade Destinada ({pendingOpportunityItem.purchaseFormat}) * obrigatória e maior que zero
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <button
+                    type="button"
+                    className="alloc-stepper-btn"
+                    onClick={() => {
+                      const cur = parseQuantity(opportunityQuantity);
+                      if (cur > 1) {
+                        setOpportunityQuantity(String(cur - 1));
+                        setOpportunityError(null);
+                      }
+                    }}
+                  >
+                    −
+                  </button>
+                  <input
+                    id="opp-quantity"
+                    type="text"
+                    inputMode="decimal"
+                    className="alloc-stepper-input"
+                    style={{ width: "100px", height: "42px", fontSize: "16px" }}
+                    value={opportunityQuantity}
+                    onChange={(e) => {
+                      setOpportunityQuantity(e.target.value);
+                      setOpportunityError(null);
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="alloc-stepper-btn"
+                    onClick={() => {
+                      const cur = parseQuantity(opportunityQuantity);
+                      setOpportunityQuantity(String(cur + 1));
+                      setOpportunityError(null);
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+                {opportunityError ? (
+                  <div style={{ color: "#dc2626", fontSize: "12px", marginTop: "6px", fontWeight: "600" }}>
+                    ⚠️ {opportunityError}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <footer className="alloc-modal__footer">
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => {
+                  setPendingOpportunityItem(null);
+                  setOpportunityError(null);
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn--success"
+                onClick={handleConfirmOpportunityPurchase}
+              >
+                Confirmar Inclusão
               </button>
             </footer>
           </div>

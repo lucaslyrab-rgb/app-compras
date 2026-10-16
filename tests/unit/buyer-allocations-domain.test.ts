@@ -6,6 +6,7 @@ import {
   parseQuantity,
   roundToTwoDecimals,
   sumQuantities,
+  validateAllocationPurchasedStatus,
   validateClosureReadiness,
   AllocationValidationError,
   CycleClosedError,
@@ -267,4 +268,95 @@ describe("Fase 3 — Vinculação das Compras aos Fornecedores e Fechamento Oper
       expect(updatedAllocations["store-sm"]).toBe("7.00");
     });
   });
+
+  describe("Integridade entre Custos, Pedidos e Destinação (Bug 03)", () => {
+    describe("REGRA A — Compras normais (com pedido)", () => {
+      it("permite destinação positiva se o produto estiver marcado como comprado nos custos", () => {
+        const result = validateAllocationPurchasedStatus({
+          productName: "Banana Prata",
+          erpCode: 10,
+          purchaseFormat: "CX",
+          isPurchasedInCosts: true,
+          totalCycleOrdersNum: 20,
+          totalDestinedNum: 20,
+        });
+        expect(result.isValid).toBe(true);
+        expect(result.errorMessage).toBeUndefined();
+      });
+
+      it("permite destinação zero se produto comprado teve corte total", () => {
+        const result = validateAllocationPurchasedStatus({
+          productName: "Banana Prata",
+          erpCode: 10,
+          purchaseFormat: "CX",
+          isPurchasedInCosts: true,
+          totalCycleOrdersNum: 20,
+          totalDestinedNum: 0,
+        });
+        expect(result.isValid).toBe(true);
+      });
+    });
+
+    describe("REGRA B — Compras de oportunidade (adicionais, sem pedido)", () => {
+      it("permite destinação de oportunidade quando sem pedidos e com quantidade maior que zero", () => {
+        const result = validateAllocationPurchasedStatus({
+          productName: "Melão Amarelo",
+          erpCode: 42,
+          purchaseFormat: "CX",
+          isPurchasedInCosts: false,
+          totalCycleOrdersNum: 0,
+          totalDestinedNum: 5,
+        });
+        expect(result.isValid).toBe(true);
+      });
+
+      it("bloqueia compra de oportunidade com quantidade destinada zero", () => {
+        const result = validateAllocationPurchasedStatus({
+          productName: "Melão Amarelo",
+          erpCode: 42,
+          purchaseFormat: "CX",
+          isPurchasedInCosts: false,
+          totalCycleOrdersNum: 0,
+          totalDestinedNum: 0,
+        });
+        expect(result.isValid).toBe(false);
+        expect(result.errorMessage).toContain(
+          'A compra de oportunidade do produto "Melão Amarelo" deve possuir quantidade destinada maior que zero.',
+        );
+      });
+    });
+
+    describe("REGRA C — Produto pedido e NÃO comprado (Caso Caqui 53)", () => {
+      it("bloqueia destinação positiva para produto com pedido das lojas não marcado como comprado nos custos", () => {
+        const result = validateAllocationPurchasedStatus({
+          productName: "Caqui Rama Forte",
+          erpCode: 53,
+          purchaseFormat: "CX",
+          isPurchasedInCosts: false,
+          totalCycleOrdersNum: 1,
+          totalDestinedNum: 1,
+        });
+        expect(result.isValid).toBe(false);
+        expect(result.errorMessage).toContain(
+          'O produto "Caqui Rama Forte" (ERP 53) possui pedido das lojas neste ciclo (1.00 CX), mas não está marcado como comprado na tela de custos.',
+        );
+        expect(result.errorMessage).toContain(
+          "Marque-o como comprado nos custos antes de realizar a destinação.",
+        );
+      });
+
+      it("permite destinação zero para produto não comprado (permitindo zerar/corrigir alocação indevida)", () => {
+        const result = validateAllocationPurchasedStatus({
+          productName: "Caqui Rama Forte",
+          erpCode: 53,
+          purchaseFormat: "CX",
+          isPurchasedInCosts: false,
+          totalCycleOrdersNum: 1,
+          totalDestinedNum: 0,
+        });
+        expect(result.isValid).toBe(true);
+      });
+    });
+  });
 });
+
