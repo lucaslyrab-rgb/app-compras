@@ -191,107 +191,91 @@ export function ProductSuppliersSection({
         </p>
       ) : null}
 
-      {/* Lista de Vínculos Existentes */}
+      {/* Lista de Vínculos Existentes em Cards Responsivos (Bug 02 — Sem Overflow Horizontal) */}
       {loading ? (
         <p style={{ fontSize: "0.85rem", color: "#64748b" }}>Carregando fornecedores vinculados...</p>
       ) : links.length > 0 ? (
-        <div className="product-suppliers-list" style={{ marginBottom: 20 }}>
-          <table
-            className="manager-table"
-            style={{ width: "100%", fontSize: "0.82rem", marginBottom: 12 }}
-          >
-            <thead>
-              <tr>
-                <th>Fornecedor</th>
-                <th>Doc. Fiscal</th>
-                <th>Regra NF</th>
-                <th style={{ textAlign: "center" }}>Status</th>
-                <th style={{ textAlign: "right" }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {links.map((link) => (
-                <tr key={link.id}>
-                  <td>
-                    <strong>{link.corporateName}</strong>
-                    {link.tradeName ? (
-                      <span style={{ display: "block", color: "#64748b", fontSize: "0.75rem" }}>
-                        Fantasia: {link.tradeName}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td>{link.taxId ? formatTaxId(link.taxId) : "—"}</td>
-                  <td>
-                    <span style={{ fontSize: "0.75rem" }}>
-                      {link.taxInvoiceRule === "STANDARD"
-                        ? "Normal"
-                        : link.taxInvoiceRule === "AFTER_WEIGHING"
-                        ? "Após pesagem"
-                        : "Reg. especial"}
+        <div className="product-suppliers-list" style={{ marginBottom: 16 }}>
+          {links.map((link) => (
+            <article key={link.id} className="product-supplier-card">
+              <div className="product-supplier-card__header">
+                <div className="product-supplier-card__identity">
+                  <strong className="product-supplier-card__name">{link.corporateName}</strong>
+                  {link.tradeName ? (
+                    <span className="product-supplier-card__trade">
+                      Fantasia: {link.tradeName}
                     </span>
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    <div style={{ display: "flex", gap: 4, justifyContent: "center", flexWrap: "wrap" }}>
-                      {link.isExclusive ? (
-                        <span
-                          className="manager-badge manager-badge--info"
-                          title="Somente este fornecedor pode atender novas compras deste produto"
-                        >
-                          EXCLUSIVO
-                        </span>
-                      ) : link.isPrimary ? (
-                        <span
-                          className="manager-badge manager-badge--configured"
-                          title="Fornecedor padrão sugerido para compras"
-                        >
-                          PRINCIPAL
-                        </span>
-                      ) : (
-                        <span className="manager-badge manager-badge--neutral">
-                          Alternativo
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                      {!link.isPrimary && !link.isExclusive ? (
-                        <button
-                          type="button"
-                          className="manager-secondary"
-                          style={{ padding: "2px 8px", fontSize: "0.75rem" }}
-                          disabled={pending}
-                          onClick={() => handleSetPrimary(link.supplierId)}
-                        >
-                          Definir principal
-                        </button>
-                      ) : null}
+                  ) : null}
+                </div>
+                <div className="product-supplier-card__badges">
+                  {link.isExclusive ? (
+                    <span
+                      className="manager-badge manager-badge--info"
+                      title="Somente este fornecedor pode atender novas compras deste produto"
+                    >
+                      EXCLUSIVO
+                    </span>
+                  ) : link.isPrimary ? (
+                    <span
+                      className="manager-badge manager-badge--configured"
+                      title="Fornecedor padrão sugerido para compras"
+                    >
+                      PRINCIPAL
+                    </span>
+                  ) : (
+                    <span className="manager-badge manager-badge--neutral">
+                      Alternativo
+                    </span>
+                  )}
+                </div>
+              </div>
 
-                      <button
-                        type="button"
-                        className="manager-secondary"
-                        style={{ padding: "2px 8px", fontSize: "0.75rem" }}
-                        disabled={pending}
-                        onClick={() => handleToggleExclusivity(link.supplierId, link.isExclusive)}
-                      >
-                        {link.isExclusive ? "Desativar exclusividade" : "Tornar exclusivo"}
-                      </button>
+              <div className="product-supplier-card__meta">
+                <span className="product-supplier-meta-item">
+                  <strong>Doc:</strong> {link.taxId ? formatTaxId(link.taxId) : "—"}
+                </span>
+                <span className="product-supplier-meta-item">
+                  <strong>Regra NF:</strong>{" "}
+                  {link.taxInvoiceRule === "STANDARD"
+                    ? "Normal"
+                    : link.taxInvoiceRule === "AFTER_WEIGHING"
+                    ? "Após pesagem"
+                    : "Reg. especial"}
+                </span>
+              </div>
 
-                      <button
-                        type="button"
-                        className="manager-secondary"
-                        style={{ padding: "2px 8px", fontSize: "0.75rem", color: "#dc2626" }}
-                        disabled={pending}
-                        onClick={() => handleUnlink(link.supplierId, link.corporateName)}
-                      >
-                        Desvincular
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              <div className="product-supplier-card__actions">
+                {!link.isPrimary && !link.isExclusive ? (
+                  <button
+                    type="button"
+                    className="manager-secondary"
+                    disabled={pending}
+                    onClick={() => handleSetPrimary(link.supplierId)}
+                  >
+                    Definir principal
+                  </button>
+                ) : null}
+
+                <button
+                  type="button"
+                  className="manager-secondary"
+                  disabled={pending}
+                  onClick={() => handleToggleExclusivity(link.supplierId, link.isExclusive)}
+                >
+                  {link.isExclusive ? "Desativar exclusividade" : "Tornar exclusivo"}
+                </button>
+
+                <button
+                  type="button"
+                  className="manager-secondary manager-secondary--danger"
+                  disabled={pending}
+                  onClick={() => handleUnlink(link.supplierId, link.corporateName)}
+                >
+                  Desvincular
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
       ) : (
         <p style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: 16 }}>

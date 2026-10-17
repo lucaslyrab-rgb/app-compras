@@ -94,6 +94,7 @@ export type ProductAllocationItem = {
   totalDestined: string;
   totalDifference: string;
   notes?: string | null;
+  isOpportunityConfirmed?: boolean;
   version: number;
 };
 
@@ -130,6 +131,7 @@ export type SupplierSummaryOption = {
   active: boolean;
   hasAllocationsInCycle: boolean;
   totalDestinedQuantity: string;
+  destinedByStore: Record<string, string>;
 };
 
 export type CatalogSearchItem = {
@@ -140,11 +142,89 @@ export type CatalogSearchItem = {
   isExclusive: boolean;
   exclusiveSupplierId: string | null;
   exclusiveSupplierName: string | null;
+  purchasedInCosts?: boolean;
+  orderedQuantities?: Record<string, string>;
+  totalCycleOrders?: string;
+};
+
+/**
+ * Validação de integridade entre pedido, custos e destinação (Bug 03 - Regras A, B e C)
+ */
+export function validateAllocationPurchasedStatus(params: {
+  productName: string;
+  erpCode: number;
+  purchaseFormat: string;
+  isPurchasedInCosts: boolean;
+  totalCycleOrdersNum: number;
+  totalDestinedNum: number;
+  isOpportunityConfirmed?: boolean;
+  hasExistingAllocation?: boolean;
+}): { isValid: boolean; errorMessage?: string } {
+  const {
+    productName,
+    erpCode,
+    purchaseFormat,
+    isPurchasedInCosts,
+    totalCycleOrdersNum,
+    totalDestinedNum,
+    isOpportunityConfirmed,
+    hasExistingAllocation,
+  } = params;
+
+  // Regra A: Compra normal (marcada como comprada na tela de custos)
+  if (isPurchasedInCosts) {
+    return { isValid: true };
+  }
+
+  // Regra C: Produto solicitado pelas lojas, mas NÃO marcado como comprado nos custos
+  if (totalCycleOrdersNum > 0) {
+    if (totalDestinedNum > 0) {
+      return {
+        isValid: false,
+        errorMessage: `O produto "${productName}" (ERP ${erpCode}) possui pedido das lojas neste ciclo (${roundToTwoDecimals(totalCycleOrdersNum)} ${purchaseFormat}), mas não está marcado como comprado na tela de custos. Marque-o como comprado nos custos antes de realizar a destinação.`,
+      };
+    }
+    // Se totalDestinedNum === 0 e hasExistingAllocation, permite zerar para corrigir destinação indevida passada
+    return { isValid: true };
+  }
+
+  // Regra B: Compra de oportunidade (sem pedidos em nenhuma loja e não comprado nos custos)
+  // Caso 1: Oportunidade já gravada anteriormente (hasExistingAllocation = true)
+  if (hasExistingAllocation) {
+    // Permite alterar quantidade ou zerar destinação sem ficar preso pela validação de quantidade positiva
+    return { isValid: true };
+  }
+
+  // Caso 2: Nova oportunidade sendo adicionada
+  if (totalDestinedNum === 0) {
+    return {
+      isValid: false,
+      errorMessage: `A compra de oportunidade do produto "${productName}" deve possuir quantidade destinada maior que zero.`,
+    };
+  }
+
+  if (!isOpportunityConfirmed) {
+    return {
+      isValid: false,
+      errorMessage: `A inclusão do produto "${productName}" como compra de oportunidade sem pedido requer confirmação explícita do comprador.`,
+    };
+  }
+
+  return { isValid: true };
+}
+
+export type StoreSummaryData = {
+  storeId: string;
+  storeName: string;
+  storeSlug: string;
+  totalAllocatedProducts: number;
+  totalDestinedQuantity: string;
 };
 
 export type BuyerAllocationWorkspaceData = {
   cycleDate: string;
   cycles: string[];
+  selectedStoreId: string | null;
   selectedSupplierId: string | null;
   closure: BuyerCycleClosureSummary;
   suppliers: SupplierSummaryOption[];
@@ -152,6 +232,8 @@ export type BuyerAllocationWorkspaceData = {
   destinationData: SupplierDestinationData | null;
   unassignedPurchasedProducts: Array<{ id: string; erpCode: number; name: string; purchaseFormat: string }>;
   catalogSearchList: CatalogSearchItem[];
+  cycleStoreOrders: Record<string, Record<string, string>>;
+  storeSummary: Record<string, StoreSummaryData>;
   loadedAt: string;
 };
 
@@ -165,11 +247,13 @@ export type SaveProductAllocationInput = {
   productId: string;
   stores: SaveStoreAllocationInput[];
   notes?: string;
+  isOpportunityConfirmed?: boolean;
 };
 
 export type SaveSupplierAllocationsInput = {
   cycleDate: string;
   supplierId: string;
+  storeId?: string;
   allocations: SaveProductAllocationInput[];
 };
 
