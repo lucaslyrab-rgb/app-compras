@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { formatTaxId } from "@/modules/suppliers/domain";
 import {
   closeBuyerCycleAction,
@@ -13,7 +13,6 @@ import {
   calculateDifference,
   hasPendingStoreAllocation,
   parseQuantity,
-  resolveCatalogOrderedQuantity,
   roundToTwoDecimals,
   sumQuantities,
   type BuyerAllocationWorkspaceData,
@@ -72,6 +71,15 @@ export function BuyerAllocationWorkspace({
       name: "Loja",
     };
   const activeStoreId = activeStore.id;
+  // O componente é remontado pela página quando o contexto confirmado muda.
+  // Enquanto uma navegação ainda está em trânsito, porém, os props continuam
+  // apontando para o contexto anterior. O ref preserva sincronamente a última
+  // intenção do usuário para que uma segunda seleção não reverta loja/ciclo.
+  const navigationContextRef = useRef({
+    cycleDate,
+    storeId: activeStoreId,
+    supplierId: selectedSupplierId ?? "",
+  });
 
   // Estado local dos produtos do fornecedor selecionado
   const [products, setProducts] = useState<ProductAllocationItem[]>(
@@ -123,23 +131,22 @@ export function BuyerAllocationWorkspace({
 
   // Navegação segura com guarda de alterações não salvas
   const executeNavigation = (action: PendingNavigationAction) => {
+    const nextContext = { ...navigationContextRef.current };
     if (action.type === "store") {
-      router.push(
-        `/comprador/destinacao?ciclo=${cycleDate}&loja=${action.targetId}&fornecedor=${selectedSupplierId ?? ""}`,
-      );
+      nextContext.storeId = action.targetId;
     } else if (action.type === "supplier") {
-      router.push(
-        `/comprador/destinacao?ciclo=${cycleDate}&loja=${activeStoreId}&fornecedor=${action.targetId}`,
-      );
+      nextContext.supplierId = action.targetId;
     } else if (action.type === "cycle") {
-      router.push(
-        `/comprador/destinacao?ciclo=${action.targetId}&loja=${activeStoreId}&fornecedor=${selectedSupplierId ?? ""}`,
-      );
+      nextContext.cycleDate = action.targetId;
     }
+    navigationContextRef.current = nextContext;
+    router.push(
+      `/comprador/destinacao?ciclo=${nextContext.cycleDate}&loja=${nextContext.storeId}&fornecedor=${nextContext.supplierId}`,
+    );
   };
 
   const handleSelectStore = (targetStoreId: string) => {
-    if (targetStoreId === activeStoreId) return;
+    if (targetStoreId === navigationContextRef.current.storeId) return;
     if (isDirty && canSave) {
       setPendingAction({ type: "store", targetId: targetStoreId });
       setShowUnsavedModal(true);
@@ -149,7 +156,7 @@ export function BuyerAllocationWorkspace({
   };
 
   const handleSelectSupplier = (targetSupplierId: string) => {
-    if (targetSupplierId === selectedSupplierId) return;
+    if (targetSupplierId === navigationContextRef.current.supplierId) return;
     if (isDirty && canSave) {
       setPendingAction({ type: "supplier", targetId: targetSupplierId });
       setShowUnsavedModal(true);
@@ -159,7 +166,7 @@ export function BuyerAllocationWorkspace({
   };
 
   const handleSelectCycle = (targetCycleDate: string) => {
-    if (targetCycleDate === cycleDate) return;
+    if (targetCycleDate === navigationContextRef.current.cycleDate) return;
     if (isDirty && canSave) {
       setPendingAction({ type: "cycle", targetId: targetCycleDate });
       setShowUnsavedModal(true);
@@ -409,7 +416,8 @@ export function BuyerAllocationWorkspace({
     void handleSaveAllocations(onSuccessCallback, nextResolutions);
   };
 
-  // Adiciona produto do catálogo — RESOLUÇÃO IMEDIATA DO PEDIDO (Bug 01 corrigido!)
+  // Adiciona produto do catálogo usando o snapshot canônico do ciclo carregado
+  // junto com o item. Fornecedor não interfere na quantidade original pedida.
   const handleAddProductFromCatalog = (item: CatalogSearchItem) => {
     if (products.some((p) => p.productId === item.id)) {
       setShowAddProductModal(false);
@@ -421,8 +429,7 @@ export function BuyerAllocationWorkspace({
     const destinedQtyList: string[] = [];
 
     for (const store of stores) {
-      // Busca imediata do pedido das lojas a partir do mapa do ciclo já carregado
-      const orderQty = resolveCatalogOrderedQuantity(item, cycleStoreOrders, store.id);
+      const orderQty = roundToTwoDecimals(item.orderedQuantities?.[store.id] ?? "0.00");
       const orderNum = parseQuantity(orderQty);
 
       // Sugestão inicial da quantidade do pedido para a loja ativa
@@ -506,7 +513,7 @@ export function BuyerAllocationWorkspace({
     const destinedQtyList: string[] = [];
 
     for (const store of stores) {
-      const orderQty = resolveCatalogOrderedQuantity(item, cycleStoreOrders, store.id);
+      const orderQty = roundToTwoDecimals(item.orderedQuantities?.[store.id] ?? "0.00");
       const isTargetStore = store.id === activeStoreId;
       const destinedQty = isTargetStore ? roundToTwoDecimals(numVal) : "0.00";
       const diff = calculateDifference(destinedQty, orderQty);
@@ -1529,10 +1536,8 @@ export function BuyerAllocationWorkspace({
                         item.exclusiveSupplierId &&
                         item.exclusiveSupplierId !== selectedSupplierId;
 
-                      const orderForActiveStore = resolveCatalogOrderedQuantity(
-                        item,
-                        cycleStoreOrders,
-                        activeStoreId,
+                      const orderForActiveStore = roundToTwoDecimals(
+                        item.orderedQuantities?.[activeStoreId] ?? "0.00",
                       );
                       const hasOrderInActive = parseQuantity(orderForActiveStore) > 0;
                       const totalCycleOrdersNum = parseQuantity(item.totalCycleOrders ?? "0");

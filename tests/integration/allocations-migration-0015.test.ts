@@ -1107,18 +1107,31 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
         product_id, purchase_cycle_date, cost, purchased, purchased_at, updated_by
       ) VALUES (${product.id}::uuid, ${cycleDate}::date, 50, true, now(), ${buyerPrincipal.userId}::uuid)
     `;
-    const [order] = await db<{ id: string }[]>`
+    const [previousOrder] = await db<{ id: string }[]>`
       INSERT INTO orders (
         store_id, order_date, purchase_cycle_date, revision, submitted_by, submitted_at, cutoff_at
       ) VALUES (
         ${store.id}::uuid, ${cycleDate}::date, ${cycleDate}::date, 1,
+        ${buyerPrincipal.userId}::uuid, now() - interval '2 minutes', now() + interval '1 hour'
+      ) RETURNING id
+    `;
+    await db`
+      INSERT INTO order_items (
+        order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit
+      ) VALUES (${previousOrder.id}::uuid, ${product.id}::uuid, 0, 2, 9101, 'Uva Vitória Integração', 'CX')
+    `;
+    const [currentOrder] = await db<{ id: string }[]>`
+      INSERT INTO orders (
+        store_id, order_date, purchase_cycle_date, revision, submitted_by, submitted_at, cutoff_at
+      ) VALUES (
+        ${store.id}::uuid, ${cycleDate}::date, ${cycleDate}::date, 2,
         ${buyerPrincipal.userId}::uuid, now(), now() + interval '1 hour'
       ) RETURNING id
     `;
     await db`
       INSERT INTO order_items (
         order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit
-      ) VALUES (${order.id}::uuid, ${product.id}::uuid, 0, 5, 9101, 'Uva Vitória Integração', 'CX')
+      ) VALUES (${currentOrder.id}::uuid, ${product.id}::uuid, 0, 5, 9101, 'Uva Vitória Integração', 'CX')
     `;
 
     const before = await readBuyerAllocationWorkspace(
@@ -1128,7 +1141,9 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
       store.id,
     );
     const suggestion = before.destinationData?.products.find((item) => item.productId === product.id);
+    const catalogItem = before.catalogSearchList.find((item) => item.id === product.id);
     expect(before.cycleStoreOrders[product.id]?.[store.id]).toBe("5.00");
+    expect(catalogItem?.orderedQuantities).toBe(before.cycleStoreOrders[product.id]);
     expect(suggestion?.stores[store.id]).toMatchObject({
       orderedQuantity: "5.00",
       destinedQuantity: "5.00",

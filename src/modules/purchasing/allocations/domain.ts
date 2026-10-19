@@ -294,16 +294,6 @@ export type SaveSupplierAllocationsInput = {
   allocations: SaveProductAllocationInput[];
 };
 
-export function resolveCatalogOrderedQuantity(
-  item: Pick<CatalogSearchItem, "id" | "orderedQuantities">,
-  cycleStoreOrders: Record<string, Record<string, string>>,
-  storeId: string,
-): string {
-  return roundToTwoDecimals(
-    item.orderedQuantities?.[storeId] ?? cycleStoreOrders[item.id]?.[storeId] ?? "0.00",
-  );
-}
-
 export function hasPendingStoreAllocation(
   allocation:
     | Pick<

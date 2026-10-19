@@ -5,7 +5,6 @@ import {
   isCycleDate,
   parseQuantity,
   hasPendingStoreAllocation,
-  resolveCatalogOrderedQuantity,
   roundToTwoDecimals,
   sumQuantities,
   validateAllocationPurchasedStatus,
@@ -246,23 +245,6 @@ describe("Fase 3 — Vinculação das Compras aos Fornecedores e Fechamento Oper
       expect(activeStoreOrderedQty).toBe("15.00");
       expect(parseQuantity(activeStoreOrderedQty)).toBe(15);
       expect(calculateDifference(activeStoreOrderedQty, activeStoreOrderedQty)).toBe("0.00");
-    });
-
-    it("usa o snapshot de pedidos do item do catálogo para a loja ativa", () => {
-      const item = {
-        id: "prod-uva-vitoria",
-        orderedQuantities: {
-          "store-balneario": "5.00",
-        },
-      };
-
-      expect(
-        resolveCatalogOrderedQuantity(
-          item,
-          { "prod-uva-vitoria": { "store-balneario": "0.00" } },
-          "store-balneario",
-        ),
-      ).toBe("5.00");
     });
 
     it("mantém a quantidade exibida como sugestão pendente até confirmação", () => {
