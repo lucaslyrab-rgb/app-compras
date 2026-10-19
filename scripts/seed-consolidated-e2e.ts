@@ -31,7 +31,12 @@ export async function seedConsolidatedE2e(
     const hash = await hashPassword(password);
     const rolePermissions: Record<string, string[]> = {
       LOJA: ["pedidos:criar", "pedidos:historico"],
-      COMPRADOR: ["compras:consolidado", "compras:custos"],
+      COMPRADOR: [
+        "compras:consolidado",
+        "compras:custos",
+        "compras:fornecedores",
+        "compras:destinacao",
+      ],
       GESTOR: [
         "compras:consolidado",
         "compras:custos",
@@ -71,6 +76,20 @@ export async function seedConsolidatedE2e(
     await sql`UPDATE products SET name='ABACAXI UN',purchase_format='UND' WHERE id=${products[3].id}`;
     await sql`UPDATE products SET name='PRODUTO AUSÊNCIA TESTE',purchase_format='UND' WHERE id=${products[4].id}`;
     await sql`UPDATE products SET name='PRODUTO 999 TESTE',purchase_format='CX' WHERE id=${products[5].id}`;
+    await sql`UPDATE products SET name='UVA VITÓRIA E2E',purchase_format='CX',exclusive_supplier=false WHERE id=${products[7].id}`;
+    await sql`
+      INSERT INTO suppliers (corporate_name, trade_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES
+        ('CORTELETTI E2E', 'Corteletti', '97000000000197', 'CNPJ', 'STANDARD', true),
+        ('UNIÃO FRUTAS E2E', 'União Frutas', '98000000000198', 'CNPJ', 'STANDARD', true)
+    `;
+    const [supplierCorteletti] = await sql<{ id: string }[]>`
+      SELECT id FROM suppliers WHERE tax_id = '97000000000197'
+    `;
+    await sql`
+      INSERT INTO product_suppliers (product_id, supplier_id, is_primary, is_exclusive, active)
+      VALUES (${products[7].id}::uuid, ${supplierCorteletti.id}::uuid, true, false, true)
+    `;
     await sql`
       UPDATE product_pricing_parameters pp
       SET sale_unit = configured.sale_unit,
@@ -112,7 +131,9 @@ export async function seedConsolidatedE2e(
                 product_id: p.id,
                 stock: 20 + s,
                 quantity:
-                  cycle === "2097-09-24" && mobileQuantity !== undefined
+                  i === 7
+                    ? [3, 5, 2][s]
+                    : cycle === "2097-09-24" && mobileQuantity !== undefined
                     ? mobileQuantity
                     : i === 0
                       ? [10, 5, 8][s]
@@ -143,7 +164,9 @@ export async function seedConsolidatedE2e(
         (${products[2].id}, '2097-09-24', 7.5, true, true, '2097-09-24T18:00:00Z', ${users.COMPRADOR}),
         (${products[3].id}, '2097-09-23', 7.5, false, true, '2097-09-23T18:00:00Z', ${users.COMPRADOR}),
         (${products[3].id}, '2097-09-24', 8, false, true, '2097-09-24T18:30:00Z', ${users.COMPRADOR}),
-        (${products[5].id}, '2097-09-24', 999.99, false, false, NULL, ${users.COMPRADOR})
+        (${products[5].id}, '2097-09-24', 999.99, false, false, NULL, ${users.COMPRADOR}),
+        (${products[7].id}, '2097-09-23', 50, false, true, '2097-09-23T18:00:00Z', ${users.COMPRADOR}),
+        (${products[7].id}, '2097-09-24', 50, false, true, '2097-09-24T18:00:00Z', ${users.COMPRADOR})
     `;
     const [calendar] = await sql<{ timezone: string }[]>`
       SELECT timezone FROM purchase_calendar_settings WHERE id = 'OPERATIONAL'

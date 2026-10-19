@@ -68,7 +68,12 @@ integration("Seed E2E Consolidado com Migration 0012", () => {
       `;
       expect(comprador).toBeDefined();
       expect(comprador.store_id).toBeNull();
-      expect(comprador.permissions).toEqual(["compras:consolidado", "compras:custos"]);
+      expect(comprador.permissions).toEqual([
+        "compras:consolidado",
+        "compras:custos",
+        "compras:fornecedores",
+        "compras:destinacao",
+      ]);
 
       const [gestor] = await sql<{ email: string; store_id: string | null; permissions: string[] }[]>`
         SELECT email, store_id, permissions FROM users WHERE email = 'gestor@consolidado.test'
