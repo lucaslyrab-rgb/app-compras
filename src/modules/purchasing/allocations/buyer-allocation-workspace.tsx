@@ -11,10 +11,14 @@ import {
 } from "./actions";
 import {
   calculateDifference,
+  hasPendingStoreAllocation,
   parseQuantity,
+  resolveCatalogOrderedQuantity,
   roundToTwoDecimals,
   sumQuantities,
   type BuyerAllocationWorkspaceData,
+  type AllocationConflictResolution,
+  type AllocationDestinationConflict,
   type CatalogSearchItem,
   type ProductAllocationItem,
   type StoreAllocationData,
@@ -24,6 +28,15 @@ import "./styles.css";
 type PendingNavigationAction = {
   type: "store" | "supplier" | "cycle";
   targetId: string;
+};
+
+type PendingAllocationConflict = {
+  conflicts: AllocationDestinationConflict[];
+  resolutions: Record<
+    string,
+    { resolution: AllocationConflictResolution; fingerprint: string }
+  >;
+  onSuccessCallback?: () => void;
 };
 
 export function BuyerAllocationWorkspace({
@@ -68,6 +81,8 @@ export function BuyerAllocationWorkspace({
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pendingConflict, setPendingConflict] =
+    useState<PendingAllocationConflict | null>(null);
 
   // Filtro de busca na lista de produtos
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,6 +112,15 @@ export function BuyerAllocationWorkspace({
   const [pendingAction, setPendingAction] =
     useState<PendingNavigationAction | null>(null);
 
+  const pendingProducts = useMemo(
+    () => products.filter((product) => hasPendingStoreAllocation(product.stores[activeStoreId])),
+    [activeStoreId, products],
+  );
+  const hasUnconfirmedSuggestions = pendingProducts.some(
+    (product) => product.stores[activeStoreId]?.persistedDestinedQuantity === null,
+  );
+  const canSave = pendingProducts.length > 0;
+
   // Navegação segura com guarda de alterações não salvas
   const executeNavigation = (action: PendingNavigationAction) => {
     if (action.type === "store") {
@@ -116,7 +140,7 @@ export function BuyerAllocationWorkspace({
 
   const handleSelectStore = (targetStoreId: string) => {
     if (targetStoreId === activeStoreId) return;
-    if (isDirty) {
+    if (isDirty && canSave) {
       setPendingAction({ type: "store", targetId: targetStoreId });
       setShowUnsavedModal(true);
       return;
@@ -126,7 +150,7 @@ export function BuyerAllocationWorkspace({
 
   const handleSelectSupplier = (targetSupplierId: string) => {
     if (targetSupplierId === selectedSupplierId) return;
-    if (isDirty) {
+    if (isDirty && canSave) {
       setPendingAction({ type: "supplier", targetId: targetSupplierId });
       setShowUnsavedModal(true);
       return;
@@ -136,7 +160,7 @@ export function BuyerAllocationWorkspace({
 
   const handleSelectCycle = (targetCycleDate: string) => {
     if (targetCycleDate === cycleDate) return;
-    if (isDirty) {
+    if (isDirty && canSave) {
       setPendingAction({ type: "cycle", targetId: targetCycleDate });
       setShowUnsavedModal(true);
       return;
@@ -178,6 +202,7 @@ export function BuyerAllocationWorkspace({
           orderedQuantity:
             cycleStoreOrders[prod.productId]?.[activeStoreId] ?? "0.00",
           destinedQuantity: "0.00",
+          persistedDestinedQuantity: null,
           difference: "0.00",
           isAdditionalPurchase: false,
         };
@@ -250,11 +275,17 @@ export function BuyerAllocationWorkspace({
   };
 
   // Salva destinações exclusivamente para a loja ativa e fornecedor atual
-  const handleSaveAllocations = async (onSuccessCallback?: () => void) => {
-    if (!selectedSupplierId || isClosed || saving) return;
+  const handleSaveAllocations = async (
+    onSuccessCallback?: () => void,
+    conflictResolutions: Record<
+      string,
+      { resolution: AllocationConflictResolution; fingerprint: string }
+    > = {},
+  ) => {
+    if (!selectedSupplierId || isClosed || saving || pendingProducts.length === 0) return;
 
     // Validações locais de integridade (Bug 03 - Regras B e C)
-    for (const prod of products) {
+    for (const prod of pendingProducts) {
       const storeData = prod.stores[activeStoreId];
       const destinedNum = parseQuantity(storeData?.destinedQuantity ?? "0.00");
       const totalCycleOrdersNum = parseQuantity(prod.totalOrdered);
@@ -293,13 +324,17 @@ export function BuyerAllocationWorkspace({
         cycleDate,
         supplierId: selectedSupplierId,
         storeId: activeStoreId,
-        allocations: products.map((prod) => ({
+        allocations: pendingProducts.map((prod) => ({
           productId: prod.productId,
           isOpportunityConfirmed: prod.isOpportunityConfirmed ?? undefined,
           notes: prod.notes ?? undefined,
           stores: [
             {
               storeId: activeStoreId,
+              conflictResolution:
+                conflictResolutions[`${prod.productId}:${activeStoreId}`]?.resolution,
+              conflictFingerprint:
+                conflictResolutions[`${prod.productId}:${activeStoreId}`]?.fingerprint,
               destinedQuantity:
                 prod.stores[activeStoreId]?.destinedQuantity ?? "0.00",
               notes: prod.stores[activeStoreId]?.notes ?? undefined,
@@ -311,7 +346,29 @@ export function BuyerAllocationWorkspace({
       const result = await saveSupplierAllocationsAction(payload);
 
       if (result.status === "success") {
+        const savedProductIds = new Set(pendingProducts.map((product) => product.productId));
+        setProducts((current) => current.map((product) => {
+          if (!savedProductIds.has(product.productId)) return product;
+          const storeData = product.stores[activeStoreId];
+          if (!storeData) return product;
+          const persistedDestinedQuantity =
+            parseQuantity(storeData.destinedQuantity) > 0 ||
+            parseQuantity(storeData.orderedQuantity) > 0
+              ? roundToTwoDecimals(storeData.destinedQuantity)
+              : null;
+          return {
+            ...product,
+            stores: {
+              ...product.stores,
+              [activeStoreId]: {
+                ...storeData,
+                persistedDestinedQuantity,
+              },
+            },
+          };
+        }));
         setIsDirty(false);
+        setPendingConflict(null);
         setSaveMessage(`Destinações salvas com sucesso para ${activeStore.name}!`);
         if (onSuccessCallback) {
           onSuccessCallback();
@@ -320,6 +377,12 @@ export function BuyerAllocationWorkspace({
             router.refresh();
           });
         }
+      } else if (result.status === "conflict") {
+        setPendingConflict({
+          conflicts: result.conflicts,
+          resolutions: conflictResolutions,
+          onSuccessCallback,
+        });
       } else {
         setErrorMessage(result.message);
       }
@@ -328,6 +391,22 @@ export function BuyerAllocationWorkspace({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleResolveAllocationConflict = (resolution: AllocationConflictResolution) => {
+    if (!pendingConflict) return;
+    const conflict = pendingConflict.conflicts[0];
+    if (!conflict) return;
+    const nextResolutions = {
+      ...pendingConflict.resolutions,
+      [`${conflict.productId}:${conflict.storeId}`]: {
+        resolution,
+        fingerprint: conflict.fingerprint,
+      },
+    };
+    const onSuccessCallback = pendingConflict.onSuccessCallback;
+    setPendingConflict(null);
+    void handleSaveAllocations(onSuccessCallback, nextResolutions);
   };
 
   // Adiciona produto do catálogo — RESOLUÇÃO IMEDIATA DO PEDIDO (Bug 01 corrigido!)
@@ -343,7 +422,7 @@ export function BuyerAllocationWorkspace({
 
     for (const store of stores) {
       // Busca imediata do pedido das lojas a partir do mapa do ciclo já carregado
-      const orderQty = cycleStoreOrders[item.id]?.[store.id] ?? "0.00";
+      const orderQty = resolveCatalogOrderedQuantity(item, cycleStoreOrders, store.id);
       const orderNum = parseQuantity(orderQty);
 
       // Sugestão inicial da quantidade do pedido para a loja ativa
@@ -360,6 +439,7 @@ export function BuyerAllocationWorkspace({
         storeSlug: store.slug,
         orderedQuantity: roundToTwoDecimals(orderQty),
         destinedQuantity: destinedQty,
+        persistedDestinedQuantity: null,
         difference: diff,
         isAdditionalPurchase: isAdditional,
       };
@@ -426,7 +506,7 @@ export function BuyerAllocationWorkspace({
     const destinedQtyList: string[] = [];
 
     for (const store of stores) {
-      const orderQty = cycleStoreOrders[item.id]?.[store.id] ?? "0.00";
+      const orderQty = resolveCatalogOrderedQuantity(item, cycleStoreOrders, store.id);
       const isTargetStore = store.id === activeStoreId;
       const destinedQty = isTargetStore ? roundToTwoDecimals(numVal) : "0.00";
       const diff = calculateDifference(destinedQty, orderQty);
@@ -437,6 +517,7 @@ export function BuyerAllocationWorkspace({
         storeSlug: store.slug,
         orderedQuantity: "0.00",
         destinedQuantity: destinedQty,
+        persistedDestinedQuantity: null,
         difference: diff,
         isAdditionalPurchase: isTargetStore,
       };
@@ -568,6 +649,7 @@ export function BuyerAllocationWorkspace({
   const activeStoreTotalDestined = sumQuantities(
     products.map((p) => p.stores[activeStoreId]?.destinedQuantity ?? "0.00"),
   );
+  const activeConflict = pendingConflict?.conflicts[0] ?? null;
 
   return (
     <div className="alloc-workspace">
@@ -830,6 +912,7 @@ export function BuyerAllocationWorkspace({
                   storeSlug: activeStore.slug,
                   orderedQuantity: "0.00",
                   destinedQuantity: "0.00",
+                  persistedDestinedQuantity: null,
                   difference: "0.00",
                   isAdditionalPurchase: false,
                 };
@@ -1045,6 +1128,8 @@ export function BuyerAllocationWorkspace({
                 <span className="alloc-sticky-status">
                   {isDirty ? (
                     <strong style={{ color: "#d97706" }}>⚠️ Alterações não salvas</strong>
+                  ) : hasUnconfirmedSuggestions ? (
+                    <strong style={{ color: "#d97706" }}>⚠️ Sugestões aguardando confirmação</strong>
                   ) : (
                     <span style={{ color: "#16a34a" }}>✓ Todas as alterações salvas</span>
                   )}
@@ -1055,7 +1140,7 @@ export function BuyerAllocationWorkspace({
                 <button
                   type="button"
                   className="btn btn--primary alloc-save-btn"
-                  disabled={saving || !isDirty}
+                  disabled={saving || !canSave}
                   onClick={() => handleSaveAllocations()}
                 >
                   {saving ? "Salvando..." : `Salvar Destinações desta Loja`}
@@ -1085,6 +1170,93 @@ export function BuyerAllocationWorkspace({
           </p>
         </div>
       )}
+
+      {/* MODAL: DESTINAÇÃO POSITIVA JÁ EXISTENTE EM OUTRO FORNECEDOR */}
+      {activeConflict ? (
+        <div
+          className="alloc-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="allocation-conflict-title"
+        >
+          <div className="alloc-modal alloc-conflict-modal">
+            <header className="alloc-modal__header">
+              <div>
+                <h2 id="allocation-conflict-title">Confirmar destinação entre fornecedores</h2>
+                <p className="alloc-conflict-subtitle">
+                  [{activeConflict.erpCode}] {activeConflict.productName} — {activeConflict.storeName}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                aria-label="Cancelar conflito de destinação"
+                onClick={() => setPendingConflict(null)}
+              >
+                ✕
+              </button>
+            </header>
+            <div className="alloc-modal__body">
+              <p className="alloc-conflict-warning">
+                Este produto já possui quantidade positiva em outro fornecedor. Escolha
+                explicitamente se a compra será transferida ou realmente dividida.
+              </p>
+              <dl className="alloc-conflict-summary">
+                <div>
+                  <dt>Pedido original da loja</dt>
+                  <dd>{activeConflict.orderedQuantity} {activeConflict.purchaseFormat}</dd>
+                </div>
+                <div>
+                  <dt>Total já destinado</dt>
+                  <dd>{activeConflict.totalAlreadyDestined} {activeConflict.purchaseFormat}</dd>
+                </div>
+                <div>
+                  <dt>Quantidade adicional pretendida</dt>
+                  <dd>{activeConflict.intendedQuantity} {activeConflict.purchaseFormat}</dd>
+                </div>
+              </dl>
+              <div className="alloc-conflict-suppliers">
+                <strong>Quantidade atual por fornecedor</strong>
+                <ul>
+                  {activeConflict.allocations.map((allocation) => (
+                    <li key={allocation.supplierId}>
+                      <span>{allocation.supplierName}</span>
+                      <strong>{allocation.destinedQuantity} {activeConflict.purchaseFormat}</strong>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <p className="alloc-conflict-help">
+                A compra dividida pode ultrapassar o pedido original quando houver corte,
+                complemento ou decisão comercial. Ela será registrada na auditoria.
+              </p>
+            </div>
+            <footer className="alloc-modal__footer alloc-conflict-actions">
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => setPendingConflict(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => handleResolveAllocationConflict("TRANSFER")}
+              >
+                Transferir destinação anterior
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => handleResolveAllocationConflict("SPLIT_CONFIRMED")}
+              >
+                Confirmar compra dividida
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
 
       {/* MODAL DE ALERTA: ALTERAÇÕES NÃO SALVAS (UNSAVED CHANGES GUARD) */}
       {showUnsavedModal ? (
@@ -1357,8 +1529,11 @@ export function BuyerAllocationWorkspace({
                         item.exclusiveSupplierId &&
                         item.exclusiveSupplierId !== selectedSupplierId;
 
-                      const orderForActiveStore =
-                        cycleStoreOrders[item.id]?.[activeStoreId] ?? "0.00";
+                      const orderForActiveStore = resolveCatalogOrderedQuantity(
+                        item,
+                        cycleStoreOrders,
+                        activeStoreId,
+                      );
                       const hasOrderInActive = parseQuantity(orderForActiveStore) > 0;
                       const totalCycleOrdersNum = parseQuantity(item.totalCycleOrders ?? "0");
                       const isPurchased = Boolean(item.purchasedInCosts);

@@ -5,10 +5,12 @@ import { z } from "zod";
 import { requirePrincipal } from "@/modules/identity/session";
 import { log } from "@/shared/logging";
 import {
+  AllocationDestinationConflictError,
   AllocationValidationError,
   CycleClosedError,
   ExclusivityViolationError,
 } from "./domain";
+import type { AllocationDestinationConflict } from "./domain";
 import {
   closeBuyerCycle,
   reopenBuyerCycle,
@@ -19,6 +21,8 @@ const storeAllocationSchema = z.object({
   storeId: z.string().uuid(),
   destinedQuantity: z.string().min(1).max(20),
   notes: z.string().optional(),
+  conflictResolution: z.enum(["TRANSFER", "SPLIT_CONFIRMED"]).optional(),
+  conflictFingerprint: z.string().min(1).max(2000).optional(),
 });
 
 const productAllocationSchema = z.object({
@@ -46,6 +50,11 @@ const reopenCycleSchema = z.object({
 
 export type ActionResponse<T = unknown> =
   | { status: "success"; data?: T; message?: string }
+  | {
+      status: "conflict";
+      message: string;
+      conflicts: AllocationDestinationConflict[];
+    }
   | { status: "error"; message: string };
 
 export async function saveSupplierAllocationsAction(
@@ -72,6 +81,14 @@ export async function saveSupplierAllocationsAction(
       message: "Destinações salvas com sucesso.",
     };
   } catch (error) {
+    if (error instanceof AllocationDestinationConflictError) {
+      return {
+        status: "conflict",
+        message: error.message,
+        conflicts: error.conflicts,
+      };
+    }
+
     if (
       error instanceof AllocationValidationError ||
       error instanceof ExclusivityViolationError ||
