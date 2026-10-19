@@ -21,6 +21,39 @@ export class CycleClosedError extends Error {
   }
 }
 
+export type AllocationConflictResolution = "TRANSFER" | "SPLIT_CONFIRMED";
+
+export type AllocationConflictSupplier = {
+  supplierId: string;
+  supplierName: string;
+  destinedQuantity: string;
+  isTargetSupplier: boolean;
+};
+
+export type AllocationDestinationConflict = {
+  productId: string;
+  productName: string;
+  erpCode: number;
+  purchaseFormat: string;
+  storeId: string;
+  storeName: string;
+  orderedQuantity: string;
+  intendedQuantity: string;
+  totalAlreadyDestined: string;
+  allocations: AllocationConflictSupplier[];
+  fingerprint: string;
+};
+
+export class AllocationDestinationConflictError extends Error {
+  constructor(
+    message: string,
+    readonly conflicts: AllocationDestinationConflict[],
+  ) {
+    super(message);
+    this.name = "AllocationDestinationConflictError";
+  }
+}
+
 export function canManageDestinations(principal: Principal): boolean {
   return hasPermission(principal, "compras:destinacao");
 }
@@ -70,6 +103,8 @@ export type StoreAllocationData = {
   storeSlug: string;
   orderedQuantity: string;
   destinedQuantity: string;
+  /** Quantidade já confirmada no banco; null identifica apenas uma sugestão local. */
+  persistedDestinedQuantity: string | null;
   difference: string;
   isAdditionalPurchase: boolean;
   notes?: string | null;
@@ -241,6 +276,8 @@ export type SaveStoreAllocationInput = {
   storeId: string;
   destinedQuantity: string;
   notes?: string;
+  conflictResolution?: AllocationConflictResolution;
+  conflictFingerprint?: string;
 };
 
 export type SaveProductAllocationInput = {
@@ -256,6 +293,24 @@ export type SaveSupplierAllocationsInput = {
   storeId?: string;
   allocations: SaveProductAllocationInput[];
 };
+
+export function hasPendingStoreAllocation(
+  allocation:
+    | Pick<
+        StoreAllocationData,
+        "orderedQuantity" | "destinedQuantity" | "persistedDestinedQuantity"
+      >
+    | undefined,
+): boolean {
+  if (!allocation) return false;
+  const currentCents = Math.round(parseQuantity(allocation.destinedQuantity) * 100);
+  if (allocation.persistedDestinedQuantity === null) {
+    const orderedCents = Math.round(parseQuantity(allocation.orderedQuantity) * 100);
+    return currentCents > 0 || orderedCents > 0;
+  }
+  const persistedCents = Math.round(parseQuantity(allocation.persistedDestinedQuantity) * 100);
+  return currentCents !== persistedCents;
+}
 
 export function validateClosureReadiness(
   purchasedProductIds: string[],

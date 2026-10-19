@@ -1,6 +1,7 @@
 import { database } from "@/db/client";
 import { assertPermission, type Principal } from "@/modules/identity";
 import {
+  AllocationDestinationConflictError,
   AllocationValidationError,
   CycleClosedError,
   ExclusivityViolationError,
@@ -533,6 +534,9 @@ export async function readBuyerAllocationWorkspace(
             storeSlug: store.slug,
             orderedQuantity: roundToTwoDecimals(orderQty),
             destinedQuantity: roundToTwoDecimals(destinedQty),
+            persistedDestinedQuantity: alloc
+              ? roundToTwoDecimals(alloc.destined_quantity)
+              : null,
             difference: diff,
             isAdditionalPurchase: isAdditional,
             notes: alloc?.notes ?? null,
@@ -780,7 +784,7 @@ export async function saveSupplierAllocations(
         );
       }
 
-      let productHadValidDestination = false;
+      let productChanged = false;
 
       // Verifica se o produto foi marcado como comprado nos custos deste ciclo
       const [costRow] = await tx<{ purchased: boolean; cost: string | null }[]>`
@@ -826,6 +830,7 @@ export async function saveSupplierAllocations(
         WHERE purchase_cycle_date = ${input.cycleDate}::date
           AND supplier_id = ${input.supplierId}::uuid
           AND product_id = ${prodRow.id}::uuid
+        FOR UPDATE
       `;
       const hasExistingAllocation = existingAllocRows.some(
         (r) => parseQuantity(r.destined_quantity) > 0,
@@ -861,6 +866,180 @@ export async function saveSupplierAllocations(
         const prevCents = Math.round(previousDestinedNum * 100);
         const newCents = Math.round(destinedNum * 100);
         const storeName = storeNameMap.get(storeInput.storeId) ?? "Loja";
+        const nextNotes = storeInput.notes ?? productInput.notes ?? null;
+        const originalOrderCents = Math.round(originalOrderNum * 100);
+        const existingOrderCents = existingAlloc
+          ? Math.round(parseQuantity(existingAlloc.ordered_quantity) * 100)
+          : 0;
+        const allocationWillChange = existingAlloc
+          ? prevCents !== newCents ||
+            existingOrderCents !== originalOrderCents ||
+            existingAlloc.is_additional_purchase !== isAdditional ||
+            (existingAlloc.notes ?? null) !== nextNotes
+          : destinedNum > 0 || originalOrderNum > 0;
+
+        const competingAllocationRows = destinedNum > 0
+          ? await tx<
+              {
+                id: string;
+                supplier_id: string;
+                supplier_name: string;
+                destined_quantity: string;
+                ordered_quantity: string;
+                version: number;
+              }[]
+            >`
+              SELECT
+                a.id,
+                a.supplier_id,
+                s.corporate_name AS supplier_name,
+                a.destined_quantity::text,
+                a.ordered_quantity::text,
+                a.version
+              FROM purchase_cycle_product_allocations a
+              JOIN suppliers s ON s.id = a.supplier_id
+              WHERE a.purchase_cycle_date = ${input.cycleDate}::date
+                AND a.product_id = ${prodRow.id}::uuid
+                AND a.store_id = ${storeInput.storeId}::uuid
+                AND a.supplier_id <> ${input.supplierId}::uuid
+                AND a.destined_quantity > 0
+              ORDER BY s.corporate_name, a.supplier_id
+              FOR UPDATE OF a
+            `
+          : [];
+
+        if (allocationWillChange && competingAllocationRows.length > 0) {
+          const existingPositiveAllocations = [
+            ...(prevCents > 0
+              ? [{
+                  supplierId: input.supplierId,
+                  supplierName: supplier.corporate_name,
+                  destinedQuantity: previousDestinedNum.toFixed(2),
+                  isTargetSupplier: true,
+                }]
+              : []),
+            ...competingAllocationRows.map((row) => ({
+              supplierId: row.supplier_id,
+              supplierName: row.supplier_name,
+              destinedQuantity: roundToTwoDecimals(row.destined_quantity),
+              isTargetSupplier: false,
+            })),
+          ];
+          const conflictFingerprint = [
+            input.cycleDate,
+            prodRow.id,
+            storeInput.storeId,
+            `target:${input.supplierId}:${existingAlloc?.version ?? 0}:${previousDestinedNum.toFixed(2)}`,
+            ...competingAllocationRows.map((row) =>
+              `${row.supplier_id}:${row.version}:${roundToTwoDecimals(row.destined_quantity)}`,
+            ),
+          ].join("|");
+          const conflict = {
+            productId: prodRow.id,
+            productName: prodRow.name,
+            erpCode: prodRow.erp_code,
+            purchaseFormat: prodRow.purchase_format,
+            storeId: storeInput.storeId,
+            storeName,
+            orderedQuantity: roundToTwoDecimals(originalOrderStr),
+            intendedQuantity: destinedNum.toFixed(2),
+            totalAlreadyDestined: sumQuantities(
+              existingPositiveAllocations.map((allocation) => allocation.destinedQuantity),
+            ),
+            allocations: existingPositiveAllocations,
+            fingerprint: conflictFingerprint,
+          };
+
+          if (
+            !storeInput.conflictResolution ||
+            storeInput.conflictFingerprint !== conflictFingerprint
+          ) {
+            throw new AllocationDestinationConflictError(
+              `O produto "${prodRow.name}" já possui destinação positiva em outro fornecedor para ${storeName}. Confirme se deseja transferir ou registrar uma compra realmente dividida.`,
+              [conflict],
+            );
+          }
+
+          if (storeInput.conflictResolution === "TRANSFER") {
+            for (const source of competingAllocationRows) {
+              await tx`
+                UPDATE purchase_cycle_product_allocations
+                SET
+                  destined_quantity = 0,
+                  updated_by = ${principal.userId}::uuid,
+                  version = version + 1,
+                  updated_at = now()
+                WHERE id = ${source.id}::uuid
+              `;
+
+              await tx`
+                INSERT INTO audit_events (
+                  id, actor_id, action, entity_type, entity_id, metadata, created_at
+                ) VALUES (
+                  gen_random_uuid(),
+                  ${principal.userId}::uuid,
+                  'ALLOCATION_TRANSFERRED',
+                  'purchase_cycle_product_allocation',
+                  ${source.id}::text,
+                  ${JSON.stringify({
+                    cycleDate: input.cycleDate,
+                    productId: prodRow.id,
+                    productName: prodRow.name,
+                    productErpCode: prodRow.erp_code,
+                    storeId: storeInput.storeId,
+                    storeName,
+                    sourceSupplierId: source.supplier_id,
+                    sourceSupplierName: source.supplier_name,
+                    sourcePreviousDestinedQuantity: roundToTwoDecimals(source.destined_quantity),
+                    destinationSupplierId: input.supplierId,
+                    destinationSupplierName: supplier.corporate_name,
+                    destinationDestinedQuantity: destinedNum.toFixed(2),
+                    orderedQuantity: roundToTwoDecimals(originalOrderStr),
+                    sourcePreviousVersion: source.version,
+                    resolution: "TRANSFER",
+                  })}::jsonb,
+                  now()
+                )
+              `;
+            }
+            productChanged = true;
+          } else {
+            await tx`
+              INSERT INTO audit_events (
+                id, actor_id, action, entity_type, entity_id, metadata, created_at
+              ) VALUES (
+                gen_random_uuid(),
+                ${principal.userId}::uuid,
+                'ALLOCATION_SPLIT_CONFIRMED',
+                'purchase_cycle_product_allocation',
+                ${existingAlloc?.id ?? prodRow.id}::text,
+                ${JSON.stringify({
+                  cycleDate: input.cycleDate,
+                  productId: prodRow.id,
+                  productName: prodRow.name,
+                  productErpCode: prodRow.erp_code,
+                  storeId: storeInput.storeId,
+                  storeName,
+                  supplierId: input.supplierId,
+                  supplierName: supplier.corporate_name,
+                  orderedQuantity: roundToTwoDecimals(originalOrderStr),
+                  intendedQuantity: destinedNum.toFixed(2),
+                  totalAlreadyDestined: sumQuantities(
+                    existingPositiveAllocations.map((allocation) => allocation.destinedQuantity),
+                  ),
+                  existingAllocations: existingPositiveAllocations,
+                  resolution: "SPLIT_CONFIRMED",
+                })}::jsonb,
+                now()
+              )
+            `;
+            productChanged = true;
+          }
+        }
+
+        if (!allocationWillChange) {
+          continue;
+        }
 
         // Auditoria Transacional Completa:
         // Caso 1: Destinação anterior era positiva e agora foi zerada
@@ -1027,8 +1206,6 @@ export async function saveSupplierAllocations(
         // Caso 5: Se prevCents === newCents, não gera evento duplicado (inalterado)
 
         if (destinedNum > 0 || originalOrderNum > 0) {
-          productHadValidDestination = true;
-
           await tx`
             INSERT INTO purchase_cycle_product_allocations (
               purchase_cycle_date,
@@ -1059,7 +1236,7 @@ export async function saveSupplierAllocations(
               ${isAdditional},
               ${prodRow.conversion_quantity ? Number(prodRow.conversion_quantity).toFixed(3) : null}::numeric,
               ${prodRow.conversion_origin ?? null},
-              ${storeInput.notes ?? productInput.notes ?? null},
+              ${nextNotes},
               ${principal.userId}::uuid,
               ${principal.userId}::uuid,
               1,
@@ -1078,6 +1255,7 @@ export async function saveSupplierAllocations(
               version = purchase_cycle_product_allocations.version + 1,
               updated_at = now()
           `;
+          productChanged = true;
         } else {
           // Se ambas as quantidades são 0, limpa alocação desnecessária
           await tx`
@@ -1087,10 +1265,11 @@ export async function saveSupplierAllocations(
               AND product_id = ${prodRow.id}::uuid
               AND store_id = ${storeInput.storeId}::uuid
           `;
+          productChanged ||= Boolean(existingAlloc);
         }
       }
 
-      if (productHadValidDestination) {
+      if (productChanged) {
         affectedCount++;
       }
     }

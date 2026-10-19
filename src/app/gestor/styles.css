@@ -113,7 +113,31 @@
 .manager-calendar-help { margin: 0; color: var(--ink-600); font-size: .76rem; line-height: 1.45; }
 .manager-info-box { padding: 13px; border-radius: 8px; background: #e7f5ff; color: #164d76; font-size: .82rem; }
 .manager-info-box p { margin: 6px 0 0; line-height: 1.45; }
-.product-columns { grid-template-columns: minmax(620px, 1.7fr) minmax(350px, .95fr); }
+.product-columns { grid-template-columns: minmax(570px, 1.65fr) minmax(320px, .95fr); }
+.product-columns > *,
+.product-columns > .manager-editor,
+.product-columns .manager-form,
+.product-columns .manager-form-section,
+.product-columns .manager-form-grid > label,
+.product-columns .manager-margin-options,
+.product-columns .manager-margin-options > label,
+.product-columns .manager-photo-manager,
+.product-columns .manager-photo-controls,
+.product-columns .product-suppliers-list,
+.product-columns .product-supplier-card,
+.product-columns .product-supplier-card__header,
+.product-columns .product-supplier-card__identity,
+.product-columns .product-supplier-card__meta,
+.product-columns .product-supplier-card__actions {
+  min-width: 0;
+  max-width: 100%;
+}
+.product-columns .manager-margin-options > label { flex-wrap: wrap; }
+.product-columns .product-supplier-card__actions button {
+  flex: 1 1 128px;
+  min-width: 0;
+  width: auto;
+}
 .pricing-columns { grid-template-columns: minmax(650px, 1.75fr) minmax(390px, .95fr); }
 .pricing-metrics .metric-danger { background: linear-gradient(135deg, #fff4f4, #ffdfe1); color: #a31320; }
 .pricing-print-link { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60px; margin-bottom: 8px; border-radius: 8px; background: linear-gradient(135deg, #08734f, #006443); color: white; text-decoration: none; font-weight: 800; }
@@ -672,6 +696,16 @@
   .manager-two-column { grid-template-columns: minmax(0, 1fr); }
   .manager-editor { max-width: 720px; }
   .pricing-detail { max-width: 820px; }
+}
+
+@media (min-width: 1181px) and (max-width: 1260px) {
+  .product-columns { grid-template-columns: minmax(0, 1fr); }
+  .product-columns > .manager-editor {
+    position: static;
+    max-width: 720px;
+    max-height: none;
+    overflow: visible;
+  }
 }
 
 @media (max-width: 900px) {

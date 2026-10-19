@@ -4,6 +4,7 @@ import {
   canManageDestinations,
   isCycleDate,
   parseQuantity,
+  hasPendingStoreAllocation,
   roundToTwoDecimals,
   sumQuantities,
   validateAllocationPurchasedStatus,
@@ -244,6 +245,44 @@ describe("Fase 3 — Vinculação das Compras aos Fornecedores e Fechamento Oper
       expect(activeStoreOrderedQty).toBe("15.00");
       expect(parseQuantity(activeStoreOrderedQty)).toBe(15);
       expect(calculateDifference(activeStoreOrderedQty, activeStoreOrderedQty)).toBe("0.00");
+    });
+
+    it("mantém a quantidade exibida como sugestão pendente até confirmação", () => {
+      expect(
+        hasPendingStoreAllocation({
+          orderedQuantity: "5.00",
+          destinedQuantity: "5.00",
+          persistedDestinedQuantity: null,
+        }),
+      ).toBe(true);
+      expect(
+        hasPendingStoreAllocation({
+          orderedQuantity: "5.00",
+          destinedQuantity: "5.00",
+          persistedDestinedQuantity: "5.00",
+        }),
+      ).toBe(false);
+      expect(
+        hasPendingStoreAllocation({
+          orderedQuantity: "5.00",
+          destinedQuantity: "6.00",
+          persistedDestinedQuantity: "5.00",
+        }),
+      ).toBe(true);
+      expect(
+        hasPendingStoreAllocation({
+          orderedQuantity: "5.00",
+          destinedQuantity: "0.00",
+          persistedDestinedQuantity: null,
+        }),
+      ).toBe(true);
+      expect(
+        hasPendingStoreAllocation({
+          orderedQuantity: "0.00",
+          destinedQuantity: "0.00",
+          persistedDestinedQuantity: null,
+        }),
+      ).toBe(false);
     });
 
     it("mantém destinações de outras lojas intactas ao salvar destinação com filtro por loja", () => {

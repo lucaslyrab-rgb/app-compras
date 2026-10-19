@@ -4,11 +4,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runMigrations } from "../../scripts/migration-runner.mjs";
 import {
   closeBuyerCycle,
+  readBuyerAllocationWorkspace,
   reopenBuyerCycle,
   saveSupplierAllocations,
 } from "../../src/modules/purchasing/allocations/repository";
 import { loadSupplierBillingReport } from "../../src/modules/purchasing/reports/supplier-billing/repository";
 import {
+  AllocationDestinationConflictError,
   CycleClosedError,
   ExclusivityViolationError,
   AllocationValidationError,
@@ -31,6 +33,18 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
     storeId: null,
     permissions: ["compras:destinacao", "compras:custos", "compras:consolidado", "compras:fornecedores"],
   };
+
+  async function captureConflictFingerprint(operation: Promise<unknown>): Promise<string> {
+    try {
+      await operation;
+      throw new Error("Era esperado conflito de destinação entre fornecedores.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(AllocationDestinationConflictError);
+      const conflictError = error as AllocationDestinationConflictError;
+      expect(conflictError.conflicts[0]?.fingerprint).toBeTruthy();
+      return conflictError.conflicts[0].fingerprint;
+    }
+  }
 
   beforeAll(async () => {
     baseDatabaseUrl = process.env.DATABASE_URL!;
@@ -234,7 +248,7 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
       ],
     });
 
-    await saveSupplierAllocations(buyerPrincipal, {
+    const splitFingerprint = await captureConflictFingerprint(saveSupplierAllocations(buyerPrincipal, {
       cycleDate,
       supplierId: suppB.id,
       allocations: [
@@ -246,6 +260,43 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
           ],
         },
       ],
+    }));
+    const secondSplitFingerprint = await captureConflictFingerprint(saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: suppB.id,
+      allocations: [{
+        productId: productTomate.id,
+        stores: [
+          {
+            storeId: store1.id,
+            destinedQuantity: "4.00",
+            conflictResolution: "SPLIT_CONFIRMED",
+            conflictFingerprint: splitFingerprint,
+          },
+          { storeId: store2.id, destinedQuantity: "5.00" },
+        ],
+      }],
+    }));
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: suppB.id,
+      allocations: [{
+        productId: productTomate.id,
+        stores: [
+          {
+            storeId: store1.id,
+            destinedQuantity: "4.00",
+            conflictResolution: "SPLIT_CONFIRMED",
+            conflictFingerprint: splitFingerprint,
+          },
+          {
+            storeId: store2.id,
+            destinedQuantity: "5.00",
+            conflictResolution: "SPLIT_CONFIRMED",
+            conflictFingerprint: secondSplitFingerprint,
+          },
+        ],
+      }],
     });
 
     // Carrega relatório de faturamento do Produtor A
@@ -328,7 +379,12 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
           {
             productId: prodExclusivo.id,
             isOpportunityConfirmed: true,
-            stores: [{ storeId: store.id, destinedQuantity: "10.00" }],
+            stores: [{
+              storeId: store.id,
+              destinedQuantity: "10.00",
+              conflictResolution: "SPLIT_CONFIRMED",
+              conflictFingerprint: "nao-pode-contornar-exclusividade",
+            }],
           },
         ],
       }),
@@ -1025,5 +1081,340 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
     expect(eventsStep4B[3].metadata.previousDestinedQuantity).toBe("0.00");
     expect(eventsStep4B[3].metadata.newDestinedQuantity).toBe("3.00");
     expect(eventsStep4B[3].metadata.reason).toBe("Entrada pelo Fornecedor Benassi");
+  });
+
+  it("10. Quantidade sugerida do pedido permanece pendente e pode ser confirmada sem edição artificial", async () => {
+    const cycleDate = "2026-11-03";
+    const [store] = await db<{ id: string }[]>`
+      SELECT id FROM stores WHERE slug = 'balneario'
+    `;
+    const [supplier] = await db<{ id: string }[]>`
+      INSERT INTO suppliers (corporate_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES ('União Frutas Teste', '91000000000191', 'CNPJ', 'STANDARD', true)
+      RETURNING id
+    `;
+    const [product] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9101, 'Uva Vitória Integração', 'CX', 'CX', 35.00, true)
+      RETURNING id
+    `;
+    await db`
+      INSERT INTO product_suppliers (product_id, supplier_id, is_primary, is_exclusive, active)
+      VALUES (${product.id}::uuid, ${supplier.id}::uuid, true, false, true)
+    `;
+    await db`
+      INSERT INTO purchase_cycle_product_costs (
+        product_id, purchase_cycle_date, cost, purchased, purchased_at, updated_by
+      ) VALUES (${product.id}::uuid, ${cycleDate}::date, 50, true, now(), ${buyerPrincipal.userId}::uuid)
+    `;
+    const [previousOrder] = await db<{ id: string }[]>`
+      INSERT INTO orders (
+        store_id, order_date, purchase_cycle_date, revision, submitted_by, submitted_at, cutoff_at
+      ) VALUES (
+        ${store.id}::uuid, ${cycleDate}::date, ${cycleDate}::date, 1,
+        ${buyerPrincipal.userId}::uuid, now() - interval '2 minutes', now() + interval '1 hour'
+      ) RETURNING id
+    `;
+    await db`
+      INSERT INTO order_items (
+        order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit
+      ) VALUES (${previousOrder.id}::uuid, ${product.id}::uuid, 0, 2, 9101, 'Uva Vitória Integração', 'CX')
+    `;
+    const [currentOrder] = await db<{ id: string }[]>`
+      INSERT INTO orders (
+        store_id, order_date, purchase_cycle_date, revision, submitted_by, submitted_at, cutoff_at
+      ) VALUES (
+        ${store.id}::uuid, ${cycleDate}::date, ${cycleDate}::date, 2,
+        ${buyerPrincipal.userId}::uuid, now(), now() + interval '1 hour'
+      ) RETURNING id
+    `;
+    await db`
+      INSERT INTO order_items (
+        order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit
+      ) VALUES (${currentOrder.id}::uuid, ${product.id}::uuid, 0, 5, 9101, 'Uva Vitória Integração', 'CX')
+    `;
+
+    const before = await readBuyerAllocationWorkspace(
+      buyerPrincipal,
+      cycleDate,
+      supplier.id,
+      store.id,
+    );
+    const suggestion = before.destinationData?.products.find((item) => item.productId === product.id);
+    const catalogItem = before.catalogSearchList.find((item) => item.id === product.id);
+    expect(before.cycleStoreOrders[product.id]?.[store.id]).toBe("5.00");
+    expect(catalogItem?.orderedQuantities).toBe(before.cycleStoreOrders[product.id]);
+    expect(suggestion?.stores[store.id]).toMatchObject({
+      orderedQuantity: "5.00",
+      destinedQuantity: "5.00",
+      persistedDestinedQuantity: null,
+    });
+
+    const saved = await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplier.id,
+      storeId: store.id,
+      allocations: [{
+        productId: product.id,
+        stores: [{ storeId: store.id, destinedQuantity: "5.00" }],
+      }],
+    });
+    expect(saved.affectedProductsCount).toBe(1);
+
+    const after = await readBuyerAllocationWorkspace(
+      buyerPrincipal,
+      cycleDate,
+      supplier.id,
+      store.id,
+    );
+    expect(
+      after.destinationData?.products.find((item) => item.productId === product.id)?.stores[store.id],
+    ).toMatchObject({
+      orderedQuantity: "5.00",
+      destinedQuantity: "5.00",
+      persistedDestinedQuantity: "5.00",
+    });
+
+    const unchanged = await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplier.id,
+      storeId: store.id,
+      allocations: [{
+        productId: product.id,
+        stores: [{ storeId: store.id, destinedQuantity: "5.00" }],
+      }],
+    });
+    expect(unchanged.affectedProductsCount).toBe(0);
+    const [stored] = await db<{ version: number }[]>`
+      SELECT version FROM purchase_cycle_product_allocations
+      WHERE purchase_cycle_date = ${cycleDate}::date
+        AND supplier_id = ${supplier.id}::uuid
+        AND product_id = ${product.id}::uuid
+        AND store_id = ${store.id}::uuid
+    `;
+    expect(stored.version).toBe(1);
+  });
+
+  it("11. Exige escolha explícita, audita split e transfere entre fornecedores atomicamente", async () => {
+    const cycleDate = "2026-11-04";
+    const [store] = await db<{ id: string }[]>`
+      SELECT id FROM stores WHERE slug = 'ponta-da-fruta'
+    `;
+    const suppliers = await db<{ id: string; corporate_name: string }[]>`
+      INSERT INTO suppliers (corporate_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES
+        ('Fornecedor Divisão A', '92000000000192', 'CNPJ', 'STANDARD', true),
+        ('Fornecedor Divisão B', '93000000000193', 'CNPJ', 'STANDARD', true),
+        ('Fornecedor Transferência C', '94000000000194', 'CNPJ', 'STANDARD', true)
+      RETURNING id, corporate_name
+    `;
+    const [supplierA, supplierB, supplierC] = suppliers;
+    const [product] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9201, 'Banana Divisão Integração', 'CX', 'KG', 35.00, true)
+      RETURNING id
+    `;
+    await db`
+      INSERT INTO purchase_cycle_product_costs (
+        product_id, purchase_cycle_date, cost, purchased, purchased_at, updated_by
+      ) VALUES (${product.id}::uuid, ${cycleDate}::date, 75, true, now(), ${buyerPrincipal.userId}::uuid)
+    `;
+    const [order] = await db<{ id: string }[]>`
+      INSERT INTO orders (
+        store_id, order_date, purchase_cycle_date, revision, submitted_by, submitted_at, cutoff_at
+      ) VALUES (
+        ${store.id}::uuid, ${cycleDate}::date, ${cycleDate}::date, 1,
+        ${buyerPrincipal.userId}::uuid, now(), now() + interval '1 hour'
+      ) RETURNING id
+    `;
+    await db`
+      INSERT INTO order_items (
+        order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit
+      ) VALUES (${order.id}::uuid, ${product.id}::uuid, 0, 6, 9201, 'Banana Divisão Integração', 'CX')
+    `;
+
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplierA.id,
+      storeId: store.id,
+      allocations: [{
+        productId: product.id,
+        stores: [{ storeId: store.id, destinedQuantity: "6.00" }],
+      }],
+    });
+
+    const splitFingerprint = await captureConflictFingerprint(saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplierB.id,
+      storeId: store.id,
+      allocations: [{
+        productId: product.id,
+        stores: [{ storeId: store.id, destinedQuantity: "6.00" }],
+      }],
+    }));
+
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplierA.id,
+      storeId: store.id,
+      allocations: [{
+        productId: product.id,
+        stores: [{ storeId: store.id, destinedQuantity: "5.00" }],
+      }],
+    });
+
+    const refreshedSplitFingerprint = await captureConflictFingerprint(
+      saveSupplierAllocations(buyerPrincipal, {
+        cycleDate,
+        supplierId: supplierB.id,
+        storeId: store.id,
+        allocations: [{
+          productId: product.id,
+          stores: [{
+            storeId: store.id,
+            destinedQuantity: "6.00",
+            conflictResolution: "SPLIT_CONFIRMED",
+            conflictFingerprint: splitFingerprint,
+          }],
+        }],
+      }),
+    );
+
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplierB.id,
+      storeId: store.id,
+      allocations: [{
+        productId: product.id,
+        stores: [{
+          storeId: store.id,
+          destinedQuantity: "6.00",
+          conflictResolution: "SPLIT_CONFIRMED",
+          conflictFingerprint: refreshedSplitFingerprint,
+        }],
+      }],
+    });
+
+    const splitRows = await db<{ supplier_id: string; destined_quantity: string }[]>`
+      SELECT supplier_id, destined_quantity::text
+      FROM purchase_cycle_product_allocations
+      WHERE purchase_cycle_date = ${cycleDate}::date
+        AND product_id = ${product.id}::uuid
+        AND store_id = ${store.id}::uuid
+        AND destined_quantity > 0
+      ORDER BY supplier_id
+    `;
+    expect(splitRows).toHaveLength(2);
+    expect(splitRows.map((row) => row.destined_quantity).sort()).toEqual(["5.00", "6.00"]);
+
+    const [splitAudit] = await db<{ metadata: Record<string, unknown> }[]>`
+      SELECT metadata FROM audit_events
+      WHERE action = 'ALLOCATION_SPLIT_CONFIRMED'
+        AND metadata->>'productId' = ${product.id}
+    `;
+    expect(splitAudit.metadata).toMatchObject({
+      orderedQuantity: "6.00",
+      intendedQuantity: "6.00",
+      resolution: "SPLIT_CONFIRMED",
+    });
+
+    const transferFingerprint = await captureConflictFingerprint(saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplierC.id,
+      storeId: store.id,
+      allocations: [{
+        productId: product.id,
+        stores: [{ storeId: store.id, destinedQuantity: "7.00" }],
+      }],
+    }));
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplierC.id,
+      storeId: store.id,
+      allocations: [{
+        productId: product.id,
+        stores: [{
+          storeId: store.id,
+          destinedQuantity: "7.00",
+          conflictResolution: "TRANSFER",
+          conflictFingerprint: transferFingerprint,
+        }],
+      }],
+    });
+
+    const transferredRows = await db<{ supplier_id: string; destined_quantity: string }[]>`
+      SELECT supplier_id, destined_quantity::text
+      FROM purchase_cycle_product_allocations
+      WHERE purchase_cycle_date = ${cycleDate}::date
+        AND product_id = ${product.id}::uuid
+        AND store_id = ${store.id}::uuid
+      ORDER BY supplier_id
+    `;
+    expect(transferredRows).toHaveLength(3);
+    expect(transferredRows.filter((row) => row.destined_quantity === "0.00")).toHaveLength(2);
+    expect(transferredRows).toContainEqual({
+      supplier_id: supplierC.id,
+      destined_quantity: "7.00",
+    });
+
+    const transferAudits = await db`
+      SELECT id FROM audit_events
+      WHERE action = 'ALLOCATION_TRANSFERRED'
+        AND metadata->>'productId' = ${product.id}
+        AND metadata->>'destinationSupplierId' = ${supplierC.id}
+    `;
+    expect(transferAudits).toHaveLength(2);
+  });
+
+  it("12. Serializa gravações concorrentes e impede duplicação silenciosa", async () => {
+    const cycleDate = "2026-11-05";
+    const [store] = await db<{ id: string }[]>`
+      SELECT id FROM stores WHERE slug = 'santa-monica'
+    `;
+    const suppliers = await db<{ id: string }[]>`
+      INSERT INTO suppliers (corporate_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES
+        ('Fornecedor Concorrente A', '95000000000195', 'CNPJ', 'STANDARD', true),
+        ('Fornecedor Concorrente B', '96000000000196', 'CNPJ', 'STANDARD', true)
+      RETURNING id
+    `;
+    const [product] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9301, 'Produto Concorrente Integração', 'CX', 'KG', 35.00, true)
+      RETURNING id
+    `;
+    await db`
+      INSERT INTO purchase_cycle_product_costs (
+        product_id, purchase_cycle_date, cost, purchased, purchased_at, updated_by
+      ) VALUES (${product.id}::uuid, ${cycleDate}::date, 40, true, now(), ${buyerPrincipal.userId}::uuid)
+    `;
+
+    const outcomes = await Promise.allSettled(suppliers.map((supplier) =>
+      saveSupplierAllocations(buyerPrincipal, {
+        cycleDate,
+        supplierId: supplier.id,
+        storeId: store.id,
+        allocations: [{
+          productId: product.id,
+          isOpportunityConfirmed: true,
+          stores: [{ storeId: store.id, destinedQuantity: "4.00" }],
+        }],
+      }),
+    ));
+
+    expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
+    const rejected = outcomes.find((outcome) => outcome.status === "rejected");
+    expect(rejected).toBeDefined();
+    if (rejected?.status === "rejected") {
+      expect(rejected.reason).toBeInstanceOf(AllocationDestinationConflictError);
+    }
+    const positiveRows = await db`
+      SELECT id FROM purchase_cycle_product_allocations
+      WHERE purchase_cycle_date = ${cycleDate}::date
+        AND product_id = ${product.id}::uuid
+        AND store_id = ${store.id}::uuid
+        AND destined_quantity > 0
+    `;
+    expect(positiveRows).toHaveLength(1);
   });
 });
