@@ -13,8 +13,13 @@ import {
 import type { AllocationDestinationConflict } from "./domain";
 import {
   closeBuyerCycle,
+  closeStoreCycle,
+  concludeSupplierStoreReview,
   reopenBuyerCycle,
+  reopenStoreCycle,
+  revertProductSupplierDecision,
   saveSupplierAllocations,
+  setProductSupplierDecision,
 } from "./repository";
 
 const storeAllocationSchema = z.object({
@@ -37,6 +42,40 @@ const saveAllocationsSchema = z.object({
   supplierId: z.string().uuid(),
   storeId: z.string().uuid().optional(),
   allocations: z.array(productAllocationSchema),
+});
+
+const setDecisionSchema = z.object({
+  cycleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  supplierId: z.string().uuid(),
+  storeId: z.string().uuid(),
+  productId: z.string().uuid(),
+  decision: z.literal("NOT_PURCHASED"),
+  notes: z.string().optional(),
+  confirmRemoveDestined: z.boolean().optional(),
+});
+
+const revertDecisionSchema = z.object({
+  cycleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  supplierId: z.string().uuid(),
+  storeId: z.string().uuid(),
+  productId: z.string().uuid(),
+});
+
+const concludeSupplierStoreReviewSchema = z.object({
+  cycleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  supplierId: z.string().uuid(),
+  storeId: z.string().uuid(),
+});
+
+const closeStoreCycleSchema = z.object({
+  cycleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  storeId: z.string().uuid(),
+});
+
+const reopenStoreCycleSchema = z.object({
+  cycleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  storeId: z.string().uuid(),
+  reason: z.string().min(5, "Justificativa deve ter pelo menos 5 caracteres."),
 });
 
 const closeCycleSchema = z.object({
@@ -186,6 +225,201 @@ export async function reopenBuyerCycleAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Erro ao reabrir ciclo.",
+    };
+  }
+}
+
+export async function setProductSupplierDecisionAction(
+  rawInput: unknown,
+): Promise<ActionResponse<{ success: boolean }>> {
+  try {
+    const principal = await requirePrincipal();
+    const parsed = setDecisionSchema.safeParse(rawInput);
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        message: "Dados inválidos para registrar decisão de fornecedor.",
+      };
+    }
+
+    await setProductSupplierDecision(principal, parsed.data);
+    revalidatePath("/comprador/destinacao");
+    revalidatePath("/comprador/fornecedores/faturamento");
+
+    return {
+      status: "success",
+      data: { success: true },
+      message: "Decisão registrada com sucesso.",
+    };
+  } catch (error) {
+    if (error instanceof AllocationValidationError || error instanceof CycleClosedError) {
+      return { status: "error", message: error.message };
+    }
+
+    log("error", "Falha ao registrar decisão de não compra", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Erro ao registrar decisão.",
+    };
+  }
+}
+
+export async function revertProductSupplierDecisionAction(
+  rawInput: unknown,
+): Promise<ActionResponse<{ success: boolean }>> {
+  try {
+    const principal = await requirePrincipal();
+    const parsed = revertDecisionSchema.safeParse(rawInput);
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        message: "Dados inválidos para reverter decisão de fornecedor.",
+      };
+    }
+
+    await revertProductSupplierDecision(principal, parsed.data);
+    revalidatePath("/comprador/destinacao");
+    revalidatePath("/comprador/fornecedores/faturamento");
+
+    return {
+      status: "success",
+      data: { success: true },
+      message: "Decisão revertida com sucesso.",
+    };
+  } catch (error) {
+    if (error instanceof AllocationValidationError || error instanceof CycleClosedError) {
+      return { status: "error", message: error.message };
+    }
+
+    log("error", "Falha ao reverter decisão de fornecedor", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Erro ao reverter decisão.",
+    };
+  }
+}
+
+export async function concludeSupplierStoreReviewAction(
+  rawInput: unknown,
+): Promise<ActionResponse<{ affectedCount: number }>> {
+  try {
+    const principal = await requirePrincipal();
+    const parsed = concludeSupplierStoreReviewSchema.safeParse(rawInput);
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        message: "Dados inválidos para concluir conferência do fornecedor.",
+      };
+    }
+
+    const result = await concludeSupplierStoreReview(principal, parsed.data);
+    revalidatePath("/comprador/destinacao");
+    revalidatePath("/comprador/fornecedores/faturamento");
+
+    return {
+      status: "success",
+      data: { affectedCount: result.affectedCount },
+      message: "Conferência do fornecedor concluída com sucesso.",
+    };
+  } catch (error) {
+    if (error instanceof AllocationValidationError || error instanceof CycleClosedError) {
+      return { status: "error", message: error.message };
+    }
+
+    log("error", "Falha ao concluir conferência do fornecedor", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Erro ao concluir conferência do fornecedor.",
+    };
+  }
+}
+
+export async function closeStoreCycleAction(
+  rawInput: unknown,
+): Promise<ActionResponse<{ totalCutItems: number }>> {
+  try {
+    const principal = await requirePrincipal();
+    const parsed = closeStoreCycleSchema.safeParse(rawInput);
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        message: "Dados inválidos para finalizar conferência da loja.",
+      };
+    }
+
+    const result = await closeStoreCycle(principal, parsed.data);
+    revalidatePath("/comprador/destinacao");
+    revalidatePath("/comprador/fornecedores/faturamento");
+
+    return {
+      status: "success",
+      data: { totalCutItems: result.totalCutItems },
+      message: "Conferência da loja finalizada com sucesso.",
+    };
+  } catch (error) {
+    if (error instanceof AllocationValidationError || error instanceof CycleClosedError) {
+      return { status: "error", message: error.message };
+    }
+
+    log("error", "Falha ao finalizar conferência da loja", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Erro ao finalizar conferência da loja.",
+    };
+  }
+}
+
+export async function reopenStoreCycleAction(
+  rawInput: unknown,
+): Promise<ActionResponse<{ reopenedAt: string }>> {
+  try {
+    const principal = await requirePrincipal();
+    const parsed = reopenStoreCycleSchema.safeParse(rawInput);
+
+    if (!parsed.success) {
+      return {
+        status: "error",
+        message: parsed.error.issues[0]?.message ?? "Dados inválidos para reabertura da loja.",
+      };
+    }
+
+    const result = await reopenStoreCycle(principal, parsed.data);
+    revalidatePath("/comprador/destinacao");
+    revalidatePath("/comprador/fornecedores/faturamento");
+
+    return {
+      status: "success",
+      data: { reopenedAt: result.reopenedAt },
+      message: "Conferência da loja reaberta com sucesso.",
+    };
+  } catch (error) {
+    if (error instanceof AllocationValidationError || error instanceof CycleClosedError) {
+      return { status: "error", message: error.message };
+    }
+
+    log("error", "Falha ao reabrir conferência da loja", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Erro ao reabrir conferência da loja.",
     };
   }
 }

@@ -1095,3 +1095,276 @@
   margin-top: 4px;
 }
 
+/* Store-first closures & navigation enhancements */
+.alloc-store-tab {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.alloc-store-tab__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.alloc-store-tab__metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: #64748b;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 6px;
+}
+
+.alloc-store-tab--active .alloc-store-tab__metrics {
+  border-color: #bae6fd;
+  color: #0369a1;
+}
+
+.alloc-store-tab__metric-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.alloc-status-pill {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.alloc-status-pill--closed {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.alloc-status-pill--stale {
+  background-color: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fdba74;
+}
+
+.alloc-status-pill--open {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.alloc-store-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.alloc-supplier-review-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.alloc-supplier-review-badge--reviewed {
+  background-color: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.alloc-supplier-review-badge--pending {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.alloc-not-purchased-banner {
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-left: 4px solid #64748b;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.alloc-not-purchased-banner__text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.alloc-btn-not-purchased {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 32px;
+}
+
+.alloc-btn-not-purchased:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.alloc-btn-revert {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  background-color: #fff;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.alloc-btn-revert:hover {
+  background-color: #f0f9ff;
+}
+
+.alloc-batch-conclude-card {
+  background-color: #f8fafc;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .alloc-batch-conclude-card {
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: left;
+  }
+}
+
+.alloc-batch-conclude-card__info h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.alloc-batch-conclude-card__info p {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* Tabela de cortes para conferência da loja */
+.alloc-cuts-container {
+  max-height: 55vh;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+.alloc-cuts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.alloc-cuts-table th {
+  background-color: #f8fafc;
+  padding: 10px 12px;
+  font-weight: 700;
+  color: #334155;
+  border-bottom: 2px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.alloc-cuts-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #0f172a;
+}
+
+.alloc-cuts-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+.alloc-cut-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.alloc-cut-pill--fulfilled {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.alloc-cut-pill--partial {
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+
+.alloc-cut-pill--total {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.alloc-cut-pill--additional {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.alloc-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.alloc-summary-card {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+
+.alloc-summary-card__label {
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.alloc-summary-card__value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 4px;
+}
+

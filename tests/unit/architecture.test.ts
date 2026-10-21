@@ -22,11 +22,27 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0015", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0016", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 15 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 16 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
+  });
+
+  it("mantém a 0016 aditiva com decisões de fornecedor, revisões e fechamento por loja", async () => {
+    const migration = await readFile("migrations/0016_store_first_allocations_and_closures.sql", "utf8");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_product_supplier_decisions");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_supplier_store_reviews");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_store_closures");
+    expect(migration).toContain("decisions_cycle_supp_prod_store_unique");
+  });
+
+  it("mantém a 0015 aditiva com alocações e fechamento do comprador", async () => {
+    const migration = await readFile("migrations/0015_purchase_allocations.sql", "utf8");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_product_allocations");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_buyer_closures");
+    expect(migration).toContain("allocations_cycle_supp_prod_store_unique");
+    expect(migration).toContain("compras:destinacao");
   });
 
   it("mantém a 0014 aditiva com vinculação de fornecedores a produtos e regras de exclusividade", async () => {
@@ -36,14 +52,6 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(migration).toContain("product_suppliers_single_primary_idx");
     expect(migration).toContain("product_suppliers_single_exclusive_idx");
     expect(migration).toContain("product_suppliers_exclusive_implies_primary");
-  });
-
-  it("mantém a 0015 aditiva com alocações e fechamento do comprador", async () => {
-    const migration = await readFile("migrations/0015_purchase_allocations.sql", "utf8");
-    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_product_allocations");
-    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_buyer_closures");
-    expect(migration).toContain("allocations_cycle_supp_prod_store_unique");
-    expect(migration).toContain("compras:destinacao");
   });
 
   it("mantém a 0013 aditiva com cadastro de fornecedores e regras documentais", async () => {

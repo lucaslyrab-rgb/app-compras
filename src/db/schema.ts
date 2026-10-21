@@ -354,3 +354,91 @@ export const purchaseCycleBuyerClosuresRelations = relations(purchaseCycleBuyerC
   reopener: one(users, { fields: [purchaseCycleBuyerClosures.reopenedBy], references: [users.id] })
 }));
 
+export const purchaseCycleProductSupplierDecisions = pgTable("purchase_cycle_product_supplier_decisions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  purchaseCycleDate: date("purchase_cycle_date").notNull(),
+  supplierId: uuid("supplier_id").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "restrict" }),
+  decision: text("decision").notNull(),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("decisions_cycle_supp_prod_store_unique").on(table.purchaseCycleDate, table.supplierId, table.productId, table.storeId),
+  index("decisions_cycle_store_idx").on(table.purchaseCycleDate, table.storeId),
+  index("decisions_cycle_supp_idx").on(table.supplierId, table.purchaseCycleDate),
+  check("decisions_decision_check", sql`${table.decision} IN ('NOT_PURCHASED')`)
+]);
+
+export const purchaseCycleProductSupplierDecisionsRelations = relations(purchaseCycleProductSupplierDecisions, ({ one }) => ({
+  supplier: one(suppliers, { fields: [purchaseCycleProductSupplierDecisions.supplierId], references: [suppliers.id] }),
+  product: one(products, { fields: [purchaseCycleProductSupplierDecisions.productId], references: [products.id] }),
+  store: one(stores, { fields: [purchaseCycleProductSupplierDecisions.storeId], references: [stores.id] }),
+  creator: one(users, { fields: [purchaseCycleProductSupplierDecisions.createdBy], references: [users.id] }),
+  updater: one(users, { fields: [purchaseCycleProductSupplierDecisions.updatedBy], references: [users.id] })
+}));
+
+export const purchaseCycleSupplierStoreReviews = pgTable("purchase_cycle_supplier_store_reviews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  purchaseCycleDate: date("purchase_cycle_date").notNull(),
+  supplierId: uuid("supplier_id").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "restrict" }),
+  status: text("status").notNull().default("REVIEWED"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow(),
+  reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("supplier_store_review_unique").on(table.purchaseCycleDate, table.supplierId, table.storeId),
+  index("supplier_store_review_cycle_idx").on(table.purchaseCycleDate, table.storeId),
+  check("supplier_store_review_status_check", sql`${table.status} IN ('REVIEWED', 'PENDING')`),
+  check("supplier_store_review_version_check", sql`${table.version} > 0`)
+]);
+
+export const purchaseCycleSupplierStoreReviewsRelations = relations(purchaseCycleSupplierStoreReviews, ({ one }) => ({
+  supplier: one(suppliers, { fields: [purchaseCycleSupplierStoreReviews.supplierId], references: [suppliers.id] }),
+  store: one(stores, { fields: [purchaseCycleSupplierStoreReviews.storeId], references: [stores.id] }),
+  reviewer: one(users, { fields: [purchaseCycleSupplierStoreReviews.reviewedBy], references: [users.id] })
+}));
+
+export const purchaseCycleStoreClosures = pgTable("purchase_cycle_store_closures", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  purchaseCycleDate: date("purchase_cycle_date").notNull(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "restrict" }),
+  orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+  orderRevision: integer("order_revision"),
+  status: text("status").notNull().default("CLOSED"),
+  totalOrderedItems: integer("total_ordered_items").notNull().default(0),
+  totalDestinedItems: integer("total_destined_items").notNull().default(0),
+  totalCutItems: integer("total_cut_items").notNull().default(0),
+  cutSummary: jsonb("cut_summary").notNull().default(sql`'[]'::jsonb`),
+  allocationsHash: text("allocations_hash").notNull(),
+  orderHash: text("order_hash"),
+  closedAt: timestamp("closed_at", { withTimezone: true }).notNull().defaultNow(),
+  closedBy: uuid("closed_by").references(() => users.id, { onDelete: "set null" }),
+  reopenedAt: timestamp("reopened_at", { withTimezone: true }),
+  reopenedBy: uuid("reopened_by").references(() => users.id, { onDelete: "set null" }),
+  reopenReason: text("reopen_reason"),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("store_closures_cycle_store_unique").on(table.purchaseCycleDate, table.storeId),
+  index("store_closures_cycle_idx").on(table.purchaseCycleDate),
+  index("store_closures_store_idx").on(table.storeId),
+  check("store_closures_version_check", sql`${table.version} > 0`),
+  check("store_closures_status_check", sql`${table.status} IN ('OPEN', 'CLOSED')`),
+  check("store_closures_closed_check", sql`(${table.status} = 'CLOSED' AND ${table.closedAt} IS NOT NULL AND ${table.closedBy} IS NOT NULL) OR (${table.status} = 'OPEN')`)
+]);
+
+export const purchaseCycleStoreClosuresRelations = relations(purchaseCycleStoreClosures, ({ one }) => ({
+  store: one(stores, { fields: [purchaseCycleStoreClosures.storeId], references: [stores.id] }),
+  order: one(orders, { fields: [purchaseCycleStoreClosures.orderId], references: [orders.id] }),
+  closer: one(users, { fields: [purchaseCycleStoreClosures.closedBy], references: [users.id] }),
+  reopener: one(users, { fields: [purchaseCycleStoreClosures.reopenedBy], references: [users.id] })
+}));
+

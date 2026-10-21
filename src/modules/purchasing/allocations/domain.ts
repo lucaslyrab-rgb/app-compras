@@ -131,6 +131,8 @@ export type ProductAllocationItem = {
   notes?: string | null;
   isOpportunityConfirmed?: boolean;
   version: number;
+  supplierDecision?: "NOT_PURCHASED" | null;
+  storeTotalDestinedAcrossSuppliers?: string;
 };
 
 export type SupplierDestinationData = {
@@ -155,6 +157,7 @@ export type BuyerCycleClosureSummary = {
   totalPurchasedInCosts: number;
   totalAllocatedProducts: number;
   missingProducts: Array<{ id: string; erpCode: number; name: string }>;
+  missingStores?: Array<{ id: string; name: string; reason: string }>;
   canClose: boolean;
 };
 
@@ -167,6 +170,7 @@ export type SupplierSummaryOption = {
   hasAllocationsInCycle: boolean;
   totalDestinedQuantity: string;
   destinedByStore: Record<string, string>;
+  reviewedByStore?: Record<string, boolean>;
 };
 
 export type CatalogSearchItem = {
@@ -248,12 +252,67 @@ export function validateAllocationPurchasedStatus(params: {
   return { isValid: true };
 }
 
+export type ProductSupplierDecisionType = "NOT_PURCHASED";
+
+export type StoreClosureStatus = "OPEN" | "CLOSED";
+
+export type StoreCutItemStatus = "FULFILLED" | "PARTIAL_CUT" | "TOTAL_CUT" | "ADDITIONAL";
+
+export type StoreCutItem = {
+  productId: string;
+  erpCode: number;
+  productName: string;
+  purchaseFormat: string;
+  orderedQuantity: string;
+  destinedQuantity: string;
+  cutQuantity: string;
+  status: StoreCutItemStatus;
+};
+
+export type StoreClosureSummary = {
+  cycleDate: string;
+  storeId: string;
+  storeName: string;
+  status: StoreClosureStatus;
+  orderId: string | null;
+  orderRevision: number | null;
+  totalOrderedItems: number;
+  totalDestinedItems: number;
+  totalCutItems: number;
+  cuts: StoreCutItem[];
+  allocationsHash: string;
+  closedAt: string | null;
+  closedByName: string | null;
+  reopenedAt: string | null;
+  reopenedByName: string | null;
+  reopenReason: string | null;
+  isStale: boolean;
+  staleReason?: string | null;
+};
+
+export type SupplierStoreReviewStatus = "REVIEWED" | "PENDING";
+
+export type SupplierStoreReviewSummary = {
+  supplierId: string;
+  storeId: string;
+  status: SupplierStoreReviewStatus;
+  reviewedAt: string | null;
+  reviewedByName: string | null;
+};
+
 export type StoreSummaryData = {
   storeId: string;
   storeName: string;
   storeSlug: string;
   totalAllocatedProducts: number;
   totalDestinedQuantity: string;
+  totalOrderedProducts: number;
+  totalReviewedProducts: number;
+  totalPendingProducts: number;
+  closureStatus: StoreClosureStatus;
+  isStale: boolean;
+  staleReason?: string | null;
+  closureSummary?: StoreCutItem[];
 };
 
 export type BuyerAllocationWorkspaceData = {
@@ -269,6 +328,8 @@ export type BuyerAllocationWorkspaceData = {
   catalogSearchList: CatalogSearchItem[];
   cycleStoreOrders: Record<string, Record<string, string>>;
   storeSummary: Record<string, StoreSummaryData>;
+  storeClosures: Record<string, StoreClosureSummary>;
+  supplierStoreReviews: Record<string, Record<string, SupplierStoreReviewSummary>>;
   loadedAt: string;
 };
 
@@ -294,6 +355,40 @@ export type SaveSupplierAllocationsInput = {
   allocations: SaveProductAllocationInput[];
 };
 
+export type SetProductSupplierDecisionInput = {
+  cycleDate: string;
+  supplierId: string;
+  storeId: string;
+  productId: string;
+  decision: ProductSupplierDecisionType;
+  notes?: string;
+  confirmRemoveDestined?: boolean;
+};
+
+export type RevertProductSupplierDecisionInput = {
+  cycleDate: string;
+  supplierId: string;
+  storeId: string;
+  productId: string;
+};
+
+export type ConcludeSupplierStoreReviewInput = {
+  cycleDate: string;
+  supplierId: string;
+  storeId: string;
+};
+
+export type CloseStoreCycleInput = {
+  cycleDate: string;
+  storeId: string;
+};
+
+export type ReopenStoreCycleInput = {
+  cycleDate: string;
+  storeId: string;
+  reason: string;
+};
+
 export function hasPendingStoreAllocation(
   allocation:
     | Pick<
@@ -310,6 +405,177 @@ export function hasPendingStoreAllocation(
   }
   const persistedCents = Math.round(parseQuantity(allocation.persistedDestinedQuantity) * 100);
   return currentCents !== persistedCents;
+}
+
+export function computeStoreAllocationsHash(
+  allocations: Array<{ productId: string; supplierId: string; destinedQuantity: string }>,
+): string {
+  const sorted = [...allocations]
+    .filter((a) => parseQuantity(a.destinedQuantity) > 0)
+    .sort((a, b) => {
+      const cmp = a.productId.localeCompare(b.productId);
+      return cmp !== 0 ? cmp : a.supplierId.localeCompare(b.supplierId);
+    });
+
+  const payload = sorted
+    .map((a) => `${a.productId}:${a.supplierId}:${roundToTwoDecimals(a.destinedQuantity)}`)
+    .join("|");
+
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < payload.length; i++) {
+    hash ^= payload.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return `h_${(hash >>> 0).toString(16)}_${sorted.length}`;
+}
+
+export function calculateStoreCutSummary(params: {
+  orderedItems: Array<{
+    productId: string;
+    erpCode: number;
+    productName: string;
+    purchaseFormat: string;
+    orderedQuantity: string;
+  }>;
+  storeAllocationsByProduct: Map<string, string>;
+  catalogMap?: Map<string, { erpCode: number; name: string; purchaseFormat: string }>;
+}): {
+  cuts: StoreCutItem[];
+  totalOrderedItems: number;
+  totalDestinedItems: number;
+  totalCutItems: number;
+} {
+  const { orderedItems, storeAllocationsByProduct, catalogMap } = params;
+  const cuts: StoreCutItem[] = [];
+  let totalDestinedItems = 0;
+  let totalCutItems = 0;
+
+  for (const item of orderedItems) {
+    const orderedNum = parseQuantity(item.orderedQuantity);
+    const destinedNum = parseQuantity(storeAllocationsByProduct.get(item.productId) ?? "0");
+    const orderedQtyStr = roundToTwoDecimals(orderedNum);
+    const destinedQtyStr = roundToTwoDecimals(destinedNum);
+
+    let status: StoreCutItemStatus;
+    let cutQtyStr = "0.00";
+
+    if (destinedNum >= orderedNum && orderedNum > 0) {
+      status = "FULFILLED";
+      totalDestinedItems++;
+    } else if (destinedNum > 0 && destinedNum < orderedNum) {
+      status = "PARTIAL_CUT";
+      cutQtyStr = roundToTwoDecimals(orderedNum - destinedNum);
+      totalDestinedItems++;
+      totalCutItems++;
+    } else if (orderedNum > 0 && destinedNum === 0) {
+      status = "TOTAL_CUT";
+      cutQtyStr = orderedQtyStr;
+      totalCutItems++;
+    } else {
+      status = "ADDITIONAL";
+      if (destinedNum > 0) totalDestinedItems++;
+    }
+
+    cuts.push({
+      productId: item.productId,
+      erpCode: item.erpCode,
+      productName: item.productName,
+      purchaseFormat: item.purchaseFormat,
+      orderedQuantity: orderedQtyStr,
+      destinedQuantity: destinedQtyStr,
+      cutQuantity: cutQtyStr,
+      status,
+    });
+  }
+
+  // Itens de oportunidade ou adicionais destinados à loja sem pedido original
+  if (catalogMap) {
+    const processedProductIds = new Set(orderedItems.map((i) => i.productId));
+    for (const [productId, destinedQtyStr] of storeAllocationsByProduct.entries()) {
+      if (processedProductIds.has(productId)) continue;
+      const destinedNum = parseQuantity(destinedQtyStr);
+      if (destinedNum <= 0) continue;
+
+      const catItem = catalogMap.get(productId);
+      cuts.push({
+        productId,
+        erpCode: catItem?.erpCode ?? 0,
+        productName: catItem?.name ?? `Produto ${productId}`,
+        purchaseFormat: catItem?.purchaseFormat ?? "UN",
+        orderedQuantity: "0.00",
+        destinedQuantity: roundToTwoDecimals(destinedNum),
+        cutQuantity: "0.00",
+        status: "ADDITIONAL",
+      });
+      totalDestinedItems++;
+    }
+  }
+
+  return {
+    cuts,
+    totalOrderedItems: orderedItems.length,
+    totalDestinedItems,
+    totalCutItems,
+  };
+}
+
+export function validateCycleClosureReadinessStoreFirst(params: {
+  stores: StoreInfo[];
+  storeClosures: Record<string, StoreClosureSummary>;
+  purchasedProductIds: string[];
+  globallyAllocatedProductIds: Set<string>;
+  catalogMap: Map<string, { id: string; erpCode: number; name: string }>;
+}): {
+  canClose: boolean;
+  missingStores: Array<{ id: string; name: string; reason: string }>;
+  missingProducts: Array<{ id: string; erpCode: number; name: string }>;
+} {
+  const {
+    stores,
+    storeClosures,
+    purchasedProductIds,
+    globallyAllocatedProductIds,
+    catalogMap,
+  } = params;
+
+  const missingStores: Array<{ id: string; name: string; reason: string }> = [];
+  const missingProducts: Array<{ id: string; erpCode: number; name: string }> = [];
+
+  // 1. Cada uma das lojas ativas precisa estar FINALIZADA e NÃO stale
+  for (const store of stores) {
+    const closure = storeClosures[store.id];
+    if (!closure || closure.status !== "CLOSED") {
+      missingStores.push({
+        id: store.id,
+        name: store.name,
+        reason: "Conferência da loja não finalizada.",
+      });
+    } else if (closure.isStale) {
+      missingStores.push({
+        id: store.id,
+        name: store.name,
+        reason: closure.staleReason ?? "Conferência da loja desatualizada após alterações.",
+      });
+    }
+  }
+
+  // 2. Todos os produtos marcados como comprados nos custos devem ter sido alocados
+  for (const pid of purchasedProductIds) {
+    if (!globallyAllocatedProductIds.has(pid)) {
+      const p = catalogMap.get(pid);
+      if (p) {
+        missingProducts.push(p);
+      } else {
+        missingProducts.push({ id: pid, erpCode: 0, name: `Produto ${pid}` });
+      }
+    }
+  }
+
+  return {
+    canClose: missingStores.length === 0 && missingProducts.length === 0,
+    missingStores,
+    missingProducts,
+  };
 }
 
 export function validateClosureReadiness(

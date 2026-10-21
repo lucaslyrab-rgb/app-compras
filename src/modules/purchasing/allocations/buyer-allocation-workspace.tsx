@@ -6,8 +6,13 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { formatTaxId } from "@/modules/suppliers/domain";
 import {
   closeBuyerCycleAction,
+  closeStoreCycleAction,
+  concludeSupplierStoreReviewAction,
   reopenBuyerCycleAction,
+  reopenStoreCycleAction,
+  revertProductSupplierDecisionAction,
   saveSupplierAllocationsAction,
+  setProductSupplierDecisionAction,
 } from "./actions";
 import {
   calculateDifference,
@@ -15,12 +20,13 @@ import {
   parseQuantity,
   roundToTwoDecimals,
   sumQuantities,
-  type BuyerAllocationWorkspaceData,
   type AllocationConflictResolution,
   type AllocationDestinationConflict,
+  type BuyerAllocationWorkspaceData,
   type CatalogSearchItem,
   type ProductAllocationItem,
   type StoreAllocationData,
+  type StoreCutItem,
 } from "./domain";
 import "./styles.css";
 
@@ -59,6 +65,8 @@ export function BuyerAllocationWorkspace({
     catalogSearchList,
     cycleStoreOrders,
     storeSummary,
+    storeClosures = {},
+    supplierStoreReviews = {},
   } = data;
 
   const isClosed = closure.status === "CLOSED";
@@ -71,6 +79,16 @@ export function BuyerAllocationWorkspace({
       name: "Loja",
     };
   const activeStoreId = activeStore.id;
+
+  // Status de finalização das lojas
+  const activeStoreSummary = storeSummary[activeStoreId];
+  const activeStoreClosure = storeClosures[activeStoreId];
+  const allStoresFinalized = stores.length > 0 && stores.every(
+    (s) => storeSummary[s.id]?.closureStatus === "CLOSED" && !storeSummary[s.id]?.isStale,
+  );
+  const unclosedStores = stores.filter(
+    (s) => storeSummary[s.id]?.closureStatus !== "CLOSED" || storeSummary[s.id]?.isStale,
+  );
   // O componente é remontado pela página quando o contexto confirmado muda.
   // Enquanto uma navegação ainda está em trânsito, porém, os props continuam
   // apontando para o contexto anterior. O ref preserva sincronamente a última
@@ -95,7 +113,7 @@ export function BuyerAllocationWorkspace({
   // Filtro de busca na lista de produtos
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Modais de fechamento / reabertura
+  // Modais de fechamento / reabertura do ciclo geral
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closing, setClosing] = useState(false);
   const [closeError, setCloseError] = useState<string | null>(null);
@@ -104,6 +122,30 @@ export function BuyerAllocationWorkspace({
   const [reopening, setReopening] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
   const [reopenError, setReopenError] = useState<string | null>(null);
+
+  // Modais de conferência conjunta de cortes e finalização da loja
+  const [showStoreClosureModal, setShowStoreClosureModal] = useState(false);
+  const [targetStoreForClosure, setTargetStoreForClosure] = useState<string>(activeStoreId);
+  const [closingStore, setClosingStore] = useState(false);
+  const [storeCloseError, setStoreCloseError] = useState<string | null>(null);
+
+  const [showReopenStoreModal, setShowReopenStoreModal] = useState(false);
+  const [reopeningStore, setReopeningStore] = useState(false);
+  const [reopenStoreReason, setReopenStoreReason] = useState("");
+  const [reopenStoreError, setReopenStoreError] = useState<string | null>(null);
+
+  // Modal de conclusão em lote do fornecedor para a loja ativa
+  const [showBatchConcludeSupplierModal, setShowBatchConcludeSupplierModal] = useState(false);
+  const [concludingSupplier, setConcludingSupplier] = useState(false);
+  const [batchConcludeError, setBatchConcludeError] = useState<string | null>(null);
+
+  // Confirmação de segurança para "Não comprei deste fornecedor" com destinação positiva
+  const [productToReject, setProductToReject] = useState<{
+    productId: string;
+    productName: string;
+    destinedQty: string;
+  } | null>(null);
+  const [rejectingProduct, setRejectingProduct] = useState(false);
 
   const [showUnassignedModal, setShowUnassignedModal] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
@@ -119,6 +161,28 @@ export function BuyerAllocationWorkspace({
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [pendingAction, setPendingAction] =
     useState<PendingNavigationAction | null>(null);
+
+  const targetStore = stores.find((s) => s.id === targetStoreForClosure) ?? activeStore;
+  const targetStoreClosure = storeClosures[targetStore.id];
+  const targetStoreSummary = storeSummary[targetStore.id];
+
+  const activeSupplier = suppliers.find((s) => s.id === selectedSupplierId);
+  const unreviewedItemsForSupplier = useMemo(
+    () =>
+      products.filter(
+        (p) =>
+          parseQuantity(p.stores[activeStoreId]?.destinedQuantity) <= 0 &&
+          !p.supplierDecision,
+      ),
+    [products, activeStoreId],
+  );
+  const positiveDestinedCountForSupplier = useMemo(
+    () =>
+      products.filter(
+        (p) => parseQuantity(p.stores[activeStoreId]?.destinedQuantity) > 0,
+      ).length,
+    [products, activeStoreId],
+  );
 
   const pendingProducts = useMemo(
     () => products.filter((product) => hasPendingStoreAllocation(product.stores[activeStoreId])),
@@ -616,6 +680,215 @@ export function BuyerAllocationWorkspace({
     }
   };
 
+  // Handlers para ações Store-First e Decisões de Fornecedor
+  const handleSetNotPurchased = (productId: string) => {
+    if (isClosed || !selectedSupplierId) return;
+    const prod = products.find((p) => p.productId === productId);
+    if (!prod) return;
+    const storeData = prod.stores[activeStoreId];
+    const persistedQty = storeData?.persistedDestinedQuantity;
+    if (persistedQty && parseQuantity(persistedQty) > 0) {
+      setProductToReject({
+        productId,
+        productName: prod.productName,
+        destinedQty: persistedQty,
+      });
+      return;
+    }
+    void executeSetNotPurchased(productId, false);
+  };
+
+  const executeSetNotPurchased = async (productId: string, confirmRemoveDestined: boolean) => {
+    if (!selectedSupplierId) return;
+    setRejectingProduct(true);
+    setErrorMessage(null);
+
+    try {
+      const result = await setProductSupplierDecisionAction({
+        cycleDate,
+        supplierId: selectedSupplierId,
+        storeId: activeStoreId,
+        productId,
+        decision: "NOT_PURCHASED",
+        confirmRemoveDestined,
+      });
+
+      if (result.status === "success") {
+        setProducts((prev) =>
+          prev.map((p) => {
+            if (p.productId !== productId) return p;
+            const currentStore = p.stores[activeStoreId];
+            const updatedStore: StoreAllocationData = currentStore
+              ? {
+                  ...currentStore,
+                  destinedQuantity: confirmRemoveDestined ? "0.00" : currentStore.destinedQuantity,
+                  persistedDestinedQuantity: confirmRemoveDestined ? "0.00" : currentStore.persistedDestinedQuantity,
+                  difference: confirmRemoveDestined ? calculateDifference("0.00", currentStore.orderedQuantity) : currentStore.difference,
+                }
+              : {
+                  storeId: activeStoreId,
+                  storeName: activeStore.name,
+                  storeSlug: activeStore.slug,
+                  orderedQuantity: cycleStoreOrders[p.productId]?.[activeStoreId] ?? "0.00",
+                  destinedQuantity: "0.00",
+                  persistedDestinedQuantity: "0.00",
+                  difference: calculateDifference("0.00", cycleStoreOrders[p.productId]?.[activeStoreId] ?? "0.00"),
+                  isAdditionalPurchase: false,
+                };
+
+            const updatedStores = { ...p.stores, [activeStoreId]: updatedStore };
+            const totalDestined = sumQuantities(Object.values(updatedStores).map((s) => s.destinedQuantity));
+
+            return {
+              ...p,
+              stores: updatedStores,
+              totalDestined,
+              totalDifference: calculateDifference(totalDestined, p.totalOrdered),
+              supplierDecision: "NOT_PURCHASED",
+            };
+          }),
+        );
+        setProductToReject(null);
+        setSaveMessage("Produto marcado como não comprado deste fornecedor.");
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        setErrorMessage(result.message);
+      }
+    } catch {
+      setErrorMessage("Erro inesperado ao registrar decisão.");
+    } finally {
+      setRejectingProduct(false);
+    }
+  };
+
+  const handleRevertNotPurchased = async (productId: string) => {
+    if (isClosed || !selectedSupplierId) return;
+    setErrorMessage(null);
+
+    try {
+      const result = await revertProductSupplierDecisionAction({
+        cycleDate,
+        supplierId: selectedSupplierId,
+        storeId: activeStoreId,
+        productId,
+      });
+
+      if (result.status === "success") {
+        setProducts((prev) =>
+          prev.map((p) => (p.productId === productId ? { ...p, supplierDecision: null } : p)),
+        );
+        setSaveMessage("Decisão desfeita com sucesso.");
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        setErrorMessage(result.message);
+      }
+    } catch {
+      setErrorMessage("Erro inesperado ao desfazer decisão.");
+    }
+  };
+
+  const handleConfirmBatchConcludeSupplier = async () => {
+    if (!selectedSupplierId) return;
+    setConcludingSupplier(true);
+    setBatchConcludeError(null);
+
+    try {
+      const result = await concludeSupplierStoreReviewAction({
+        cycleDate,
+        supplierId: selectedSupplierId,
+        storeId: activeStoreId,
+      });
+
+      if (result.status === "success") {
+        setShowBatchConcludeSupplierModal(false);
+        setProducts((prev) =>
+          prev.map((p) => {
+            const hasDestined = parseQuantity(p.stores[activeStoreId]?.destinedQuantity) > 0;
+            if (!hasDestined && !p.supplierDecision) {
+              return { ...p, supplierDecision: "NOT_PURCHASED" };
+            }
+            return p;
+          }),
+        );
+        setSaveMessage("Conferência do fornecedor para esta loja concluída com sucesso.");
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        setBatchConcludeError(result.message);
+      }
+    } catch {
+      setBatchConcludeError("Erro ao concluir conferência do fornecedor.");
+    } finally {
+      setConcludingSupplier(false);
+    }
+  };
+
+  const handleOpenStoreClosure = (storeId?: string) => {
+    const sId = storeId ?? activeStoreId;
+    setTargetStoreForClosure(sId);
+    setStoreCloseError(null);
+    setShowStoreClosureModal(true);
+  };
+
+  const handleConfirmCloseStore = async () => {
+    setClosingStore(true);
+    setStoreCloseError(null);
+
+    try {
+      const result = await closeStoreCycleAction({
+        cycleDate,
+        storeId: targetStoreForClosure,
+      });
+
+      if (result.status === "success") {
+        setShowStoreClosureModal(false);
+        setSaveMessage("Conferência da loja finalizada com sucesso.");
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        setStoreCloseError(result.message);
+      }
+    } catch {
+      setStoreCloseError("Erro inesperado ao finalizar conferência da loja.");
+    } finally {
+      setClosingStore(false);
+    }
+  };
+
+  const handleConfirmReopenStore = async () => {
+    setReopeningStore(true);
+    setReopenStoreError(null);
+
+    try {
+      const result = await reopenStoreCycleAction({
+        cycleDate,
+        storeId: targetStoreForClosure,
+        reason: reopenStoreReason,
+      });
+
+      if (result.status === "success") {
+        setShowReopenStoreModal(false);
+        setReopenStoreReason("");
+        setSaveMessage("Conferência da loja reaberta para ajustes.");
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        setReopenStoreError(result.message);
+      }
+    } catch {
+      setReopenStoreError("Erro inesperado ao reabrir conferência da loja.");
+    } finally {
+      setReopeningStore(false);
+    }
+  };
+
   // Filtra produtos na tela por nome ou código ERP
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return products;
@@ -691,15 +964,20 @@ export function BuyerAllocationWorkspace({
               className="btn btn--secondary"
               onClick={() => setShowReopenModal(true)}
             >
-              🔓 Reabrir Ciclo
+              🔓 Reabrir Ciclo Geral
             </button>
           ) : (
             <button
               type="button"
-              className="btn btn--success"
+              className={`btn ${allStoresFinalized ? "btn--success" : "btn--secondary"}`}
               onClick={() => setShowCloseModal(true)}
+              title={
+                allStoresFinalized
+                  ? "Todas as lojas estão finalizadas. Pronto para fechar o ciclo."
+                  : `Aguardando finalização das lojas: ${unclosedStores.map((s) => s.name).join(", ")}`
+              }
             >
-              🔒 Fechar Ciclo Operacional
+              🔒 Fechar Ciclo Geral {allStoresFinalized ? "(3/3 Lojas Finalizadas)" : `(${stores.length - unclosedStores.length}/3 Finalizadas)`}
             </button>
           )}
         </div>
@@ -761,16 +1039,41 @@ export function BuyerAllocationWorkspace({
       {/* NÍVEL 1: SELEÇÃO DA LOJA (DESTAQUE MÁXIMO MOBILE) */}
       <nav className="alloc-store-nav" aria-label="Seleção da Loja Ativa">
         <div className="alloc-store-nav__header">
-          <span className="alloc-step-indicator">1. LOJA ATIVA:</span>
-          <span className="alloc-store-nav__hint">
-            A loja permanece selecionada ao trocar de fornecedor
-          </span>
+          <div>
+            <span className="alloc-step-indicator">1. LOJA ATIVA:</span>
+            <span className="alloc-store-nav__hint" style={{ marginLeft: "8px" }}>
+              A loja permanece fixa ao alternar fornecedores
+            </span>
+          </div>
+          <div className="alloc-store-header-actions">
+            {activeStoreSummary?.closureStatus === "CLOSED" ? (
+              <button
+                type="button"
+                className="btn btn--secondary"
+                style={{ fontSize: "12px", minHeight: "34px", padding: "4px 10px" }}
+                onClick={() => handleOpenStoreClosure(activeStoreId)}
+              >
+                📋 Ver Cortes da Loja
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn--primary"
+                style={{ fontSize: "12px", minHeight: "34px", padding: "4px 10px", backgroundColor: "#0284c7" }}
+                onClick={() => handleOpenStoreClosure(activeStoreId)}
+              >
+                🏁 Conferir Cortes e Finalizar Loja
+              </button>
+            )}
+          </div>
         </div>
         <div className="alloc-store-tabs">
           {stores.map((store) => {
             const isActive = store.id === activeStoreId;
             const summary = storeSummary[store.id];
             const cleanName = store.name.replace("MultiShow ", "");
+            const isStoreClosed = summary?.closureStatus === "CLOSED";
+            const isStoreStale = summary?.isStale;
 
             return (
               <button
@@ -780,12 +1083,41 @@ export function BuyerAllocationWorkspace({
                 onClick={() => handleSelectStore(store.id)}
                 aria-pressed={isActive}
               >
-                <div className="alloc-store-tab__title">
-                  <span className="alloc-store-tab__icon">🏪</span>
-                  <strong>{cleanName}</strong>
+                <div className="alloc-store-tab__top">
+                  <div className="alloc-store-tab__title">
+                    <span className="alloc-store-tab__icon">🏪</span>
+                    <strong>{cleanName}</strong>
+                  </div>
+                  {isStoreClosed && !isStoreStale ? (
+                    <span className="alloc-status-pill alloc-status-pill--closed">
+                      ✓ Finalizada
+                    </span>
+                  ) : isStoreClosed && isStoreStale ? (
+                    <span className="alloc-status-pill alloc-status-pill--stale" title={summary.staleReason ?? "Reconferir"}>
+                      ⚠️ Reconferir
+                    </span>
+                  ) : (
+                    <span className="alloc-status-pill alloc-status-pill--open">
+                      ⏳ Aberta
+                    </span>
+                  )}
                 </div>
-                <div className="alloc-store-tab__badge">
-                  {summary ? `${summary.totalDestinedQuantity} CX` : "0.00 CX"}
+
+                <div className="alloc-store-tab__metrics">
+                  <div className="alloc-store-tab__metric-row">
+                    <span>Exigem conferência:</span>
+                    <strong>{summary?.totalOrderedProducts ?? 0} itens</strong>
+                  </div>
+                  <div className="alloc-store-tab__metric-row">
+                    <span>Conferidos: {summary?.totalReviewedProducts ?? 0}</span>
+                    <span style={{ color: summary?.totalPendingProducts ? "#c2410c" : "#15803d", fontWeight: "700" }}>
+                      Pendências: {summary?.totalPendingProducts ?? 0}
+                    </span>
+                  </div>
+                  <div className="alloc-store-tab__metric-row" style={{ marginTop: "2px", fontWeight: "700" }}>
+                    <span>Destinado:</span>
+                    <span>{summary ? `${summary.totalDestinedQuantity} CX` : "0.00 CX"}</span>
+                  </div>
                 </div>
               </button>
             );
@@ -796,8 +1128,21 @@ export function BuyerAllocationWorkspace({
       {/* NÍVEL 2: SELEÇÃO DO FORNECEDOR (LOGO ABAIXO DA LOJA) */}
       <section className="alloc-supplier-section" aria-label="Seleção do Fornecedor">
         <div className="alloc-supplier-section__header">
-          <div className="alloc-step-indicator">
-            2. FORNECEDOR (PARA {activeStore.name.toUpperCase()}):
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+            <div className="alloc-step-indicator">
+              2. FORNECEDOR (PARA {activeStore.name.toUpperCase()}):
+            </div>
+            {selectedSupplier ? (
+              selectedSupplier.reviewedByStore?.[activeStoreId] ? (
+                <span className="alloc-supplier-review-badge alloc-supplier-review-badge--reviewed">
+                  ✓ Fornecedor conferido nesta loja
+                </span>
+              ) : (
+                <span className="alloc-supplier-review-badge alloc-supplier-review-badge--pending">
+                  ⏳ Conferência pendente nesta loja
+                </span>
+              )
+            ) : null}
           </div>
           <div className="alloc-supplier-select-row">
             <select
@@ -811,9 +1156,10 @@ export function BuyerAllocationWorkspace({
               </option>
               {suppliers.map((s) => {
                 const storeVol = s.destinedByStore[activeStoreId] ?? "0.00";
+                const isRev = s.reviewedByStore?.[activeStoreId];
                 return (
                   <option key={s.id} value={s.id}>
-                    {s.corporateName} {s.tradeName ? `(${s.tradeName})` : ""} — {storeVol} CX nesta loja
+                    {isRev ? "✓ " : ""}{s.corporateName} {s.tradeName ? `(${s.tradeName})` : ""} — {storeVol} CX {isRev ? "(Conferido)" : ""}
                   </option>
                 );
               })}
@@ -1032,8 +1378,32 @@ export function BuyerAllocationWorkspace({
                               Sem pedido registrado para esta loja
                             </span>
                           )}
+                          {prod.storeTotalDestinedAcrossSuppliers && parseQuantity(prod.storeTotalDestinedAcrossSuppliers) > 0 ? (
+                            <span style={{ fontSize: "11px", color: "#0369a1", display: "block", marginTop: "3px" }}>
+                              Total destinado somando fornecedores: <strong>{prod.storeTotalDestinedAcrossSuppliers} {prod.purchaseFormat}</strong>
+                            </span>
+                          ) : null}
                         </div>
                       </div>
+
+                      {/* Decisão explícita de Não Comprado */}
+                      {prod.supplierDecision === "NOT_PURCHASED" ? (
+                        <div className="alloc-not-purchased-banner">
+                          <span className="alloc-not-purchased-banner__text">
+                            🚫 Não comprado deste fornecedor nesta loja
+                          </span>
+                          {!isClosed ? (
+                            <button
+                              type="button"
+                              className="alloc-btn-revert"
+                              onClick={() => handleRevertNotPurchased(prod.productId)}
+                              title="Reverter decisão e permitir nova compra ou destinação"
+                            >
+                              Desfazer Decisão
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
 
                       <div className="alloc-single-store-controls">
                         <div className="alloc-stepper">
@@ -1055,6 +1425,17 @@ export function BuyerAllocationWorkspace({
                             onChange={(e) =>
                               handleQuantityChange(prod.productId, e.target.value)
                             }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const inputs = Array.from(document.querySelectorAll<HTMLInputElement>(".alloc-stepper-input"));
+                                const currentIndex = inputs.indexOf(e.currentTarget);
+                                if (currentIndex >= 0 && currentIndex < inputs.length - 1) {
+                                  inputs[currentIndex + 1]?.focus();
+                                  inputs[currentIndex + 1]?.select();
+                                }
+                              }
+                            }}
                           />
                           <button
                             type="button"
@@ -1067,6 +1448,18 @@ export function BuyerAllocationWorkspace({
                             +
                           </button>
                         </div>
+
+                        {/* Botão Individual: NÃO COMPREI DESTE FORNECEDOR */}
+                        {prod.supplierDecision !== "NOT_PURCHASED" && !isClosed ? (
+                          <button
+                            type="button"
+                            className="alloc-btn-not-purchased"
+                            title="Registrar decisão de não comprar deste fornecedor para esta loja"
+                            onClick={() => handleSetNotPurchased(prod.productId)}
+                          >
+                            Não comprei deste fornecedor
+                          </button>
+                        ) : null}
 
                         {/* Botão de Sugestão Tátil de Pedido */}
                         {isDifferentFromOrder && !isClosed && !isUnpurchasedWithOrders ? (
@@ -1124,6 +1517,26 @@ export function BuyerAllocationWorkspace({
             </div>
           )}
 
+          {/* AÇÃO EM LOTE DO FORNECEDOR */}
+          {!isClosed && selectedSupplierId && filteredProducts.length > 0 ? (
+            <div className="alloc-batch-conclude-card">
+              <div className="alloc-batch-conclude-card__info">
+                <h4>Concluir Conferência deste Fornecedor</h4>
+                <p>
+                  Marca os produtos sem destinação nesta loja como &quot;Não comprado deste fornecedor&quot; e conclui a conferência de <strong>{selectedSupplier?.corporateName}</strong> para <strong>{activeStore.name}</strong>.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                style={{ fontWeight: "700", whiteSpace: "nowrap" }}
+                onClick={() => setShowBatchConcludeSupplierModal(true)}
+              >
+                Concluir Conferência deste Fornecedor ❯
+              </button>
+            </div>
+          ) : null}
+
           {/* BARRA FIXA DE SALVAR DA LOJA ATIVA */}
           {!isClosed ? (
             <div className="alloc-sticky-bar">
@@ -1144,6 +1557,15 @@ export function BuyerAllocationWorkspace({
               </div>
 
               <div className="alloc-sticky-buttons">
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  style={{ fontWeight: "700" }}
+                  onClick={() => handleOpenStoreClosure(activeStoreId)}
+                >
+                  Conferir Cortes da Loja
+                </button>
+
                 <button
                   type="button"
                   className="btn btn--primary alloc-save-btn"
@@ -1358,21 +1780,38 @@ export function BuyerAllocationWorkspace({
               {!closure.canClose ? (
                 <div className="alloc-error-box">
                   <strong>Não é possível fechar o ciclo ainda:</strong>
-                  <p style={{ margin: "4px 0 8px 0", fontSize: "12px" }}>
-                    Existem {closure.missingProducts.length} produto(s) marcado(s) como comprado(s)
-                    nos custos que ainda não possuem fornecedor e destinação positiva atribuída:
-                  </p>
-                  <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px" }}>
-                    {closure.missingProducts.map((p) => (
-                      <li key={p.id}>
-                        [{p.erpCode}] {p.name}
-                      </li>
-                    ))}
-                  </ul>
+                  {closure.missingStores && closure.missingStores.length > 0 ? (
+                    <div style={{ marginTop: "8px" }}>
+                      <p style={{ margin: "2px 0 6px 0", fontSize: "12px", fontWeight: "700", color: "#991b1b" }}>
+                        Lojas pendentes de conferência de cortes ou desatualizadas ({closure.missingStores.length}):
+                      </p>
+                      <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: "#7f1d1d" }}>
+                        {closure.missingStores.map((s) => (
+                          <li key={s.id} style={{ marginBottom: "4px" }}>
+                            <strong>{s.name}</strong>: {s.reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {closure.missingProducts && closure.missingProducts.length > 0 ? (
+                    <div style={{ marginTop: "8px" }}>
+                      <p style={{ margin: "2px 0 6px 0", fontSize: "12px", fontWeight: "700", color: "#991b1b" }}>
+                        Produtos comprados nos custos sem destinação ({closure.missingProducts.length}):
+                      </p>
+                      <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: "#7f1d1d" }}>
+                        {closure.missingProducts.map((p) => (
+                          <li key={p.id}>
+                            [{p.erpCode}] {p.name}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <p style={{ color: "#166534", fontWeight: "600" }}>
-                  ✓ Todos os produtos comprados possuem fornecedor e destinação positiva em ao menos uma loja.
+                  ✓ Todas as lojas ({stores.length}) foram conferidas e finalizadas sem pendências, e todos os produtos comprados possuem destinação atribuída.
                 </p>
               )}
 
@@ -1791,6 +2230,391 @@ export function BuyerAllocationWorkspace({
                 onClick={handleConfirmOpportunityPurchase}
               >
                 Confirmar Inclusão
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL: CONFIRMAR REMOÇÃO DE DESTINAÇÃO POSITIVA AO MARCAR NÃO COMPRADO */}
+      {productToReject ? (
+        <div className="alloc-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="alloc-modal" style={{ maxWidth: "480px" }}>
+            <header className="alloc-modal__header">
+              <h2>Zerar Destinação e Marcar Não Comprado?</h2>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                style={{ minHeight: "32px", padding: "4px 8px" }}
+                onClick={() => setProductToReject(null)}
+              >
+                ✕
+              </button>
+            </header>
+            <div className="alloc-modal__body">
+              <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "12px", marginBottom: "12px" }}>
+                <p style={{ margin: 0, fontSize: "14px", color: "#991b1b", fontWeight: "600" }}>
+                  ⚠️ Atenção: O produto <u>{productToReject.productName}</u> possui <strong>{productToReject.destinedQty} CX</strong> destinadas para {activeStore.name} neste fornecedor.
+                </p>
+                <p style={{ margin: "6px 0 0 0", fontSize: "12px", color: "#7f1d1d" }}>
+                  Confirmar esta ação irá zerar a destinação salva para este fornecedor e registrá-lo como não comprado. Compras em outros fornecedores serão mantidas intactas.
+                </p>
+              </div>
+              <p style={{ fontSize: "13px", color: "#475569" }}>
+                Deseja realmente remover a destinação salva e marcar o produto como &quot;Não comprado deste fornecedor&quot;?
+              </p>
+            </div>
+            <footer className="alloc-modal__footer">
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => setProductToReject(null)}
+              >
+                Cancelar (Manter Destinação)
+              </button>
+              <button
+                type="button"
+                className="btn btn--danger"
+                disabled={rejectingProduct}
+                onClick={() => void executeSetNotPurchased(productToReject.productId, true)}
+              >
+                {rejectingProduct ? "Removendo..." : "Sim, Zerar e Marcar Não Comprado"}
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL: CONCLUIR CONFERÊNCIA EM LOTE DO FORNECEDOR */}
+      {showBatchConcludeSupplierModal ? (
+        <div className="alloc-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="alloc-modal" style={{ maxWidth: "560px" }}>
+            <header className="alloc-modal__header">
+              <h2>Concluir Conferência deste Fornecedor</h2>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                style={{ minHeight: "32px", padding: "4px 8px" }}
+                onClick={() => {
+                  setShowBatchConcludeSupplierModal(false);
+                  setBatchConcludeError(null);
+                }}
+              >
+                ✕
+              </button>
+            </header>
+            <div className="alloc-modal__body">
+              <div style={{ display: "flex", gap: "10px", marginBottom: "12px", fontSize: "13px" }}>
+                <div>Fornecedor: <strong>{activeSupplier?.corporateName}</strong></div>
+                <div>•</div>
+                <div>Loja: <strong>{activeStore.name}</strong></div>
+              </div>
+
+              <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "12px", marginBottom: "12px" }}>
+                <p style={{ margin: 0, fontSize: "13px", color: "#334155" }}>
+                  Esta ação identificará os produtos elegíveis ainda sem decisão para <strong>{activeStore.name}</strong> neste fornecedor e os marcará em lote como &quot;Não comprado deste fornecedor&quot;.
+                </p>
+                <div style={{ marginTop: "8px", fontSize: "12px", color: "#166534", fontWeight: "600" }}>
+                  ✓ Destinações positivas salvas ({positiveDestinedCountForSupplier} itens) serão integralmente preservadas.
+                </div>
+                <div style={{ fontSize: "12px", color: "#475569", marginTop: "4px" }}>
+                  ✓ Não altera decisões de outras lojas nem de outros fornecedores.
+                </div>
+              </div>
+
+              {unreviewedItemsForSupplier.length > 0 ? (
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: "700", color: "#475569", marginBottom: "6px" }}>
+                    Produtos restantes que serão marcados como &quot;Não comprado&quot; ({unreviewedItemsForSupplier.length}):
+                  </div>
+                  <div style={{ maxHeight: "160px", overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: "6px", padding: "8px", backgroundColor: "#fff" }}>
+                    <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: "#334155" }}>
+                      {unreviewedItemsForSupplier.map((p) => (
+                        <li key={p.productId} style={{ marginBottom: "2px" }}>
+                          [{p.erpCode}] {p.productName}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: "13px", color: "#166534", fontWeight: "600" }}>
+                  ✓ Todos os produtos deste fornecedor para esta loja já possuem destinação positiva ou decisão registrada!
+                </div>
+              )}
+
+              {batchConcludeError ? (
+                <div style={{ color: "#dc2626", fontSize: "13px", marginTop: "8px" }}>
+                  ⚠️ {batchConcludeError}
+                </div>
+              ) : null}
+            </div>
+            <footer className="alloc-modal__footer">
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => {
+                  setShowBatchConcludeSupplierModal(false);
+                  setBatchConcludeError(null);
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={concludingSupplier}
+                onClick={handleConfirmBatchConcludeSupplier}
+              >
+                {concludingSupplier ? "Concluindo..." : "Confirmar Conclusão do Fornecedor"}
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL: CONFERÊNCIA CONJUNTA DOS CORTES DA LOJA */}
+      {showStoreClosureModal ? (
+        <div className="alloc-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="alloc-modal" style={{ maxWidth: "800px", width: "95%" }}>
+            <header className="alloc-modal__header">
+              <div>
+                <h2 style={{ margin: 0 }}>
+                  Conferência Conjunta dos Cortes — {targetStore.name}
+                </h2>
+                <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
+                  {targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale ? (
+                    <span style={{ color: "#15803d", fontWeight: "700" }}>
+                      ✓ Loja Finalizada em {targetStoreClosure.closedAt ? new Date(targetStoreClosure.closedAt).toLocaleString("pt-BR") : ""} por {targetStoreClosure.closedByName ?? "Comprador"}
+                    </span>
+                  ) : targetStoreClosure?.status === "CLOSED" && targetStoreClosure.isStale ? (
+                    <span style={{ color: "#b91c1c", fontWeight: "700" }}>
+                      ⚠️ Conferência Desatualizada: {targetStoreClosure.staleReason ?? "Houve alterações posteriores"}. Necessário reconfirmar.
+                    </span>
+                  ) : (
+                    <span style={{ color: "#0284c7", fontWeight: "600" }}>
+                      Conferência pendente de finalização
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                style={{ minHeight: "32px", padding: "4px 8px" }}
+                onClick={() => {
+                  setShowStoreClosureModal(false);
+                  setStoreCloseError(null);
+                }}
+              >
+                ✕
+              </button>
+            </header>
+
+            <div className="alloc-modal__body" style={{ maxHeight: "65vh", overflowY: "auto" }}>
+              {/* Cards de Resumo */}
+              <div className="alloc-summary-grid">
+                <div className="alloc-summary-card">
+                  <div className="alloc-summary-card__label">Itens Pedidos</div>
+                  <div className="alloc-summary-card__value">
+                    {targetStoreClosure?.totalOrderedItems ?? 0}
+                  </div>
+                </div>
+                <div className="alloc-summary-card">
+                  <div className="alloc-summary-card__label">Itens Destinados</div>
+                  <div className="alloc-summary-card__value" style={{ color: "#15803d" }}>
+                    {targetStoreClosure?.totalDestinedItems ?? 0}
+                  </div>
+                </div>
+                <div className="alloc-summary-card">
+                  <div className="alloc-summary-card__label">Cortes (Totais / Parciais)</div>
+                  <div className="alloc-summary-card__value" style={{ color: (targetStoreClosure?.totalCutItems ?? 0) > 0 ? "#b91c1c" : "#64748b" }}>
+                    {targetStoreClosure?.totalCutItems ?? 0}
+                  </div>
+                </div>
+              </div>
+
+              {/* Nota Explicativa das Regras 5 e 6 */}
+              <div style={{ margin: "12px 0", padding: "10px", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px", color: "#475569" }}>
+                <strong>Regra de Conferência:</strong> A destinação abaixo soma todos os fornecedores para esta loja. Ao confirmar a finalização, é gerado um snapshot imutável auditável vinculado à revisão do pedido. Se pedidos ou destinações forem alterados posteriormente, a conferência será invalidada automaticamente para exigir nova revisão.
+              </div>
+
+              {/* Tabela de Cortes */}
+              <div style={{ overflowX: "auto" }}>
+                <table className="alloc-cuts-table" style={{ width: "100%", textAlign: "left" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "40%" }}>Produto</th>
+                      <th style={{ textAlign: "right" }}>Qtd Pedida</th>
+                      <th style={{ textAlign: "right" }}>Qtd Destinada</th>
+                      <th style={{ textAlign: "center" }}>Situação / Corte</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(targetStoreClosure?.cuts ?? []).length > 0 ? (
+                      targetStoreClosure!.cuts.map((cut) => {
+                        let badgeClass = "alloc-cut-pill--fulfilled";
+                        let badgeLabel = `Integral (${cut.destinedQuantity} ${cut.purchaseFormat})`;
+
+                        if (cut.status === "TOTAL_CUT") {
+                          badgeClass = "alloc-cut-pill--total";
+                          badgeLabel = `Corte Total (-${cut.cutQuantity} ${cut.purchaseFormat})`;
+                        } else if (cut.status === "PARTIAL_CUT") {
+                          badgeClass = "alloc-cut-pill--partial";
+                          badgeLabel = `Corte Parcial (-${cut.cutQuantity} ${cut.purchaseFormat})`;
+                        } else if (cut.status === "ADDITIONAL") {
+                          badgeClass = "alloc-cut-pill--additional";
+                          badgeLabel = `Adicional (+${cut.destinedQuantity} ${cut.purchaseFormat})`;
+                        }
+
+                        return (
+                          <tr key={cut.productId}>
+                            <td>
+                              <span style={{ color: "#64748b", fontFamily: "monospace", fontSize: "11px", marginRight: "4px" }}>
+                                [{cut.erpCode}]
+                              </span>
+                              <strong style={{ fontSize: "13px" }}>{cut.productName}</strong>
+                            </td>
+                            <td style={{ textAlign: "right", fontFamily: "monospace", fontSize: "13px" }}>
+                              {cut.orderedQuantity} {cut.purchaseFormat}
+                            </td>
+                            <td style={{ textAlign: "right", fontFamily: "monospace", fontSize: "13px", fontWeight: "700" }}>
+                              {cut.destinedQuantity} {cut.purchaseFormat}
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <span className={`alloc-cut-pill ${badgeClass}`}>
+                                {badgeLabel}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={4} style={{ textAlign: "center", padding: "20px", color: "#64748b" }}>
+                          Nenhum produto pedido ou destinado para esta loja neste ciclo.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {storeCloseError ? (
+                <div style={{ color: "#dc2626", fontSize: "13px", marginTop: "12px", fontWeight: "600" }}>
+                  ⚠️ {storeCloseError}
+                </div>
+              ) : null}
+            </div>
+
+            <footer className="alloc-modal__footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                {targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale && !isClosed ? (
+                  <button
+                    type="button"
+                    className="btn btn--secondary"
+                    style={{ color: "#b91c1c" }}
+                    onClick={() => {
+                      setShowStoreClosureModal(false);
+                      setShowReopenStoreModal(true);
+                    }}
+                  >
+                    🔓 Reabrir Conferência desta Loja
+                  </button>
+                ) : null}
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  onClick={() => {
+                    setShowStoreClosureModal(false);
+                    setStoreCloseError(null);
+                  }}
+                >
+                  Fechar
+                </button>
+                {!isClosed ? (
+                  <button
+                    type="button"
+                    className="btn btn--success"
+                    disabled={closingStore}
+                    onClick={handleConfirmCloseStore}
+                  >
+                    {closingStore
+                      ? "Finalizando..."
+                      : targetStoreClosure?.status === "CLOSED" && targetStoreClosure.isStale
+                      ? "Reconfirmar Cortes e Finalizar Loja"
+                      : "Confirmar Cortes e Finalizar Loja"}
+                  </button>
+                ) : null}
+              </div>
+            </footer>
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL: REABRIR CONFERÊNCIA DA LOJA */}
+      {showReopenStoreModal ? (
+        <div className="alloc-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="alloc-modal" style={{ maxWidth: "480px" }}>
+            <header className="alloc-modal__header">
+              <h2>Reabrir Conferência — {targetStore.name}</h2>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                style={{ minHeight: "32px", padding: "4px 8px" }}
+                onClick={() => {
+                  setShowReopenStoreModal(false);
+                  setReopenStoreError(null);
+                }}
+              >
+                ✕
+              </button>
+            </header>
+            <div className="alloc-modal__body">
+              <p style={{ fontSize: "13px", color: "#475569" }}>
+                A reabertura anula a finalização da loja para permitir novos lançamentos ou alterações de destinação. Por motivos de auditoria, informe a justificativa:
+              </p>
+              <label
+                htmlFor="reopen-store-reason"
+                style={{ fontSize: "12px", fontWeight: "700", color: "#475569", display: "block", marginBottom: "4px" }}
+              >
+                Justificativa obrigatória (mínimo 5 caracteres):
+              </label>
+              <textarea
+                id="reopen-store-reason"
+                rows={3}
+                className="alloc-search-input"
+                style={{ width: "100%", resize: "vertical" }}
+                placeholder="Ex: Fornecedor confirmou entrega adicional de cenoura..."
+                value={reopenStoreReason}
+                onChange={(e) => setReopenStoreReason(e.target.value)}
+              />
+              {reopenStoreError ? (
+                <div style={{ color: "#dc2626", fontSize: "13px", marginTop: "6px" }}>
+                  ⚠️ {reopenStoreError}
+                </div>
+              ) : null}
+            </div>
+            <footer className="alloc-modal__footer">
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => {
+                  setShowReopenStoreModal(false);
+                  setReopenStoreError(null);
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={reopeningStore || reopenStoreReason.trim().length < 5}
+                onClick={handleConfirmReopenStore}
+              >
+                {reopeningStore ? "Reabrindo..." : "Confirmar Reabertura da Loja"}
               </button>
             </footer>
           </div>
