@@ -1,3 +1,4 @@
+import type postgres from "postgres";
 import { database } from "@/db/client";
 import { assertPermission, type Principal } from "@/modules/identity";
 import {
@@ -8,12 +9,12 @@ import {
   calculateDifference,
   calculateStoreCutSummary,
   computeStoreAllocationsHash,
+  computeStoreCostsHash,
   isCycleDate,
   parseQuantity,
   roundToTwoDecimals,
   sumQuantities,
   validateAllocationPurchasedStatus,
-  validateClosureReadiness,
   validateCycleClosureReadinessStoreFirst,
   type BuyerAllocationWorkspaceData,
   type BuyerCycleClosureSummary,
@@ -37,6 +38,197 @@ import {
 } from "./domain";
 
 const BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE = 424242;
+
+/**
+ * Identifica e preserva as lojas participantes de um ciclo específico.
+ * Evita que ativações/inativações futuras de lojas alterem retroativamente fechamentos históricos.
+ */
+export async function resolveParticipatingStores(
+  sql: postgres.Sql | postgres.TransactionSql,
+  cycleDate: string,
+): Promise<Array<{ id: string; name: string; slug: string }>> {
+  // 1. Busca da tabela de lojas participantes históricas
+  const existingRows = await sql<{ id: string; name: string; slug: string }[]>`
+    SELECT s.id, s.name, s.slug
+    FROM stores s
+    JOIN purchase_cycle_participating_stores ps ON ps.store_id = s.id
+    WHERE ps.purchase_cycle_date = ${cycleDate}::date
+    ORDER BY CASE s.slug
+      WHEN 'ponta-da-fruta' THEN 1
+      WHEN 'balneario' THEN 2
+      WHEN 'santa-monica' THEN 3
+      ELSE 4
+    END, s.name ASC
+  `;
+
+  if (existingRows.length > 0) {
+    return existingRows;
+  }
+
+  // 2. Se ainda não há registro explícito, verifica se há pedidos ou alocações neste ciclo
+  const storesWithActivity = await sql<{ id: string; name: string; slug: string }[]>`
+    SELECT s.id, s.name, s.slug
+    FROM stores s
+    WHERE s.id IN (
+      SELECT store_id FROM orders WHERE purchase_cycle_date = ${cycleDate}::date AND cancelled_at IS NULL
+      UNION
+      SELECT store_id FROM purchase_cycle_product_allocations WHERE purchase_cycle_date = ${cycleDate}::date AND destined_quantity > 0
+      UNION
+      SELECT store_id FROM purchase_cycle_store_closures WHERE purchase_cycle_date = ${cycleDate}::date
+      UNION
+      SELECT store_id FROM purchase_cycle_product_supplier_decisions WHERE purchase_cycle_date = ${cycleDate}::date
+    )
+    ORDER BY CASE s.slug
+      WHEN 'ponta-da-fruta' THEN 1
+      WHEN 'balneario' THEN 2
+      WHEN 'santa-monica' THEN 3
+      ELSE 4
+    END, s.name ASC
+  `;
+
+  if (storesWithActivity.length > 0) {
+    for (const st of storesWithActivity) {
+      await sql`
+        INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+        VALUES (${cycleDate}::date, ${st.id}::uuid)
+        ON CONFLICT DO NOTHING
+      `;
+    }
+    return storesWithActivity;
+  }
+
+  // 3. Se for ciclo novo sem pedidos nem destinações, usa as lojas ativas no momento
+  const activeStores = await sql<{ id: string; name: string; slug: string }[]>`
+    SELECT id, name, slug
+    FROM stores
+    WHERE active = true
+    ORDER BY CASE slug
+      WHEN 'ponta-da-fruta' THEN 1
+      WHEN 'balneario' THEN 2
+      WHEN 'santa-monica' THEN 3
+      ELSE 4
+    END, name ASC
+  `;
+
+  for (const st of activeStores) {
+    await sql`
+      INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+      VALUES (${cycleDate}::date, ${st.id}::uuid)
+      ON CONFLICT DO NOTHING
+    `;
+  }
+
+  return activeStores;
+}
+
+/**
+ * Regra centralizada e compartilhada de elegibilidade de produtos para um fornecedor e loja.
+ * Respeita fornecedor correto, compras marcadas nos custos e exclusividades ativas.
+ */
+export async function getSupplierEligibleProductIds(
+  sql: postgres.Sql | postgres.TransactionSql,
+  params: {
+    cycleDate: string;
+    supplierId: string;
+    storeId?: string;
+  },
+): Promise<Set<string>> {
+  const { cycleDate, supplierId, storeId } = params;
+
+  const [supplierRow] = await sql<{ id: string; tax_id: string | null; corporate_name: string }[]>`
+    SELECT id, tax_id, corporate_name FROM suppliers WHERE id = ${supplierId}::uuid
+  `;
+  if (!supplierRow) return new Set();
+
+  const isJeb =
+    supplierRow.tax_id === "48336863000160" ||
+    supplierRow.corporate_name.toUpperCase().includes("JEB DISTRIBUIDORA");
+
+  // Busca todos os produtos com exclusividades ativas
+  const exclusiveRows = await sql<{ product_id: string; exclusive_supplier_id: string }[]>`
+    SELECT ps.product_id, ps.supplier_id AS exclusive_supplier_id
+    FROM product_suppliers ps
+    WHERE ps.is_exclusive = true AND ps.active = true
+  `;
+  const exclusiveMap = new Map<string, string>();
+  for (const r of exclusiveRows) {
+    exclusiveMap.set(r.product_id, r.exclusive_supplier_id);
+  }
+
+  // Produtos que têm vínculos ativos com este fornecedor
+  const linkedRows = await sql<{ product_id: string }[]>`
+    SELECT product_id FROM product_suppliers
+    WHERE supplier_id = ${supplierId}::uuid AND active = true
+  `;
+  const linkedProductIds = new Set(linkedRows.map((r) => r.product_id));
+
+  // Produtos comprados nos custos para este ciclo
+  const costRows = await sql<{ product_id: string; purchased: boolean }[]>`
+    SELECT product_id, purchased
+    FROM purchase_cycle_product_costs
+    WHERE purchase_cycle_date = ${cycleDate}::date
+  `;
+  const purchasedInCosts = new Set(costRows.filter((c) => c.purchased).map((c) => c.product_id));
+
+  // Produtos legados
+  const legacyRows = await sql<{ id: string; legacy_exclusive: boolean }[]>`
+    SELECT id, exclusive_supplier AS legacy_exclusive FROM products WHERE active = true
+  `;
+  const legacyMap = new Map(legacyRows.map((r) => [r.id, r.legacy_exclusive]));
+
+  // Alocações existentes para este fornecedor neste ciclo
+  const allocRows = await sql<{ product_id: string; destined_quantity: string; store_id: string }[]>`
+    SELECT product_id, destined_quantity::text, store_id
+    FROM purchase_cycle_product_allocations
+    WHERE purchase_cycle_date = ${cycleDate}::date
+      AND supplier_id = ${supplierId}::uuid
+      ${storeId ? sql`AND store_id = ${storeId}::uuid` : sql``}
+  `;
+
+  // Decisões existentes para este fornecedor neste ciclo
+  const decisionRows = await sql<{ product_id: string; store_id: string }[]>`
+    SELECT product_id, store_id
+    FROM purchase_cycle_product_supplier_decisions
+    WHERE purchase_cycle_date = ${cycleDate}::date
+      AND supplier_id = ${supplierId}::uuid
+      ${storeId ? sql`AND store_id = ${storeId}::uuid` : sql``}
+  `;
+
+  const eligible = new Set<string>();
+
+  // 1. Alocações existentes (se tiver compra nos custos OU destinação positiva para visualizar/zerar)
+  for (const a of allocRows) {
+    if (purchasedInCosts.has(a.product_id) || parseQuantity(a.destined_quantity) > 0) {
+      eligible.add(a.product_id);
+    }
+  }
+
+  // 2. Decisões existentes
+  for (const d of decisionRows) {
+    eligible.add(d.product_id);
+  }
+
+  // 3. Produtos vinculados ao fornecedor, comprados nos custos E que respeitam exclusividade
+  for (const pid of linkedProductIds) {
+    if (purchasedInCosts.has(pid)) {
+      const exclSuppId = exclusiveMap.get(pid);
+      if (!exclSuppId || exclSuppId === supplierId) {
+        eligible.add(pid);
+      }
+    }
+  }
+
+  // 4. Produtos legados exclusivos (pertencem unicamente à JEB)
+  if (isJeb) {
+    for (const [pid, isLegacyExcl] of legacyMap.entries()) {
+      if (isLegacyExcl && purchasedInCosts.has(pid)) {
+        eligible.add(pid);
+      }
+    }
+  }
+
+  return eligible;
+}
 
 export async function readBuyerAllocationWorkspace(
   principal: Principal,
@@ -105,18 +297,8 @@ export async function readBuyerAllocationWorkspace(
   const closureRaw = closureRows[0];
   const closureStatus: "OPEN" | "CLOSED" = closureRaw?.status === "CLOSED" ? "CLOSED" : "OPEN";
 
-  // 3. Busca lojas ativas
-  const storeRows = await sql<{ id: string; slug: string; name: string }[]>`
-    SELECT id, slug, name
-    FROM stores
-    WHERE active = true
-    ORDER BY CASE slug
-      WHEN 'ponta-da-fruta' THEN 1
-      WHEN 'balneario' THEN 2
-      WHEN 'santa-monica' THEN 3
-      ELSE 4
-    END, name ASC
-  `;
+  // 3. Busca lojas participantes preservadas historicamente
+  const storeRows = await resolveParticipatingStores(sql, cycleDate);
 
   const stores: StoreInfo[] = storeRows.map((s) => ({
     id: s.id,
@@ -326,7 +508,7 @@ export async function readBuyerAllocationWorkspace(
     };
   }
 
-  // 6.3 Conferência conjunta dos cortes e finalizações de loja
+  // 6.3 Conferência conjunta dos cortes e finalizações de loja (apenas versões correntes)
   const storeClosureRows = await sql<
     {
       store_id: string;
@@ -336,9 +518,12 @@ export async function readBuyerAllocationWorkspace(
       total_ordered_items: number;
       total_destined_items: number;
       total_cut_items: number;
-      cut_summary: any;
+      cut_summary: StoreCutItem[];
       allocations_hash: string;
       order_hash: string | null;
+      costs_hash: string | null;
+      version: number;
+      is_current: boolean;
       closed_at: string | null;
       closed_by_name: string | null;
       reopened_at: string | null;
@@ -357,6 +542,9 @@ export async function readBuyerAllocationWorkspace(
       sc.cut_summary,
       sc.allocations_hash,
       sc.order_hash,
+      sc.costs_hash,
+      sc.version,
+      sc.is_current,
       sc.closed_at::text,
       u_closed.name AS closed_by_name,
       sc.reopened_at::text,
@@ -366,6 +554,7 @@ export async function readBuyerAllocationWorkspace(
     LEFT JOIN users u_closed ON u_closed.id = sc.closed_by
     LEFT JOIN users u_reopened ON u_reopened.id = sc.reopened_by
     WHERE sc.purchase_cycle_date = ${cycleDate}::date
+      AND sc.is_current = true
   `;
   const rawStoreClosuresMap = new Map(storeClosureRows.map((r) => [r.store_id, r]));
 
@@ -508,6 +697,30 @@ export async function readBuyerAllocationWorkspace(
       })),
     );
 
+    // Produtos pedidos por esta loja
+    const orderedProductIdsForStore = new Set<string>();
+    for (const item of orderItemRows) {
+      if (item.store_id === store.id && parseQuantity(item.quantity) > 0) {
+        orderedProductIdsForStore.add(item.product_id);
+      }
+    }
+
+    // Produtos com destinação positiva na loja
+    const destinedProductIdsForStore = new Set(storeAllocations.map((a) => a.product_id));
+
+    // Produtos relevantes para o cálculo de fingerprint de custos desta loja
+    const relevantProductIds = new Set([
+      ...orderedProductIdsForStore,
+      ...destinedProductIdsForStore,
+    ]);
+
+    const currentCostsHash = computeStoreCostsHash(
+      [...relevantProductIds].map((pid) => ({
+        productId: pid,
+        purchased: costMap.get(pid)?.purchased ?? false,
+      })),
+    );
+
     const scRaw = rawStoreClosuresMap.get(store.id);
     let isStale = false;
     let staleReason: string | null = null;
@@ -522,49 +735,60 @@ export async function readBuyerAllocationWorkspace(
       } else if (!activeOrder && scRaw.order_id !== null) {
         isStale = true;
         staleReason = "Pedido da loja foi cancelado após a conferência.";
+      } else if (scRaw.costs_hash && scRaw.costs_hash !== currentCostsHash) {
+        isStale = true;
+        staleReason = "Custos ou status de compra de produtos da loja foram alterados após a conferência.";
       }
     }
 
     const closureStatus = scRaw?.status === "CLOSED" ? "CLOSED" : "OPEN";
 
-    // Produtos pedidos por esta loja
-    const orderedProductIdsForStore = new Set<string>();
-    for (const item of orderItemRows) {
-      if (item.store_id === store.id && parseQuantity(item.quantity) > 0) {
-        orderedProductIdsForStore.add(item.product_id);
-      }
+    // Mapa de destinações da loja por produto somando todos os fornecedores
+    const storeAllocationsByProduct = new Map<string, string>();
+    for (const a of storeAllocations) {
+      const cur = parseQuantity(storeAllocationsByProduct.get(a.product_id) ?? "0");
+      storeAllocationsByProduct.set(a.product_id, roundToTwoDecimals(cur + parseQuantity(a.destined_quantity)));
     }
 
-    // Produtos da loja que possuem destinação positiva somada de fornecedores
-    const destinedProductIdsForStore = new Set(storeAllocations.map((a) => a.product_id));
+    let totalDestinedProducts = 0;
+    let totalPartialCutProducts = 0;
+    let totalUnallocatedProducts = 0;
 
-    // Produtos da loja que foram decididos como NOT_PURCHASED em algum fornecedor
-    const notPurchasedProductIdsForStore = new Set<string>();
-    for (const d of decisionRows) {
-      if (d.store_id === store.id && d.decision === "NOT_PURCHASED") {
-        notPurchasedProductIdsForStore.add(d.product_id);
-      }
-    }
-
-    // Produtos que já têm conferência (destinação positiva OU decisão de não comprado)
-    const reviewedProductIds = new Set([
-      ...destinedProductIdsForStore,
-      ...notPurchasedProductIdsForStore,
-    ]);
-
-    // Pendentes são os produtos pedidos que não têm nem destinação nem decisão em nenhum fornecedor
-    let pendingCount = 0;
     for (const pid of orderedProductIdsForStore) {
-      if (!reviewedProductIds.has(pid)) {
-        pendingCount++;
+      const orderedItem = orderItemRows.find((oi) => oi.store_id === store.id && oi.product_id === pid);
+      const orderedQty = parseQuantity(orderedItem?.quantity ?? "0");
+      const destinedQty = parseQuantity(storeAllocationsByProduct.get(pid) ?? "0");
+
+      if (destinedQty >= orderedQty && destinedQty > 0) {
+        totalDestinedProducts++;
+      } else if (destinedQty > 0 && destinedQty < orderedQty) {
+        totalPartialCutProducts++;
+      } else {
+        totalUnallocatedProducts++;
       }
     }
+
+    for (const pid of destinedProductIdsForStore) {
+      if (!orderedProductIdsForStore.has(pid)) {
+        totalDestinedProducts++;
+      }
+    }
+
+    // Pendências da loja:
+    // Se a loja está FINALIZADA e NÃO stale: 0 pendências.
+    // Se a loja está ABERTA (ou stale): itens que exigem conferência de cortes (parciais + totais)
+    const totalPendingProducts = (closureStatus === "CLOSED" && !isStale)
+      ? 0
+      : (totalPartialCutProducts + totalUnallocatedProducts);
+
+    const totalReviewedProducts = (closureStatus === "CLOSED" && !isStale)
+      ? orderedProductIdsForStore.size
+      : totalDestinedProducts;
 
     let cutsArray: StoreCutItem[] = [];
     if (scRaw && scRaw.status === "CLOSED" && !isStale && Array.isArray(scRaw.cut_summary)) {
       cutsArray = scRaw.cut_summary;
     } else {
-      // Itens pedidos pela loja
       const storeOrderItems: Array<{
         productId: string;
         erpCode: number;
@@ -584,12 +808,6 @@ export async function readBuyerAllocationWorkspace(
             orderedQuantity: item.quantity,
           });
         }
-      }
-
-      const storeAllocationsByProduct = new Map<string, string>();
-      for (const a of storeAllocations) {
-        const cur = parseQuantity(storeAllocationsByProduct.get(a.product_id) ?? "0");
-        storeAllocationsByProduct.set(a.product_id, roundToTwoDecimals(cur + parseQuantity(a.destined_quantity)));
       }
 
       const cutCatalogMap = new Map<string, { erpCode: number; name: string; purchaseFormat: string }>();
@@ -621,6 +839,9 @@ export async function readBuyerAllocationWorkspace(
       totalCutItems: scRaw?.total_cut_items ?? cutsArray.filter((c) => c.status === "PARTIAL_CUT" || c.status === "TOTAL_CUT").length,
       cuts: cutsArray,
       allocationsHash: scRaw?.allocations_hash ?? currentAllocationsHash,
+      costsHash: scRaw?.costs_hash ?? currentCostsHash,
+      version: scRaw?.version ?? 1,
+      isCurrent: scRaw?.is_current ?? true,
       closedAt: scRaw?.closed_at ?? null,
       closedByName: scRaw?.closed_by_name ?? null,
       reopenedAt: scRaw?.reopened_at ?? null,
@@ -637,8 +858,11 @@ export async function readBuyerAllocationWorkspace(
       totalAllocatedProducts: destinedProductIdsForStore.size,
       totalDestinedQuantity: sumQuantities(storeAllocations.map((a) => a.destined_quantity)),
       totalOrderedProducts: orderedProductIdsForStore.size,
-      totalReviewedProducts: reviewedProductIds.size,
-      totalPendingProducts: pendingCount,
+      totalDestinedProducts,
+      totalPartialCutProducts,
+      totalUnallocatedProducts,
+      totalReviewedProducts,
+      totalPendingProducts,
       closureStatus,
       isStale,
       staleReason,
@@ -678,59 +902,12 @@ export async function readBuyerAllocationWorkspace(
         throw new AllocationValidationError("Fornecedor selecionado não encontrado.");
       }
     } else {
-      // Busca vínculos de produtos deste fornecedor
-      const supplierProductLinks = await sql<{ product_id: string }[]>`
-        SELECT product_id
-        FROM product_suppliers
-        WHERE supplier_id = ${resolvedSupplierId}::uuid
-          AND active = true
-      `;
-      const linkedProductIds = new Set(supplierProductLinks.map((l) => l.product_id));
-
-      // Determina quais produtos devem aparecer para este fornecedor:
-      // 1. Produtos que já possuem alocações para este fornecedor neste ciclo (permite ver/corrigir/zerar)
-      // 2. Produtos vinculados a este fornecedor SOMENTE se comprados nos custos (Regra A)
-      // 3. Se for a JEB, produtos legados com exclusive_supplier = true SOMENTE se comprados nos custos (Regra A)
-      const targetProductIds = new Set<string>();
-
-      for (const alloc of allocationRows) {
-        if (alloc.supplier_id === resolvedSupplierId) {
-          const costInfo = costMap.get(alloc.product_id);
-          // Se for comprado nos custos, mantém na lista.
-          // Se NÃO for comprado nos custos, só mantém se ainda tiver destinação positiva (para permitir visualizar e zerar)
-          if (costInfo?.purchased || parseQuantity(alloc.destined_quantity) > 0) {
-            targetProductIds.add(alloc.product_id);
-          }
-        }
-      }
-
-      for (const pid of linkedProductIds) {
-        const costInfo = costMap.get(pid);
-        if (costInfo?.purchased) {
-          targetProductIds.add(pid);
-        }
-      }
-
-      for (const d of decisionRows) {
-        if (d.supplier_id === resolvedSupplierId) {
-          targetProductIds.add(d.product_id);
-        }
-      }
-
-      const isSelectedJeb =
-        supplierRow.tax_id === "48336863000160" ||
-        supplierRow.corporate_name.toUpperCase().includes("JEB DISTRIBUIDORA");
-
-      if (isSelectedJeb) {
-        for (const prod of allCatalogProducts) {
-          if (prod.legacy_exclusive) {
-            const costInfo = costMap.get(prod.id);
-            if (costInfo?.purchased) {
-              targetProductIds.add(prod.id);
-            }
-          }
-        }
-      }
+      // Utiliza a regra compartilhada e estrita de elegibilidade
+      const targetProductIds = await getSupplierEligibleProductIds(sql, {
+        cycleDate,
+        supplierId: resolvedSupplierId,
+        storeId: currentSelectedStoreId ?? undefined,
+      });
 
       // Monta a lista de itens de destinação por produto
       const products: ProductAllocationItem[] = [];
@@ -1594,10 +1771,8 @@ export async function closeBuyerCycle(
       throw new AllocationValidationError("O ciclo de compras já está fechado.");
     }
 
-    // 1.1 Validação Store-First: TODAS as lojas ativas precisam ter conferência válida em purchase_cycle_store_closures
-    const allActiveStores = await tx<{ id: string; name: string }[]>`
-      SELECT id, name FROM stores WHERE active = true ORDER BY name ASC
-    `;
+    // 1.1 Validação Store-First: Lojas participantes históricas precisam ter conferência válida em purchase_cycle_store_closures
+    const participatingStores = await resolveParticipatingStores(tx, cycleDate);
 
     const storeClosureRows = await tx<{
       store_id: string;
@@ -1605,17 +1780,19 @@ export async function closeBuyerCycle(
       order_revision: number | null;
       status: string;
       allocations_hash: string;
+      costs_hash: string | null;
     }[]>`
-      SELECT store_id, order_id, order_revision, status, allocations_hash
+      SELECT store_id, order_id, order_revision, status, allocations_hash, costs_hash
       FROM purchase_cycle_store_closures
       WHERE purchase_cycle_date = ${cycleDate}::date
+        AND is_current = true
     `;
     const storeClosuresMap = new Map(storeClosureRows.map((r) => [r.store_id, r]));
 
     const missingStoreNames: string[] = [];
     const staleStoreNames: string[] = [];
 
-    for (const st of allActiveStores) {
+    for (const st of participatingStores) {
       const sc = storeClosuresMap.get(st.id);
       if (!sc || sc.status !== "CLOSED") {
         missingStoreNames.push(st.name);
@@ -1661,6 +1838,35 @@ export async function closeBuyerCycle(
       );
       if (sc.allocations_hash !== currentHash) {
         staleStoreNames.push(`${st.name} (destinações alteradas após a conferência)`);
+        continue;
+      }
+
+      // c) Custos relevantes atuais da loja
+      const relevantPids = new Set<string>();
+      if (currOrder) {
+        const orderItems = await tx<{ product_id: string }[]>`
+          SELECT product_id FROM order_items WHERE order_id = ${currOrder.id}::uuid AND quantity > 0
+        `;
+        for (const oi of orderItems) relevantPids.add(oi.product_id);
+      }
+      for (const a of currentStoreAllocs) relevantPids.add(a.product_id);
+
+      if (relevantPids.size > 0) {
+        const currentCostRows = await tx<{ product_id: string; purchased: boolean }[]>`
+          SELECT product_id, purchased
+          FROM purchase_cycle_product_costs
+          WHERE purchase_cycle_date = ${cycleDate}::date
+            AND product_id IN ${tx([...relevantPids])}
+        `;
+        const currentCostsHash = computeStoreCostsHash(
+          [...relevantPids].map((pid) => ({
+            productId: pid,
+            purchased: currentCostRows.find((c) => c.product_id === pid)?.purchased ?? false,
+          })),
+        );
+        if (sc.costs_hash && sc.costs_hash !== currentCostsHash) {
+          staleStoreNames.push(`${st.name} (custos ou status de compra de produtos alterados após a conferência)`);
+        }
       }
     }
 
@@ -2061,27 +2267,14 @@ export async function concludeSupplierStoreReview(
       throw new CycleClosedError("O ciclo de compras está fechado. Reabra o ciclo para realizar alterações.");
     }
 
-    // Busca produtos elegíveis para este fornecedor que foram comprados nos custos OU já têm alocação
-    const eligibleProductRows = await tx<{ product_id: string }[]>`
-      SELECT DISTINCT p.id AS product_id
-      FROM products p
-      JOIN purchase_cycle_product_costs c ON c.product_id = p.id AND c.purchase_cycle_date = ${input.cycleDate}::date
-      LEFT JOIN product_suppliers ps ON ps.product_id = p.id AND ps.supplier_id = ${input.supplierId}::uuid AND ps.active = true
-      WHERE c.purchased = true
-        AND (ps.id IS NOT NULL OR p.exclusive_supplier = true)
-    `;
+    // 1. Usa a MESMA regra centralizada de elegibilidade da interface
+    const eligibleSet = await getSupplierEligibleProductIds(tx, {
+      cycleDate: input.cycleDate,
+      supplierId: input.supplierId,
+      storeId: input.storeId,
+    });
 
-    // Busca decisões existentes para não sobrescrever
-    const existingDecisions = await tx<{ product_id: string }[]>`
-      SELECT product_id
-      FROM purchase_cycle_product_supplier_decisions
-      WHERE purchase_cycle_date = ${input.cycleDate}::date
-        AND supplier_id = ${input.supplierId}::uuid
-        AND store_id = ${input.storeId}::uuid
-    `;
-    const decidedProductIds = new Set(existingDecisions.map((d) => d.product_id));
-
-    // Busca alocações com destined_quantity > 0 existentes para não sobrescrever
+    // 2. Busca alocações com destinação positiva existentes nesta loja
     const positiveAllocations = await tx<{ product_id: string }[]>`
       SELECT product_id
       FROM purchase_cycle_product_allocations
@@ -2092,12 +2285,37 @@ export async function concludeSupplierStoreReview(
     `;
     const positiveProductIds = new Set(positiveAllocations.map((a) => a.product_id));
 
-    // Produtos a marcar como NOT_PURCHASED
-    const toMarkNotPurchased = eligibleProductRows
-      .map((r) => r.product_id)
-      .filter((pid) => !decidedProductIds.has(pid) && !positiveProductIds.has(pid));
+    // 3. Busca decisões existentes nesta loja
+    const existingDecisions = await tx<{ product_id: string }[]>`
+      SELECT product_id
+      FROM purchase_cycle_product_supplier_decisions
+      WHERE purchase_cycle_date = ${input.cycleDate}::date
+        AND supplier_id = ${input.supplierId}::uuid
+        AND store_id = ${input.storeId}::uuid
+    `;
+    const decidedProductIds = new Set(existingDecisions.map((d) => d.product_id));
 
-    for (const pid of toMarkNotPurchased) {
+    // 4. Produtos reais que precisam ser marcados como NOT_PURCHASED
+    const actualPendingProductIds = [...eligibleSet]
+      .filter((pid) => !positiveProductIds.has(pid) && !decidedProductIds.has(pid))
+      .sort();
+
+    // 5. Validação estrita de correspondência com a lista exibida e confirmada pelo comprador
+    if (input.expectedProductIds !== undefined) {
+      const expectedSorted = [...input.expectedProductIds].sort();
+      const isExactMatch =
+        actualPendingProductIds.length === expectedSorted.length &&
+        actualPendingProductIds.every((pid, idx) => pid === expectedSorted[idx]);
+
+      if (!isExactMatch) {
+        throw new AllocationDestinationConflictError(
+          "A lista de produtos a concluir foi alterada concorrentemente ou difere do estado persistido. Por favor, atualize a tela e revise a conferência antes de confirmar.",
+        );
+      }
+    }
+
+    // 6. Grava decisões 'NOT_PURCHASED' para exatamente os produtos confirmados
+    for (const pid of actualPendingProductIds) {
       await tx`
         INSERT INTO purchase_cycle_product_supplier_decisions (
           purchase_cycle_date,
@@ -2128,7 +2346,7 @@ export async function concludeSupplierStoreReview(
       `;
     }
 
-    // Atualiza status do review deste fornecedor para a loja
+    // 7. Atualiza status do review deste fornecedor para a loja
     await tx`
       INSERT INTO purchase_cycle_supplier_store_reviews (
         purchase_cycle_date,
@@ -2160,7 +2378,7 @@ export async function concludeSupplierStoreReview(
         updated_at = now()
     `;
 
-    // Auditoria
+    // 8. Evento de auditoria
     await tx`
       INSERT INTO audit_events (
         actor_id,
@@ -2178,20 +2396,28 @@ export async function concludeSupplierStoreReview(
           cycleDate: input.cycleDate,
           supplierId: input.supplierId,
           storeId: input.storeId,
-          markedCount: toMarkNotPurchased.length,
+          markedCount: actualPendingProductIds.length,
+          productIds: actualPendingProductIds,
         })}::jsonb,
         now()
       )
     `;
 
-    return { success: true, affectedCount: toMarkNotPurchased.length };
+    return { success: true, affectedCount: actualPendingProductIds.length };
   });
 }
 
 export async function closeStoreCycle(
   principal: Principal,
   input: CloseStoreCycleInput,
-): Promise<{ success: boolean; cuts: StoreCutItem[]; totalCutItems: number }> {
+): Promise<{
+  success: boolean;
+  cuts: StoreCutItem[];
+  totalCutItems: number;
+  version: number;
+  isCurrent: boolean;
+  status: "CLOSED";
+}> {
   assertPermission(principal, "compras:destinacao");
 
   if (!isCycleDate(input.cycleDate)) {
@@ -2276,7 +2502,7 @@ export async function closeStoreCycle(
       catalogMap: cutCatalogMap,
     });
 
-    // 5. Calcula o hash imutável das alocações da loja
+    // 5. Calcula os fingerprints imutáveis de destinações e custos da loja
     const allocationsHash = computeStoreAllocationsHash(
       storeAllocations.map((a) => ({
         productId: a.product_id,
@@ -2284,10 +2510,67 @@ export async function closeStoreCycle(
         destinedQuantity: a.destined_quantity,
       })),
     );
+
+    const relevantProductIds = new Set([
+      ...orderItems.map((oi) => oi.product_id),
+      ...storeAllocations.map((a) => a.product_id),
+    ]);
+
+    const storeCostRows = relevantProductIds.size > 0
+      ? await tx<{ product_id: string; purchased: boolean }[]>`
+          SELECT product_id, purchased
+          FROM purchase_cycle_product_costs
+          WHERE purchase_cycle_date = ${input.cycleDate}::date
+            AND product_id IN ${tx([...relevantProductIds])}
+        `
+      : [];
+
+    const currentCostsHash = computeStoreCostsHash(
+      [...relevantProductIds].map((pid) => ({
+        productId: pid,
+        purchased: storeCostRows.find((c) => c.product_id === pid)?.purchased ?? false,
+      })),
+    );
+
+    // 6. Proteção de concorrência otimista: valida se o resumo exibido ao comprador ainda é o mesmo
+    if (input.expectedOrderRevision !== undefined && (activeOrder?.revision ?? null) !== input.expectedOrderRevision) {
+      throw new AllocationDestinationConflictError(
+        `O pedido da loja foi alterado concorrentemente (revisão anterior: ${input.expectedOrderRevision ?? "nenhum"}, atual: ${activeOrder?.revision ?? "nenhum"}). Por favor, confira o novo resumo de cortes antes de finalizar a loja.`,
+      );
+    }
+
+    if (input.expectedAllocationsHash !== undefined && allocationsHash !== input.expectedAllocationsHash) {
+      throw new AllocationDestinationConflictError(
+        "As destinações da loja foram alteradas concorrentemente após a abertura da conferência. Por favor, confira o novo resumo de cortes antes de finalizar a loja.",
+      );
+    }
+
+    if (input.expectedCostsHash !== undefined && currentCostsHash !== input.expectedCostsHash) {
+      throw new AllocationDestinationConflictError(
+        "Os custos ou status de compra de produtos da loja foram alterados concorrentemente após a abertura da conferência. Por favor, confira o novo resumo de cortes antes de finalizar a loja.",
+      );
+    }
+
     const orderHash = activeOrder ? `${activeOrder.id}:r${activeOrder.revision}` : null;
     const closedAt = new Date().toISOString();
 
-    // 6. Insere ou atualiza em purchase_cycle_store_closures
+    // 7. Modelo append-only: calcula a próxima versão e desativa a versão anterior como is_current
+    const [verRow] = await tx<{ next_version: number }[]>`
+      SELECT COALESCE(MAX(version), 0) + 1 AS next_version
+      FROM purchase_cycle_store_closures
+      WHERE purchase_cycle_date = ${input.cycleDate}::date
+        AND store_id = ${input.storeId}::uuid
+    `;
+    const nextVersion = verRow.next_version;
+
+    await tx`
+      UPDATE purchase_cycle_store_closures
+      SET is_current = false, updated_at = now()
+      WHERE purchase_cycle_date = ${input.cycleDate}::date
+        AND store_id = ${input.storeId}::uuid
+        AND is_current = true
+    `;
+
     await tx`
       INSERT INTO purchase_cycle_store_closures (
         purchase_cycle_date,
@@ -2301,9 +2584,11 @@ export async function closeStoreCycle(
         cut_summary,
         allocations_hash,
         order_hash,
+        costs_hash,
         closed_at,
         closed_by,
         version,
+        is_current,
         created_at,
         updated_at
       ) VALUES (
@@ -2318,30 +2603,17 @@ export async function closeStoreCycle(
         ${JSON.stringify(cuts)}::jsonb,
         ${allocationsHash},
         ${orderHash},
+        ${currentCostsHash},
         ${closedAt}::timestamptz,
         ${principal.userId}::uuid,
-        1,
+        ${nextVersion},
+        true,
         now(),
         now()
       )
-      ON CONFLICT (purchase_cycle_date, store_id)
-      DO UPDATE SET
-        status = 'CLOSED',
-        order_id = EXCLUDED.order_id,
-        order_revision = EXCLUDED.order_revision,
-        total_ordered_items = EXCLUDED.total_ordered_items,
-        total_destined_items = EXCLUDED.total_destined_items,
-        total_cut_items = EXCLUDED.total_cut_items,
-        cut_summary = EXCLUDED.cut_summary,
-        allocations_hash = EXCLUDED.allocations_hash,
-        order_hash = EXCLUDED.order_hash,
-        closed_at = ${closedAt}::timestamptz,
-        closed_by = ${principal.userId}::uuid,
-        version = purchase_cycle_store_closures.version + 1,
-        updated_at = now()
     `;
 
-    // 7. Auditoria
+    // 8. Auditoria
     await tx`
       INSERT INTO audit_events (
         actor_id,
@@ -2360,10 +2632,12 @@ export async function closeStoreCycle(
           storeId: input.storeId,
           orderId: activeOrder?.id ?? null,
           orderRevision: activeOrder?.revision ?? null,
+          version: nextVersion,
           totalOrderedItems,
           totalDestinedItems,
           totalCutItems,
           allocationsHash,
+          costsHash: currentCostsHash,
         })}::jsonb,
         now()
       )
@@ -2373,6 +2647,9 @@ export async function closeStoreCycle(
       success: true,
       cuts,
       totalCutItems,
+      version: nextVersion,
+      isCurrent: true,
+      status: "CLOSED",
     };
   });
 }
@@ -2404,15 +2681,16 @@ export async function reopenStoreCycle(
       throw new CycleClosedError("O ciclo geral de compras está fechado. Reabra o ciclo geral antes de alterar a loja.");
     }
 
-    const [existing] = await tx<{ status: string }[]>`
-      SELECT status
+    const [existing] = await tx<{ id: string; status: string; version: number }[]>`
+      SELECT id, status, version
       FROM purchase_cycle_store_closures
       WHERE purchase_cycle_date = ${input.cycleDate}::date
         AND store_id = ${input.storeId}::uuid
+        AND is_current = true
     `;
 
     if (!existing || existing.status !== "CLOSED") {
-      throw new AllocationValidationError("A conferência da loja não está finalizada.");
+      throw new AllocationValidationError("A conferência da loja não está finalizada para ser reaberta.");
     }
 
     const reopenedAt = new Date().toISOString();
@@ -2420,14 +2698,12 @@ export async function reopenStoreCycle(
     await tx`
       UPDATE purchase_cycle_store_closures
       SET
-        status = 'OPEN',
+        status = 'REOPENED',
         reopened_at = ${reopenedAt}::timestamptz,
         reopened_by = ${principal.userId}::uuid,
         reopen_reason = ${trimmedReason},
-        version = version + 1,
         updated_at = now()
-      WHERE purchase_cycle_date = ${input.cycleDate}::date
-        AND store_id = ${input.storeId}::uuid
+      WHERE id = ${existing.id}::uuid
     `;
 
     await tx`
@@ -2446,6 +2722,7 @@ export async function reopenStoreCycle(
         ${JSON.stringify({
           cycleDate: input.cycleDate,
           storeId: input.storeId,
+          version: existing.version,
           reason: trimmedReason,
         })}::jsonb,
         now()

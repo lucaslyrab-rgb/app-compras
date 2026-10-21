@@ -153,6 +153,35 @@ describe("Fase 3 — Store-First Closures & Cut Summary Domain Tests", () => {
       ["prod-cenoura", { id: "prod-cenoura", erpCode: 42, name: "CENOURA" }],
     ]);
 
+    function createMockClosure(
+      overrides: Partial<StoreClosureSummary> & {
+        storeId: string;
+        storeName: string;
+        cycleDate: string;
+      },
+    ): StoreClosureSummary {
+      return {
+        version: 1,
+        isCurrent: true,
+        costsHash: null,
+        status: "CLOSED",
+        orderId: `ord-${overrides.storeId}`,
+        orderRevision: 1,
+        totalOrderedItems: 1,
+        totalDestinedItems: 1,
+        totalCutItems: 0,
+        cuts: [],
+        allocationsHash: `hash-${overrides.storeId}`,
+        closedAt: "2026-10-20T12:00:00Z",
+        closedByName: "Comprador",
+        reopenedAt: null,
+        reopenedByName: null,
+        reopenReason: null,
+        isStale: false,
+        ...overrides,
+      };
+    }
+
     it("CENÁRIO DA AUDITORIA CODEX: Banana Prata destinada apenas para Ponta da Fruta bloqueia fechamento geral se Balneário e Santa Mônica não conferirem", () => {
       // Banana Prata comprada e alocada globalmente (em Ponta da Fruta)
       const purchasedProductIds = ["prod-banana-prata"];
@@ -160,64 +189,35 @@ describe("Fase 3 — Store-First Closures & Cut Summary Domain Tests", () => {
 
       // Apenas Ponta da Fruta conferiu e finalizou
       const storeClosures: Record<string, StoreClosureSummary> = {
-        "store-ponta": {
+        "store-ponta": createMockClosure({
           cycleDate: "2026-10-20",
           storeId: "store-ponta",
           storeName: "MultiShow Ponta da Fruta",
           status: "CLOSED",
-          orderId: "ord-ponta",
-          orderRevision: 1,
-          totalOrderedItems: 1,
-          totalDestinedItems: 1,
-          totalCutItems: 0,
-          cuts: [],
-          allocationsHash: "hash-ponta",
-          closedAt: "2026-10-20T12:00:00Z",
-          closedByName: "Comprador",
-          reopenedAt: null,
-          reopenedByName: null,
-          reopenReason: null,
-          isStale: false,
-        },
+        }),
         // Balneário e Santa Mônica estão OPEN
-        "store-balneario": {
+        "store-balneario": createMockClosure({
           cycleDate: "2026-10-20",
           storeId: "store-balneario",
           storeName: "MultiShow Balneário",
           status: "OPEN",
-          orderId: "ord-balneario",
-          orderRevision: 1,
-          totalOrderedItems: 1,
           totalDestinedItems: 0,
           totalCutItems: 1,
-          cuts: [],
           allocationsHash: "hash-empty",
           closedAt: null,
           closedByName: null,
-          reopenedAt: null,
-          reopenedByName: null,
-          reopenReason: null,
-          isStale: false,
-        },
-        "store-santa-monica": {
+        }),
+        "store-santa-monica": createMockClosure({
           cycleDate: "2026-10-20",
           storeId: "store-santa-monica",
           storeName: "MultiShow Santa Mônica",
           status: "OPEN",
-          orderId: "ord-santa-monica",
-          orderRevision: 1,
-          totalOrderedItems: 1,
           totalDestinedItems: 0,
           totalCutItems: 1,
-          cuts: [],
           allocationsHash: "hash-empty",
           closedAt: null,
           closedByName: null,
-          reopenedAt: null,
-          reopenedByName: null,
-          reopenReason: null,
-          isStale: false,
-        },
+        }),
       };
 
       const result = validateCycleClosureReadinessStoreFirst({
@@ -242,63 +242,31 @@ describe("Fase 3 — Store-First Closures & Cut Summary Domain Tests", () => {
       const globallyAllocatedProductIds = new Set(["prod-banana-prata"]);
 
       const storeClosures: Record<string, StoreClosureSummary> = {
-        "store-ponta": {
+        "store-ponta": createMockClosure({
           cycleDate: "2026-10-20",
           storeId: "store-ponta",
           storeName: "MultiShow Ponta da Fruta",
           status: "CLOSED",
-          orderId: "ord-ponta",
-          orderRevision: 1,
-          totalOrderedItems: 1,
-          totalDestinedItems: 1,
-          totalCutItems: 0,
-          cuts: [],
           allocationsHash: "hash-ponta",
-          closedAt: "2026-10-20T12:00:00Z",
-          closedByName: "Comprador",
-          reopenedAt: null,
-          reopenedByName: null,
-          reopenReason: null,
-          isStale: false,
-        },
-        "store-balneario": {
+        }),
+        "store-balneario": createMockClosure({
           cycleDate: "2026-10-20",
           storeId: "store-balneario",
           storeName: "MultiShow Balneário",
           status: "CLOSED",
-          orderId: "ord-balneario",
-          orderRevision: 1,
-          totalOrderedItems: 1,
           totalDestinedItems: 0,
           totalCutItems: 1,
-          cuts: [],
           allocationsHash: "hash-balneario",
-          closedAt: "2026-10-20T12:05:00Z",
-          closedByName: "Comprador",
-          reopenedAt: null,
-          reopenedByName: null,
-          reopenReason: null,
-          isStale: false,
-        },
-        "store-santa-monica": {
+        }),
+        "store-santa-monica": createMockClosure({
           cycleDate: "2026-10-20",
           storeId: "store-santa-monica",
           storeName: "MultiShow Santa Mônica",
           status: "CLOSED",
-          orderId: "ord-santa-monica",
-          orderRevision: 1,
-          totalOrderedItems: 1,
           totalDestinedItems: 0,
           totalCutItems: 1,
-          cuts: [],
           allocationsHash: "hash-sm",
-          closedAt: "2026-10-20T12:10:00Z",
-          closedByName: "Comprador",
-          reopenedAt: null,
-          reopenedByName: null,
-          reopenReason: null,
-          isStale: false,
-        },
+        }),
       };
 
       const result = validateCycleClosureReadinessStoreFirst({
@@ -319,64 +287,33 @@ describe("Fase 3 — Store-First Closures & Cut Summary Domain Tests", () => {
       const globallyAllocatedProductIds = new Set(["prod-banana-prata"]);
 
       const storeClosures: Record<string, StoreClosureSummary> = {
-        "store-ponta": {
+        "store-ponta": createMockClosure({
           cycleDate: "2026-10-20",
           storeId: "store-ponta",
           storeName: "MultiShow Ponta da Fruta",
           status: "CLOSED",
-          orderId: "ord-ponta",
-          orderRevision: 1,
-          totalOrderedItems: 1,
-          totalDestinedItems: 1,
-          totalCutItems: 0,
-          cuts: [],
           allocationsHash: "hash-ponta",
-          closedAt: "2026-10-20T12:00:00Z",
-          closedByName: "Comprador",
-          reopenedAt: null,
-          reopenedByName: null,
-          reopenReason: null,
           isStale: true,
           staleReason: "Destinações da loja foram alteradas após a conferência.",
-        },
-        "store-balneario": {
+        }),
+        "store-balneario": createMockClosure({
           cycleDate: "2026-10-20",
           storeId: "store-balneario",
           storeName: "MultiShow Balneário",
           status: "CLOSED",
-          orderId: "ord-balneario",
-          orderRevision: 1,
-          totalOrderedItems: 1,
           totalDestinedItems: 0,
           totalCutItems: 1,
-          cuts: [],
           allocationsHash: "hash-balneario",
-          closedAt: "2026-10-20T12:05:00Z",
-          closedByName: "Comprador",
-          reopenedAt: null,
-          reopenedByName: null,
-          reopenReason: null,
-          isStale: false,
-        },
-        "store-santa-monica": {
+        }),
+        "store-santa-monica": createMockClosure({
           cycleDate: "2026-10-20",
           storeId: "store-santa-monica",
           storeName: "MultiShow Santa Mônica",
           status: "CLOSED",
-          orderId: "ord-santa-monica",
-          orderRevision: 1,
-          totalOrderedItems: 1,
           totalDestinedItems: 0,
           totalCutItems: 1,
-          cuts: [],
           allocationsHash: "hash-sm",
-          closedAt: "2026-10-20T12:10:00Z",
-          closedByName: "Comprador",
-          reopenedAt: null,
-          reopenedByName: null,
-          reopenReason: null,
-          isStale: false,
-        },
+        }),
       };
 
       const result = validateCycleClosureReadinessStoreFirst({

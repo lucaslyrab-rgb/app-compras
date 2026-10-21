@@ -16,7 +16,7 @@ describe("arquitetura e isolamento de módulos", () => {
 
     for (const file of moduleFiles) {
       const source = await readFile(file, "utf8");
-      const moduleName = file.split(path.sep)[2];
+      const moduleName = path.relative(modulesDir, file).split(path.sep)[0];
       const imports = [...source.matchAll(/from ["']@\/modules\/([^/"']+)/g)].map((match) => match[1]);
       if (path.basename(file) === "repository.ts") expect(imports.filter((name) => name !== moduleName && name !== "identity")).toEqual([]);
     }

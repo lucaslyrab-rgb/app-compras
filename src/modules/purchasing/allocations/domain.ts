@@ -47,7 +47,7 @@ export type AllocationDestinationConflict = {
 export class AllocationDestinationConflictError extends Error {
   constructor(
     message: string,
-    readonly conflicts: AllocationDestinationConflict[],
+    readonly conflicts: AllocationDestinationConflict[] = [],
   ) {
     super(message);
     this.name = "AllocationDestinationConflictError";
@@ -281,6 +281,10 @@ export type StoreClosureSummary = {
   totalCutItems: number;
   cuts: StoreCutItem[];
   allocationsHash: string;
+  orderHash?: string | null;
+  costsHash?: string | null;
+  version: number;
+  isCurrent: boolean;
   closedAt: string | null;
   closedByName: string | null;
   reopenedAt: string | null;
@@ -307,6 +311,9 @@ export type StoreSummaryData = {
   totalAllocatedProducts: number;
   totalDestinedQuantity: string;
   totalOrderedProducts: number;
+  totalDestinedProducts: number;
+  totalPartialCutProducts: number;
+  totalUnallocatedProducts: number;
   totalReviewedProducts: number;
   totalPendingProducts: number;
   closureStatus: StoreClosureStatus;
@@ -376,11 +383,15 @@ export type ConcludeSupplierStoreReviewInput = {
   cycleDate: string;
   supplierId: string;
   storeId: string;
+  expectedProductIds: string[];
 };
 
 export type CloseStoreCycleInput = {
   cycleDate: string;
   storeId: string;
+  expectedOrderRevision?: number | null;
+  expectedAllocationsHash?: string;
+  expectedCostsHash?: string;
 };
 
 export type ReopenStoreCycleInput = {
@@ -427,6 +438,22 @@ export function computeStoreAllocationsHash(
     hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
   return `h_${(hash >>> 0).toString(16)}_${sorted.length}`;
+}
+
+export function computeStoreCostsHash(
+  items: Array<{ productId: string; purchased: boolean }>,
+): string {
+  const sorted = [...items].sort((a, b) => a.productId.localeCompare(b.productId));
+  const payload = sorted
+    .map((i) => `${i.productId}:${i.purchased ? "1" : "0"}`)
+    .join("|");
+
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < payload.length; i++) {
+    hash ^= payload.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return `c_${(hash >>> 0).toString(16)}_${sorted.length}`;
 }
 
 export function calculateStoreCutSummary(params: {

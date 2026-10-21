@@ -26,7 +26,6 @@ import {
   type CatalogSearchItem,
   type ProductAllocationItem,
   type StoreAllocationData,
-  type StoreCutItem,
 } from "./domain";
 import "./styles.css";
 
@@ -163,15 +162,17 @@ export function BuyerAllocationWorkspace({
     useState<PendingNavigationAction | null>(null);
 
   const targetStore = stores.find((s) => s.id === targetStoreForClosure) ?? activeStore;
-  const targetStoreClosure = storeClosures[targetStore.id];
-  const targetStoreSummary = storeSummary[targetStore.id];
+  const targetStoreClosure = storeClosures[targetStore.id] ?? activeStoreClosure;
 
   const activeSupplier = suppliers.find((s) => s.id === selectedSupplierId);
+  const activeSupplierReview = selectedSupplierId ? supplierStoreReviews[selectedSupplierId]?.[activeStoreId] : null;
+
   const unreviewedItemsForSupplier = useMemo(
     () =>
       products.filter(
         (p) =>
-          parseQuantity(p.stores[activeStoreId]?.destinedQuantity) <= 0 &&
+          (p.stores[activeStoreId]?.persistedDestinedQuantity === null ||
+            parseQuantity(p.stores[activeStoreId]?.persistedDestinedQuantity) <= 0) &&
           !p.supplierDecision,
       ),
     [products, activeStoreId],
@@ -179,7 +180,9 @@ export function BuyerAllocationWorkspace({
   const positiveDestinedCountForSupplier = useMemo(
     () =>
       products.filter(
-        (p) => parseQuantity(p.stores[activeStoreId]?.destinedQuantity) > 0,
+        (p) =>
+          p.stores[activeStoreId]?.persistedDestinedQuantity !== null &&
+          parseQuantity(p.stores[activeStoreId]?.persistedDestinedQuantity) > 0,
       ).length,
     [products, activeStoreId],
   );
@@ -791,23 +794,39 @@ export function BuyerAllocationWorkspace({
     }
   };
 
+  const handleOpenBatchConcludeSupplier = () => {
+    if (isDirty) {
+      setErrorMessage(
+        "Você possui alterações não salvas. Salve ou reverta as alterações antes de concluir a conferência deste fornecedor.",
+      );
+      return;
+    }
+    setBatchConcludeError(null);
+    setShowBatchConcludeSupplierModal(true);
+  };
+
   const handleConfirmBatchConcludeSupplier = async () => {
     if (!selectedSupplierId) return;
     setConcludingSupplier(true);
     setBatchConcludeError(null);
+
+    const expectedProductIds = unreviewedItemsForSupplier.map((p) => p.productId);
 
     try {
       const result = await concludeSupplierStoreReviewAction({
         cycleDate,
         supplierId: selectedSupplierId,
         storeId: activeStoreId,
+        expectedProductIds,
       });
 
       if (result.status === "success") {
         setShowBatchConcludeSupplierModal(false);
         setProducts((prev) =>
           prev.map((p) => {
-            const hasDestined = parseQuantity(p.stores[activeStoreId]?.destinedQuantity) > 0;
+            const hasDestined =
+              p.stores[activeStoreId]?.persistedDestinedQuantity !== null &&
+              parseQuantity(p.stores[activeStoreId]?.persistedDestinedQuantity) > 0;
             if (!hasDestined && !p.supplierDecision) {
               return { ...p, supplierDecision: "NOT_PURCHASED" };
             }
@@ -839,10 +858,15 @@ export function BuyerAllocationWorkspace({
     setClosingStore(true);
     setStoreCloseError(null);
 
+    const targetClosure = storeClosures[targetStoreForClosure] ?? activeStoreClosure;
+
     try {
       const result = await closeStoreCycleAction({
         cycleDate,
         storeId: targetStoreForClosure,
+        expectedOrderRevision: targetClosure?.orderRevision ?? null,
+        expectedAllocationsHash: targetClosure?.allocationsHash,
+        expectedCostsHash: targetClosure?.costsHash ?? undefined,
       });
 
       if (result.status === "success") {
@@ -1208,6 +1232,11 @@ export function BuyerAllocationWorkspace({
                   <strong>CNPJ:</strong> {formatTaxId(selectedSupplier.taxId)}
                 </span>
               ) : null}
+              {activeSupplierReview ? (
+                <span className="alloc-meta-item" style={{ color: "#166534", backgroundColor: "#dcfce7", padding: "2px 8px", borderRadius: "9999px", fontWeight: 600 }}>
+                  ✓ Conferência concluída para {activeStore.name.replace("MultiShow ", "")}
+                </span>
+              ) : null}
               <span className="alloc-meta-item alloc-meta-item--highlight">
                 <strong>Destinado em {activeStore.name.replace("MultiShow ", "")}:</strong>{" "}
                 {activeStoreTotalDestined} CX
@@ -1530,7 +1559,7 @@ export function BuyerAllocationWorkspace({
                 type="button"
                 className="btn btn--secondary"
                 style={{ fontWeight: "700", whiteSpace: "nowrap" }}
-                onClick={() => setShowBatchConcludeSupplierModal(true)}
+                onClick={handleOpenBatchConcludeSupplier}
               >
                 Concluir Conferência deste Fornecedor ❯
               </button>

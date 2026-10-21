@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgTable, smallint, text, time, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, smallint, text, time, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const userRole = pgEnum("user_role", ["LOJA", "COMPRADOR", "GESTOR"]);
 
@@ -418,21 +418,24 @@ export const purchaseCycleStoreClosures = pgTable("purchase_cycle_store_closures
   cutSummary: jsonb("cut_summary").notNull().default(sql`'[]'::jsonb`),
   allocationsHash: text("allocations_hash").notNull(),
   orderHash: text("order_hash"),
+  costsHash: text("costs_hash"),
   closedAt: timestamp("closed_at", { withTimezone: true }).notNull().defaultNow(),
   closedBy: uuid("closed_by").references(() => users.id, { onDelete: "set null" }),
   reopenedAt: timestamp("reopened_at", { withTimezone: true }),
   reopenedBy: uuid("reopened_by").references(() => users.id, { onDelete: "set null" }),
   reopenReason: text("reopen_reason"),
   version: integer("version").notNull().default(1),
+  isCurrent: boolean("is_current").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 }, (table) => [
-  uniqueIndex("store_closures_cycle_store_unique").on(table.purchaseCycleDate, table.storeId),
+  uniqueIndex("store_closures_cycle_store_version_unique").on(table.purchaseCycleDate, table.storeId, table.version),
+  uniqueIndex("store_closures_current_unique").on(table.purchaseCycleDate, table.storeId).where(sql`${table.isCurrent} = true`),
   index("store_closures_cycle_idx").on(table.purchaseCycleDate),
   index("store_closures_store_idx").on(table.storeId),
   check("store_closures_version_check", sql`${table.version} > 0`),
-  check("store_closures_status_check", sql`${table.status} IN ('OPEN', 'CLOSED')`),
-  check("store_closures_closed_check", sql`(${table.status} = 'CLOSED' AND ${table.closedAt} IS NOT NULL AND ${table.closedBy} IS NOT NULL) OR (${table.status} = 'OPEN')`)
+  check("store_closures_status_check", sql`${table.status} IN ('OPEN', 'CLOSED', 'REOPENED')`),
+  check("store_closures_closed_check", sql`(${table.status} = 'CLOSED' AND ${table.closedAt} IS NOT NULL AND ${table.closedBy} IS NOT NULL) OR (${table.status} IN ('OPEN', 'REOPENED'))`)
 ]);
 
 export const purchaseCycleStoreClosuresRelations = relations(purchaseCycleStoreClosures, ({ one }) => ({
@@ -440,5 +443,18 @@ export const purchaseCycleStoreClosuresRelations = relations(purchaseCycleStoreC
   order: one(orders, { fields: [purchaseCycleStoreClosures.orderId], references: [orders.id] }),
   closer: one(users, { fields: [purchaseCycleStoreClosures.closedBy], references: [users.id] }),
   reopener: one(users, { fields: [purchaseCycleStoreClosures.reopenedBy], references: [users.id] })
+}));
+
+export const purchaseCycleParticipatingStores = pgTable("purchase_cycle_participating_stores", {
+  purchaseCycleDate: date("purchase_cycle_date").notNull(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  primaryKey({ columns: [table.purchaseCycleDate, table.storeId] }),
+  index("participating_stores_cycle_idx").on(table.purchaseCycleDate)
+]);
+
+export const purchaseCycleParticipatingStoresRelations = relations(purchaseCycleParticipatingStores, ({ one }) => ({
+  store: one(stores, { fields: [purchaseCycleParticipatingStores.storeId], references: [stores.id] })
 }));
 

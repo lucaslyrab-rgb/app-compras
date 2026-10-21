@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runMigrations } from "../../scripts/migration-runner.mjs";
 import {
   closeBuyerCycle,
+  closeStoreCycle,
   readBuyerAllocationWorkspace,
   reopenBuyerCycle,
   saveSupplierAllocations,
@@ -156,7 +157,8 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
     `;
     expect(costRows.length).toBe(0);
 
-    // Valida que entra no fechamento operacional
+    // Valida que entra no fechamento operacional (conferência da loja participante + fechamento do ciclo)
+    await closeStoreCycle(buyerPrincipal, { cycleDate, storeId: store.id });
     const closeRes = await closeBuyerCycle(buyerPrincipal, cycleDate);
     expect(closeRes.success).toBe(true);
 
@@ -430,7 +432,8 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
       ],
     });
 
-    // Agora o fechamento deve ter sucesso
+    // Agora a loja é conferida e o fechamento do ciclo deve ter sucesso
+    await closeStoreCycle(buyerPrincipal, { cycleDate, storeId: store.id });
     const closeRes = await closeBuyerCycle(buyerPrincipal, cycleDate);
     expect(closeRes.success).toBe(true);
 
@@ -760,6 +763,7 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
 
     // O fechamento NÃO deve considerar a Abobrinha como "produto pedido e não comprado",
     // porque na última revisão válida (revisão 2) o pedido é ZERO!
+    await closeStoreCycle(buyerPrincipal, { cycleDate, storeId: store.id });
     const closeRes = await closeBuyerCycle(buyerPrincipal, cycleDate);
     expect(closeRes.success).toBe(true);
   });

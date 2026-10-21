@@ -1,5 +1,6 @@
 -- Migration 0016: Nova Experiência Operacional de Destinação Store-First e Fechamento por Loja
--- Implementa decisões de não compra por fornecedor, conferência em lote, confirmação conjunta de cortes por loja e fechamento com validação estrita produto+loja.
+-- Implementa decisões de não compra por fornecedor, conferência em lote, confirmação conjunta de cortes por loja,
+-- histórico append-only imutável de fechamentos e conjunto histórico de lojas participantes por ciclo.
 
 BEGIN;
 
@@ -44,40 +45,57 @@ CREATE TABLE IF NOT EXISTS purchase_cycle_supplier_store_reviews (
 CREATE INDEX IF NOT EXISTS supplier_store_review_cycle_idx
 ON purchase_cycle_supplier_store_reviews (purchase_cycle_date, store_id);
 
--- 3. Conferência conjunta dos cortes e finalização da loja
+-- 3. Histórico Append-Only de Conferência Conjunta dos Cortes e Finalização da Loja
 CREATE TABLE IF NOT EXISTS purchase_cycle_store_closures (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   purchase_cycle_date date NOT NULL,
   store_id uuid NOT NULL REFERENCES stores(id) ON DELETE RESTRICT,
   order_id uuid REFERENCES orders(id) ON DELETE SET NULL,
   order_revision integer,
-  status text NOT NULL DEFAULT 'CLOSED' CHECK (status IN ('OPEN', 'CLOSED')),
+  status text NOT NULL DEFAULT 'CLOSED' CHECK (status IN ('OPEN', 'CLOSED', 'REOPENED')),
   total_ordered_items integer NOT NULL DEFAULT 0,
   total_destined_items integer NOT NULL DEFAULT 0,
   total_cut_items integer NOT NULL DEFAULT 0,
   cut_summary jsonb NOT NULL DEFAULT '[]'::jsonb,
   allocations_hash text NOT NULL,
   order_hash text,
+  costs_hash text,
   closed_at timestamptz NOT NULL DEFAULT now(),
   closed_by uuid REFERENCES users(id) ON DELETE SET NULL,
   reopened_at timestamptz,
   reopened_by uuid REFERENCES users(id) ON DELETE SET NULL,
   reopen_reason text,
   version integer NOT NULL DEFAULT 1,
+  is_current boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT store_closures_cycle_store_unique UNIQUE (purchase_cycle_date, store_id),
+  CONSTRAINT store_closures_cycle_store_version_unique UNIQUE (purchase_cycle_date, store_id, version),
   CONSTRAINT store_closures_version_check CHECK (version > 0),
   CONSTRAINT store_closures_closed_check CHECK (
     (status = 'CLOSED' AND closed_at IS NOT NULL AND closed_by IS NOT NULL) OR
-    (status = 'OPEN')
+    (status IN ('OPEN', 'REOPENED'))
   )
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS store_closures_current_unique
+ON purchase_cycle_store_closures (purchase_cycle_date, store_id)
+WHERE is_current = true;
 
 CREATE INDEX IF NOT EXISTS store_closures_cycle_idx
 ON purchase_cycle_store_closures (purchase_cycle_date);
 
 CREATE INDEX IF NOT EXISTS store_closures_store_idx
 ON purchase_cycle_store_closures (store_id);
+
+-- 4. Conjunto Histórico de Lojas Participantes por Ciclo
+CREATE TABLE IF NOT EXISTS purchase_cycle_participating_stores (
+  purchase_cycle_date date NOT NULL,
+  store_id uuid NOT NULL REFERENCES stores(id) ON DELETE RESTRICT,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (purchase_cycle_date, store_id)
+);
+
+CREATE INDEX IF NOT EXISTS participating_stores_cycle_idx
+ON purchase_cycle_participating_stores (purchase_cycle_date);
 
 COMMIT;

@@ -7,7 +7,6 @@ import {
   closeStoreCycle,
   concludeSupplierStoreReview,
   readBuyerAllocationWorkspace,
-  reopenBuyerCycle,
   reopenStoreCycle,
   revertProductSupplierDecision,
   saveSupplierAllocations,
@@ -16,7 +15,6 @@ import {
 import {
   AllocationDestinationConflictError,
   AllocationValidationError,
-  CycleClosedError,
   ExclusivityViolationError,
 } from "../../src/modules/purchasing/allocations/domain";
 import type { Principal } from "../../src/modules/identity";
@@ -111,7 +109,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
       VALUES ('União Frutas Ltda', '11111111000199', 'CNPJ', 'STANDARD', true)
       RETURNING id
     `;
-    const [suppJeb] = await db<{ id: string }[]>`
+    await db`
       INSERT INTO suppliers (corporate_name, tax_id, tax_id_type, tax_invoice_rule, active)
       VALUES ('JEB Distribuidora', '22222222000199', 'CNPJ', 'STANDARD', true)
       RETURNING id
@@ -388,6 +386,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
       cycleDate,
       supplierId: supp.id,
       storeId: store.id,
+      expectedProductIds: [prodZero.id],
     });
     expect(batchResult.success).toBe(true);
 
@@ -595,7 +594,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     expect(ws.storeClosures[store.id].reopenReason).toBe("Correção de sobra de produto no caminhão");
 
     // Verifica registro de auditoria imutável em audit_events
-    const [auditLog] = await db<{ action: string; metadata: any }[]>`
+    const [auditLog] = await db<{ action: string; metadata: { reason?: string } }[]>`
       SELECT action, metadata
       FROM audit_events
       WHERE action = 'STORE_CYCLE_REOPENED'
@@ -903,5 +902,270 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     expect(ws.storeClosures).toBeDefined();
     // Loja histórica não é invalidada nem impede leitura
     expect(ws.cycleDate).toBe(historicCycleDate);
+  });
+
+  it("18. Concorrência otimista: alteração de custos invalida fechamento pendente da loja (costs_hash)", async () => {
+    const cycleDate = "2026-10-29";
+    const [store] = await db<{ id: string }[]>`SELECT id FROM stores LIMIT 1`;
+    const [prod] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9080, 'MELÃO REI', 'CX', 'UN', 30.00, true)
+      RETURNING id
+    `;
+    const [supp] = await db<{ id: string }[]>`
+      INSERT INTO suppliers (corporate_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES ('Distribuidora Rei', '15151515000199', 'CNPJ', 'STANDARD', true)
+      RETURNING id
+    `;
+
+    // 1. Cria pedido para a loja
+    const [order] = await db<{ id: string; revision: number }[]>`
+      INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, submitted_by)
+      VALUES (${cycleDate}::date, ${cycleDate}::date, now(), ${store.id}::uuid, 1, now(), ${buyerPrincipal.userId}::uuid)
+      RETURNING id, revision
+    `;
+    await db`
+      INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+      VALUES (${order.id}::uuid, ${prod.id}::uuid, 0.00, 10.00, 9080, 'MELÃO REI', 'CX')
+    `;
+
+    // 2. Registra compra nos custos e destina produto
+    await db`
+      INSERT INTO purchase_cycle_product_costs (purchase_cycle_date, product_id, cost, purchased, purchased_at, updated_by)
+      VALUES (${cycleDate}::date, ${prod.id}::uuid, 50.00, true, now(), ${buyerPrincipal.userId}::uuid)
+    `;
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supp.id,
+      allocations: [{ productId: prod.id, stores: [{ storeId: store.id, destinedQuantity: "10.00" }] }],
+    });
+
+    // 3. Lê workspace e obtém custos_hash corrente
+    const wsBefore = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, supp.id, store.id);
+    const cutsSummaryBefore = wsBefore.storeClosures[store.id];
+    const originalCostsHash = cutsSummaryBefore.costsHash;
+
+    // 4. Simula comprador mantendo tela aberta enquanto custos mudam (desmarca produto como comprado)
+    await db`
+      UPDATE purchase_cycle_product_costs
+      SET purchased = false, purchased_at = NULL, version = version + 1
+      WHERE purchase_cycle_date = ${cycleDate}::date AND product_id = ${prod.id}::uuid
+    `;
+
+    // 5. Comprador tenta confirmar fechamento com expectedCostsHash antigo
+    await expect(
+      closeStoreCycle(buyerPrincipal, {
+        cycleDate,
+        storeId: store.id,
+        expectedOrderRevision: cutsSummaryBefore.orderRevision ?? undefined,
+        expectedAllocationsHash: cutsSummaryBefore.allocationsHash,
+        expectedCostsHash: originalCostsHash ?? undefined,
+      }),
+    ).rejects.toThrow(AllocationDestinationConflictError);
+
+    // 6. Atualiza o workspace e confirma com o novo hash
+    const wsAfter = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, supp.id, store.id);
+    const newCostsHash = wsAfter.storeClosures[store.id].costsHash;
+    expect(newCostsHash).not.toBe(originalCostsHash);
+
+    const closeRes = await closeStoreCycle(buyerPrincipal, {
+      cycleDate,
+      storeId: store.id,
+      expectedOrderRevision: wsAfter.storeClosures[store.id].orderRevision ?? undefined,
+      expectedAllocationsHash: wsAfter.storeClosures[store.id].allocationsHash,
+      expectedCostsHash: newCostsHash ?? undefined,
+    });
+    expect(closeRes.status).toBe("CLOSED");
+  });
+
+  it("19. Conclusão em lote rejeita operação se houver divergência em expectedProductIds", async () => {
+    const cycleDate = "2026-10-30";
+    const [store] = await db<{ id: string }[]>`SELECT id FROM stores LIMIT 1`;
+    const [prodA] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9091, 'MANGA TOMMY', 'CX', 'UN', 30.00, true)
+      RETURNING id
+    `;
+    const [prodB] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9092, 'MANGA PALMER', 'CX', 'UN', 30.00, true)
+      RETURNING id
+    `;
+    const [supp] = await db<{ id: string }[]>`
+      INSERT INTO suppliers (corporate_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES ('Distribuidora de Mangas', '16161616000199', 'CNPJ', 'STANDARD', true)
+      RETURNING id
+    `;
+
+    // Vincula produtos ao fornecedor
+    await db`
+      INSERT INTO product_suppliers (product_id, supplier_id)
+      VALUES (${prodA.id}::uuid, ${supp.id}::uuid), (${prodB.id}::uuid, ${supp.id}::uuid)
+    `;
+
+    // Cria pedidos
+    const [order] = await db<{ id: string }[]>`
+      INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, submitted_by)
+      VALUES (${cycleDate}::date, ${cycleDate}::date, now(), ${store.id}::uuid, 1, now(), ${buyerPrincipal.userId}::uuid)
+      RETURNING id
+    `;
+    await db`
+      INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+      VALUES
+        (${order.id}::uuid, ${prodA.id}::uuid, 0.00, 5.00, 9091, 'MANGA TOMMY', 'CX'),
+        (${order.id}::uuid, ${prodB.id}::uuid, 0.00, 5.00, 9092, 'MANGA PALMER', 'CX')
+    `;
+
+    // Marca ambos como comprados nos custos
+    await db`
+      INSERT INTO purchase_cycle_product_costs (purchase_cycle_date, product_id, cost, purchased, purchased_at, updated_by)
+      VALUES
+        (${cycleDate}::date, ${prodA.id}::uuid, 45.00, true, now(), ${buyerPrincipal.userId}::uuid),
+        (${cycleDate}::date, ${prodB.id}::uuid, 48.00, true, now(), ${buyerPrincipal.userId}::uuid)
+    `;
+
+    // Envia lista esperada incompleta (ex: apenas prodA quando o backend identifica prodA e prodB pendentes)
+    await expect(
+      concludeSupplierStoreReview(buyerPrincipal, {
+        cycleDate,
+        supplierId: supp.id,
+        storeId: store.id,
+        expectedProductIds: [prodA.id],
+      }),
+    ).rejects.toThrow(AllocationDestinationConflictError);
+
+    // Envia a lista completa exata: sucesso
+    const result = await concludeSupplierStoreReview(buyerPrincipal, {
+      cycleDate,
+      supplierId: supp.id,
+      storeId: store.id,
+      expectedProductIds: [prodA.id, prodB.id],
+    });
+    expect(result.success).toBe(true);
+    expect(result.affectedCount).toBe(2);
+  });
+
+  it("20. Histórico append-only preserva versões imutáveis em purchase_cycle_store_closures", async () => {
+    const cycleDate = "2026-10-31";
+    const [store] = await db<{ id: string }[]>`SELECT id FROM stores LIMIT 1`;
+    const [prod] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9095, 'UVA NIAGARA', 'CX', 'UN', 30.00, true)
+      RETURNING id
+    `;
+    const [supp] = await db<{ id: string }[]>`
+      INSERT INTO suppliers (corporate_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES ('Uvas do Vale', '17171717000199', 'CNPJ', 'STANDARD', true)
+      RETURNING id
+    `;
+
+    const [order] = await db<{ id: string }[]>`
+      INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, submitted_by)
+      VALUES (${cycleDate}::date, ${cycleDate}::date, now(), ${store.id}::uuid, 1, now(), ${buyerPrincipal.userId}::uuid)
+      RETURNING id
+    `;
+    await db`
+      INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+      VALUES (${order.id}::uuid, ${prod.id}::uuid, 0.00, 10.00, 9095, 'UVA NIAGARA', 'CX')
+    `;
+
+    await db`
+      INSERT INTO purchase_cycle_product_costs (purchase_cycle_date, product_id, cost, purchased, purchased_at, updated_by)
+      VALUES (${cycleDate}::date, ${prod.id}::uuid, 40.00, true, now(), ${buyerPrincipal.userId}::uuid)
+    `;
+
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supp.id,
+      allocations: [{ productId: prod.id, stores: [{ storeId: store.id, destinedQuantity: "6.00" }] }],
+    });
+
+    // 1. Primeiro fechamento (versão 1)
+    const closureV1 = await closeStoreCycle(buyerPrincipal, { cycleDate, storeId: store.id });
+    expect(closureV1.version).toBe(1);
+    expect(closureV1.isCurrent).toBe(true);
+
+    // 2. Reabre conferência
+    await reopenStoreCycle(buyerPrincipal, {
+      cycleDate,
+      storeId: store.id,
+      reason: "Ajuste na quantidade de caixas recebidas",
+    });
+
+    // 3. Modifica destinação para 8.00
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supp.id,
+      allocations: [{ productId: prod.id, stores: [{ storeId: store.id, destinedQuantity: "8.00" }] }],
+    });
+
+    // 4. Segundo fechamento (versão 2)
+    const closureV2 = await closeStoreCycle(buyerPrincipal, { cycleDate, storeId: store.id });
+    expect(closureV2.version).toBe(2);
+    expect(closureV2.isCurrent).toBe(true);
+
+    // 5. Verifica diretamente no banco que AMBAS as versões existem (append-only)
+    const closureRows = await db<{
+      version: number;
+      is_current: boolean;
+      status: string;
+      total_destined_items: number;
+      total_cut_items: number;
+    }[]>`
+      SELECT version, is_current, status, total_destined_items, total_cut_items
+      FROM purchase_cycle_store_closures
+      WHERE purchase_cycle_date = ${cycleDate}::date
+        AND store_id = ${store.id}::uuid
+      ORDER BY version ASC
+    `;
+
+    expect(closureRows).toHaveLength(2);
+    expect(closureRows[0].version).toBe(1);
+    expect(closureRows[0].is_current).toBe(false);
+    expect(closureRows[1].version).toBe(2);
+    expect(closureRows[1].is_current).toBe(true);
+    expect(closureRows[1].status).toBe("CLOSED");
+  });
+
+  it("21. Lojas participantes históricas são preservadas mesmo com inativação subsequente", async () => {
+    const cycleDate = "2026-11-01";
+    // 1. Cria uma loja temporária ativa
+    const [tempStore] = await db<{ id: string; name: string }[]>`
+      INSERT INTO stores (name, slug, active)
+      VALUES ('MultiShow Filial Temporária', 'filial-temporaria', true)
+      RETURNING id, name
+    `;
+
+    // 2. Cria pedido para a loja temporária no ciclo
+    const [prod] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9099, 'PÊSSEGO NACIONAL', 'CX', 'UN', 30.00, true)
+      RETURNING id
+    `;
+    const [order] = await db<{ id: string }[]>`
+      INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, submitted_by)
+      VALUES (${cycleDate}::date, ${cycleDate}::date, now(), ${tempStore.id}::uuid, 1, now(), ${buyerPrincipal.userId}::uuid)
+      RETURNING id
+    `;
+    await db`
+      INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+      VALUES (${order.id}::uuid, ${prod.id}::uuid, 0.00, 2.00, 9099, 'PÊSSEGO NACIONAL', 'CX')
+    `;
+
+    // 3. Consulta workspace (registra tempStore como loja participante do ciclo 2026-11-01)
+    const ws = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, null, tempStore.id);
+    expect(ws.stores.some((s) => s.id === tempStore.id)).toBe(true);
+
+    // 4. Inativa a loja posteriormente
+    await db`UPDATE stores SET active = false WHERE id = ${tempStore.id}::uuid`;
+
+    // 5. Nova leitura do workspace para o ciclo histórico continua identificando tempStore como participante
+    const wsHistoric = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, null, tempStore.id);
+    expect(wsHistoric.stores.some((s) => s.id === tempStore.id)).toBe(true);
+
+    // 6. O fechamento geral do ciclo exige conferência de tempStore
+    await expect(
+      closeBuyerCycle(buyerPrincipal, cycleDate),
+    ).rejects.toThrow(AllocationValidationError);
   });
 });

@@ -65,11 +65,15 @@ const concludeSupplierStoreReviewSchema = z.object({
   cycleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   supplierId: z.string().uuid(),
   storeId: z.string().uuid(),
+  expectedProductIds: z.array(z.string().uuid()),
 });
 
 const closeStoreCycleSchema = z.object({
   cycleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   storeId: z.string().uuid(),
+  expectedOrderRevision: z.number().nullable().optional(),
+  expectedAllocationsHash: z.string().optional(),
+  expectedCostsHash: z.string().optional(),
 });
 
 const reopenStoreCycleSchema = z.object({

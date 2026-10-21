@@ -1,11 +1,14 @@
 import { database } from "@/db/client";
 import { AuthorizationError, type Principal } from "@/modules/identity";
+import { CycleClosedError } from "@/modules/purchasing/allocations/domain";
 import {
   canManagePurchaseCosts,
   PurchaseCostConflictError,
   type PurchaseCostState,
   type SavedPurchaseCost,
 } from "./domain";
+
+const BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE = 42424203;
 
 type CostProjectionRow = {
   productId: string;
@@ -99,6 +102,15 @@ export async function persistPurchaseCost(
     throw new AuthorizationError("Acesso restrito ao Comprador e Gestor");
   const sql = database().sql;
   return sql.begin(async (transaction) => {
+    await transaction`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${input.cycleDate}::text))`;
+
+    const [closure] = await transaction<{ status: string }[]>`
+      SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${input.cycleDate}::date
+    `;
+    if (closure && closure.status === "CLOSED") {
+      throw new CycleClosedError("O ciclo de compras está fechado. Reabra o ciclo para alterar custos.");
+    }
+
     const rows = await transaction<SavedRow[]>`
       INSERT INTO purchase_cycle_product_costs(
         product_id, purchase_cycle_date, cost, cost_is_unit, purchased, purchased_at,
