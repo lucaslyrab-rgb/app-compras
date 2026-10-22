@@ -252,6 +252,8 @@ export function validateAllocationPurchasedStatus(params: {
   return { isValid: true };
 }
 
+export const BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE = 424242;
+
 export type ProductSupplierDecisionType = "NOT_PURCHASED";
 
 export type StoreClosureStatus = "OPEN" | "CLOSED";
@@ -292,6 +294,10 @@ export type StoreClosureSummary = {
   reopenReason: string | null;
   isStale: boolean;
   staleReason?: string | null;
+  previewOrderId: string | null;
+  previewOrderRevision: number | null;
+  previewAllocationsHash: string;
+  previewCostsHash: string;
 };
 
 export type SupplierStoreReviewStatus = "REVIEWED" | "PENDING";
@@ -389,9 +395,10 @@ export type ConcludeSupplierStoreReviewInput = {
 export type CloseStoreCycleInput = {
   cycleDate: string;
   storeId: string;
-  expectedOrderRevision?: number | null;
-  expectedAllocationsHash?: string;
-  expectedCostsHash?: string;
+  expectedOrderId: string | null;
+  expectedOrderRevision: number | null;
+  expectedAllocationsHash: string;
+  expectedCostsHash: string;
 };
 
 export type ReopenStoreCycleInput = {
@@ -399,6 +406,26 @@ export type ReopenStoreCycleInput = {
   storeId: string;
   reason: string;
 };
+
+export function canSupplierProvideProduct(params: {
+  supplierId: string;
+  isJeb: boolean;
+  exclusiveSupplierId: string | null;
+  legacyExclusive: boolean;
+  isLinkedToSupplier: boolean;
+}): boolean {
+  const { supplierId, isJeb, exclusiveSupplierId, legacyExclusive, isLinkedToSupplier } = params;
+  // 1. Vínculo moderno de exclusividade (tabela product_suppliers) tem precedência sobre flag legada
+  if (exclusiveSupplierId) {
+    return exclusiveSupplierId === supplierId;
+  }
+  // 2. Sem exclusividade moderna: produto exclusivo legado pertence apenas à JEB Distribuidora
+  if (legacyExclusive) {
+    return isJeb;
+  }
+  // 3. Sem exclusividade: fornecedor precisa ter vínculo ativo com o produto
+  return isLinkedToSupplier;
+}
 
 export function hasPendingStoreAllocation(
   allocation:
@@ -441,11 +468,23 @@ export function computeStoreAllocationsHash(
 }
 
 export function computeStoreCostsHash(
-  items: Array<{ productId: string; purchased: boolean }>,
+  items: Array<{
+    productId: string;
+    purchased: boolean;
+    cost?: string | number | null;
+    costIsUnit?: boolean | null;
+    version?: number | null;
+  }>,
 ): string {
   const sorted = [...items].sort((a, b) => a.productId.localeCompare(b.productId));
   const payload = sorted
-    .map((i) => `${i.productId}:${i.purchased ? "1" : "0"}`)
+    .map((i) => {
+      const p = i.purchased ? "1" : "0";
+      const c = i.cost !== null && i.cost !== undefined ? roundToTwoDecimals(String(i.cost)) : "";
+      const u = i.costIsUnit ? "1" : "0";
+      const v = i.version ?? 0;
+      return `${i.productId}:${p}:${c}:${u}:${v}`;
+    })
     .join("|");
 
   let hash = 0x811c9dc5;

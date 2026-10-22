@@ -178,6 +178,10 @@ describe("Fase 3 — Store-First Closures & Cut Summary Domain Tests", () => {
         reopenedByName: null,
         reopenReason: null,
         isStale: false,
+        previewOrderId: overrides.previewOrderId ?? `ord-${overrides.storeId}`,
+        previewOrderRevision: overrides.previewOrderRevision ?? 1,
+        previewAllocationsHash: overrides.previewAllocationsHash ?? `hash-${overrides.storeId}`,
+        previewCostsHash: overrides.previewCostsHash ?? `cost-hash-${overrides.storeId}`,
         ...overrides,
       };
     }

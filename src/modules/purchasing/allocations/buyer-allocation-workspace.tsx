@@ -864,9 +864,10 @@ export function BuyerAllocationWorkspace({
       const result = await closeStoreCycleAction({
         cycleDate,
         storeId: targetStoreForClosure,
-        expectedOrderRevision: targetClosure?.orderRevision ?? null,
-        expectedAllocationsHash: targetClosure?.allocationsHash,
-        expectedCostsHash: targetClosure?.costsHash ?? undefined,
+        expectedOrderId: targetClosure?.previewOrderId ?? targetClosure?.orderId ?? null,
+        expectedOrderRevision: targetClosure?.previewOrderRevision ?? targetClosure?.orderRevision ?? null,
+        expectedAllocationsHash: targetClosure?.previewAllocationsHash ?? targetClosure?.allocationsHash ?? "",
+        expectedCostsHash: targetClosure?.previewCostsHash ?? targetClosure?.costsHash ?? "",
       });
 
       if (result.status === "success") {

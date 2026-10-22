@@ -71,9 +71,10 @@ const concludeSupplierStoreReviewSchema = z.object({
 const closeStoreCycleSchema = z.object({
   cycleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   storeId: z.string().uuid(),
-  expectedOrderRevision: z.number().nullable().optional(),
-  expectedAllocationsHash: z.string().optional(),
-  expectedCostsHash: z.string().optional(),
+  expectedOrderId: z.string().uuid().nullable(),
+  expectedOrderRevision: z.number().int().min(1).nullable(),
+  expectedAllocationsHash: z.string().min(1, "Hash de alocações da prévia é obrigatório."),
+  expectedCostsHash: z.string().min(1, "Hash de custos da prévia é obrigatório."),
 });
 
 const reopenStoreCycleSchema = z.object({

@@ -1,14 +1,15 @@
 import { database } from "@/db/client";
 import { AuthorizationError, type Principal } from "@/modules/identity";
-import { CycleClosedError } from "@/modules/purchasing/allocations/domain";
+import {
+  BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE,
+  CycleClosedError,
+} from "@/modules/purchasing/allocations/domain";
 import {
   canManagePurchaseCosts,
   PurchaseCostConflictError,
   type PurchaseCostState,
   type SavedPurchaseCost,
 } from "./domain";
-
-const BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE = 42424203;
 
 type CostProjectionRow = {
   productId: string;

@@ -36,7 +36,7 @@ test.describe("Experiência Operacional Store-First do Comprador", () => {
     await page.goto(`/comprador/destinacao?ciclo=${cycle}`);
 
     // 1. Dashboard inicial exibe as 3 lojas
-    const storesNav = page.locator(".alloc-stores-bar, .alloc-store-selector");
+    const storesNav = page.locator(".alloc-store-nav");
     await expect(storesNav).toBeVisible();
     await expect(page.getByRole("button", { name: /Ponta da Fruta/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Balneário/i })).toBeVisible();
@@ -44,7 +44,7 @@ test.describe("Experiência Operacional Store-First do Comprador", () => {
 
     // 2. Seleciona MultiShow Balneário: a loja fica ativa
     await page.getByRole("button", { name: /Balneário/i }).click();
-    await expect(page.locator(".alloc-store-btn--active")).toContainText("Balneário");
+    await expect(page.locator(".alloc-store-tab--active")).toContainText("Balneário");
 
     // 3. Alterna fornecedor enquanto a loja permanece fixa em Balneário
     const supplierSelect = page.locator("#supplier-selector");
@@ -53,7 +53,7 @@ test.describe("Experiência Operacional Store-First do Comprador", () => {
       if (optionCount > 1) {
         await supplierSelect.selectOption({ index: 1 });
         // Loja continua selecionada como Balneário
-        await expect(page.locator(".alloc-store-btn--active")).toContainText("Balneário");
+        await expect(page.locator(".alloc-store-tab--active")).toContainText("Balneário");
       }
     }
 
@@ -63,7 +63,7 @@ test.describe("Experiência Operacional Store-First do Comprador", () => {
     const count = await productCards.count();
     if (count > 0) {
       const firstCard = productCards.first();
-      await expect(firstCard.locator(".alloc-field-label--ordered, .alloc-product-ordered")).toBeVisible();
+      await expect(firstCard.locator(".alloc-single-store-order")).toBeVisible();
 
       // 5. Botão "Não comprei deste fornecedor"
       const notPurchasedBtn = firstCard.getByRole("button", { name: /NÃO COMPREI DESTE FORNECEDOR/i });
@@ -89,11 +89,11 @@ test.describe("Experiência Operacional Store-First do Comprador", () => {
 
     // 7. Modal de conferência conjunta de cortes por loja
     const finalizeStoreBtn = page.getByRole("button", {
-      name: /CONFERIR E FINALIZAR ESTA LOJA/i,
+      name: /Conferir Cortes e Finalizar Loja/i,
     });
     if (await finalizeStoreBtn.isVisible()) {
       await finalizeStoreBtn.click();
-      const cutsModal = page.locator('[role="dialog"]').filter({ hasText: /Conferência Conjunta dos Cortes da Loja/i });
+      const cutsModal = page.locator('[role="dialog"]').filter({ hasText: /Conferência Conjunta dos Cortes/i });
       await expect(cutsModal).toBeVisible();
       // Tabela de cortes deve ter colunas Produto, Pedido, Destinado, Corte
       await expect(cutsModal.locator("table")).toBeVisible();

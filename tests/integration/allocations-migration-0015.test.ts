@@ -92,6 +92,23 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
     process.env.DATABASE_URL = baseDatabaseUrl;
   });
 
+  async function closeAllStoresHelper(principal: Principal, cycle: string) {
+    const ws = await readBuyerAllocationWorkspace(principal, cycle);
+    for (const st of ws.stores) {
+      const sc = ws.storeClosures[st.id];
+      if (sc && sc.status !== "CLOSED") {
+        await closeStoreCycle(principal, {
+          cycleDate: cycle,
+          storeId: st.id,
+          expectedOrderId: sc.previewOrderId,
+          expectedOrderRevision: sc.previewOrderRevision,
+          expectedAllocationsHash: sc.previewAllocationsHash,
+          expectedCostsHash: sc.previewCostsHash,
+        });
+      }
+    }
+  }
+
   it("1. Compras adicionais sem pedido e independência dos custos", async () => {
     // Busca loja existente criada na migration 0001
     const [store] = await db<{ id: string }[]>`
@@ -158,7 +175,7 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
     expect(costRows.length).toBe(0);
 
     // Valida que entra no fechamento operacional (conferência da loja participante + fechamento do ciclo)
-    await closeStoreCycle(buyerPrincipal, { cycleDate, storeId: store.id });
+    await closeAllStoresHelper(buyerPrincipal, cycleDate);
     const closeRes = await closeBuyerCycle(buyerPrincipal, cycleDate);
     expect(closeRes.success).toBe(true);
 
@@ -432,8 +449,8 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
       ],
     });
 
-    // Agora a loja é conferida e o fechamento do ciclo deve ter sucesso
-    await closeStoreCycle(buyerPrincipal, { cycleDate, storeId: store.id });
+    // Agora todas as lojas são conferidas e o fechamento do ciclo deve ter sucesso
+    await closeAllStoresHelper(buyerPrincipal, cycleDate);
     const closeRes = await closeBuyerCycle(buyerPrincipal, cycleDate);
     expect(closeRes.success).toBe(true);
 
@@ -763,7 +780,7 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
 
     // O fechamento NÃO deve considerar a Abobrinha como "produto pedido e não comprado",
     // porque na última revisão válida (revisão 2) o pedido é ZERO!
-    await closeStoreCycle(buyerPrincipal, { cycleDate, storeId: store.id });
+    await closeAllStoresHelper(buyerPrincipal, cycleDate);
     const closeRes = await closeBuyerCycle(buyerPrincipal, cycleDate);
     expect(closeRes.success).toBe(true);
   });

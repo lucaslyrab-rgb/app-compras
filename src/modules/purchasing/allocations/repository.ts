@@ -4,10 +4,12 @@ import { assertPermission, type Principal } from "@/modules/identity";
 import {
   AllocationDestinationConflictError,
   AllocationValidationError,
+  BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE,
   CycleClosedError,
   ExclusivityViolationError,
   calculateDifference,
   calculateStoreCutSummary,
+  canSupplierProvideProduct,
   computeStoreAllocationsHash,
   computeStoreCostsHash,
   isCycleDate,
@@ -37,18 +39,72 @@ import {
   type SupplierSummaryOption,
 } from "./domain";
 
-const BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE = 424242;
-
 /**
  * Identifica e preserva as lojas participantes de um ciclo específico.
- * Evita que ativações/inativações futuras de lojas alterem retroativamente fechamentos históricos.
+ * Garante a presença das três lojas padrão da rede (Ponta da Fruta, Balneário, Santa Mônica)
+ * e reconcilia dinamicamente qualquer loja que possua ou venha a possuir atividade no ciclo,
+ * impedindo que uma primeira leitura incompleta congele um subconjunto restrito de lojas.
  */
 export async function resolveParticipatingStores(
   sql: postgres.Sql | postgres.TransactionSql,
   cycleDate: string,
 ): Promise<Array<{ id: string; name: string; slug: string }>> {
-  // 1. Busca da tabela de lojas participantes históricas
-  const existingRows = await sql<{ id: string; name: string; slug: string }[]>`
+  // 1. Identifica todas as lojas que devem compor este ciclo:
+  //    - As 3 lojas padrão da rede MultiShow quando ativas
+  //    - Lojas com atividade no ciclo (pedidos ativos, alocações positivas, fechamentos ou decisões)
+  //    - Lojas já registradas previamente como participantes
+  const candidateStores = await sql<{ id: string; name: string; slug: string }[]>`
+    SELECT s.id, s.name, s.slug
+    FROM stores s
+    WHERE (
+      (s.slug IN ('ponta-da-fruta', 'balneario', 'santa-monica') AND s.active = true)
+      OR s.id IN (
+        SELECT ps.store_id FROM purchase_cycle_participating_stores ps WHERE ps.purchase_cycle_date = ${cycleDate}::date
+        UNION
+        SELECT o.store_id FROM orders o WHERE o.purchase_cycle_date = ${cycleDate}::date AND o.cancelled_at IS NULL
+        UNION
+        SELECT pa.store_id FROM purchase_cycle_product_allocations pa WHERE pa.purchase_cycle_date = ${cycleDate}::date AND pa.destined_quantity > 0
+        UNION
+        SELECT sc.store_id FROM purchase_cycle_store_closures sc WHERE sc.purchase_cycle_date = ${cycleDate}::date
+        UNION
+        SELECT sd.store_id FROM purchase_cycle_product_supplier_decisions sd WHERE sd.purchase_cycle_date = ${cycleDate}::date
+      )
+    )
+    ORDER BY CASE s.slug
+      WHEN 'ponta-da-fruta' THEN 1
+      WHEN 'balneario' THEN 2
+      WHEN 'santa-monica' THEN 3
+      ELSE 4
+    END, s.name ASC
+  `;
+
+  let storesToPersist = candidateStores;
+  if (storesToPersist.length === 0) {
+    // Se não há lojas candidatas (ex: ambiente de teste sem as lojas padrão), usa lojas ativas
+    storesToPersist = await sql<{ id: string; name: string; slug: string }[]>`
+      SELECT id, name, slug
+      FROM stores
+      WHERE active = true
+      ORDER BY CASE slug
+        WHEN 'ponta-da-fruta' THEN 1
+        WHEN 'balneario' THEN 2
+        WHEN 'santa-monica' THEN 3
+        ELSE 4
+      END, name ASC
+    `;
+  }
+
+  // 2. Garante persistência de todas as lojas participantes identificadas
+  for (const st of storesToPersist) {
+    await sql`
+      INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+      VALUES (${cycleDate}::date, ${st.id}::uuid)
+      ON CONFLICT (purchase_cycle_date, store_id) DO NOTHING
+    `;
+  }
+
+  // 3. Retorna a lista completa atualizada e persistida de participantes
+  return await sql<{ id: string; name: string; slug: string }[]>`
     SELECT s.id, s.name, s.slug
     FROM stores s
     JOIN purchase_cycle_participating_stores ps ON ps.store_id = s.id
@@ -60,65 +116,6 @@ export async function resolveParticipatingStores(
       ELSE 4
     END, s.name ASC
   `;
-
-  if (existingRows.length > 0) {
-    return existingRows;
-  }
-
-  // 2. Se ainda não há registro explícito, verifica se há pedidos ou alocações neste ciclo
-  const storesWithActivity = await sql<{ id: string; name: string; slug: string }[]>`
-    SELECT s.id, s.name, s.slug
-    FROM stores s
-    WHERE s.id IN (
-      SELECT store_id FROM orders WHERE purchase_cycle_date = ${cycleDate}::date AND cancelled_at IS NULL
-      UNION
-      SELECT store_id FROM purchase_cycle_product_allocations WHERE purchase_cycle_date = ${cycleDate}::date AND destined_quantity > 0
-      UNION
-      SELECT store_id FROM purchase_cycle_store_closures WHERE purchase_cycle_date = ${cycleDate}::date
-      UNION
-      SELECT store_id FROM purchase_cycle_product_supplier_decisions WHERE purchase_cycle_date = ${cycleDate}::date
-    )
-    ORDER BY CASE s.slug
-      WHEN 'ponta-da-fruta' THEN 1
-      WHEN 'balneario' THEN 2
-      WHEN 'santa-monica' THEN 3
-      ELSE 4
-    END, s.name ASC
-  `;
-
-  if (storesWithActivity.length > 0) {
-    for (const st of storesWithActivity) {
-      await sql`
-        INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
-        VALUES (${cycleDate}::date, ${st.id}::uuid)
-        ON CONFLICT DO NOTHING
-      `;
-    }
-    return storesWithActivity;
-  }
-
-  // 3. Se for ciclo novo sem pedidos nem destinações, usa as lojas ativas no momento
-  const activeStores = await sql<{ id: string; name: string; slug: string }[]>`
-    SELECT id, name, slug
-    FROM stores
-    WHERE active = true
-    ORDER BY CASE slug
-      WHEN 'ponta-da-fruta' THEN 1
-      WHEN 'balneario' THEN 2
-      WHEN 'santa-monica' THEN 3
-      ELSE 4
-    END, name ASC
-  `;
-
-  for (const st of activeStores) {
-    await sql`
-      INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
-      VALUES (${cycleDate}::date, ${st.id}::uuid)
-      ON CONFLICT DO NOTHING
-    `;
-  }
-
-  return activeStores;
 }
 
 /**
@@ -208,22 +205,22 @@ export async function getSupplierEligibleProductIds(
     eligible.add(d.product_id);
   }
 
-  // 3. Produtos vinculados ao fornecedor, comprados nos custos E que respeitam exclusividade
-  for (const pid of linkedProductIds) {
-    if (purchasedInCosts.has(pid)) {
-      const exclSuppId = exclusiveMap.get(pid);
-      if (!exclSuppId || exclSuppId === supplierId) {
-        eligible.add(pid);
-      }
-    }
-  }
+  // 3. Produtos comprados nos custos que este fornecedor pode fornecer (conforme regra comercial unificada)
+  for (const pid of purchasedInCosts) {
+    const exclSuppId = exclusiveMap.get(pid) ?? null;
+    const isLegacyExcl = legacyMap.get(pid) ?? false;
+    const isLinked = linkedProductIds.has(pid);
 
-  // 4. Produtos legados exclusivos (pertencem unicamente à JEB)
-  if (isJeb) {
-    for (const [pid, isLegacyExcl] of legacyMap.entries()) {
-      if (isLegacyExcl && purchasedInCosts.has(pid)) {
-        eligible.add(pid);
-      }
+    if (
+      canSupplierProvideProduct({
+        supplierId,
+        isJeb,
+        exclusiveSupplierId: exclSuppId,
+        legacyExclusive: isLegacyExcl,
+        isLinkedToSupplier: isLinked,
+      })
+    ) {
+      eligible.add(pid);
     }
   }
 
@@ -375,22 +372,39 @@ export async function readBuyerAllocationWorkspace(
     {
       product_id: string;
       cost: string | null;
+      cost_is_unit: boolean | null;
+      version: number | null;
       purchased: boolean;
     }[]
   >`
     SELECT
       product_id,
       cost::text,
+      cost_is_unit,
+      version,
       purchased
     FROM purchase_cycle_product_costs
     WHERE purchase_cycle_date = ${cycleDate}::date
   `;
 
-  const costMap = new Map<string, { cost: string | null; purchased: boolean }>();
+  const costMap = new Map<
+    string,
+    {
+      cost: string | null;
+      cost_is_unit: boolean;
+      version: number;
+      purchased: boolean;
+    }
+  >();
   const purchasedProductIds: string[] = [];
 
   for (const c of costRows) {
-    costMap.set(c.product_id, { cost: c.cost, purchased: c.purchased });
+    costMap.set(c.product_id, {
+      cost: c.cost,
+      cost_is_unit: c.cost_is_unit ?? false,
+      version: c.version ?? 0,
+      purchased: c.purchased,
+    });
     if (c.purchased) {
       purchasedProductIds.push(c.product_id);
     }
@@ -715,10 +729,16 @@ export async function readBuyerAllocationWorkspace(
     ]);
 
     const currentCostsHash = computeStoreCostsHash(
-      [...relevantProductIds].map((pid) => ({
-        productId: pid,
-        purchased: costMap.get(pid)?.purchased ?? false,
-      })),
+      [...relevantProductIds].map((pid) => {
+        const c = costMap.get(pid);
+        return {
+          productId: pid,
+          purchased: c?.purchased ?? false,
+          cost: c?.cost ?? null,
+          costIsUnit: c?.cost_is_unit ?? false,
+          version: c?.version ?? 0,
+        };
+      }),
     );
 
     const scRaw = rawStoreClosuresMap.get(store.id);
@@ -827,19 +847,27 @@ export async function readBuyerAllocationWorkspace(
       cutsArray = calculated.cuts;
     }
 
+    const previewOrderId = activeOrder?.order_id ?? null;
+    const previewOrderRevision = activeOrder?.revision ?? null;
+    const previewAllocationsHash = currentAllocationsHash;
+    const previewCostsHash = currentCostsHash;
+
+    const isClosedValid = closureStatus === "CLOSED" && !isStale;
+
     storeClosures[store.id] = {
       cycleDate,
       storeId: store.id,
       storeName: store.name,
       status: closureStatus,
-      orderId: scRaw?.order_id ?? activeOrder?.order_id ?? null,
-      orderRevision: scRaw?.order_revision ?? activeOrder?.revision ?? null,
-      totalOrderedItems: scRaw?.total_ordered_items ?? orderedProductIdsForStore.size,
-      totalDestinedItems: scRaw?.total_destined_items ?? destinedProductIdsForStore.size,
-      totalCutItems: scRaw?.total_cut_items ?? cutsArray.filter((c) => c.status === "PARTIAL_CUT" || c.status === "TOTAL_CUT").length,
+      orderId: isClosedValid ? (scRaw?.order_id ?? previewOrderId) : previewOrderId,
+      orderRevision: isClosedValid ? (scRaw?.order_revision ?? previewOrderRevision) : previewOrderRevision,
+      totalOrderedItems: isClosedValid ? (scRaw?.total_ordered_items ?? orderedProductIdsForStore.size) : orderedProductIdsForStore.size,
+      totalDestinedItems: isClosedValid ? (scRaw?.total_destined_items ?? destinedProductIdsForStore.size) : destinedProductIdsForStore.size,
+      totalCutItems: isClosedValid ? (scRaw?.total_cut_items ?? cutsArray.filter((c) => c.status === "PARTIAL_CUT" || c.status === "TOTAL_CUT").length) : cutsArray.filter((c) => c.status === "PARTIAL_CUT" || c.status === "TOTAL_CUT").length,
       cuts: cutsArray,
-      allocationsHash: scRaw?.allocations_hash ?? currentAllocationsHash,
-      costsHash: scRaw?.costs_hash ?? currentCostsHash,
+      allocationsHash: isClosedValid ? (scRaw?.allocations_hash ?? currentAllocationsHash) : currentAllocationsHash,
+      orderHash: isClosedValid ? (scRaw?.order_hash ?? (previewOrderId ? `${previewOrderId}:r${previewOrderRevision}` : null)) : (previewOrderId ? `${previewOrderId}:r${previewOrderRevision}` : null),
+      costsHash: isClosedValid ? (scRaw?.costs_hash ?? currentCostsHash) : currentCostsHash,
       version: scRaw?.version ?? 1,
       isCurrent: scRaw?.is_current ?? true,
       closedAt: scRaw?.closed_at ?? null,
@@ -849,6 +877,10 @@ export async function readBuyerAllocationWorkspace(
       reopenReason: scRaw?.reopen_reason ?? null,
       isStale,
       staleReason,
+      previewOrderId,
+      previewOrderRevision,
+      previewAllocationsHash,
+      previewCostsHash,
     };
 
     storeSummary[store.id] = {
@@ -1852,17 +1884,29 @@ export async function closeBuyerCycle(
       for (const a of currentStoreAllocs) relevantPids.add(a.product_id);
 
       if (relevantPids.size > 0) {
-        const currentCostRows = await tx<{ product_id: string; purchased: boolean }[]>`
-          SELECT product_id, purchased
+        const currentCostRows = await tx<{
+          product_id: string;
+          purchased: boolean;
+          cost: string | null;
+          cost_is_unit: boolean | null;
+          version: number | null;
+        }[]>`
+          SELECT product_id, purchased, cost::text, cost_is_unit, version
           FROM purchase_cycle_product_costs
           WHERE purchase_cycle_date = ${cycleDate}::date
             AND product_id IN ${tx([...relevantPids])}
         `;
         const currentCostsHash = computeStoreCostsHash(
-          [...relevantPids].map((pid) => ({
-            productId: pid,
-            purchased: currentCostRows.find((c) => c.product_id === pid)?.purchased ?? false,
-          })),
+          [...relevantPids].map((pid) => {
+            const c = currentCostRows.find((row) => row.product_id === pid);
+            return {
+              productId: pid,
+              purchased: c?.purchased ?? false,
+              cost: c?.cost ?? null,
+              costIsUnit: c?.cost_is_unit ?? false,
+              version: c?.version ?? 0,
+            };
+          }),
         );
         if (sc.costs_hash && sc.costs_hash !== currentCostsHash) {
           staleStoreNames.push(`${st.name} (custos ou status de compra de produtos alterados após a conferência)`);
@@ -2517,8 +2561,14 @@ export async function closeStoreCycle(
     ]);
 
     const storeCostRows = relevantProductIds.size > 0
-      ? await tx<{ product_id: string; purchased: boolean }[]>`
-          SELECT product_id, purchased
+      ? await tx<{
+          product_id: string;
+          purchased: boolean;
+          cost: string | null;
+          cost_is_unit: boolean | null;
+          version: number | null;
+        }[]>`
+          SELECT product_id, purchased, cost::text, cost_is_unit, version
           FROM purchase_cycle_product_costs
           WHERE purchase_cycle_date = ${input.cycleDate}::date
             AND product_id IN ${tx([...relevantProductIds])}
@@ -2526,26 +2576,41 @@ export async function closeStoreCycle(
       : [];
 
     const currentCostsHash = computeStoreCostsHash(
-      [...relevantProductIds].map((pid) => ({
-        productId: pid,
-        purchased: storeCostRows.find((c) => c.product_id === pid)?.purchased ?? false,
-      })),
+      [...relevantProductIds].map((pid) => {
+        const c = storeCostRows.find((row) => row.product_id === pid);
+        return {
+          productId: pid,
+          purchased: c?.purchased ?? false,
+          cost: c?.cost ?? null,
+          costIsUnit: c?.cost_is_unit ?? false,
+          version: c?.version ?? 0,
+        };
+      }),
     );
 
     // 6. Proteção de concorrência otimista: valida se o resumo exibido ao comprador ainda é o mesmo
-    if (input.expectedOrderRevision !== undefined && (activeOrder?.revision ?? null) !== input.expectedOrderRevision) {
+    const currentOrderId = activeOrder?.id ?? null;
+    const currentOrderRevision = activeOrder?.revision ?? null;
+
+    if (input.expectedOrderId === undefined || input.expectedOrderId !== currentOrderId) {
       throw new AllocationDestinationConflictError(
-        `O pedido da loja foi alterado concorrentemente (revisão anterior: ${input.expectedOrderRevision ?? "nenhum"}, atual: ${activeOrder?.revision ?? "nenhum"}). Por favor, confira o novo resumo de cortes antes de finalizar a loja.`,
+        `O pedido da loja foi alterado ou cancelado concorrentemente (esperado: ${input.expectedOrderId ?? "nenhum"}, atual: ${currentOrderId ?? "nenhum"}). Por favor, confira o novo resumo de cortes antes de finalizar a loja.`,
       );
     }
 
-    if (input.expectedAllocationsHash !== undefined && allocationsHash !== input.expectedAllocationsHash) {
+    if (input.expectedOrderRevision === undefined || input.expectedOrderRevision !== currentOrderRevision) {
+      throw new AllocationDestinationConflictError(
+        `A revisão do pedido da loja foi alterada concorrentemente (esperado: ${input.expectedOrderRevision ?? "nenhum"}, atual: ${currentOrderRevision ?? "nenhum"}). Por favor, confira o novo resumo de cortes antes de finalizar a loja.`,
+      );
+    }
+
+    if (!input.expectedAllocationsHash || allocationsHash !== input.expectedAllocationsHash) {
       throw new AllocationDestinationConflictError(
         "As destinações da loja foram alteradas concorrentemente após a abertura da conferência. Por favor, confira o novo resumo de cortes antes de finalizar a loja.",
       );
     }
 
-    if (input.expectedCostsHash !== undefined && currentCostsHash !== input.expectedCostsHash) {
+    if (!input.expectedCostsHash || currentCostsHash !== input.expectedCostsHash) {
       throw new AllocationDestinationConflictError(
         "Os custos ou status de compra de produtos da loja foram alterados concorrentemente após a abertura da conferência. Por favor, confira o novo resumo de cortes antes de finalizar a loja.",
       );
@@ -2565,7 +2630,7 @@ export async function closeStoreCycle(
 
     await tx`
       UPDATE purchase_cycle_store_closures
-      SET is_current = false, updated_at = now()
+      SET is_current = false
       WHERE purchase_cycle_date = ${input.cycleDate}::date
         AND store_id = ${input.storeId}::uuid
         AND is_current = true
@@ -2681,8 +2746,27 @@ export async function reopenStoreCycle(
       throw new CycleClosedError("O ciclo geral de compras está fechado. Reabra o ciclo geral antes de alterar a loja.");
     }
 
-    const [existing] = await tx<{ id: string; status: string; version: number }[]>`
-      SELECT id, status, version
+    const [existing] = await tx<{
+      id: string;
+      status: string;
+      version: number;
+      order_id: string | null;
+      order_revision: number | null;
+      total_ordered_items: number;
+      total_destined_items: number;
+      total_cut_items: number;
+      cut_summary: unknown;
+      allocations_hash: string;
+      order_hash: string | null;
+      costs_hash: string | null;
+      closed_at: string;
+      closed_by: string;
+    }[]>`
+      SELECT
+        id, status, version, order_id, order_revision,
+        total_ordered_items, total_destined_items, total_cut_items,
+        cut_summary, allocations_hash, order_hash, costs_hash,
+        closed_at::text, closed_by
       FROM purchase_cycle_store_closures
       WHERE purchase_cycle_date = ${input.cycleDate}::date
         AND store_id = ${input.storeId}::uuid
@@ -2695,15 +2779,61 @@ export async function reopenStoreCycle(
 
     const reopenedAt = new Date().toISOString();
 
+    // 1. Marca a versão anterior (fechamento) como is_current = false SEM ALTERAR seus dados históricos (status permanece 'CLOSED' e campos intactos)
     await tx`
       UPDATE purchase_cycle_store_closures
-      SET
-        status = 'REOPENED',
-        reopened_at = ${reopenedAt}::timestamptz,
-        reopened_by = ${principal.userId}::uuid,
-        reopen_reason = ${trimmedReason},
-        updated_at = now()
+      SET is_current = false
       WHERE id = ${existing.id}::uuid
+    `;
+
+    // 2. Insere a nova versão representando o estado de reabertura (append-only)
+    const nextVersion = existing.version + 1;
+    await tx`
+      INSERT INTO purchase_cycle_store_closures (
+        purchase_cycle_date,
+        store_id,
+        order_id,
+        order_revision,
+        status,
+        total_ordered_items,
+        total_destined_items,
+        total_cut_items,
+        cut_summary,
+        allocations_hash,
+        order_hash,
+        costs_hash,
+        closed_at,
+        closed_by,
+        reopened_at,
+        reopened_by,
+        reopen_reason,
+        version,
+        is_current,
+        created_at,
+        updated_at
+      ) VALUES (
+        ${input.cycleDate}::date,
+        ${input.storeId}::uuid,
+        ${existing.order_id ? existing.order_id : null}::uuid,
+        ${existing.order_revision},
+        'REOPENED',
+        ${existing.total_ordered_items},
+        ${existing.total_destined_items},
+        ${existing.total_cut_items},
+        ${JSON.stringify(existing.cut_summary)}::jsonb,
+        ${existing.allocations_hash},
+        ${existing.order_hash},
+        ${existing.costs_hash},
+        ${existing.closed_at}::timestamptz,
+        ${existing.closed_by}::uuid,
+        ${reopenedAt}::timestamptz,
+        ${principal.userId}::uuid,
+        ${trimmedReason},
+        ${nextVersion},
+        true,
+        now(),
+        now()
+      )
     `;
 
     await tx`
