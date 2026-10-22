@@ -49,17 +49,51 @@ export async function resolveParticipatingStores(
   sql: postgres.Sql | postgres.TransactionSql,
   cycleDate: string,
 ): Promise<Array<{ id: string; name: string; slug: string }>> {
-  // 1. Identifica todas as lojas que devem compor este ciclo:
-  //    - As 3 lojas padrão da rede MultiShow quando ativas
-  //    - Lojas com atividade no ciclo (pedidos ativos, alocações positivas, fechamentos ou decisões)
-  //    - Lojas já registradas previamente como participantes
+  // 1. Saneia eventuais registros de lojas inseridas retroativamente criadas APÓS a data do ciclo e sem atividade
+  await sql`
+    DELETE FROM purchase_cycle_participating_stores ps
+    USING stores s
+    WHERE ps.store_id = s.id
+      AND ps.purchase_cycle_date = ${cycleDate}::date
+      AND DATE(s.created_at AT TIME ZONE 'America/Sao_Paulo') > ${cycleDate}::date
+      AND NOT EXISTS (
+        SELECT 1 FROM orders o WHERE o.purchase_cycle_date = ps.purchase_cycle_date AND o.store_id = s.id AND o.cancelled_at IS NULL
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM purchase_cycle_product_allocations pa WHERE pa.purchase_cycle_date = ps.purchase_cycle_date AND pa.store_id = s.id AND pa.destined_quantity > 0
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM purchase_cycle_store_closures sc WHERE sc.purchase_cycle_date = ps.purchase_cycle_date AND sc.store_id = s.id
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM purchase_cycle_product_supplier_decisions sd WHERE sd.purchase_cycle_date = ps.purchase_cycle_date AND sd.store_id = s.id
+      )
+  `;
+
+  // 2. Identifica todas as lojas que devem compor este ciclo:
+  //    - As 3 lojas padrão da rede MultiShow quando ativas e já existentes na data do ciclo
+  //    - Lojas com atividade comprovada no ciclo (pedidos ativos, alocações positivas, fechamentos ou decisões)
+  //    - Lojas já registradas previamente como participantes que existiam na data do ciclo
   const candidateStores = await sql<{ id: string; name: string; slug: string }[]>`
     SELECT s.id, s.name, s.slug
     FROM stores s
     WHERE (
-      (s.slug IN ('ponta-da-fruta', 'balneario', 'santa-monica') AND s.active = true)
+      (
+        s.slug IN ('ponta-da-fruta', 'balneario', 'santa-monica')
+        AND s.active = true
+        AND DATE(s.created_at AT TIME ZONE 'America/Sao_Paulo') <= ${cycleDate}::date
+      )
       OR s.id IN (
-        SELECT ps.store_id FROM purchase_cycle_participating_stores ps WHERE ps.purchase_cycle_date = ${cycleDate}::date
+        SELECT ps.store_id
+        FROM purchase_cycle_participating_stores ps
+        WHERE ps.purchase_cycle_date = ${cycleDate}::date
+          AND (
+            DATE(s.created_at AT TIME ZONE 'America/Sao_Paulo') <= ${cycleDate}::date
+            OR EXISTS (SELECT 1 FROM orders o WHERE o.purchase_cycle_date = ps.purchase_cycle_date AND o.store_id = s.id AND o.cancelled_at IS NULL)
+            OR EXISTS (SELECT 1 FROM purchase_cycle_product_allocations pa WHERE pa.purchase_cycle_date = ps.purchase_cycle_date AND pa.store_id = s.id AND pa.destined_quantity > 0)
+            OR EXISTS (SELECT 1 FROM purchase_cycle_store_closures sc WHERE sc.purchase_cycle_date = ps.purchase_cycle_date AND sc.store_id = s.id)
+            OR EXISTS (SELECT 1 FROM purchase_cycle_product_supplier_decisions sd WHERE sd.purchase_cycle_date = ps.purchase_cycle_date AND sd.store_id = s.id)
+          )
         UNION
         SELECT o.store_id FROM orders o WHERE o.purchase_cycle_date = ${cycleDate}::date AND o.cancelled_at IS NULL
         UNION
@@ -80,11 +114,12 @@ export async function resolveParticipatingStores(
 
   let storesToPersist = candidateStores;
   if (storesToPersist.length === 0) {
-    // Se não há lojas candidatas (ex: ambiente de teste sem as lojas padrão), usa lojas ativas
+    // Se não há lojas candidatas, tenta lojas ativas criadas até a data do ciclo
     storesToPersist = await sql<{ id: string; name: string; slug: string }[]>`
       SELECT id, name, slug
       FROM stores
       WHERE active = true
+        AND DATE(created_at AT TIME ZONE 'America/Sao_Paulo') <= ${cycleDate}::date
       ORDER BY CASE slug
         WHEN 'ponta-da-fruta' THEN 1
         WHEN 'balneario' THEN 2
@@ -92,9 +127,24 @@ export async function resolveParticipatingStores(
         ELSE 4
       END, name ASC
     `;
+
+    // Fallback final resiliente para ambientes de teste sem datas históricas nas lojas
+    if (storesToPersist.length === 0) {
+      storesToPersist = await sql<{ id: string; name: string; slug: string }[]>`
+        SELECT id, name, slug
+        FROM stores
+        WHERE active = true
+        ORDER BY CASE slug
+          WHEN 'ponta-da-fruta' THEN 1
+          WHEN 'balneario' THEN 2
+          WHEN 'santa-monica' THEN 3
+          ELSE 4
+        END, name ASC
+      `;
+    }
   }
 
-  // 2. Garante persistência de todas as lojas participantes identificadas
+  // 3. Garante persistência de todas as lojas participantes identificadas
   for (const st of storesToPersist) {
     await sql`
       INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
@@ -103,7 +153,7 @@ export async function resolveParticipatingStores(
     `;
   }
 
-  // 3. Retorna a lista completa atualizada e persistida de participantes
+  // 4. Retorna a lista completa atualizada e persistida de participantes
   return await sql<{ id: string; name: string; slug: string }[]>`
     SELECT s.id, s.name, s.slug
     FROM stores s
@@ -1252,52 +1302,9 @@ export async function saveSupplierAllocations(
         throw new AllocationValidationError(`Produto não encontrado: ${productInput.productId}`);
       }
 
-      // Regra de exclusividade:
-      // Se produto é exclusivo de outro fornecedor, rejeitar
-      const isJeb =
-        supplier.tax_id === "48336863000160" ||
-        supplier.corporate_name.toUpperCase().includes("JEB DISTRIBUIDORA");
-
-      if (prodRow.exclusive_supplier_id && prodRow.exclusive_supplier_id !== input.supplierId) {
-        throw new ExclusivityViolationError(
-          `O produto "${prodRow.name}" é exclusivo do fornecedor "${prodRow.exclusive_supplier_name}". Não pode ser comprado de outro fornecedor.`,
-        );
-      }
-
-      if (prodRow.exclusive_supplier && !prodRow.exclusive_supplier_id && !isJeb) {
-        throw new ExclusivityViolationError(
-          `O produto "${prodRow.name}" é exclusivo da JEB Distribuidora. Não pode ser comprado de outro fornecedor.`,
-        );
-      }
-
-      let productChanged = false;
-
-      // Verifica se o produto foi marcado como comprado nos custos deste ciclo
-      const [costRow] = await tx<{ purchased: boolean; cost: string | null }[]>`
-        SELECT purchased, cost
-        FROM purchase_cycle_product_costs
-        WHERE purchase_cycle_date = ${input.cycleDate}::date
-          AND product_id = ${prodRow.id}::uuid
-      `;
-      const isPurchasedInCosts = costRow?.purchased ?? false;
-
-      // Soma total de pedidos das lojas para este produto no ciclo
-      let totalCycleOrdersNum = 0;
-      for (const [key, qtyStr] of storeOriginalOrderMap.entries()) {
-        if (key.endsWith(`:${prodRow.id}`)) {
-          totalCycleOrdersNum += parseQuantity(qtyStr);
-        }
-      }
-
       const targetStores = input.storeId
         ? productInput.stores.filter((s) => s.storeId === input.storeId)
         : productInput.stores;
-
-      // Total destinado nesta requisição para este produto
-      const totalDestinedInRequest = targetStores.reduce(
-        (sum, s) => sum + parseQuantity(s.destinedQuantity),
-        0
-      );
 
       // Busca alocações existentes para este produto/fornecedor/ciclo
       const existingAllocRows = await tx<
@@ -1322,6 +1329,64 @@ export async function saveSupplierAllocations(
         (r) => parseQuantity(r.destined_quantity) > 0,
       );
       const existingStoreMap = new Map(existingAllocRows.map((r) => [r.store_id, r]));
+
+      // Regra de exclusividade:
+      // Se produto é exclusivo de outro fornecedor, rejeitar novas destinações ou aumentos indevidos.
+      // Permitir redução e zeragem de alocações preexistentes para viabilizar correções históricas.
+      const isJeb =
+        supplier.tax_id === "48336863000160" ||
+        supplier.corporate_name.toUpperCase().includes("JEB DISTRIBUIDORA");
+
+      const isExclusivityViolated =
+        (prodRow.exclusive_supplier_id && prodRow.exclusive_supplier_id !== input.supplierId) ||
+        (prodRow.exclusive_supplier && !prodRow.exclusive_supplier_id && !isJeb);
+
+      if (isExclusivityViolated) {
+        const isAttemptingNewOrIncreasedAllocation = targetStores.some((storeInput) => {
+          const destinedNum = parseQuantity(storeInput.destinedQuantity);
+          const existingAlloc = existingStoreMap.get(storeInput.storeId);
+          const previousDestinedNum = existingAlloc ? parseQuantity(existingAlloc.destined_quantity) : 0;
+          return destinedNum > previousDestinedNum || (previousDestinedNum <= 0 && destinedNum > 0);
+        });
+
+        if (isAttemptingNewOrIncreasedAllocation) {
+          if (prodRow.exclusive_supplier_id && prodRow.exclusive_supplier_id !== input.supplierId) {
+            throw new ExclusivityViolationError(
+              `O produto "${prodRow.name}" é exclusivo do fornecedor "${prodRow.exclusive_supplier_name}". Não pode ser comprado de outro fornecedor.`,
+            );
+          }
+          if (prodRow.exclusive_supplier && !prodRow.exclusive_supplier_id && !isJeb) {
+            throw new ExclusivityViolationError(
+              `O produto "${prodRow.name}" é exclusivo da JEB Distribuidora. Não pode ser comprado de outro fornecedor.`,
+            );
+          }
+        }
+      }
+
+      let productChanged = false;
+
+      // Verifica se o produto foi marcado como comprado nos custos deste ciclo
+      const [costRow] = await tx<{ purchased: boolean; cost: string | null }[]>`
+        SELECT purchased, cost
+        FROM purchase_cycle_product_costs
+        WHERE purchase_cycle_date = ${input.cycleDate}::date
+          AND product_id = ${prodRow.id}::uuid
+      `;
+      const isPurchasedInCosts = costRow?.purchased ?? false;
+
+      // Soma total de pedidos das lojas para este produto no ciclo
+      let totalCycleOrdersNum = 0;
+      for (const [key, qtyStr] of storeOriginalOrderMap.entries()) {
+        if (key.endsWith(`:${prodRow.id}`)) {
+          totalCycleOrdersNum += parseQuantity(qtyStr);
+        }
+      }
+
+      // Total destinado nesta requisição para este produto
+      const totalDestinedInRequest = targetStores.reduce(
+        (sum, s) => sum + parseQuantity(s.destinedQuantity),
+        0
+      );
 
       // Validação das regras de compra (Bug 03 - Regras A, B e C com auditoria e confirmação explícita)
       const validation = validateAllocationPurchasedStatus({
@@ -2852,7 +2917,9 @@ export async function reopenStoreCycle(
         ${JSON.stringify({
           cycleDate: input.cycleDate,
           storeId: input.storeId,
-          version: existing.version,
+          reopenedFromVersion: existing.version,
+          newVersion: nextVersion,
+          version: nextVersion,
           reason: trimmedReason,
         })}::jsonb,
         now()

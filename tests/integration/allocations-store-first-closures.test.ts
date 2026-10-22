@@ -1321,85 +1321,145 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
   });
 
   it("24. CRÍTICA H3: Concorrência real entre persistPurchaseCost e closeBuyerCycle (ambas as ordens serializadas)", async () => {
-    const cycleDate = "2026-11-04";
-    const [prod] = await db<{ id: string }[]>`
-      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
-      VALUES (9103, 'MANGA PALMER', 'CX', 'UN', 25.00, true)
-      RETURNING id
-    `;
-
     // Garante que o namespace é 424242
     expect(BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE).toBe(424242);
 
-    // Ordem A: persistPurchaseCost adquire a trava de ciclo primeiro.
+    // ==========================================
+    // Ordem A: persistPurchaseCost adquire a trava primeiro.
     // closeBuyerCycle tenta fechar concorrentemente e fica bloqueado até o commit do custo.
-    const clientA = postgres(testDatabaseUrl, { max: 1 });
-    const clientB = postgres(testDatabaseUrl, { max: 1 });
+    // Ao liberar, closeBuyerCycle detecta que a conferência ficou desatualizada pelo novo custo e rejeita o fechamento.
+    // ==========================================
+    const cycleDateA = "2026-11-04";
+    const [prodA] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9103, 'MANGA PALMER A', 'CX', 'UN', 25.00, true)
+      RETURNING id
+    `;
+    const storesA = await resolveParticipatingStores(db, cycleDateA);
+    for (const st of storesA) {
+      await closeStoreWithPreview(buyerPrincipal, cycleDateA, st.id);
+    }
+
+    // Trigger de sincronização temporário para reter a trava de ciclo durante persistPurchaseCost
+    await db.unsafe(`
+      CREATE OR REPLACE FUNCTION trg_wait_cost_xact() RETURNS trigger AS $$
+      BEGIN
+        PERFORM pg_sleep(0.3);
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      DROP TRIGGER IF EXISTS test_wait_cost_xact ON purchase_cycle_product_costs;
+      CREATE TRIGGER test_wait_cost_xact
+      BEFORE INSERT OR UPDATE ON purchase_cycle_product_costs
+      FOR EACH ROW EXECUTE FUNCTION trg_wait_cost_xact();
+    `);
 
     try {
-      let costTxAcquiredLock = false;
-
-      const costPromise = clientA.begin(async (tx) => {
-        await tx`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${cycleDate}::text))`;
-        costTxAcquiredLock = true;
-        // Simula processamento com trava retida
-        await new Promise((r) => setTimeout(r, 200));
-
-        await tx`
-          INSERT INTO purchase_cycle_product_costs (purchase_cycle_date, product_id, cost, purchased, purchased_at, updated_by, version)
-          VALUES (${cycleDate}::date, ${prod.id}::uuid, 42.00, true, now(), ${buyerPrincipal.userId}::uuid, 1)
-        `;
+      const costPromise = persistPurchaseCost(buyerPrincipal, {
+        cycleDate: cycleDateA,
+        productId: prodA.id,
+        cost: "60.00",
+        purchased: true,
+        expectedVersion: 0,
       });
 
-      // Aguarda Client A adquirir a trava
-      while (!costTxAcquiredLock) {
-        await new Promise((r) => setTimeout(r, 10));
-      }
-
-      // Client B tenta fechar o ciclo enquanto Client A segura a trava
-      let clientBStarted = false;
-      let clientBFinished = false;
-
-      const closePromise = clientB.begin(async (tx) => {
-        clientBStarted = true;
-        await tx`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${cycleDate}::text))`;
-        clientBFinished = true;
-        const [existing] = await tx<{ status: string }[]>`
-          SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycleDate}::date
-        `;
-        return existing?.status ?? null;
-      });
-
-      while (!clientBStarted) {
-        await new Promise((r) => setTimeout(r, 10));
-      }
+      // Aguarda 50ms para que persistPurchaseCost adquira a trava de ciclo
       await new Promise((r) => setTimeout(r, 50));
-      expect(clientBFinished).toBe(false);
 
-      await Promise.all([costPromise, closePromise]);
-      expect(clientBFinished).toBe(true);
+      // closeBuyerCycle chamado concorrentemente deve ficar bloqueado aguardando o commit do custo
+      const closePromise = closeBuyerCycle(buyerPrincipal, cycleDateA);
 
-      // Ordem B: Fechamento adquire a trava e fecha o ciclo primeiro.
-      // persistPurchaseCost tenta salvar custo concorrentemente e é bloqueado.
-      // Ao adquirir a trava, encontra ciclo fechado e lança CycleClosedError.
-      await db`
-        INSERT INTO purchase_cycle_buyer_closures (purchase_cycle_date, status, closed_at, closed_by)
-        VALUES (${cycleDate}::date, 'CLOSED', now(), ${buyerPrincipal.userId}::uuid)
-        ON CONFLICT (purchase_cycle_date) DO UPDATE SET status = 'CLOSED'
+      const [costRes, closeErr] = await Promise.all([
+        costPromise,
+        closePromise.catch((err) => err),
+      ]);
+
+      expect(costRes.cost).toBe("60.00");
+      expect(costRes.purchased).toBe(true);
+      expect(closeErr).toBeInstanceOf(AllocationValidationError);
+      expect(closeErr.message).toMatch(/não foram conferidas ou estão desatualizadas|produto\(s\) comprado\(s\) sem fornecedor/);
+
+      // Comprova que o ciclo permaneceu aberto
+      const [cycleClosureA] = await db<{ status: string }[]>`
+        SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycleDateA}::date
       `;
-
-      await expect(
-        persistPurchaseCost(buyerPrincipal, {
-          cycleDate,
-          productId: prod.id,
-          cost: "50.00",
-          purchased: true,
-          expectedVersion: 1,
-        }),
-      ).rejects.toThrow(CycleClosedError);
+      expect(cycleClosureA?.status ?? "OPEN").not.toBe("CLOSED");
     } finally {
-      await clientA.end();
-      await clientB.end();
+      await db.unsafe(`
+        DROP TRIGGER IF EXISTS test_wait_cost_xact ON purchase_cycle_product_costs;
+        DROP FUNCTION IF EXISTS trg_wait_cost_xact();
+      `);
+    }
+
+    // ==========================================
+    // Ordem B: closeBuyerCycle adquire a trava primeiro e fecha o ciclo.
+    // persistPurchaseCost tenta salvar custo concorrentemente e é bloqueado.
+    // Ao adquirir a trava, encontra o ciclo já fechado e lança CycleClosedError.
+    // ==========================================
+    const cycleDateB = "2026-11-14";
+    const [prodB] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9124, 'MANGA PALMER B', 'CX', 'UN', 25.00, true)
+      RETURNING id
+    `;
+    const storesB = await resolveParticipatingStores(db, cycleDateB);
+    for (const st of storesB) {
+      await closeStoreWithPreview(buyerPrincipal, cycleDateB, st.id);
+    }
+
+    // Trigger de sincronização temporário para reter a trava de ciclo durante closeBuyerCycle
+    await db.unsafe(`
+      CREATE OR REPLACE FUNCTION trg_wait_buyer_close_xact() RETURNS trigger AS $$
+      BEGIN
+        PERFORM pg_sleep(0.3);
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      DROP TRIGGER IF EXISTS test_wait_buyer_close_xact ON purchase_cycle_buyer_closures;
+      CREATE TRIGGER test_wait_buyer_close_xact
+      BEFORE INSERT OR UPDATE ON purchase_cycle_buyer_closures
+      FOR EACH ROW EXECUTE FUNCTION trg_wait_buyer_close_xact();
+    `);
+
+    try {
+      const closePromise = closeBuyerCycle(buyerPrincipal, cycleDateB);
+
+      // Aguarda 50ms para que closeBuyerCycle adquira a trava de ciclo
+      await new Promise((r) => setTimeout(r, 50));
+
+      const costPromise = persistPurchaseCost(buyerPrincipal, {
+        cycleDate: cycleDateB,
+        productId: prodB.id,
+        cost: "75.00",
+        purchased: true,
+        expectedVersion: 0,
+      });
+
+      const [closeRes, costErr] = await Promise.all([
+        closePromise,
+        costPromise.catch((err) => err),
+      ]);
+
+      expect(closeRes.success).toBe(true);
+      const [cycleClosureB] = await db<{ status: string }[]>`
+        SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycleDateB}::date
+      `;
+      expect(cycleClosureB?.status).toBe("CLOSED");
+      expect(costErr).toBeInstanceOf(CycleClosedError);
+
+      // Comprova que o custo NÃO foi alterado no ciclo fechado
+      const [persistedCostB] = await db<{ cost: string | null }[]>`
+        SELECT cost FROM purchase_cycle_product_costs
+        WHERE purchase_cycle_date = ${cycleDateB}::date AND product_id = ${prodB.id}::uuid
+      `;
+      expect(persistedCostB?.cost ?? null).toBeNull();
+    } finally {
+      await db.unsafe(`
+        DROP TRIGGER IF EXISTS test_wait_buyer_close_xact ON purchase_cycle_buyer_closures;
+        DROP FUNCTION IF EXISTS trg_wait_buyer_close_xact();
+      `);
     }
   });
 
@@ -1603,6 +1663,16 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
 
     ws = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, null, store.id);
     expect(ws.storeClosures[store.id].isStale).toBe(true);
+
+    // 4. Fechamento geral do ciclo DEVE ser rejeitado enquanto houver conferência de loja desatualizada por custos
+    await expect(
+      closeBuyerCycle(buyerPrincipal, cycleDate),
+    ).rejects.toThrow(AllocationValidationError);
+
+    const [closureAfterStale] = await db<{ status: string }[]>`
+      SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycleDate}::date
+    `;
+    expect(closureAfterStale?.status ?? "OPEN").not.toBe("CLOSED");
   });
 
   it("28. MÉDIA ALTA 5: Snapshot anterior fechado permanece com status e dados intactos após reabertura", async () => {
@@ -1714,5 +1784,237 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     expect(snapV2.status).toBe("REOPENED");
     expect(snapV2.reopen_reason).toBe("Auditoria de divergência no pedido");
     expect(snapV2.is_current).toBe(true);
+  });
+
+  it("29. ALTA A1: Permite zerar destinação histórica após mudança de exclusividade, mas rejeita novas compras ou aumentos", async () => {
+    const cycleDate = "2026-11-09";
+    const [store] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'ponta-da-fruta'`;
+
+    // 1. Busca ou cria fornecedor JEB e fornecedor Alternativo
+    let [suppJeb] = await db<{ id: string }[]>`
+      SELECT id FROM suppliers WHERE tax_id = '48336863000160'
+    `;
+    if (!suppJeb) {
+      [suppJeb] = await db<{ id: string }[]>`
+        INSERT INTO suppliers (corporate_name, trade_name, tax_id, tax_id_type, tax_invoice_rule, active)
+        VALUES ('JEB Distribuidora Teste A1', 'JEB A1', '48336863000160', 'CNPJ', 'STANDARD', true)
+        RETURNING id
+      `;
+    }
+    const [suppOutro] = await db<{ id: string }[]>`
+      INSERT INTO suppliers (corporate_name, trade_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES ('Hortifruti ABC Teste A1', 'ABC A1', '99999999000199', 'CNPJ', 'STANDARD', true)
+      RETURNING id
+    `;
+
+    // 2. Produto com exclusividade legada JEB
+    const [prod] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, exclusive_supplier, active)
+      VALUES (9109, 'BANANA PRATA LEGADA A1', 'CX', 'KG', 25.00, true, true)
+      RETURNING id
+    `;
+
+    // Custo marcado como comprado
+    await db`
+      INSERT INTO purchase_cycle_product_costs (purchase_cycle_date, product_id, cost, purchased, purchased_at, updated_by, version)
+      VALUES (${cycleDate}::date, ${prod.id}::uuid, 40.00, true, now(), ${buyerPrincipal.userId}::uuid, 1)
+    `;
+
+    // 3. Salva destinação válida de 10 CX para JEB no ciclo
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: suppJeb.id,
+      storeId: store.id,
+      allocations: [
+        {
+          productId: prod.id,
+          stores: [{ storeId: store.id, destinedQuantity: "10.00" }],
+        },
+      ],
+    });
+
+    // Comprova que 10 CX foi persistido para JEB
+    const [savedAlloc] = await db<{ destined_quantity: string }[]>`
+      SELECT destined_quantity::text FROM purchase_cycle_product_allocations
+      WHERE purchase_cycle_date = ${cycleDate}::date AND supplier_id = ${suppJeb.id}::uuid AND product_id = ${prod.id}::uuid
+    `;
+    expect(Number(savedAlloc.destined_quantity)).toBe(10);
+
+    // 4. Mudança comercial posterior: produto agora é exclusivo de 'suppOutro' (exclusividade moderna)
+    await db`
+      INSERT INTO product_suppliers (product_id, supplier_id, is_primary, is_exclusive, active)
+      VALUES (${prod.id}::uuid, ${suppOutro.id}::uuid, true, true, true)
+    `;
+
+    // 5. O produto permanece visível no workspace para JEB (pois possui alocação histórica)
+    const wsJeb = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, suppJeb.id, store.id);
+    const prodInWs = wsJeb.destinationData?.products.find((p) => p.productId === prod.id);
+    expect(prodInWs).toBeDefined();
+    expect(prodInWs?.stores[store.id].destinedQuantity).toBe("10.00");
+
+    // 6. Tentativa de aumentar a destinação com JEB (10 -> 15) DEVE ser rejeitada com ExclusivityViolationError
+    await expect(
+      saveSupplierAllocations(buyerPrincipal, {
+        cycleDate,
+        supplierId: suppJeb.id,
+        storeId: store.id,
+        allocations: [
+          {
+            productId: prod.id,
+            stores: [{ storeId: store.id, destinedQuantity: "15.00" }],
+          },
+        ],
+      }),
+    ).rejects.toThrow(ExclusivityViolationError);
+
+    // 7. Correção para zero (zeragem da alocação histórica) DEVE SER PERMITIDA
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: suppJeb.id,
+      storeId: store.id,
+      allocations: [
+        {
+          productId: prod.id,
+          stores: [{ storeId: store.id, destinedQuantity: "0.00" }],
+        },
+      ],
+    });
+
+    // 8. Recarrega o workspace e comprova persistência de 0.00
+    const [zeroedAlloc] = await db<{ destined_quantity: string }[]>`
+      SELECT destined_quantity::text FROM purchase_cycle_product_allocations
+      WHERE purchase_cycle_date = ${cycleDate}::date AND supplier_id = ${suppJeb.id}::uuid AND product_id = ${prod.id}::uuid
+    `;
+    expect(Number(zeroedAlloc?.destined_quantity ?? 0)).toBe(0);
+
+    const wsJebZeroed = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, suppJeb.id, store.id);
+    const prodInWsZeroed = wsJebZeroed.destinationData?.products.find((p) => p.productId === prod.id);
+    expect(Number(prodInWsZeroed?.stores[store.id].destinedQuantity ?? 0)).toBe(0);
+
+    // 9. Agora que a destinação está zerada, uma nova tentativa de alocação positiva para JEB (0 -> 5) é rejeitada
+    await expect(
+      saveSupplierAllocations(buyerPrincipal, {
+        cycleDate,
+        supplierId: suppJeb.id,
+        storeId: store.id,
+        allocations: [
+          {
+            productId: prod.id,
+            stores: [{ storeId: store.id, destinedQuantity: "5.00" }],
+          },
+        ],
+      }),
+    ).rejects.toThrow(ExclusivityViolationError);
+  });
+
+  it("30. MÉDIA A2: Lojas criadas após a data do ciclo não são inseridas retroativamente como participantes", async () => {
+    // 1. Data histórica anterior à criação de Balneário e Santa Mônica
+    const historicCycle = "2025-01-03";
+
+    const [storePonta] = await db<{ id: string; slug: string; name: string }[]>`
+      SELECT id, slug, name FROM stores WHERE slug = 'ponta-da-fruta'
+    `;
+    const [storeBalneario] = await db<{ id: string; slug: string; name: string }[]>`
+      SELECT id, slug, name FROM stores WHERE slug = 'balneario'
+    `;
+    const [storeSantaMonica] = await db<{ id: string; slug: string; name: string }[]>`
+      SELECT id, slug, name FROM stores WHERE slug = 'santa-monica'
+    `;
+
+    // Configura datas de criação reais simulando a linha do tempo da rede
+    // Ponta da Fruta existia em 2024; Balneário e Santa Mônica foram criadas meses depois (em 2025-06-01)
+    await db`UPDATE stores SET created_at = '2024-12-01T10:00:00Z'::timestamptz WHERE id = ${storePonta.id}::uuid`;
+    await db`UPDATE stores SET created_at = '2025-06-01T10:00:00Z'::timestamptz WHERE id IN (${storeBalneario.id}::uuid, ${storeSantaMonica.id}::uuid)`;
+
+    try {
+      const [prod] = await db<{ id: string }[]>`
+        INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+        VALUES (9110, 'ABACATE HISTORICO', 'CX', 'UN', 20.00, true)
+        RETURNING id
+      `;
+
+      // 2. Apenas a loja antiga (Ponta) tinha pedido no ciclo histórico
+      const [order] = await db<{ id: string }[]>`
+        INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, submitted_by)
+        VALUES (${historicCycle}::date, ${historicCycle}::date, now(), ${storePonta.id}::uuid, 1, now(), ${buyerPrincipal.userId}::uuid)
+        RETURNING id
+      `;
+      await db`
+        INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+        VALUES (${order.id}::uuid, ${prod.id}::uuid, 0.00, 5.00, 9110, 'ABACATE HISTORICO', 'CX')
+      `;
+
+      // Custo marcado como comprado
+      await db`
+        INSERT INTO purchase_cycle_product_costs (purchase_cycle_date, product_id, cost, purchased, purchased_at, updated_by, version)
+        VALUES (${historicCycle}::date, ${prod.id}::uuid, 30.00, true, now(), ${buyerPrincipal.userId}::uuid, 1)
+      `;
+
+      // Cria fornecedor e salva alocação para o produto comprado possuir destinação atribuída
+      const [suppHist] = await db<{ id: string }[]>`
+        INSERT INTO suppliers (corporate_name, trade_name, tax_id, tax_id_type, tax_invoice_rule, active)
+        VALUES ('Fornecedor Histórico A2', 'Hist A2', '88888888000188', 'CNPJ', 'STANDARD', true)
+        RETURNING id
+      `;
+      await db`
+        INSERT INTO product_suppliers (product_id, supplier_id, is_primary, is_exclusive, active)
+        VALUES (${prod.id}::uuid, ${suppHist.id}::uuid, true, false, true)
+      `;
+      await saveSupplierAllocations(buyerPrincipal, {
+        cycleDate: historicCycle,
+        supplierId: suppHist.id,
+        storeId: storePonta.id,
+        allocations: [
+          {
+            productId: prod.id,
+            stores: [{ storeId: storePonta.id, destinedQuantity: "5.00" }],
+          },
+        ],
+      });
+
+      // Simula se porventura houvesse um registro indevido prévio de loja futura no ciclo histórico
+      await db`
+        INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+        VALUES (${historicCycle}::date, ${storeBalneario.id}::uuid)
+        ON CONFLICT DO NOTHING
+      `;
+
+      // 3. Executa a resolução de participantes para o ciclo histórico
+      const participants = await resolveParticipatingStores(db, historicCycle);
+
+      // Deve conter APENAS a loja antiga que existia e participava na data do ciclo
+      expect(participants.some((s) => s.id === storePonta.id)).toBe(true);
+      expect(participants.some((s) => s.id === storeBalneario.id)).toBe(false);
+      expect(participants.some((s) => s.id === storeSantaMonica.id)).toBe(false);
+
+      // O registro indevido de storeBalneario deve ter sido saneado do banco
+      const [persistedNova] = await db<{ store_id: string }[]>`
+        SELECT store_id FROM purchase_cycle_participating_stores
+        WHERE purchase_cycle_date = ${historicCycle}::date AND store_id = ${storeBalneario.id}::uuid
+      `;
+      expect(persistedNova).toBeUndefined();
+
+      // 4. Finaliza a única loja participante legítima
+      await closeStoreWithPreview(buyerPrincipal, historicCycle, storePonta.id);
+
+      // 5. Fechamento geral do ciclo histórico é aceito com sucesso sem exigir lojas futuras
+      const closeResult = await closeBuyerCycle(buyerPrincipal, historicCycle);
+      expect(closeResult.success).toBe(true);
+      const [closure] = await db<{ status: string }[]>`
+        SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${historicCycle}::date
+      `;
+      expect(closure?.status).toBe("CLOSED");
+
+      // 6. Em um ciclo futuro (quando todas as 3 lojas já existem na data do ciclo):
+      const futureCycle = "2026-11-10";
+      const futureParticipants = await resolveParticipatingStores(db, futureCycle);
+      // As lojas criadas em 2025-06-01 são reconhecidas normalmente no ciclo de 2026
+      expect(futureParticipants.some((s) => s.id === storePonta.id)).toBe(true);
+      expect(futureParticipants.some((s) => s.id === storeBalneario.id)).toBe(true);
+      expect(futureParticipants.some((s) => s.id === storeSantaMonica.id)).toBe(true);
+    } finally {
+      // Restaura created_at para data compatível com todos os ciclos de teste
+      await db`UPDATE stores SET created_at = '2024-12-01T10:00:00Z'::timestamptz WHERE id IN (${storePonta.id}::uuid, ${storeBalneario.id}::uuid, ${storeSantaMonica.id}::uuid)`;
+    }
   });
 });
