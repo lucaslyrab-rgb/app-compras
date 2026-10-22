@@ -17,7 +17,9 @@ function createClient() {
 export function database() {
   const url = process.env.DATABASE_URL ?? (process.env.DATABASE_URL_FILE ? readFileSync(process.env.DATABASE_URL_FILE, "utf8").trim() : undefined);
   if (singleton && currentUrl !== url) {
+    const previous = singleton;
     singleton = undefined;
+    previous.sql.end({ timeout: 2 }).catch(() => {});
   }
   singleton ??= createClient();
   return singleton;
