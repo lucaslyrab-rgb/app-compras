@@ -39,6 +39,43 @@ import {
   type SupplierSummaryOption,
 } from "./domain";
 
+function isTransactionSql(sql: postgres.Sql | postgres.TransactionSql): sql is postgres.TransactionSql {
+  return typeof (sql as unknown as Record<string, unknown>).savepoint === "function";
+}
+
+async function executeWithCycleLock<T>(
+  sql: postgres.Sql | postgres.TransactionSql,
+  cycleDate: string,
+  callback: (tx: postgres.TransactionSql) => Promise<T>,
+): Promise<T> {
+  if (isTransactionSql(sql)) {
+    await sql`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${cycleDate}::text))`;
+    return await callback(sql);
+  }
+  return (await sql.begin(async (tx) => {
+    await tx`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${cycleDate}::text))`;
+    return await callback(tx);
+  })) as T;
+}
+
+async function queryPersistedParticipatingStores(
+  sql: postgres.Sql | postgres.TransactionSql,
+  cycleDate: string,
+): Promise<Array<{ id: string; name: string; slug: string }>> {
+  return await sql<{ id: string; name: string; slug: string }[]>`
+    SELECT s.id, s.name, s.slug
+    FROM stores s
+    JOIN purchase_cycle_participating_stores ps ON ps.store_id = s.id
+    WHERE ps.purchase_cycle_date = ${cycleDate}::date
+    ORDER BY CASE s.slug
+      WHEN 'ponta-da-fruta' THEN 1
+      WHEN 'balneario' THEN 2
+      WHEN 'santa-monica' THEN 3
+      ELSE 4
+    END, s.name ASC
+  `;
+}
+
 /**
  * Identifica e preserva as lojas participantes de um ciclo específico.
  *
@@ -47,9 +84,10 @@ import {
  *    registros para este ciclo, essas lojas são a fonte de verdade. Nenhuma leitura ou consulta
  *    executa saneamento destrutivo ou remoção dessas linhas.
  * 2. Ciclo Fechado: O conjunto de participantes é estritamente congelado.
+ *    Nenhuma leitura ou escrita subsequente pode alterar os participantes de um ciclo CLOSED.
  * 3. Ciclo Aberto (Reconciliação Dinâmica): Se o ciclo estiver aberto e uma loja registrar
  *    atividade posterior legítima (pedido ativo, alocação positiva, fechamento ou decisão),
- *    ela é adicionada ao conjunto sem remover as lojas já existentes.
+ *    ela é adicionada ao conjunto sob lock transacional exclusivo do ciclo, revalidando status antes da escrita.
  * 4. Inicialização de Ciclo (Sem registros prévios): Se a tabela ainda não possui participantes,
  *    identifica candidatas com base em:
  *    a) Atividade comprovada no ciclo (pedidos ativos ou históricos, alocações positivas, fechamentos ou decisões);
@@ -62,30 +100,19 @@ export async function resolveParticipatingStores(
   cycleDate: string,
 ): Promise<Array<{ id: string; name: string; slug: string }>> {
   // 1. Consulta participantes já persistidas para este ciclo (fonte de verdade preservada)
-  const existingPersisted = await sql<{ id: string; name: string; slug: string }[]>`
-    SELECT s.id, s.name, s.slug
-    FROM stores s
-    JOIN purchase_cycle_participating_stores ps ON ps.store_id = s.id
-    WHERE ps.purchase_cycle_date = ${cycleDate}::date
-    ORDER BY CASE s.slug
-      WHEN 'ponta-da-fruta' THEN 1
-      WHEN 'balneario' THEN 2
-      WHEN 'santa-monica' THEN 3
-      ELSE 4
-    END, s.name ASC
+  const existingPersisted = await queryPersistedParticipatingStores(sql, cycleDate);
+
+  // 1.1 Ciclo fechado: composição é estritamente imutável (mesmo se vazio em ciclos legados sem snapshot)
+  const [existingClosure] = await sql<{ status: string }[]>`
+    SELECT status FROM purchase_cycle_buyer_closures
+    WHERE purchase_cycle_date = ${cycleDate}::date
   `;
+  if (existingClosure?.status === "CLOSED") {
+    return existingPersisted;
+  }
 
   // Se já existem participantes gravadas:
   if (existingPersisted.length > 0) {
-    // 1.1 Ciclo fechado: composição é estritamente imutável
-    const [closure] = await sql<{ status: string }[]>`
-      SELECT status FROM purchase_cycle_buyer_closures
-      WHERE purchase_cycle_date = ${cycleDate}::date
-    `;
-    if (closure?.status === "CLOSED") {
-      return existingPersisted;
-    }
-
     // 1.2 Ciclo aberto: reconcilia novas lojas que tenham recebido atividade posterior no ciclo
     const lateActiveStores = await sql<{ id: string; name: string; slug: string }[]>`
       SELECT DISTINCT s.id, s.name, s.slug
@@ -104,29 +131,29 @@ export async function resolveParticipatingStores(
       )
     `;
 
-    if (lateActiveStores.length > 0) {
+    if (lateActiveStores.length === 0) {
+      return existingPersisted;
+    }
+
+    return await executeWithCycleLock(sql, cycleDate, async (tx) => {
+      // Revalida status DENTRO do lock do ciclo
+      const [lockedClosure] = await tx<{ status: string }[]>`
+        SELECT status FROM purchase_cycle_buyer_closures
+        WHERE purchase_cycle_date = ${cycleDate}::date
+      `;
+      if (lockedClosure?.status === "CLOSED") {
+        return await queryPersistedParticipatingStores(tx, cycleDate);
+      }
+
       for (const st of lateActiveStores) {
-        await sql`
+        await tx`
           INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
           VALUES (${cycleDate}::date, ${st.id}::uuid)
           ON CONFLICT (purchase_cycle_date, store_id) DO NOTHING
         `;
       }
-      return await sql<{ id: string; name: string; slug: string }[]>`
-        SELECT s.id, s.name, s.slug
-        FROM stores s
-        JOIN purchase_cycle_participating_stores ps ON ps.store_id = s.id
-        WHERE ps.purchase_cycle_date = ${cycleDate}::date
-        ORDER BY CASE s.slug
-          WHEN 'ponta-da-fruta' THEN 1
-          WHEN 'balneario' THEN 2
-          WHEN 'santa-monica' THEN 3
-          ELSE 4
-        END, s.name ASC
-      `;
-    }
-
-    return existingPersisted;
+      return await queryPersistedParticipatingStores(tx, cycleDate);
+    });
   }
 
   // 2. Primeira inicialização do ciclo: não existem participantes persistidas ainda
@@ -164,16 +191,26 @@ export async function resolveParticipatingStores(
     return [];
   }
 
-  // Persiste as participantes identificadas para fixar o snapshot inicial do ciclo
-  for (const st of candidateStores) {
-    await sql`
-      INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
-      VALUES (${cycleDate}::date, ${st.id}::uuid)
-      ON CONFLICT (purchase_cycle_date, store_id) DO NOTHING
+  // Persiste as participantes identificadas para fixar o snapshot inicial do ciclo sob trava transacional
+  return await executeWithCycleLock(sql, cycleDate, async (tx) => {
+    // Revalida status DENTRO do lock do ciclo
+    const [lockedClosure] = await tx<{ status: string }[]>`
+      SELECT status FROM purchase_cycle_buyer_closures
+      WHERE purchase_cycle_date = ${cycleDate}::date
     `;
-  }
+    if (lockedClosure?.status === "CLOSED") {
+      return await queryPersistedParticipatingStores(tx, cycleDate);
+    }
 
-  return candidateStores;
+    for (const st of candidateStores) {
+      await tx`
+        INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+        VALUES (${cycleDate}::date, ${st.id}::uuid)
+        ON CONFLICT (purchase_cycle_date, store_id) DO NOTHING
+      `;
+    }
+    return await queryPersistedParticipatingStores(tx, cycleDate);
+  });
 }
 
 /**
@@ -1878,6 +1915,12 @@ export async function closeBuyerCycle(
 
     // 1.1 Validação Store-First: Lojas participantes históricas precisam ter conferência válida em purchase_cycle_store_closures
     const participatingStores = await resolveParticipatingStores(tx, cycleDate);
+
+    if (participatingStores.length === 0) {
+      throw new AllocationValidationError(
+        "Não é possível fechar o ciclo de compras: nenhuma loja participante identificada para esta data.",
+      );
+    }
 
     const storeClosureRows = await tx<{
       store_id: string;

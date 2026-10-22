@@ -44,12 +44,18 @@ async function setupE2EData() {
     await sql`DELETE FROM purchase_cycle_product_allocations WHERE purchase_cycle_date = ${cycle}::date`;
     await sql`DELETE FROM purchase_cycle_participating_stores WHERE purchase_cycle_date = ${cycle}::date`;
 
-    // 2. Busca IDs dinâmicos de Corteletti, Santa Mônica, Comprador e Produtos
+    // 2. Busca IDs dinâmicos de Corteletti, União Frutas, Lojas, Comprador e Produtos
     const [corteletti] = await sql<{ id: string }[]>`
       SELECT id FROM suppliers WHERE trade_name ILIKE '%corteletti%' LIMIT 1
     `;
+    const [uniao] = await sql<{ id: string }[]>`
+      SELECT id FROM suppliers WHERE trade_name ILIKE '%união%' LIMIT 1
+    `;
     const [santaMonica] = await sql<{ id: string }[]>`
       SELECT id FROM stores WHERE slug = 'santa-monica' LIMIT 1
+    `;
+    const [balneario] = await sql<{ id: string }[]>`
+      SELECT id FROM stores WHERE slug = 'balneario' LIMIT 1
     `;
     const [buyerUser] = await sql<{ id: string }[]>`
       SELECT id FROM users WHERE email = 'comprador@consolidado.test' LIMIT 1
@@ -57,8 +63,8 @@ async function setupE2EData() {
     const [prodUva] = await sql<{ id: string }[]>`
       SELECT id FROM products WHERE erp_code = 22 LIMIT 1
     `;
-    const prodsPending = await sql<{ id: string }[]>`
-      SELECT id FROM products WHERE erp_code IN (5, 6)
+    const prodsPending = await sql<{ id: string; erp_code: number }[]>`
+      SELECT id, erp_code FROM products WHERE erp_code IN (5, 6)
     `;
 
     if (corteletti && santaMonica && buyerUser && prodUva) {
@@ -86,6 +92,43 @@ async function setupE2EData() {
         ON CONFLICT (purchase_cycle_date, supplier_id, product_id, store_id)
         DO UPDATE SET destined_quantity = 2.00, ordered_quantity = 2.00
       `;
+
+      // Sentinela 1: Outro fornecedor (União Frutas) na mesma loja (Santa Mônica) com destinação de 5.00 UN de CEBOLA TESTE (ERP 5)
+      const cebolaProd = prodsPending.find((p) => p.erp_code === 5) ?? prodsPending[0];
+      if (uniao && cebolaProd) {
+        await sql`
+          INSERT INTO purchase_cycle_product_allocations (
+            purchase_cycle_date, supplier_id, product_id, store_id,
+            ordered_quantity, destined_quantity, purchase_format,
+            is_additional_purchase, created_by, updated_by, version,
+            created_at, updated_at
+          )
+          VALUES (
+            ${cycle}::date, ${uniao.id}::uuid, ${cebolaProd.id}::uuid, ${santaMonica.id}::uuid,
+            5.00, 5.00, 'UN', false, ${buyerUser.id}::uuid, ${buyerUser.id}::uuid, 1, now(), now()
+          )
+          ON CONFLICT (purchase_cycle_date, supplier_id, product_id, store_id)
+          DO UPDATE SET destined_quantity = 5.00, ordered_quantity = 5.00
+        `;
+      }
+
+      // Sentinela 2: Mesmo fornecedor (Corteletti) em outra loja (Balneário) com 3.00 CX
+      if (balneario) {
+        await sql`
+          INSERT INTO purchase_cycle_product_allocations (
+            purchase_cycle_date, supplier_id, product_id, store_id,
+            ordered_quantity, destined_quantity, purchase_format,
+            is_additional_purchase, created_by, updated_by, version,
+            created_at, updated_at
+          )
+          VALUES (
+            ${cycle}::date, ${corteletti.id}::uuid, ${prodUva.id}::uuid, ${balneario.id}::uuid,
+            3.00, 3.00, 'CX', false, ${buyerUser.id}::uuid, ${buyerUser.id}::uuid, 1, now(), now()
+          )
+          ON CONFLICT (purchase_cycle_date, supplier_id, product_id, store_id)
+          DO UPDATE SET destined_quantity = 3.00, ordered_quantity = 3.00
+        `;
+      }
     }
   } finally {
     await sql.end();
@@ -266,15 +309,72 @@ test.describe("Experiência Operacional Store-First do Comprador", () => {
         expect(decisions[1].erp_code).toBe(6);
         expect(decisions[1].decision).toBe("NOT_PURCHASED");
 
-        // Verifica que a destinação positiva de UVA VITÓRIA (ERP 22) foi integralmente preservada com 2.00 CX
+        const [uniao] = await sqlCheck<{ id: string }[]>`SELECT id FROM suppliers WHERE trade_name ILIKE '%união%' LIMIT 1`;
+        const [santaMonica] = await sqlCheck<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'santa-monica' LIMIT 1`;
+        const [balneario] = await sqlCheck<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'balneario' LIMIT 1`;
+        const [corteletti] = await sqlCheck<{ id: string }[]>`SELECT id FROM suppliers WHERE trade_name ILIKE '%corteletti%' LIMIT 1`;
+
+        // Verifica que a destinação positiva de UVA VITÓRIA (ERP 22) em Santa Mônica foi integralmente preservada com 2.00 CX
         const [uvaAlloc] = await sqlCheck<{ destined_quantity: string }[]>`
           SELECT pa.destined_quantity::text
           FROM purchase_cycle_product_allocations pa
           JOIN products p ON p.id = pa.product_id
-          WHERE pa.purchase_cycle_date = ${cycle}::date AND p.erp_code = 22
+          WHERE pa.purchase_cycle_date = ${cycle}::date
+            AND p.erp_code = 22
+            AND pa.supplier_id = ${corteletti.id}::uuid
+            AND pa.store_id = ${santaMonica.id}::uuid
         `;
         expect(uvaAlloc).toBeDefined();
         expect(Number(uvaAlloc.destined_quantity)).toBe(2);
+
+        // Sentinela 1: Comprova isolamento e ausência de efeitos colaterais em outro fornecedor (União Frutas) na mesma loja
+
+        if (uniao && santaMonica) {
+          const [uniaoAlloc] = await sqlCheck<{ destined_quantity: string }[]>`
+            SELECT pa.destined_quantity::text
+            FROM purchase_cycle_product_allocations pa
+            JOIN products p ON p.id = pa.product_id
+            WHERE pa.purchase_cycle_date = ${cycle}::date
+              AND p.erp_code = 5
+              AND pa.supplier_id = ${uniao.id}::uuid
+              AND pa.store_id = ${santaMonica.id}::uuid
+          `;
+          expect(uniaoAlloc).toBeDefined();
+          expect(Number(uniaoAlloc.destined_quantity)).toBe(5);
+
+          const uniaoDecisions = await sqlCheck<{ count: string }[]>`
+            SELECT count(*)::text as count
+            FROM purchase_cycle_product_supplier_decisions
+            WHERE purchase_cycle_date = ${cycle}::date
+              AND supplier_id = ${uniao.id}::uuid
+              AND store_id = ${santaMonica.id}::uuid
+          `;
+          expect(uniaoDecisions[0].count).toBe("0");
+        }
+
+        // Sentinela 2: Comprova ausência de efeitos colaterais em outra loja (Balneário) no mesmo fornecedor
+        if (corteletti && balneario) {
+          const [balnearioAlloc] = await sqlCheck<{ destined_quantity: string }[]>`
+            SELECT pa.destined_quantity::text
+            FROM purchase_cycle_product_allocations pa
+            JOIN products p ON p.id = pa.product_id
+            WHERE pa.purchase_cycle_date = ${cycle}::date
+              AND p.erp_code = 22
+              AND pa.supplier_id = ${corteletti.id}::uuid
+              AND pa.store_id = ${balneario.id}::uuid
+          `;
+          expect(balnearioAlloc).toBeDefined();
+          expect(Number(balnearioAlloc.destined_quantity)).toBe(3);
+
+          const balnearioDecisions = await sqlCheck<{ count: string }[]>`
+            SELECT count(*)::text as count
+            FROM purchase_cycle_product_supplier_decisions
+            WHERE purchase_cycle_date = ${cycle}::date
+              AND supplier_id = ${corteletti.id}::uuid
+              AND store_id = ${balneario.id}::uuid
+          `;
+          expect(balnearioDecisions[0].count).toBe("0");
+        }
       } finally {
         await sqlCheck.end();
       }

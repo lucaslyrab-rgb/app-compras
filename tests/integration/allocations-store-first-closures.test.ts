@@ -1320,202 +1320,275 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     expect(reconferenceResult.status).toBe("CLOSED");
   });
 
-  it("24. CRÍTICA H3: Concorrência real entre persistPurchaseCost e closeBuyerCycle (ambas as ordens serializadas)", async () => {
+  it("24. CRÍTICA H3: Concorrência real entre persistPurchaseCost e closeBuyerCycle (ambas as ordens serializadas via gate determinístico)", async () => {
     // Garante que o namespace é 424242
     expect(BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE).toBe(424242);
 
-    // ==========================================
-    // Ordem A: persistPurchaseCost adquire a trava primeiro.
-    // closeBuyerCycle tenta fechar concorrentemente e fica bloqueado até o commit do custo.
-    // Observamos diretamente em pg_locks que existe um PID holder (granted = true)
-    // e outro PID waiter distinto (granted = false) no namespace 424242.
-    // Ao liberar, closeBuyerCycle detecta que a conferência ficou desatualizada pelo novo custo e rejeita o fechamento.
-    // ==========================================
-    const cycleDateA = "2026-11-04";
-    const [prodA] = await db<{ id: string }[]>`
-      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
-      VALUES (9103, 'MANGA PALMER A', 'CX', 'UN', 25.00, true)
-      RETURNING id
-    `;
-    const storesA = await resolveParticipatingStores(db, cycleDateA);
-    for (const st of storesA) {
-      await closeStoreWithPreview(buyerPrincipal, cycleDateA, st.id);
-    }
-
-    // Trigger de sincronização temporário para reter a trava de ciclo durante persistPurchaseCost
-    await db.unsafe(`
-      CREATE OR REPLACE FUNCTION trg_wait_cost_xact() RETURNS trigger AS $$
-      BEGIN
-        PERFORM pg_sleep(0.6);
-        RETURN NEW;
-      END;
-      $$ LANGUAGE plpgsql;
-
-      DROP TRIGGER IF EXISTS test_wait_cost_xact ON purchase_cycle_product_costs;
-      CREATE TRIGGER test_wait_cost_xact
-      BEFORE INSERT OR UPDATE ON purchase_cycle_product_costs
-      FOR EACH ROW EXECUTE FUNCTION trg_wait_cost_xact();
-    `);
+    const gateClient = postgres(testDatabaseUrl, { max: 1 });
 
     try {
-      const costPromise = persistPurchaseCost(buyerPrincipal, {
-        cycleDate: cycleDateA,
-        productId: prodA.id,
-        cost: "60.00",
-        purchased: true,
-        expectedVersion: 0,
-      });
-
-      // Dispara closeBuyerCycle concorrentemente
-      const closePromise = closeBuyerCycle(buyerPrincipal, cycleDateA);
-
-      // Observa ativamente pg_locks comprovando sobreposição real:
-      // um PID holder (granted = true) e outro PID waiter (granted = false)
-      let observedLockContentionA = false;
-      let holderPidA: number | null = null;
-      let waiterPidA: number | null = null;
-
-      const deadlineA = Date.now() + 3000;
-      while (Date.now() < deadlineA) {
-        const locks = await db<{ pid: number; granted: boolean }[]>`
-          SELECT pid, granted FROM pg_locks
-          WHERE locktype = 'advisory'
-            AND classid = ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}
-            AND objsubid = 2
-        `;
-        const holder = locks.find((l) => l.granted === true);
-        const waiter = locks.find((l) => l.granted === false);
-        if (holder && waiter && holder.pid !== waiter.pid) {
-          observedLockContentionA = true;
-          holderPidA = holder.pid;
-          waiterPidA = waiter.pid;
-          break;
-        }
-        await new Promise((r) => setTimeout(r, 10));
+      // ==========================================
+      // Ordem A: persistPurchaseCost adquire a trava primeiro.
+      // closeBuyerCycle tenta fechar concorrentemente e fica bloqueado até o commit do custo.
+      // Observamos diretamente em pg_locks que existe um PID holder (granted = true)
+      // e outro PID waiter distinto (granted = false) no namespace 424242 e ciclo cycleDateA.
+      // Ao liberar, closeBuyerCycle detecta que a conferência ficou desatualizada pelo novo custo e rejeita o fechamento.
+      // ==========================================
+      const cycleDateA = "2026-11-04";
+      const [prodA] = await db<{ id: string }[]>`
+        INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+        VALUES (9103, 'MANGA PALMER A', 'CX', 'UN', 25.00, true)
+        RETURNING id
+      `;
+      const storesA = await resolveParticipatingStores(db, cycleDateA);
+      for (const st of storesA) {
+        await closeStoreWithPreview(buyerPrincipal, cycleDateA, st.id);
       }
 
-      expect(observedLockContentionA).toBe(true);
-      expect(holderPidA).not.toBeNull();
-      expect(waiterPidA).not.toBeNull();
-      expect(holderPidA).not.toBe(waiterPidA);
+      // Gate determinístico: trava de sessão (888888, 1) retém persistPurchaseCost dentro de sua transação
+      await gateClient`SELECT pg_advisory_lock(888888, 1)`;
 
-      const [costRes, closeErr] = await Promise.all([
-        costPromise,
-        closePromise.catch((err) => err),
-      ]);
-
-      expect(costRes.cost).toBe("60.00");
-      expect(costRes.purchased).toBe(true);
-      expect(closeErr).toBeInstanceOf(AllocationValidationError);
-      expect(closeErr.message).toMatch(/não foram conferidas ou estão desatualizadas|produto\(s\) comprado\(s\) sem fornecedor/);
-
-      // Comprova que o ciclo permaneceu aberto
-      const [cycleClosureA] = await db<{ status: string }[]>`
-        SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycleDateA}::date
-      `;
-      expect(cycleClosureA?.status ?? "OPEN").not.toBe("CLOSED");
-    } finally {
       await db.unsafe(`
+        CREATE OR REPLACE FUNCTION trg_wait_cost_xact() RETURNS trigger AS $$
+        BEGIN
+          PERFORM pg_advisory_xact_lock(888888, 1);
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+
         DROP TRIGGER IF EXISTS test_wait_cost_xact ON purchase_cycle_product_costs;
-        DROP FUNCTION IF EXISTS trg_wait_cost_xact();
+        CREATE TRIGGER test_wait_cost_xact
+        BEFORE INSERT OR UPDATE ON purchase_cycle_product_costs
+        FOR EACH ROW EXECUTE FUNCTION trg_wait_cost_xact();
       `);
-    }
 
-    // ==========================================
-    // Ordem B: closeBuyerCycle adquire a trava primeiro e fecha o ciclo.
-    // persistPurchaseCost tenta salvar custo concorrentemente e é bloqueado.
-    // Observamos em pg_locks o lock ativo (granted=true) e o waiter (granted=false).
-    // Ao adquirir a trava, encontra o ciclo já fechado e lança CycleClosedError.
-    // ==========================================
-    const cycleDateB = "2026-11-14";
-    const [prodB] = await db<{ id: string }[]>`
-      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
-      VALUES (9124, 'MANGA PALMER B', 'CX', 'UN', 25.00, true)
-      RETURNING id
-    `;
-    const storesB = await resolveParticipatingStores(db, cycleDateB);
-    for (const st of storesB) {
-      await closeStoreWithPreview(buyerPrincipal, cycleDateB, st.id);
-    }
+      try {
+        const costPromise = persistPurchaseCost(buyerPrincipal, {
+          cycleDate: cycleDateA,
+          productId: prodA.id,
+          cost: "60.00",
+          purchased: true,
+          expectedVersion: 0,
+        });
 
-    // Trigger de sincronização temporário para reter a trava de ciclo durante closeBuyerCycle
-    await db.unsafe(`
-      CREATE OR REPLACE FUNCTION trg_wait_buyer_close_xact() RETURNS trigger AS $$
-      BEGIN
-        PERFORM pg_sleep(0.6);
-        RETURN NEW;
-      END;
-      $$ LANGUAGE plpgsql;
-
-      DROP TRIGGER IF EXISTS test_wait_buyer_close_xact ON purchase_cycle_buyer_closures;
-      CREATE TRIGGER test_wait_buyer_close_xact
-      BEFORE INSERT OR UPDATE ON purchase_cycle_buyer_closures
-      FOR EACH ROW EXECUTE FUNCTION trg_wait_buyer_close_xact();
-    `);
-
-    try {
-      const closePromise = closeBuyerCycle(buyerPrincipal, cycleDateB);
-
-      const costPromise = persistPurchaseCost(buyerPrincipal, {
-        cycleDate: cycleDateB,
-        productId: prodB.id,
-        cost: "75.00",
-        purchased: true,
-        expectedVersion: 0,
-      });
-
-      // Observa ativamente pg_locks comprovando contenção concorrente real na ordem B
-      let observedLockContentionB = false;
-      let holderPidB: number | null = null;
-      let waiterPidB: number | null = null;
-
-      const deadlineB = Date.now() + 3000;
-      while (Date.now() < deadlineB) {
-        const locks = await db<{ pid: number; granted: boolean }[]>`
-          SELECT pid, granted FROM pg_locks
-          WHERE locktype = 'advisory'
-            AND classid = ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}
-            AND objsubid = 2
-        `;
-        const holder = locks.find((l) => l.granted === true);
-        const waiter = locks.find((l) => l.granted === false);
-        if (holder && waiter && holder.pid !== waiter.pid) {
-          observedLockContentionB = true;
-          holderPidB = holder.pid;
-          waiterPidB = waiter.pid;
-          break;
+        // Espera determinística: aguarda persistPurchaseCost chegar ao trigger e pausar no gate
+        const waitCostPausedDeadline = Date.now() + 5000;
+        let costPaused = false;
+        while (Date.now() < waitCostPausedDeadline) {
+          const [lock] = await db<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1 FROM pg_locks l
+              JOIN pg_database d ON d.oid = l.database
+              WHERE d.datname = current_database()
+                AND l.locktype = 'advisory'
+                AND l.classid = 888888
+                AND l.objid = 1
+                AND l.granted = false
+            ) as exists
+          `;
+          if (lock?.exists) {
+            costPaused = true;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 10));
         }
-        await new Promise((r) => setTimeout(r, 10));
+        expect(costPaused).toBe(true);
+
+        // Dispara closeBuyerCycle concorrentemente - garantido a encontrar a trava já retida por persistPurchaseCost
+        const closePromise = closeBuyerCycle(buyerPrincipal, cycleDateA);
+
+        // Observa ativamente pg_locks comprovando sobreposição real e determinística:
+        // um PID holder (granted = true) e outro PID waiter (granted = false)
+        let observedLockContentionA = false;
+        let holderPidA: number | null = null;
+        let waiterPidA: number | null = null;
+
+        const deadlineA = Date.now() + 5000;
+        while (Date.now() < deadlineA) {
+          const locks = await db<{ pid: number; granted: boolean }[]>`
+            SELECT l.pid, l.granted
+            FROM pg_locks l
+            JOIN pg_database d ON d.oid = l.database
+            WHERE d.datname = current_database()
+              AND l.locktype = 'advisory'
+              AND l.classid = ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}
+              AND l.objsubid = 2
+              AND l.objid::int = hashtext(${cycleDateA}::text)
+          `;
+          const holder = locks.find((l) => l.granted === true);
+          const waiter = locks.find((l) => l.granted === false);
+          if (holder && waiter && holder.pid !== waiter.pid) {
+            observedLockContentionA = true;
+            holderPidA = holder.pid;
+            waiterPidA = waiter.pid;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 10));
+        }
+
+        expect(observedLockContentionA).toBe(true);
+        expect(holderPidA).not.toBeNull();
+        expect(waiterPidA).not.toBeNull();
+        expect(holderPidA).not.toBe(waiterPidA);
+
+        // Libera o gate para permitir que persistPurchaseCost conclua e commite
+        await gateClient`SELECT pg_advisory_unlock(888888, 1)`;
+
+        const [costRes, closeErr] = await Promise.all([
+          costPromise,
+          closePromise.catch((err) => err),
+        ]);
+
+        expect(costRes.cost).toBe("60.00");
+        expect(costRes.purchased).toBe(true);
+        expect(closeErr).toBeInstanceOf(AllocationValidationError);
+        expect(closeErr.message).toMatch(/não foram conferidas ou estão desatualizadas|produto\(s\) comprado\(s\) sem fornecedor/);
+
+        // Comprova que o ciclo permaneceu aberto
+        const [cycleClosureA] = await db<{ status: string }[]>`
+          SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycleDateA}::date
+        `;
+        expect(cycleClosureA?.status ?? "OPEN").not.toBe("CLOSED");
+      } finally {
+        await db.unsafe(`
+          DROP TRIGGER IF EXISTS test_wait_cost_xact ON purchase_cycle_product_costs;
+          DROP FUNCTION IF EXISTS trg_wait_cost_xact();
+        `);
+        await gateClient`SELECT pg_advisory_unlock_all()`;
       }
 
-      expect(observedLockContentionB).toBe(true);
-      expect(holderPidB).not.toBeNull();
-      expect(waiterPidB).not.toBeNull();
-      expect(holderPidB).not.toBe(waiterPidB);
-
-      const [closeRes, costErr] = await Promise.all([
-        closePromise,
-        costPromise.catch((err) => err),
-      ]);
-
-      expect(closeRes.success).toBe(true);
-      const [cycleClosureB] = await db<{ status: string }[]>`
-        SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycleDateB}::date
+      // ==========================================
+      // Ordem B: closeBuyerCycle adquire a trava primeiro e fecha o ciclo.
+      // persistPurchaseCost tenta salvar custo concorrentemente e é bloqueado.
+      // Observamos em pg_locks o lock ativo (granted=true) e o waiter (granted=false).
+      // Ao adquirir a trava, encontra o ciclo já fechado e lança CycleClosedError.
+      // ==========================================
+      const cycleDateB = "2026-11-14";
+      const [prodB] = await db<{ id: string }[]>`
+        INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+        VALUES (9124, 'MANGA PALMER B', 'CX', 'UN', 25.00, true)
+        RETURNING id
       `;
-      expect(cycleClosureB?.status).toBe("CLOSED");
-      expect(costErr).toBeInstanceOf(CycleClosedError);
+      const storesB = await resolveParticipatingStores(db, cycleDateB);
+      for (const st of storesB) {
+        await closeStoreWithPreview(buyerPrincipal, cycleDateB, st.id);
+      }
 
-      // Comprova que o custo NÃO foi alterado no ciclo fechado
-      const [persistedCostB] = await db<{ cost: string | null }[]>`
-        SELECT cost FROM purchase_cycle_product_costs
-        WHERE purchase_cycle_date = ${cycleDateB}::date AND product_id = ${prodB.id}::uuid
-      `;
-      expect(persistedCostB?.cost ?? null).toBeNull();
-    } finally {
+      // Gate determinístico: trava de sessão (888888, 2) retém closeBuyerCycle dentro de sua transação
+      await gateClient`SELECT pg_advisory_lock(888888, 2)`;
+
       await db.unsafe(`
+        CREATE OR REPLACE FUNCTION trg_wait_buyer_close_xact() RETURNS trigger AS $$
+        BEGIN
+          PERFORM pg_advisory_xact_lock(888888, 2);
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+
         DROP TRIGGER IF EXISTS test_wait_buyer_close_xact ON purchase_cycle_buyer_closures;
-        DROP FUNCTION IF EXISTS trg_wait_buyer_close_xact();
+        CREATE TRIGGER test_wait_buyer_close_xact
+        BEFORE INSERT OR UPDATE ON purchase_cycle_buyer_closures
+        FOR EACH ROW EXECUTE FUNCTION trg_wait_buyer_close_xact();
       `);
+
+      try {
+        const closePromise = closeBuyerCycle(buyerPrincipal, cycleDateB);
+
+        // Aguarda closeBuyerCycle chegar ao trigger e pausar no gate
+        const waitClosePausedDeadline = Date.now() + 5000;
+        let closePaused = false;
+        while (Date.now() < waitClosePausedDeadline) {
+          const [lock] = await db<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1 FROM pg_locks l
+              JOIN pg_database d ON d.oid = l.database
+              WHERE d.datname = current_database()
+                AND l.locktype = 'advisory'
+                AND l.classid = 888888
+                AND l.objid = 2
+                AND l.granted = false
+            ) as exists
+          `;
+          if (lock?.exists) {
+            closePaused = true;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        expect(closePaused).toBe(true);
+
+        // Dispara persistPurchaseCost concorrentemente - garantido a encontrar a trava retida por closeBuyerCycle
+        const costPromise = persistPurchaseCost(buyerPrincipal, {
+          cycleDate: cycleDateB,
+          productId: prodB.id,
+          cost: "75.00",
+          purchased: true,
+          expectedVersion: 0,
+        });
+
+        // Observa ativamente pg_locks comprovando contenção concorrente real na ordem B
+        let observedLockContentionB = false;
+        let holderPidB: number | null = null;
+        let waiterPidB: number | null = null;
+
+        const deadlineB = Date.now() + 5000;
+        while (Date.now() < deadlineB) {
+          const locks = await db<{ pid: number; granted: boolean }[]>`
+            SELECT l.pid, l.granted
+            FROM pg_locks l
+            JOIN pg_database d ON d.oid = l.database
+            WHERE d.datname = current_database()
+              AND l.locktype = 'advisory'
+              AND l.classid = ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}
+              AND l.objsubid = 2
+              AND l.objid::int = hashtext(${cycleDateB}::text)
+          `;
+          const holder = locks.find((l) => l.granted === true);
+          const waiter = locks.find((l) => l.granted === false);
+          if (holder && waiter && holder.pid !== waiter.pid) {
+            observedLockContentionB = true;
+            holderPidB = holder.pid;
+            waiterPidB = waiter.pid;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 10));
+        }
+
+        expect(observedLockContentionB).toBe(true);
+        expect(holderPidB).not.toBeNull();
+        expect(waiterPidB).not.toBeNull();
+        expect(holderPidB).not.toBe(waiterPidB);
+
+        // Libera o gate para permitir o fechamento commitar
+        await gateClient`SELECT pg_advisory_unlock(888888, 2)`;
+
+        const [closeRes, costErr] = await Promise.all([
+          closePromise,
+          costPromise.catch((err) => err),
+        ]);
+
+        expect(closeRes.success).toBe(true);
+        const [cycleClosureB] = await db<{ status: string }[]>`
+          SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycleDateB}::date
+        `;
+        expect(cycleClosureB?.status).toBe("CLOSED");
+        expect(costErr).toBeInstanceOf(CycleClosedError);
+
+        // Comprova que o custo NÃO foi alterado no ciclo fechado
+        const [persistedCostB] = await db<{ cost: string | null }[]>`
+          SELECT cost FROM purchase_cycle_product_costs
+          WHERE purchase_cycle_date = ${cycleDateB}::date AND product_id = ${prodB.id}::uuid
+        `;
+        expect(persistedCostB?.cost ?? null).toBeNull();
+      } finally {
+        await db.unsafe(`
+          DROP TRIGGER IF EXISTS test_wait_buyer_close_xact ON purchase_cycle_buyer_closures;
+          DROP FUNCTION IF EXISTS trg_wait_buyer_close_xact();
+        `);
+        await gateClient`SELECT pg_advisory_unlock_all()`;
+      }
+    } finally {
+      await gateClient.end();
     }
   });
 
@@ -2334,5 +2407,331 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
       // Reativa a loja
       await db`UPDATE stores SET active = true WHERE id = ${storeSantaMonica.id}::uuid`;
     }
+  });
+
+  it("36. F1: Concorrência Fechamento vs Reconciliação (Fechamento vence e bloqueia inclusão posterior)", async () => {
+    const cycleDate = "2026-11-25";
+    const [storePonta] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'ponta-da-fruta'`;
+    const [storeBalneario] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'balneario'`;
+
+    // Inicialmente, apenas Ponta da Fruta é participante e é conferida
+    await db`
+      INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+      VALUES (${cycleDate}::date, ${storePonta.id}::uuid)
+      ON CONFLICT DO NOTHING
+    `;
+    await closeStoreWithPreview(buyerPrincipal, cycleDate, storePonta.id);
+
+    const gateClient = postgres(testDatabaseUrl, { max: 1 });
+    try {
+      await gateClient`SELECT pg_advisory_lock(888888, 36)`;
+
+      await db.unsafe(`
+        CREATE OR REPLACE FUNCTION trg_gate_close_f1() RETURNS trigger AS $$
+        BEGIN
+          PERFORM pg_advisory_xact_lock(888888, 36);
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+
+        DROP TRIGGER IF EXISTS test_gate_close_f1 ON purchase_cycle_buyer_closures;
+        CREATE TRIGGER test_gate_close_f1
+        BEFORE INSERT OR UPDATE ON purchase_cycle_buyer_closures
+        FOR EACH ROW EXECUTE FUNCTION trg_gate_close_f1();
+      `);
+
+      try {
+        // Dispara fechamento - válido para Ponta da Fruta
+        const closePromise = closeBuyerCycle(buyerPrincipal, cycleDate);
+
+        // Aguarda closeBuyerCycle segurar o lock do ciclo e pausar no gate
+        const waitPausedDeadline = Date.now() + 5000;
+        let closePaused = false;
+        while (Date.now() < waitPausedDeadline) {
+          const [lock] = await db<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1 FROM pg_locks l
+              JOIN pg_database d ON d.oid = l.database
+              WHERE d.datname = current_database()
+                AND l.locktype = 'advisory'
+                AND l.classid = 888888
+                AND l.objid = 36
+                AND l.granted = false
+            ) as exists
+          `;
+          if (lock?.exists) {
+            closePaused = true;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        expect(closePaused).toBe(true);
+
+        // Enquanto o fechamento está pausado segurando a trava exclusiva do ciclo,
+        // atividade tardia é registrada para Balneário
+        await db`
+          INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, submitted_by)
+          VALUES (${cycleDate}::date, ${cycleDate}::date, now(), ${storeBalneario.id}::uuid, 1, now(), ${buyerPrincipal.userId}::uuid)
+        `;
+
+        // Dispara leitura/reconciliação concorrente (que vê lateActiveStores e tenta adquirir a trava do ciclo)
+        const readPromise = readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, null, storePonta.id);
+
+        // Comprova em pg_locks que a reconciliação está BLOQUEADA no lock do ciclo
+        let observedLockContention = false;
+        let holderPid: number | null = null;
+        let waiterPid: number | null = null;
+        const deadlineLocks = Date.now() + 5000;
+        while (Date.now() < deadlineLocks) {
+          const locks = await db<{ pid: number; granted: boolean }[]>`
+            SELECT l.pid, l.granted
+            FROM pg_locks l
+            JOIN pg_database d ON d.oid = l.database
+            WHERE d.datname = current_database()
+              AND l.locktype = 'advisory'
+              AND l.classid = ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}
+              AND l.objsubid = 2
+              AND l.objid::int = hashtext(${cycleDate}::text)
+          `;
+          const holder = locks.find((l) => l.granted === true);
+          const waiter = locks.find((l) => l.granted === false);
+          if (holder && waiter && holder.pid !== waiter.pid) {
+            observedLockContention = true;
+            holderPid = holder.pid;
+            waiterPid = waiter.pid;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        expect(observedLockContention).toBe(true);
+        expect(holderPid).not.toBeNull();
+        expect(waiterPid).not.toBeNull();
+
+        // Libera gate do fechamento
+        await gateClient`SELECT pg_advisory_unlock(888888, 36)`;
+
+        const [closeRes, wsRes] = await Promise.all([
+          closePromise,
+          readPromise,
+        ]);
+
+        expect(closeRes.success).toBe(true);
+        expect(wsRes.stores.map((s) => s.id)).toEqual([storePonta.id]);
+
+        // Estado do ciclo no banco DEVE ser CLOSED
+        const [cycleClosure] = await db<{ status: string }[]>`
+          SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycleDate}::date
+        `;
+        expect(cycleClosure.status).toBe("CLOSED");
+
+        // Participantes no banco DEVE permanecer estritamente 1 (apenas Ponta da Fruta)
+        // Balneário NÃO pode ter sido inserida após o fechamento
+        const finalParticipants = await db<{ store_id: string }[]>`
+          SELECT store_id FROM purchase_cycle_participating_stores WHERE purchase_cycle_date = ${cycleDate}::date
+        `;
+        expect(finalParticipants).toHaveLength(1);
+        expect(finalParticipants[0].store_id).toBe(storePonta.id);
+
+        // Conferências no banco DEVE permanecer 1
+        const finalStoreClosures = await db<{ store_id: string }[]>`
+          SELECT store_id FROM purchase_cycle_store_closures WHERE purchase_cycle_date = ${cycleDate}::date AND is_current = true
+        `;
+        expect(finalStoreClosures).toHaveLength(1);
+        expect(finalStoreClosures[0].store_id).toBe(storePonta.id);
+      } finally {
+        await db.unsafe(`
+          DROP TRIGGER IF EXISTS test_gate_close_f1 ON purchase_cycle_buyer_closures;
+          DROP FUNCTION IF EXISTS trg_gate_close_f1();
+        `);
+        await gateClient`SELECT pg_advisory_unlock_all()`;
+      }
+    } finally {
+      await gateClient.end();
+    }
+  });
+
+  it("37. F1: Concorrência Reconciliação vs Fechamento (Reconciliação vence e impede fechamento incompleto)", async () => {
+    const cycleDate = "2026-11-26";
+    const [storePonta] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'ponta-da-fruta'`;
+    const [storeBalneario] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'balneario'`;
+
+    // Inicialmente, Ponta da Fruta é participante e conferida
+    await db`
+      INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+      VALUES (${cycleDate}::date, ${storePonta.id}::uuid)
+      ON CONFLICT DO NOTHING
+    `;
+    await closeStoreWithPreview(buyerPrincipal, cycleDate, storePonta.id);
+
+    // Atividade posterior legítima para Balneário
+    await db`
+      INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, submitted_by)
+      VALUES (${cycleDate}::date, ${cycleDate}::date, now(), ${storeBalneario.id}::uuid, 1, now(), ${buyerPrincipal.userId}::uuid)
+    `;
+
+    const gateClient = postgres(testDatabaseUrl, { max: 1 });
+    try {
+      await gateClient`SELECT pg_advisory_lock(888888, 37)`;
+
+      // Trigger na inserção de participantes retém a transação de reconciliação
+      await db.unsafe(`
+        CREATE OR REPLACE FUNCTION trg_gate_reconcile_f1() RETURNS trigger AS $$
+        BEGIN
+          PERFORM pg_advisory_xact_lock(888888, 37);
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+
+        DROP TRIGGER IF EXISTS test_gate_reconcile_f1 ON purchase_cycle_participating_stores;
+        CREATE TRIGGER test_gate_reconcile_f1
+        BEFORE INSERT ON purchase_cycle_participating_stores
+        FOR EACH ROW EXECUTE FUNCTION trg_gate_reconcile_f1();
+      `);
+
+      try {
+        // Dispara reconciliação (leitura do workspace)
+        const readPromise = readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, null, storePonta.id);
+
+        // Aguarda reconciliação chegar ao trigger de inserção
+        const waitPausedDeadline = Date.now() + 5000;
+        let reconcilePaused = false;
+        while (Date.now() < waitPausedDeadline) {
+          const [lock] = await db<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1 FROM pg_locks l
+              JOIN pg_database d ON d.oid = l.database
+              WHERE d.datname = current_database()
+                AND l.locktype = 'advisory'
+                AND l.classid = 888888
+                AND l.objid = 37
+                AND l.granted = false
+            ) as exists
+          `;
+          if (lock?.exists) {
+            reconcilePaused = true;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        expect(reconcilePaused).toBe(true);
+
+        // Dispara closeBuyerCycle concorrentemente - que deve bloquear aguardando a reconciliação
+        const closePromise = closeBuyerCycle(buyerPrincipal, cycleDate);
+
+        // Observa em pg_locks que closeBuyerCycle está BLOQUEADO na trava do ciclo
+        let observedLockContention = false;
+        let holderPid: number | null = null;
+        let waiterPid: number | null = null;
+        const deadlineLocks = Date.now() + 5000;
+        while (Date.now() < deadlineLocks) {
+          const locks = await db<{ pid: number; granted: boolean }[]>`
+            SELECT l.pid, l.granted
+            FROM pg_locks l
+            JOIN pg_database d ON d.oid = l.database
+            WHERE d.datname = current_database()
+              AND l.locktype = 'advisory'
+              AND l.classid = ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}
+              AND l.objsubid = 2
+              AND l.objid::int = hashtext(${cycleDate}::text)
+          `;
+          const holder = locks.find((l) => l.granted === true);
+          const waiter = locks.find((l) => l.granted === false);
+          if (holder && waiter && holder.pid !== waiter.pid) {
+            observedLockContention = true;
+            holderPid = holder.pid;
+            waiterPid = waiter.pid;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        expect(observedLockContention).toBe(true);
+        expect(holderPid).not.toBeNull();
+        expect(waiterPid).not.toBeNull();
+
+        // Libera gate da reconciliação
+        await gateClient`SELECT pg_advisory_unlock(888888, 37)`;
+
+        const [wsRes, closeErr] = await Promise.all([
+          readPromise,
+          closePromise.catch((err) => err),
+        ]);
+
+        expect(wsRes.stores.some((s) => s.id === storeBalneario.id)).toBe(true);
+
+        // closeBuyerCycle DEVE ser rejeitado com AllocationValidationError informando Balneário pendente
+        expect(closeErr).toBeInstanceOf(AllocationValidationError);
+        expect(closeErr.message).toMatch(/lojas pendentes de conferência: MultiShow Balneário|Balneário/);
+
+        // Ciclo continua aberto no banco
+        const [cycleClosure] = await db<{ status: string }[]>`
+          SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycleDate}::date
+        `;
+        expect(cycleClosure?.status ?? "OPEN").not.toBe("CLOSED");
+
+        // Participantes no banco agora contém 2 lojas
+        const finalParticipants = await db<{ store_id: string }[]>`
+          SELECT store_id FROM purchase_cycle_participating_stores WHERE purchase_cycle_date = ${cycleDate}::date
+        `;
+        expect(finalParticipants).toHaveLength(2);
+      } finally {
+        await db.unsafe(`
+          DROP TRIGGER IF EXISTS test_gate_reconcile_f1 ON purchase_cycle_participating_stores;
+          DROP FUNCTION IF EXISTS trg_gate_reconcile_f1();
+        `);
+        await gateClient`SELECT pg_advisory_unlock_all()`;
+      }
+    } finally {
+      await gateClient.end();
+    }
+  });
+
+  it("38. F1: Ciclo legado fechado sem snapshot (0 participantes) não sofre mutação após leituras", async () => {
+    const cycleLegacyClosed = "2024-01-08";
+
+    // Ciclo legado fechado sem nenhum registro em purchase_cycle_participating_stores
+    await db`
+      INSERT INTO purchase_cycle_buyer_closures (purchase_cycle_date, closed_at, closed_by, status)
+      VALUES (${cycleLegacyClosed}::date, now(), ${buyerPrincipal.userId}::uuid, 'CLOSED')
+      ON CONFLICT (purchase_cycle_date) DO UPDATE SET status = 'CLOSED'
+    `;
+
+    const beforeCount = await db<{ count: string }[]>`
+      SELECT count(*)::text as count FROM purchase_cycle_participating_stores
+      WHERE purchase_cycle_date = ${cycleLegacyClosed}::date
+    `;
+    expect(beforeCount[0].count).toBe("0");
+
+    // 3 leituras consecutivas do workspace e do repository
+    await resolveParticipatingStores(db, cycleLegacyClosed);
+    await readBuyerAllocationWorkspace(buyerPrincipal, cycleLegacyClosed);
+    await readBuyerAllocationWorkspace(buyerPrincipal, cycleLegacyClosed);
+
+    const afterCount = await db<{ count: string }[]>`
+      SELECT count(*)::text as count FROM purchase_cycle_participating_stores
+      WHERE purchase_cycle_date = ${cycleLegacyClosed}::date
+    `;
+    expect(afterCount[0].count).toBe("0");
+  });
+
+  it("39. F2: Ciclo antigo sem participantes identificadas bloqueia fechamento no domínio e no repository", async () => {
+    const cycle2020 = "2020-01-15";
+
+    // Workspace retorna canClose = false e motivo em missingStores
+    const ws = await readBuyerAllocationWorkspace(buyerPrincipal, cycle2020);
+    expect(ws.closure.canClose).toBe(false);
+    expect(ws.closure.missingStores?.length).toBeGreaterThan(0);
+    expect(ws.closure.missingStores?.[0].name).toContain("Nenhuma loja participante");
+
+    // Tentativa direta de fechamento via closeBuyerCycle é rejeitada com AllocationValidationError
+    await expect(closeBuyerCycle(buyerPrincipal, cycle2020)).rejects.toThrow(AllocationValidationError);
+    await expect(closeBuyerCycle(buyerPrincipal, cycle2020)).rejects.toThrow(
+      /nenhuma loja participante identificada/i,
+    );
+
+    // Banco de dados permanece sem fechamento
+    const [closure] = await db<{ status: string }[]>`
+      SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycle2020}::date
+    `;
+    expect(closure).toBeUndefined();
   });
 });

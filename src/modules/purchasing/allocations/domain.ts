@@ -607,6 +607,21 @@ export function validateCycleClosureReadinessStoreFirst(params: {
   const missingStores: Array<{ id: string; name: string; reason: string }> = [];
   const missingProducts: Array<{ id: string; erpCode: number; name: string }> = [];
 
+  // Regra F2: Um ciclo sem participantes identificadas NÃO pode ser considerado pronto para fechamento
+  if (stores.length === 0) {
+    return {
+      canClose: false,
+      missingStores: [
+        {
+          id: "none",
+          name: "Nenhuma loja participante",
+          reason: "Nenhuma loja participante identificada para este ciclo. Não é possível fechar o ciclo sem lojas participantes.",
+        },
+      ],
+      missingProducts: [],
+    };
+  }
+
   // 1. Cada uma das lojas ativas precisa estar FINALIZADA e NÃO stale
   for (const store of stores) {
     const closure = storeClosures[store.id];
