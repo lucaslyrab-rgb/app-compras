@@ -41,39 +41,96 @@ import {
 
 /**
  * Identifica e preserva as lojas participantes de um ciclo específico.
- * Garante a presença das três lojas padrão da rede (Ponta da Fruta, Balneário, Santa Mônica)
- * e reconcilia dinamicamente qualquer loja que possua ou venha a possuir atividade no ciclo,
- * impedindo que uma primeira leitura incompleta congele um subconjunto restrito de lojas.
+ *
+ * Regras de Precedência e Evidência:
+ * 1. Participação Persistida (Imutável): Se purchase_cycle_participating_stores já possui
+ *    registros para este ciclo, essas lojas são a fonte de verdade. Nenhuma leitura ou consulta
+ *    executa saneamento destrutivo ou remoção dessas linhas.
+ * 2. Ciclo Fechado: O conjunto de participantes é estritamente congelado.
+ * 3. Ciclo Aberto (Reconciliação Dinâmica): Se o ciclo estiver aberto e uma loja registrar
+ *    atividade posterior legítima (pedido ativo, alocação positiva, fechamento ou decisão),
+ *    ela é adicionada ao conjunto sem remover as lojas já existentes.
+ * 4. Inicialização de Ciclo (Sem registros prévios): Se a tabela ainda não possui participantes,
+ *    identifica candidatas com base em:
+ *    a) Atividade comprovada no ciclo (pedidos ativos ou históricos, alocações positivas, fechamentos ou decisões);
+ *    b) Lojas padrão da rede (Ponta da Fruta, Balneário, Santa Mônica) ativas e criadas até a data do ciclo.
+ * 5. Ciclo Antigo Sem Informação Suficiente: Se um ciclo antigo não possui atividade e nenhuma loja
+ *    existia na sua data, o conjunto retornado é vazio ([]). Não há fallback que invente lojas futuras.
  */
 export async function resolveParticipatingStores(
   sql: postgres.Sql | postgres.TransactionSql,
   cycleDate: string,
 ): Promise<Array<{ id: string; name: string; slug: string }>> {
-  // 1. Saneia eventuais registros de lojas inseridas retroativamente criadas APÓS a data do ciclo e sem atividade
-  await sql`
-    DELETE FROM purchase_cycle_participating_stores ps
-    USING stores s
-    WHERE ps.store_id = s.id
-      AND ps.purchase_cycle_date = ${cycleDate}::date
-      AND DATE(s.created_at AT TIME ZONE 'America/Sao_Paulo') > ${cycleDate}::date
-      AND NOT EXISTS (
-        SELECT 1 FROM orders o WHERE o.purchase_cycle_date = ps.purchase_cycle_date AND o.store_id = s.id AND o.cancelled_at IS NULL
-      )
-      AND NOT EXISTS (
-        SELECT 1 FROM purchase_cycle_product_allocations pa WHERE pa.purchase_cycle_date = ps.purchase_cycle_date AND pa.store_id = s.id AND pa.destined_quantity > 0
-      )
-      AND NOT EXISTS (
-        SELECT 1 FROM purchase_cycle_store_closures sc WHERE sc.purchase_cycle_date = ps.purchase_cycle_date AND sc.store_id = s.id
-      )
-      AND NOT EXISTS (
-        SELECT 1 FROM purchase_cycle_product_supplier_decisions sd WHERE sd.purchase_cycle_date = ps.purchase_cycle_date AND sd.store_id = s.id
-      )
+  // 1. Consulta participantes já persistidas para este ciclo (fonte de verdade preservada)
+  const existingPersisted = await sql<{ id: string; name: string; slug: string }[]>`
+    SELECT s.id, s.name, s.slug
+    FROM stores s
+    JOIN purchase_cycle_participating_stores ps ON ps.store_id = s.id
+    WHERE ps.purchase_cycle_date = ${cycleDate}::date
+    ORDER BY CASE s.slug
+      WHEN 'ponta-da-fruta' THEN 1
+      WHEN 'balneario' THEN 2
+      WHEN 'santa-monica' THEN 3
+      ELSE 4
+    END, s.name ASC
   `;
 
-  // 2. Identifica todas as lojas que devem compor este ciclo:
-  //    - As 3 lojas padrão da rede MultiShow quando ativas e já existentes na data do ciclo
-  //    - Lojas com atividade comprovada no ciclo (pedidos ativos, alocações positivas, fechamentos ou decisões)
-  //    - Lojas já registradas previamente como participantes que existiam na data do ciclo
+  // Se já existem participantes gravadas:
+  if (existingPersisted.length > 0) {
+    // 1.1 Ciclo fechado: composição é estritamente imutável
+    const [closure] = await sql<{ status: string }[]>`
+      SELECT status FROM purchase_cycle_buyer_closures
+      WHERE purchase_cycle_date = ${cycleDate}::date
+    `;
+    if (closure?.status === "CLOSED") {
+      return existingPersisted;
+    }
+
+    // 1.2 Ciclo aberto: reconcilia novas lojas que tenham recebido atividade posterior no ciclo
+    const lateActiveStores = await sql<{ id: string; name: string; slug: string }[]>`
+      SELECT DISTINCT s.id, s.name, s.slug
+      FROM stores s
+      WHERE s.id IN (
+        SELECT o.store_id FROM orders o WHERE o.purchase_cycle_date = ${cycleDate}::date AND o.cancelled_at IS NULL
+        UNION
+        SELECT pa.store_id FROM purchase_cycle_product_allocations pa WHERE pa.purchase_cycle_date = ${cycleDate}::date AND pa.destined_quantity > 0
+        UNION
+        SELECT sc.store_id FROM purchase_cycle_store_closures sc WHERE sc.purchase_cycle_date = ${cycleDate}::date
+        UNION
+        SELECT sd.store_id FROM purchase_cycle_product_supplier_decisions sd WHERE sd.purchase_cycle_date = ${cycleDate}::date
+      )
+      AND s.id NOT IN (
+        SELECT ps.store_id FROM purchase_cycle_participating_stores ps WHERE ps.purchase_cycle_date = ${cycleDate}::date
+      )
+    `;
+
+    if (lateActiveStores.length > 0) {
+      for (const st of lateActiveStores) {
+        await sql`
+          INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+          VALUES (${cycleDate}::date, ${st.id}::uuid)
+          ON CONFLICT (purchase_cycle_date, store_id) DO NOTHING
+        `;
+      }
+      return await sql<{ id: string; name: string; slug: string }[]>`
+        SELECT s.id, s.name, s.slug
+        FROM stores s
+        JOIN purchase_cycle_participating_stores ps ON ps.store_id = s.id
+        WHERE ps.purchase_cycle_date = ${cycleDate}::date
+        ORDER BY CASE s.slug
+          WHEN 'ponta-da-fruta' THEN 1
+          WHEN 'balneario' THEN 2
+          WHEN 'santa-monica' THEN 3
+          ELSE 4
+        END, s.name ASC
+      `;
+    }
+
+    return existingPersisted;
+  }
+
+  // 2. Primeira inicialização do ciclo: não existem participantes persistidas ainda
+  // Identifica candidatas legítimas com base em evidências concretas
   const candidateStores = await sql<{ id: string; name: string; slug: string }[]>`
     SELECT s.id, s.name, s.slug
     FROM stores s
@@ -84,18 +141,7 @@ export async function resolveParticipatingStores(
         AND DATE(s.created_at AT TIME ZONE 'America/Sao_Paulo') <= ${cycleDate}::date
       )
       OR s.id IN (
-        SELECT ps.store_id
-        FROM purchase_cycle_participating_stores ps
-        WHERE ps.purchase_cycle_date = ${cycleDate}::date
-          AND (
-            DATE(s.created_at AT TIME ZONE 'America/Sao_Paulo') <= ${cycleDate}::date
-            OR EXISTS (SELECT 1 FROM orders o WHERE o.purchase_cycle_date = ps.purchase_cycle_date AND o.store_id = s.id AND o.cancelled_at IS NULL)
-            OR EXISTS (SELECT 1 FROM purchase_cycle_product_allocations pa WHERE pa.purchase_cycle_date = ps.purchase_cycle_date AND pa.store_id = s.id AND pa.destined_quantity > 0)
-            OR EXISTS (SELECT 1 FROM purchase_cycle_store_closures sc WHERE sc.purchase_cycle_date = ps.purchase_cycle_date AND sc.store_id = s.id)
-            OR EXISTS (SELECT 1 FROM purchase_cycle_product_supplier_decisions sd WHERE sd.purchase_cycle_date = ps.purchase_cycle_date AND sd.store_id = s.id)
-          )
-        UNION
-        SELECT o.store_id FROM orders o WHERE o.purchase_cycle_date = ${cycleDate}::date AND o.cancelled_at IS NULL
+        SELECT o.store_id FROM orders o WHERE o.purchase_cycle_date = ${cycleDate}::date
         UNION
         SELECT pa.store_id FROM purchase_cycle_product_allocations pa WHERE pa.purchase_cycle_date = ${cycleDate}::date AND pa.destined_quantity > 0
         UNION
@@ -112,40 +158,14 @@ export async function resolveParticipatingStores(
     END, s.name ASC
   `;
 
-  let storesToPersist = candidateStores;
-  if (storesToPersist.length === 0) {
-    // Se não há lojas candidatas, tenta lojas ativas criadas até a data do ciclo
-    storesToPersist = await sql<{ id: string; name: string; slug: string }[]>`
-      SELECT id, name, slug
-      FROM stores
-      WHERE active = true
-        AND DATE(created_at AT TIME ZONE 'America/Sao_Paulo') <= ${cycleDate}::date
-      ORDER BY CASE slug
-        WHEN 'ponta-da-fruta' THEN 1
-        WHEN 'balneario' THEN 2
-        WHEN 'santa-monica' THEN 3
-        ELSE 4
-      END, name ASC
-    `;
-
-    // Fallback final resiliente para ambientes de teste sem datas históricas nas lojas
-    if (storesToPersist.length === 0) {
-      storesToPersist = await sql<{ id: string; name: string; slug: string }[]>`
-        SELECT id, name, slug
-        FROM stores
-        WHERE active = true
-        ORDER BY CASE slug
-          WHEN 'ponta-da-fruta' THEN 1
-          WHEN 'balneario' THEN 2
-          WHEN 'santa-monica' THEN 3
-          ELSE 4
-        END, name ASC
-      `;
-    }
+  // Se não há candidatas legítimas (ex: ciclo histórico sem atividade anterior à criação de lojas),
+  // NÃO inventa ou força lojas futuras. Retorna conjunto vazio.
+  if (candidateStores.length === 0) {
+    return [];
   }
 
-  // 3. Garante persistência de todas as lojas participantes identificadas
-  for (const st of storesToPersist) {
+  // Persiste as participantes identificadas para fixar o snapshot inicial do ciclo
+  for (const st of candidateStores) {
     await sql`
       INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
       VALUES (${cycleDate}::date, ${st.id}::uuid)
@@ -153,19 +173,7 @@ export async function resolveParticipatingStores(
     `;
   }
 
-  // 4. Retorna a lista completa atualizada e persistida de participantes
-  return await sql<{ id: string; name: string; slug: string }[]>`
-    SELECT s.id, s.name, s.slug
-    FROM stores s
-    JOIN purchase_cycle_participating_stores ps ON ps.store_id = s.id
-    WHERE ps.purchase_cycle_date = ${cycleDate}::date
-    ORDER BY CASE s.slug
-      WHEN 'ponta-da-fruta' THEN 1
-      WHEN 'balneario' THEN 2
-      WHEN 'santa-monica' THEN 3
-      ELSE 4
-    END, s.name ASC
-  `;
+  return candidateStores;
 }
 
 /**

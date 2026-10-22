@@ -1327,6 +1327,8 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     // ==========================================
     // Ordem A: persistPurchaseCost adquire a trava primeiro.
     // closeBuyerCycle tenta fechar concorrentemente e fica bloqueado até o commit do custo.
+    // Observamos diretamente em pg_locks que existe um PID holder (granted = true)
+    // e outro PID waiter distinto (granted = false) no namespace 424242.
     // Ao liberar, closeBuyerCycle detecta que a conferência ficou desatualizada pelo novo custo e rejeita o fechamento.
     // ==========================================
     const cycleDateA = "2026-11-04";
@@ -1344,7 +1346,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     await db.unsafe(`
       CREATE OR REPLACE FUNCTION trg_wait_cost_xact() RETURNS trigger AS $$
       BEGIN
-        PERFORM pg_sleep(0.3);
+        PERFORM pg_sleep(0.6);
         RETURN NEW;
       END;
       $$ LANGUAGE plpgsql;
@@ -1364,11 +1366,38 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
         expectedVersion: 0,
       });
 
-      // Aguarda 50ms para que persistPurchaseCost adquira a trava de ciclo
-      await new Promise((r) => setTimeout(r, 50));
-
-      // closeBuyerCycle chamado concorrentemente deve ficar bloqueado aguardando o commit do custo
+      // Dispara closeBuyerCycle concorrentemente
       const closePromise = closeBuyerCycle(buyerPrincipal, cycleDateA);
+
+      // Observa ativamente pg_locks comprovando sobreposição real:
+      // um PID holder (granted = true) e outro PID waiter (granted = false)
+      let observedLockContentionA = false;
+      let holderPidA: number | null = null;
+      let waiterPidA: number | null = null;
+
+      const deadlineA = Date.now() + 3000;
+      while (Date.now() < deadlineA) {
+        const locks = await db<{ pid: number; granted: boolean }[]>`
+          SELECT pid, granted FROM pg_locks
+          WHERE locktype = 'advisory'
+            AND classid = ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}
+            AND objsubid = 2
+        `;
+        const holder = locks.find((l) => l.granted === true);
+        const waiter = locks.find((l) => l.granted === false);
+        if (holder && waiter && holder.pid !== waiter.pid) {
+          observedLockContentionA = true;
+          holderPidA = holder.pid;
+          waiterPidA = waiter.pid;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 10));
+      }
+
+      expect(observedLockContentionA).toBe(true);
+      expect(holderPidA).not.toBeNull();
+      expect(waiterPidA).not.toBeNull();
+      expect(holderPidA).not.toBe(waiterPidA);
 
       const [costRes, closeErr] = await Promise.all([
         costPromise,
@@ -1395,6 +1424,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     // ==========================================
     // Ordem B: closeBuyerCycle adquire a trava primeiro e fecha o ciclo.
     // persistPurchaseCost tenta salvar custo concorrentemente e é bloqueado.
+    // Observamos em pg_locks o lock ativo (granted=true) e o waiter (granted=false).
     // Ao adquirir a trava, encontra o ciclo já fechado e lança CycleClosedError.
     // ==========================================
     const cycleDateB = "2026-11-14";
@@ -1412,7 +1442,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     await db.unsafe(`
       CREATE OR REPLACE FUNCTION trg_wait_buyer_close_xact() RETURNS trigger AS $$
       BEGIN
-        PERFORM pg_sleep(0.3);
+        PERFORM pg_sleep(0.6);
         RETURN NEW;
       END;
       $$ LANGUAGE plpgsql;
@@ -1426,9 +1456,6 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     try {
       const closePromise = closeBuyerCycle(buyerPrincipal, cycleDateB);
 
-      // Aguarda 50ms para que closeBuyerCycle adquira a trava de ciclo
-      await new Promise((r) => setTimeout(r, 50));
-
       const costPromise = persistPurchaseCost(buyerPrincipal, {
         cycleDate: cycleDateB,
         productId: prodB.id,
@@ -1436,6 +1463,35 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
         purchased: true,
         expectedVersion: 0,
       });
+
+      // Observa ativamente pg_locks comprovando contenção concorrente real na ordem B
+      let observedLockContentionB = false;
+      let holderPidB: number | null = null;
+      let waiterPidB: number | null = null;
+
+      const deadlineB = Date.now() + 3000;
+      while (Date.now() < deadlineB) {
+        const locks = await db<{ pid: number; granted: boolean }[]>`
+          SELECT pid, granted FROM pg_locks
+          WHERE locktype = 'advisory'
+            AND classid = ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}
+            AND objsubid = 2
+        `;
+        const holder = locks.find((l) => l.granted === true);
+        const waiter = locks.find((l) => l.granted === false);
+        if (holder && waiter && holder.pid !== waiter.pid) {
+          observedLockContentionB = true;
+          holderPidB = holder.pid;
+          waiterPidB = waiter.pid;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 10));
+      }
+
+      expect(observedLockContentionB).toBe(true);
+      expect(holderPidB).not.toBeNull();
+      expect(waiterPidB).not.toBeNull();
+      expect(holderPidB).not.toBe(waiterPidB);
 
       const [closeRes, costErr] = await Promise.all([
         closePromise,
@@ -1807,17 +1863,26 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
       RETURNING id
     `;
 
-    // 2. Produto com exclusividade legada JEB
-    const [prod] = await db<{ id: string }[]>`
+    // 2. Produto COM pedido original (10 CX solicitadas)
+    const [prodWithOrder] = await db<{ id: string }[]>`
       INSERT INTO products (erp_code, name, purchase_format, unit, markup, exclusive_supplier, active)
       VALUES (9109, 'BANANA PRATA LEGADA A1', 'CX', 'KG', 25.00, true, true)
       RETURNING id
+    `;
+    const [orderA1] = await db<{ id: string }[]>`
+      INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, submitted_by)
+      VALUES (${cycleDate}::date, ${cycleDate}::date, now(), ${store.id}::uuid, 1, now(), ${buyerPrincipal.userId}::uuid)
+      RETURNING id
+    `;
+    await db`
+      INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+      VALUES (${orderA1.id}::uuid, ${prodWithOrder.id}::uuid, 0.00, 10.00, 9109, 'BANANA PRATA LEGADA A1', 'CX')
     `;
 
     // Custo marcado como comprado
     await db`
       INSERT INTO purchase_cycle_product_costs (purchase_cycle_date, product_id, cost, purchased, purchased_at, updated_by, version)
-      VALUES (${cycleDate}::date, ${prod.id}::uuid, 40.00, true, now(), ${buyerPrincipal.userId}::uuid, 1)
+      VALUES (${cycleDate}::date, ${prodWithOrder.id}::uuid, 40.00, true, now(), ${buyerPrincipal.userId}::uuid, 1)
     `;
 
     // 3. Salva destinação válida de 10 CX para JEB no ciclo
@@ -1827,7 +1892,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
       storeId: store.id,
       allocations: [
         {
-          productId: prod.id,
+          productId: prodWithOrder.id,
           stores: [{ storeId: store.id, destinedQuantity: "10.00" }],
         },
       ],
@@ -1836,19 +1901,19 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     // Comprova que 10 CX foi persistido para JEB
     const [savedAlloc] = await db<{ destined_quantity: string }[]>`
       SELECT destined_quantity::text FROM purchase_cycle_product_allocations
-      WHERE purchase_cycle_date = ${cycleDate}::date AND supplier_id = ${suppJeb.id}::uuid AND product_id = ${prod.id}::uuid
+      WHERE purchase_cycle_date = ${cycleDate}::date AND supplier_id = ${suppJeb.id}::uuid AND product_id = ${prodWithOrder.id}::uuid
     `;
     expect(Number(savedAlloc.destined_quantity)).toBe(10);
 
     // 4. Mudança comercial posterior: produto agora é exclusivo de 'suppOutro' (exclusividade moderna)
     await db`
       INSERT INTO product_suppliers (product_id, supplier_id, is_primary, is_exclusive, active)
-      VALUES (${prod.id}::uuid, ${suppOutro.id}::uuid, true, true, true)
+      VALUES (${prodWithOrder.id}::uuid, ${suppOutro.id}::uuid, true, true, true)
     `;
 
     // 5. O produto permanece visível no workspace para JEB (pois possui alocação histórica)
     const wsJeb = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, suppJeb.id, store.id);
-    const prodInWs = wsJeb.destinationData?.products.find((p) => p.productId === prod.id);
+    const prodInWs = wsJeb.destinationData?.products.find((p) => p.productId === prodWithOrder.id);
     expect(prodInWs).toBeDefined();
     expect(prodInWs?.stores[store.id].destinedQuantity).toBe("10.00");
 
@@ -1860,7 +1925,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
         storeId: store.id,
         allocations: [
           {
-            productId: prod.id,
+            productId: prodWithOrder.id,
             stores: [{ storeId: store.id, destinedQuantity: "15.00" }],
           },
         ],
@@ -1874,22 +1939,25 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
       storeId: store.id,
       allocations: [
         {
-          productId: prod.id,
+          productId: prodWithOrder.id,
           stores: [{ storeId: store.id, destinedQuantity: "0.00" }],
         },
       ],
     });
 
-    // 8. Recarrega o workspace e comprova persistência de 0.00
-    const [zeroedAlloc] = await db<{ destined_quantity: string }[]>`
-      SELECT destined_quantity::text FROM purchase_cycle_product_allocations
-      WHERE purchase_cycle_date = ${cycleDate}::date AND supplier_id = ${suppJeb.id}::uuid AND product_id = ${prod.id}::uuid
+    // 8. Para produto COM pedido original, comprova que a linha física de alocação PERMANECE gravada com 0.00
+    const [zeroedAlloc] = await db<{ destined_quantity: string; ordered_quantity: string }[]>`
+      SELECT destined_quantity::text, ordered_quantity::text FROM purchase_cycle_product_allocations
+      WHERE purchase_cycle_date = ${cycleDate}::date AND supplier_id = ${suppJeb.id}::uuid AND product_id = ${prodWithOrder.id}::uuid
     `;
-    expect(Number(zeroedAlloc?.destined_quantity ?? 0)).toBe(0);
+    expect(zeroedAlloc).toBeDefined();
+    expect(zeroedAlloc.destined_quantity).toBe("0.00");
+    expect(Number(zeroedAlloc.ordered_quantity)).toBe(10);
 
     const wsJebZeroed = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, suppJeb.id, store.id);
-    const prodInWsZeroed = wsJebZeroed.destinationData?.products.find((p) => p.productId === prod.id);
-    expect(Number(prodInWsZeroed?.stores[store.id].destinedQuantity ?? 0)).toBe(0);
+    const prodInWsZeroed = wsJebZeroed.destinationData?.products.find((p) => p.productId === prodWithOrder.id);
+    expect(prodInWsZeroed).toBeDefined();
+    expect(prodInWsZeroed?.stores[store.id].destinedQuantity).toBe("0.00");
 
     // 9. Agora que a destinação está zerada, uma nova tentativa de alocação positiva para JEB (0 -> 5) é rejeitada
     await expect(
@@ -1899,8 +1967,85 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
         storeId: store.id,
         allocations: [
           {
-            productId: prod.id,
+            productId: prodWithOrder.id,
             stores: [{ storeId: store.id, destinedQuantity: "5.00" }],
+          },
+        ],
+      }),
+    ).rejects.toThrow(ExclusivityViolationError);
+
+    // 10. Compra de Oportunidade (SEM pedido original): comprova distinção entre zeragem física e remoção
+    const [prodOpp] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, exclusive_supplier, active)
+      VALUES (9119, 'MANGA TOMMY OPORTUNIDADE A1', 'CX', 'UN', 25.00, true, true)
+      RETURNING id
+    `;
+    await db`
+      INSERT INTO purchase_cycle_product_costs (purchase_cycle_date, product_id, cost, purchased, purchased_at, updated_by, version)
+      VALUES (${cycleDate}::date, ${prodOpp.id}::uuid, 35.00, true, now(), ${buyerPrincipal.userId}::uuid, 1)
+    `;
+
+    // Salva 5 CX na oportunidade para JEB
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: suppJeb.id,
+      storeId: store.id,
+      allocations: [
+        {
+          productId: prodOpp.id,
+          stores: [{ storeId: store.id, destinedQuantity: "5.00" }],
+        },
+      ],
+    });
+
+    const [savedOpp] = await db<{ destined_quantity: string }[]>`
+      SELECT destined_quantity::text FROM purchase_cycle_product_allocations
+      WHERE purchase_cycle_date = ${cycleDate}::date AND supplier_id = ${suppJeb.id}::uuid AND product_id = ${prodOpp.id}::uuid
+    `;
+    expect(Number(savedOpp.destined_quantity)).toBe(5);
+
+    // Muda exclusividade do prodOpp para suppOutro
+    await db`
+      INSERT INTO product_suppliers (product_id, supplier_id, is_primary, is_exclusive, active)
+      VALUES (${prodOpp.id}::uuid, ${suppOutro.id}::uuid, true, true, true)
+    `;
+
+    // Zeragem de oportunidade remove a linha (pois destino = 0 e pedido = 0) mas registra evento de auditoria
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: suppJeb.id,
+      storeId: store.id,
+      allocations: [
+        {
+          productId: prodOpp.id,
+          stores: [{ storeId: store.id, destinedQuantity: "0.00" }],
+        },
+      ],
+    });
+
+    const [zeroedOppAlloc] = await db<{ destined_quantity: string }[]>`
+      SELECT destined_quantity::text FROM purchase_cycle_product_allocations
+      WHERE purchase_cycle_date = ${cycleDate}::date AND supplier_id = ${suppJeb.id}::uuid AND product_id = ${prodOpp.id}::uuid
+    `;
+    expect(zeroedOppAlloc).toBeUndefined();
+
+    const [auditEvent] = await db<{ action: string }[]>`
+      SELECT action FROM audit_events
+      WHERE action = 'ALLOCATION_ZEROED' AND (metadata->>'productId')::uuid = ${prodOpp.id}::uuid
+      ORDER BY created_at DESC LIMIT 1
+    `;
+    expect(auditEvent?.action).toBe("ALLOCATION_ZEROED");
+
+    // Rejeita novas compras positivas para oportunidade após zerar
+    await expect(
+      saveSupplierAllocations(buyerPrincipal, {
+        cycleDate,
+        supplierId: suppJeb.id,
+        storeId: store.id,
+        allocations: [
+          {
+            productId: prodOpp.id,
+            stores: [{ storeId: store.id, destinedQuantity: "3.00" }],
           },
         ],
       }),
@@ -1972,14 +2117,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
         ],
       });
 
-      // Simula se porventura houvesse um registro indevido prévio de loja futura no ciclo histórico
-      await db`
-        INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
-        VALUES (${historicCycle}::date, ${storeBalneario.id}::uuid)
-        ON CONFLICT DO NOTHING
-      `;
-
-      // 3. Executa a resolução de participantes para o ciclo histórico
+      // 3. Executa a resolução inicial de participantes para o ciclo histórico
       const participants = await resolveParticipatingStores(db, historicCycle);
 
       // Deve conter APENAS a loja antiga que existia e participava na data do ciclo
@@ -1987,12 +2125,12 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
       expect(participants.some((s) => s.id === storeBalneario.id)).toBe(false);
       expect(participants.some((s) => s.id === storeSantaMonica.id)).toBe(false);
 
-      // O registro indevido de storeBalneario deve ter sido saneado do banco
-      const [persistedNova] = await db<{ store_id: string }[]>`
+      // Comprova que as lojas futuras NÃO foram persistidas em purchase_cycle_participating_stores
+      const futurePersisted = await db<{ store_id: string }[]>`
         SELECT store_id FROM purchase_cycle_participating_stores
-        WHERE purchase_cycle_date = ${historicCycle}::date AND store_id = ${storeBalneario.id}::uuid
+        WHERE purchase_cycle_date = ${historicCycle}::date AND store_id IN (${storeBalneario.id}::uuid, ${storeSantaMonica.id}::uuid)
       `;
-      expect(persistedNova).toBeUndefined();
+      expect(futurePersisted).toHaveLength(0);
 
       // 4. Finaliza a única loja participante legítima
       await closeStoreWithPreview(buyerPrincipal, historicCycle, storePonta.id);
@@ -2015,6 +2153,186 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     } finally {
       // Restaura created_at para data compatível com todos os ciclos de teste
       await db`UPDATE stores SET created_at = '2024-12-01T10:00:00Z'::timestamptz WHERE id IN (${storePonta.id}::uuid, ${storeBalneario.id}::uuid, ${storeSantaMonica.id}::uuid)`;
+    }
+  });
+
+  it("31. ALTA F1: Leitura repetida de ciclo fechado NUNCA apaga participante persistida (não-destrutividade)", async () => {
+    const cycleClosed = "2025-02-15";
+    const [storePonta] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'ponta-da-fruta'`;
+    const [storeBalneario] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'balneario'`;
+
+    // Loja Balneário cadastrada com created_at posterior à data do ciclo (caso de importação/cadastro tardio)
+    await db`UPDATE stores SET created_at = '2025-06-01T10:00:00Z'::timestamptz WHERE id = ${storeBalneario.id}::uuid`;
+
+    try {
+      // Pedido cancelado presente no ciclo para Balneário
+      await db`
+        INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, cancelled_at, submitted_by)
+        VALUES (${cycleClosed}::date, ${cycleClosed}::date, now(), ${storeBalneario.id}::uuid, 1, now(), now(), ${buyerPrincipal.userId}::uuid)
+      `;
+
+      // Persiste explicitamente ambas as lojas em purchase_cycle_participating_stores
+      await db`
+        INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+        VALUES
+          (${cycleClosed}::date, ${storePonta.id}::uuid),
+          (${cycleClosed}::date, ${storeBalneario.id}::uuid)
+        ON CONFLICT DO NOTHING
+      `;
+
+      // Ciclo geral marcado como CLOSED
+      await db`
+        INSERT INTO purchase_cycle_buyer_closures (purchase_cycle_date, status, closed_at, closed_by)
+        VALUES (${cycleClosed}::date, 'CLOSED', now(), ${buyerPrincipal.userId}::uuid)
+        ON CONFLICT (purchase_cycle_date) DO UPDATE SET status = 'CLOSED'
+      `;
+
+      // Snapshot antes das leituras
+      const beforeReads = await db<{ store_id: string }[]>`
+        SELECT store_id FROM purchase_cycle_participating_stores
+        WHERE purchase_cycle_date = ${cycleClosed}::date
+        ORDER BY store_id
+      `;
+      expect(beforeReads).toHaveLength(2);
+
+      // Executa 5 leituras seguidas do workspace (simulando navegação real de comprador)
+      for (let i = 0; i < 5; i++) {
+        const ws = await readBuyerAllocationWorkspace(buyerPrincipal, cycleClosed, null, storeBalneario.id);
+        expect(ws.stores.some((s) => s.id === storeBalneario.id)).toBe(true);
+        expect(ws.stores.some((s) => s.id === storePonta.id)).toBe(true);
+      }
+
+      // Snapshot após 5 leituras: rigorosamente idêntico, NENHUMA linha foi apagada
+      const afterReads = await db<{ store_id: string }[]>`
+        SELECT store_id FROM purchase_cycle_participating_stores
+        WHERE purchase_cycle_date = ${cycleClosed}::date
+        ORDER BY store_id
+      `;
+      expect(afterReads).toHaveLength(2);
+      expect(afterReads.map((r) => r.store_id)).toEqual(beforeReads.map((r) => r.store_id));
+    } finally {
+      await db`UPDATE stores SET created_at = '2024-12-01T10:00:00Z'::timestamptz WHERE id = ${storeBalneario.id}::uuid`;
+    }
+  });
+
+  it("32. MÉDIA F2: Ciclo legado anterior à criação de qualquer loja e sem atividade retorna [] sem inventar lojas", async () => {
+    const cycle2020 = "2020-01-10";
+
+    // Todas as lojas foram criadas a partir de 2024
+    // Nenhuma atividade existe em 2020
+    const participants = await resolveParticipatingStores(db, cycle2020);
+
+    // Deve retornar conjunto vazio sem inventar lojas futuras
+    expect(participants).toEqual([]);
+
+    // Comprova que nada foi gravado no banco de dados
+    const persisted = await db<{ store_id: string }[]>`
+      SELECT store_id FROM purchase_cycle_participating_stores
+      WHERE purchase_cycle_date = ${cycle2020}::date
+    `;
+    expect(persisted).toHaveLength(0);
+
+    // Consulta subsequente continua retornando vazio de forma consistente
+    const participantsAgain = await resolveParticipatingStores(db, cycle2020);
+    expect(participantsAgain).toEqual([]);
+  });
+
+  it("33. ALTA F1: Participante persistida com pedido cancelado / sem positivo permanece participante e bloqueia fechamento geral", async () => {
+    const cycleDate = "2026-11-20";
+    const [storePonta] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'ponta-da-fruta'`;
+    const [storeBalneario] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'balneario'`;
+
+    // Pedido cancelado para Balneário
+    await db`
+      INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, cancelled_at, submitted_by)
+      VALUES (${cycleDate}::date, ${cycleDate}::date, now(), ${storeBalneario.id}::uuid, 1, now(), now(), ${buyerPrincipal.userId}::uuid)
+    `;
+
+    // Ambas são gravadas como participantes persistidas
+    await db`
+      INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+      VALUES
+        (${cycleDate}::date, ${storePonta.id}::uuid),
+        (${cycleDate}::date, ${storeBalneario.id}::uuid)
+      ON CONFLICT DO NOTHING
+    `;
+
+    // Apenas Ponta fecha sua conferência
+    await closeStoreWithPreview(buyerPrincipal, cycleDate, storePonta.id);
+
+    // Tentar fechar o ciclo geral DEVE falhar porque Balneário é participante e não foi conferida
+    await expect(closeBuyerCycle(buyerPrincipal, cycleDate)).rejects.toThrow(AllocationValidationError);
+
+    // Comprova que Balneário NÃO foi expurgada da lista de participantes persistidas
+    const persisted = await db<{ store_id: string }[]>`
+      SELECT store_id FROM purchase_cycle_participating_stores
+      WHERE purchase_cycle_date = ${cycleDate}::date AND store_id = ${storeBalneario.id}::uuid
+    `;
+    expect(persisted).toHaveLength(1);
+  });
+
+  it("34. Ciclo aberto com atividade tardia reconcilia participantes sem remover existentes", async () => {
+    const cycleDate = "2026-11-21";
+    const [storePonta] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'ponta-da-fruta'`;
+    const [storeSantaMonica] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'santa-monica'`;
+
+    // Inicialmente, apenas Ponta é participante
+    await db`
+      INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+      VALUES (${cycleDate}::date, ${storePonta.id}::uuid)
+      ON CONFLICT DO NOTHING
+    `;
+
+    const initial = await resolveParticipatingStores(db, cycleDate);
+    expect(initial).toHaveLength(1);
+    expect(initial[0].id).toBe(storePonta.id);
+
+    // Atividade posterior legítima ocorre para Santa Mônica (pedido submetido tardiamente)
+    await db`
+      INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, submitted_by)
+      VALUES (${cycleDate}::date, ${cycleDate}::date, now(), ${storeSantaMonica.id}::uuid, 1, now(), ${buyerPrincipal.userId}::uuid)
+    `;
+
+    // Nova resolução reconcilia Santa Mônica dinamicamente sem remover Ponta
+    const reconciled = await resolveParticipatingStores(db, cycleDate);
+    expect(reconciled.some((s) => s.id === storePonta.id)).toBe(true);
+    expect(reconciled.some((s) => s.id === storeSantaMonica.id)).toBe(true);
+
+    const persisted = await db<{ store_id: string }[]>`
+      SELECT store_id FROM purchase_cycle_participating_stores
+      WHERE purchase_cycle_date = ${cycleDate}::date
+    `;
+    expect(persisted).toHaveLength(2);
+  });
+
+  it("35. Loja inativada após a data do ciclo é preservada como participante histórica na leitura e fechamento", async () => {
+    const cycleDate = "2025-05-10";
+    const [storeSantaMonica] = await db<{ id: string }[]>`SELECT id FROM stores WHERE slug = 'santa-monica'`;
+
+    // Persiste como participante no ciclo histórico
+    await db`
+      INSERT INTO purchase_cycle_participating_stores (purchase_cycle_date, store_id)
+      VALUES (${cycleDate}::date, ${storeSantaMonica.id}::uuid)
+      ON CONFLICT DO NOTHING
+    `;
+
+    // Posteriormente à data do ciclo, a loja é inativada no cadastro geral
+    await db`UPDATE stores SET active = false WHERE id = ${storeSantaMonica.id}::uuid`;
+
+    try {
+      // Leitura do workspace no ciclo histórico DEVE continuar reconhecendo Santa Mônica
+      const ws = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, null, storeSantaMonica.id);
+      expect(ws.stores.some((s) => s.id === storeSantaMonica.id)).toBe(true);
+
+      // Comprova que permanece no banco
+      const persisted = await db<{ store_id: string }[]>`
+        SELECT store_id FROM purchase_cycle_participating_stores
+        WHERE purchase_cycle_date = ${cycleDate}::date AND store_id = ${storeSantaMonica.id}::uuid
+      `;
+      expect(persisted).toHaveLength(1);
+    } finally {
+      // Reativa a loja
+      await db`UPDATE stores SET active = true WHERE id = ${storeSantaMonica.id}::uuid`;
     }
   });
 });

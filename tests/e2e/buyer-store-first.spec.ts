@@ -23,6 +23,75 @@ async function login(page: Page) {
   ]);
 }
 
+/**
+ * Prepara fixture determinística e multi-produto para o ciclo E2E:
+ * - Limpa dados operacionais do ciclo
+ * - Configura Fornecedor Corteletti com 3 produtos em Santa Mônica:
+ *   1) UVA VITÓRIA E2E (ERP 22): com destinação positiva salva de 2.00 CX
+ *   2) CEBOLA TESTE (ERP 5): vinculado ao fornecedor, pendente (sem destinação)
+ *   3) ABACAXI UN (ERP 6): vinculado ao fornecedor, pendente (sem destinação)
+ */
+async function setupE2EData() {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) return;
+  const sql = postgres(dbUrl, { max: 1 });
+  try {
+    // 1. Limpa registros operacionais do ciclo
+    await sql`DELETE FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${cycle}::date`;
+    await sql`DELETE FROM purchase_cycle_store_closures WHERE purchase_cycle_date = ${cycle}::date`;
+    await sql`DELETE FROM purchase_cycle_supplier_store_reviews WHERE purchase_cycle_date = ${cycle}::date`;
+    await sql`DELETE FROM purchase_cycle_product_supplier_decisions WHERE purchase_cycle_date = ${cycle}::date`;
+    await sql`DELETE FROM purchase_cycle_product_allocations WHERE purchase_cycle_date = ${cycle}::date`;
+    await sql`DELETE FROM purchase_cycle_participating_stores WHERE purchase_cycle_date = ${cycle}::date`;
+
+    // 2. Busca IDs dinâmicos de Corteletti, Santa Mônica, Comprador e Produtos
+    const [corteletti] = await sql<{ id: string }[]>`
+      SELECT id FROM suppliers WHERE trade_name ILIKE '%corteletti%' LIMIT 1
+    `;
+    const [santaMonica] = await sql<{ id: string }[]>`
+      SELECT id FROM stores WHERE slug = 'santa-monica' LIMIT 1
+    `;
+    const [buyerUser] = await sql<{ id: string }[]>`
+      SELECT id FROM users WHERE email = 'comprador@consolidado.test' LIMIT 1
+    `;
+    const [prodUva] = await sql<{ id: string }[]>`
+      SELECT id FROM products WHERE erp_code = 22 LIMIT 1
+    `;
+    const prodsPending = await sql<{ id: string }[]>`
+      SELECT id FROM products WHERE erp_code IN (5, 6)
+    `;
+
+    if (corteletti && santaMonica && buyerUser && prodUva) {
+      // Garante vinculação de ERP 5 e 6 a Corteletti
+      for (const p of prodsPending) {
+        await sql`
+          INSERT INTO product_suppliers (product_id, supplier_id, is_primary, is_exclusive, active)
+          VALUES (${p.id}::uuid, ${corteletti.id}::uuid, true, false, true)
+          ON CONFLICT (product_id, supplier_id) DO UPDATE SET active = true, is_exclusive = false
+        `;
+      }
+
+      // Insere destinação positiva salva para UVA VITÓRIA (ERP 22) de 2.00 CX
+      await sql`
+        INSERT INTO purchase_cycle_product_allocations (
+          purchase_cycle_date, supplier_id, product_id, store_id,
+          ordered_quantity, destined_quantity, purchase_format,
+          is_additional_purchase, created_by, updated_by, version,
+          created_at, updated_at
+        )
+        VALUES (
+          ${cycle}::date, ${corteletti.id}::uuid, ${prodUva.id}::uuid, ${santaMonica.id}::uuid,
+          2.00, 2.00, 'CX', false, ${buyerUser.id}::uuid, ${buyerUser.id}::uuid, 1, now(), now()
+        )
+        ON CONFLICT (purchase_cycle_date, supplier_id, product_id, store_id)
+        DO UPDATE SET destined_quantity = 2.00, ordered_quantity = 2.00
+      `;
+    }
+  } finally {
+    await sql.end();
+  }
+}
+
 async function cleanCycleData() {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return;
@@ -42,19 +111,23 @@ async function cleanCycleData() {
 test.describe("Experiência Operacional Store-First do Comprador", () => {
   test.beforeEach(async () => {
     test.skip(!password, "Requer CONSOLIDATED_E2E_PASSWORD configurada para rodar contra o banco E2E");
-    await cleanCycleData();
+    await setupE2EData();
   });
 
   test.afterAll(async () => {
     await cleanCycleData();
   });
 
-  test("Desktop (1280px): Navegação fixa por loja, distinção de sugestões, ação negativa e conclusão em lote", async ({
+  test("Fluxo Principal: Navegação fixa por loja, bloqueio por dirty, decisão negativa, conclusão em lote multi-produto e conferência de cortes", async ({
     page,
   }, testInfo) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await login(page);
+    if (testInfo.project.name === "desktop") {
+      await page.setViewportSize({ width: 1280, height: 900 });
+    } else {
+      await page.setViewportSize({ width: 390, height: 844 });
+    }
 
+    await login(page);
     await page.goto(`/comprador/destinacao?ciclo=${cycle}`);
 
     // 1. Dashboard inicial exibe as 3 lojas padrão da rede
@@ -92,55 +165,135 @@ test.describe("Experiência Operacional Store-First do Comprador", () => {
     await page.waitForLoadState("networkidle");
     await expect(page.locator(".alloc-store-tab--active")).toContainText("Santa Mônica");
 
-    // 5. Decisão Individual ("Não comprei deste fornecedor") com confirmação, persistência e reversão
-    const productCard = page.locator(".alloc-product-card").first();
-    await expect(productCard).toBeVisible();
-    await expect(productCard).toContainText("UVA VITÓRIA E2E");
+    // 5. Verifica os 3 produtos no catálogo do fornecedor:
+    // - UVA VITÓRIA E2E (ERP 22): com 2.00 CX destinada previamente
+    // - CEBOLA TESTE (ERP 5): pendente
+    // - ABACAXI UN (ERP 6): pendente
+    const uvaCard = page.locator(".alloc-product-card").filter({ hasText: "UVA VITÓRIA E2E" });
+    const cebolaCard = page.locator(".alloc-product-card").filter({ hasText: "CEBOLA TESTE" });
+    const abacaxiCard = page.locator(".alloc-product-card").filter({ hasText: "ABACAXI UN" });
 
-    // Executa ação negativa individual
-    const notPurchasedBtn = productCard.getByRole("button", { name: /Não comprei deste fornecedor/i });
-    await expect(notPurchasedBtn).toBeVisible();
-    await notPurchasedBtn.click();
-    await expect(productCard.locator(".alloc-not-purchased-banner")).toContainText("Não comprado deste fornecedor nesta loja");
+    await expect(uvaCard).toBeVisible();
+    await expect(cebolaCard).toBeVisible();
+    await expect(abacaxiCard).toBeVisible();
+    await expect(uvaCard.locator(".alloc-stepper-input")).toHaveValue("2.00");
 
-    // Recarrega a página para comprovar persistência da decisão individual
-    await page.reload();
-    const reloadedCard = page.locator(".alloc-product-card").first();
-    await expect(reloadedCard.locator(".alloc-not-purchased-banner")).toContainText("Não comprado deste fornecedor nesta loja");
-    const revertBtn = reloadedCard.locator(".alloc-btn-revert");
-    await expect(revertBtn).toBeVisible();
-
-    // Reverte a decisão individual
-    await revertBtn.click();
-    await expect(reloadedCard.locator(".alloc-not-purchased-banner")).not.toBeVisible();
-
-    // Recarrega a página para comprovar persistência da reversão
-    await page.reload();
-    const revertedCard = page.locator(".alloc-product-card").first();
-    await expect(revertedCard.getByRole("button", { name: /Não comprei deste fornecedor/i })).toBeVisible();
-
-    // 6. Conclusão em Lote do Fornecedor com confirmação e persistência
+    // 6. Bloqueio de Conclusão em Lote quando houver alterações locais não salvas (isDirty)
     const concludeSupplierBtn = page.getByRole("button", {
       name: /Concluir Conferência deste Fornecedor/i,
     });
     await expect(concludeSupplierBtn).toBeVisible();
+
+    // Altera valor de UVA VITÓRIA de 2.00 para 3.00 localmente sem salvar
+    const uvaStepper = uvaCard.locator(".alloc-stepper-input");
+    await uvaStepper.fill("3.00");
+    await expect(page.locator(".alloc-sticky-status")).toContainText("Alterações não salvas");
+
+    // Tenta concluir o fornecedor em lote com alteração pendente
     await concludeSupplierBtn.click();
 
+    // O modal NÃO deve abrir e um aviso de bloqueio por dirty state deve ser apresentado
     const batchModal = page.locator('[role="dialog"]').filter({ hasText: /Concluir Conferência deste Fornecedor/i });
+    await expect(batchModal).not.toBeVisible();
+    await expect(page.locator(".alloc-banner--warning")).toContainText("Você possui alterações não salvas");
+
+    // Desfaz a alteração local recarregando a página para estado limpo
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+
+    // 7. Decisão Individual ("Não comprei deste fornecedor") em ABACAXI UN com reversão
+    const abacaxiCardClean = page.locator(".alloc-product-card").filter({ hasText: "ABACAXI UN" });
+    const notPurchasedBtn = abacaxiCardClean.getByRole("button", { name: /Não comprei deste fornecedor/i });
+    await expect(notPurchasedBtn).toBeVisible();
+    await notPurchasedBtn.click();
+    await expect(abacaxiCardClean.locator(".alloc-not-purchased-banner")).toContainText("Não comprado deste fornecedor nesta loja");
+
+    // Recarrega a página para comprovar persistência da decisão individual
+    await page.reload();
+    const abacaxiCardReloaded = page.locator(".alloc-product-card").filter({ hasText: "ABACAXI UN" });
+    await expect(abacaxiCardReloaded.locator(".alloc-not-purchased-banner")).toContainText("Não comprado deste fornecedor nesta loja");
+    const revertBtn = abacaxiCardReloaded.locator(".alloc-btn-revert");
+    await expect(revertBtn).toBeVisible();
+
+    // Reverte a decisão individual
+    await revertBtn.click();
+    await expect(abacaxiCardReloaded.locator(".alloc-not-purchased-banner")).not.toBeVisible();
+
+    // Recarrega a página para comprovar persistência da reversão
+    await page.reload();
+    const abacaxiCardReverted = page.locator(".alloc-product-card").filter({ hasText: "ABACAXI UN" });
+    await expect(abacaxiCardReverted.getByRole("button", { name: /Não comprei deste fornecedor/i })).toBeVisible();
+
+    // 8. Conclusão em Lote com Múltiplos Produtos
+    const concludeSupplierBtnClean = page.getByRole("button", {
+      name: /Concluir Conferência deste Fornecedor/i,
+    });
+    await expect(concludeSupplierBtnClean).toBeVisible();
+    await concludeSupplierBtnClean.click();
+
     await expect(batchModal).toBeVisible();
-    await expect(batchModal.locator("text=UVA VITÓRIA E2E")).toBeVisible();
+    // Verifica que o modal declara a preservação de 1 item positivo
+    await expect(batchModal.locator("text=Destinações positivas salvas (1 itens) serão integralmente preservadas.")).toBeVisible();
+    // Verifica que a lista de negativação contém CEBOLA TESTE e ABACAXI UN
+    await expect(batchModal.locator("text=CEBOLA TESTE")).toBeVisible();
+    await expect(batchModal.locator("text=ABACAXI UN")).toBeVisible();
+    // E NÃO inclui o produto com destino positivo (UVA VITÓRIA) na lista de cortes
+    const negativeItemsList = batchModal.locator("ul");
+    await expect(negativeItemsList.locator("text=UVA VITÓRIA E2E")).not.toBeVisible();
+
     await capture(page, testInfo, "03-modal-concluir-fornecedor");
 
     // Confirma conclusão em lote
     await batchModal.getByRole("button", { name: /Confirmar Conclusão do Fornecedor/i }).click();
     await expect(batchModal).not.toBeVisible();
 
-    // Recarrega a página e comprova persistência da conferência do fornecedor
+    // 9. Comprovação Direta no Banco PostgreSQL Descartável
+    const dbUrl = process.env.DATABASE_URL;
+    if (dbUrl) {
+      const sqlCheck = postgres(dbUrl, { max: 1 });
+      try {
+        // Verifica decisões de fornecedor: CEBOLA TESTE (5) e ABACAXI UN (6) gravados como NOT_PURCHASED
+        const decisions = await sqlCheck<{ erp_code: number; decision: string }[]>`
+          SELECT p.erp_code, d.decision
+          FROM purchase_cycle_product_supplier_decisions d
+          JOIN products p ON p.id = d.product_id
+          WHERE d.purchase_cycle_date = ${cycle}::date
+          ORDER BY p.erp_code
+        `;
+        expect(decisions).toHaveLength(2);
+        expect(decisions[0].erp_code).toBe(5);
+        expect(decisions[0].decision).toBe("NOT_PURCHASED");
+        expect(decisions[1].erp_code).toBe(6);
+        expect(decisions[1].decision).toBe("NOT_PURCHASED");
+
+        // Verifica que a destinação positiva de UVA VITÓRIA (ERP 22) foi integralmente preservada com 2.00 CX
+        const [uvaAlloc] = await sqlCheck<{ destined_quantity: string }[]>`
+          SELECT pa.destined_quantity::text
+          FROM purchase_cycle_product_allocations pa
+          JOIN products p ON p.id = pa.product_id
+          WHERE pa.purchase_cycle_date = ${cycle}::date AND p.erp_code = 22
+        `;
+        expect(uvaAlloc).toBeDefined();
+        expect(Number(uvaAlloc.destined_quantity)).toBe(2);
+      } finally {
+        await sqlCheck.end();
+      }
+    }
+
+    // 10. Recarrega a página e comprova persistência na UI
     await page.reload();
     const checkedSelect = page.locator("#supplier-selector");
     await expect(checkedSelect.locator("option:checked")).toContainText("(Conferido)");
 
-    // 7. Modal de Conferência Conjunta de Cortes por Loja e Finalização
+    const reloadedUva = page.locator(".alloc-product-card").filter({ hasText: "UVA VITÓRIA E2E" });
+    const reloadedCebola = page.locator(".alloc-product-card").filter({ hasText: "CEBOLA TESTE" });
+    const reloadedAbacaxi = page.locator(".alloc-product-card").filter({ hasText: "ABACAXI UN" });
+
+    await expect(reloadedUva.locator(".alloc-stepper-input")).toHaveValue("2.00");
+    await expect(reloadedCebola.locator(".alloc-not-purchased-banner")).toContainText("Não comprado deste fornecedor nesta loja");
+    await expect(reloadedAbacaxi.locator(".alloc-not-purchased-banner")).toContainText("Não comprado deste fornecedor nesta loja");
+
+    // 11. Modal de Conferência Conjunta de Cortes por Loja e Finalização
     const finalizeStoreBtn = page.getByRole("button", {
       name: /Conferir Cortes e Finalizar Loja/i,
     });
@@ -163,7 +316,7 @@ test.describe("Experiência Operacional Store-First do Comprador", () => {
     await expect(page.getByRole("button", { name: /Ver Cortes da Loja/i })).toBeVisible();
     await capture(page, testInfo, "01-desktop-workspace-balneario");
 
-    // 8. Reabertura da Conferência com Justificativa Auditada, Ajuste de Quantidade e Reconferência
+    // 12. Reabertura da Conferência com Justificativa Auditada, Ajuste de Quantidade e Reconferência
     await page.getByRole("button", { name: /Ver Cortes da Loja/i }).click();
     const viewCutsModal = page.locator('[role="dialog"]').filter({ hasText: /Conferência Conjunta dos Cortes/i });
     await expect(viewCutsModal).toBeVisible();
@@ -184,9 +337,9 @@ test.describe("Experiência Operacional Store-First do Comprador", () => {
     const reopenedTab = page.locator(".alloc-store-tab--active");
     await expect(reopenedTab.locator(".alloc-status-pill--closed")).not.toBeVisible();
 
-    // Ajusta quantidade do produto e salva
-    const stepperInput = page.locator(".alloc-stepper-input").first();
-    await stepperInput.fill("4.00");
+    // Ajusta quantidade de UVA VITÓRIA para 4.00 e salva
+    const uvaInput = page.locator(".alloc-product-card").filter({ hasText: "UVA VITÓRIA E2E" }).locator(".alloc-stepper-input");
+    await uvaInput.fill("4.00");
     const saveStoreBtn = page.getByRole("button", { name: /Salvar Destinações/i });
     await expect(saveStoreBtn).toBeEnabled();
     await saveStoreBtn.click();
@@ -194,7 +347,7 @@ test.describe("Experiência Operacional Store-First do Comprador", () => {
 
     // Recarrega a página e comprova que o valor 4.00 persistiu
     await page.reload();
-    const reloadedInput = page.locator(".alloc-stepper-input").first();
+    const reloadedInput = page.locator(".alloc-product-card").filter({ hasText: "UVA VITÓRIA E2E" }).locator(".alloc-stepper-input");
     await expect(reloadedInput).toHaveValue("4.00");
 
     // Reconferência e finalização com a nova quantidade
@@ -215,12 +368,14 @@ test.describe("Experiência Operacional Store-First do Comprador", () => {
     await expect(reFinalizedTab.locator(".alloc-status-pill--closed")).toContainText("Finalizada");
   });
 
-  test("Mobile (390px): Visualização responsiva, cartões compactos e scroll seguro", async ({
+  test("Mobile: Visualização responsiva, cartões compactos e scroll seguro", async ({
     page,
   }, testInfo) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await login(page);
+    if (testInfo.project.name === "desktop") {
+      await page.setViewportSize({ width: 390, height: 844 });
+    }
 
+    await login(page);
     await page.goto(`/comprador/destinacao?ciclo=${cycle}`);
 
     // As 3 lojas devem ser navegáveis no mobile
