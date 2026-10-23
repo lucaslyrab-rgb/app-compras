@@ -19,6 +19,13 @@ export function database() {
   if (singleton && currentUrl !== url) {
     const previous = singleton;
     singleton = undefined;
+    // Encerra o pool anterior com timeout de 2 segundos.
+    // LIMITAÇÃO CONHECIDA (Ressalva não bloqueadora):
+    // sql.end({ timeout: 2 }) da biblioteca postgres.js força destroy() nas conexões caso excedam 2s,
+    // podendo interromper transações em andamento com CONNECTION_DESTROYED (não é drenagem graciosa).
+    // No deploy produtivo (Docker Swarm), DATABASE_URL_FILE é imutável durante o ciclo de vida do container
+    // (conforme infra/stack.yml:14), de modo que essa troca dinâmica de URL ocorre exclusivamente
+    // no harness de testes de integração entre arquivos ou migrações de teste.
     previous.sql.end({ timeout: 2 }).catch(() => {});
   }
   singleton ??= createClient();

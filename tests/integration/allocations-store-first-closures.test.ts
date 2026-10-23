@@ -104,73 +104,244 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
   }
 
   /**
+   * Identidade verificável de uma conexão/backend PostgreSQL pertencente a um cenário de teste.
+   * A tupla (pid, backendStart) impede efeitos colaterais de reutilização de PID pelo SO.
+   */
+  interface TargetBackendIdentity {
+    pid: number;
+    backendStart: string; // timestamptz string de backend_start em pg_stat_activity
+    label?: string;
+  }
+
+  interface CleanupTestGatesOptions {
+    gateClient: postgres.Sql | null;
+    db: postgres.Sql;
+    promises?: Promise<unknown>[];
+    targetBackends?: TargetBackendIdentity[];
+    triggers?: { name: string; table: string }[];
+    functions?: string[];
+    timeoutMs?: number;
+  }
+
+  async function captureBackendIdentity(
+    dbClient: postgres.Sql,
+    pid: number | null | undefined,
+    label?: string,
+  ): Promise<TargetBackendIdentity | null> {
+    if (!pid) return null;
+    try {
+      const rows = await dbClient<{ pid: number; backend_start: string }[]>`
+        SELECT pid, backend_start::text as backend_start
+        FROM pg_stat_activity
+        WHERE datname = current_database()
+          AND pid = ${pid}
+        LIMIT 1
+      `;
+      if (rows.length > 0) {
+        return {
+          pid: rows[0].pid,
+          backendStart: rows[0].backend_start,
+          label,
+        };
+      }
+    } catch (err) {
+      console.warn(`[captureBackendIdentity] Erro ao capturar identidade do PID ${pid}:`, err);
+    }
+    return null;
+  }
+
+  async function getClientBackendIdentity(
+    client: postgres.Sql,
+    label?: string,
+  ): Promise<TargetBackendIdentity | null> {
+    try {
+      const [row] = await client<{ pid: number; backend_start: string }[]>`
+        SELECT pg_backend_pid() as pid, backend_start::text as backend_start
+        FROM pg_stat_activity
+        WHERE pid = pg_backend_pid()
+      `;
+      if (row) {
+        return { pid: row.pid, backendStart: row.backend_start, label };
+      }
+    } catch (err) {
+      console.warn(`[getClientBackendIdentity] Erro ao capturar identidade do client:`, err);
+    }
+    return null;
+  }
+
+  function addTargetBackend(list: TargetBackendIdentity[], identity: TargetBackendIdentity | null) {
+    if (!identity) return;
+    if (!list.some((b) => b.pid === identity.pid && b.backendStart === identity.backendStart)) {
+      list.push(identity);
+    }
+  }
+
+  /**
    * Rotina padronizada de limpeza segura para testes concorrentes com gates transacionais.
    * Ordem estrita de recursos:
    * 1. Libera imediatamente os advisory locks do gateClient para desobstruir qualquer transação pausada.
    * 2. Drena e consome todas as promessas concorrentes (evitando unhandled rejections).
-   * 3. Se necessário, força o término de backends ociosos/travados vinculados à query de teste.
+   * 3. Fallback restrito: cancelamento/terminação EXCLUSIVAMENTE para conexões comprovadamente do cenário
+   *    (pid + backend_start verificados no pg_stat_activity), sem qualquer predicado textual amplo.
    * 4. Remove triggers e funções temporárias (agora que nenhuma transação retém locks nas tabelas).
    */
-  async function cleanupTestGates(options: {
-    gateClient: postgres.Sql | null;
-    db: postgres.Sql;
-    promises?: Promise<unknown>[];
-    triggers?: { name: string; table: string }[];
-    functions?: string[];
-    timeoutMs?: number;
-  }) {
-    const { gateClient, db, promises = [], triggers = [], functions = [], timeoutMs = 4000 } = options;
+  async function cleanupTestGates(options: CleanupTestGatesOptions) {
+    const {
+      gateClient,
+      db,
+      promises = [],
+      targetBackends = [],
+      triggers = [],
+      functions = [],
+      timeoutMs = 4000,
+    } = options;
 
     // 1. SEMPRE liberar todos os advisory locks no gateClient primeiro
     if (gateClient) {
       try {
         await Promise.race([
           gateClient.unsafe("SELECT pg_advisory_unlock_all()"),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout releasing gates")), timeoutMs)),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout releasing gates")), 2000)),
         ]);
-      } catch {
-        // Ignora erro para preservar a falha original do teste
+      } catch (gateErr) {
+        console.warn("[cleanupTestGates] Aviso ao liberar advisory locks no gateClient:", gateErr);
       }
     }
 
     // 2. Drenar e consumir todas as promessas concorrentes em andamento
     if (promises.length > 0) {
+      let promisesSettled = false;
       try {
         await Promise.race([
           Promise.allSettled(promises),
           new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout settling test promises")), timeoutMs)),
         ]);
+        promisesSettled = true;
       } catch {
-        // Se alguma promessa não finalizar dentro do timeout, encerra os backends concorrentes do teste
-        try {
-          await db.unsafe(`
-            SELECT pg_terminate_backend(pid)
-            FROM pg_stat_activity
-            WHERE datname = current_database()
-              AND pid <> pg_backend_pid()
-              AND state = 'active'
-              AND (query ILIKE '%pg_advisory%' OR query ILIKE '%purchase_cycle%')
-          `);
-        } catch {
-          // tolerante
+        promisesSettled = false;
+      }
+
+      if (!promisesSettled) {
+        // Fallback emergencial: NUNCA usar predicado textual amplo sobre pg_stat_activity.
+        // Limitar estritamente aos backends registrados que comprovadamente pertençam ao cenário atual.
+        if (!targetBackends || targetBackends.length === 0) {
+          console.warn(
+            `[cleanupTestGates] Timeout ao aguardar liquidação de promessas (${timeoutMs}ms), mas nenhuma conexão/backend alvo foi registrada para este cenário. Nenhum backend será cancelado ou terminado para preservar o isolamento do banco.`
+          );
+        } else {
+          let controlPid: number | null = null;
+          try {
+            const [ctrl] = await db<{ pid: number }[]>`SELECT pg_backend_pid() as pid`;
+            controlPid = ctrl?.pid ?? null;
+          } catch {
+            // tolerante
+          }
+
+          let gatePid: number | null = null;
+          if (gateClient) {
+            try {
+              const [g] = await gateClient<{ pid: number }[]>`SELECT pg_backend_pid() as pid`;
+              gatePid = g?.pid ?? null;
+            } catch {
+              // tolerante
+            }
+          }
+
+          for (const target of targetBackends) {
+            if (!target.pid || target.pid === controlPid || target.pid === gatePid) continue;
+
+            try {
+              // Valida se o backend ainda existe e corresponde exatamente à identidade registrada (pid + backend_start)
+              const [activeRow] = await db<{ pid: number; backend_start: string; state: string }[]>`
+                SELECT pid, backend_start::text as backend_start, state
+                FROM pg_stat_activity
+                WHERE datname = current_database()
+                  AND pid = ${target.pid}
+                  AND backend_start::text = ${target.backendStart}
+                LIMIT 1
+              `;
+
+              if (!activeRow) {
+                // Sessão já finalizada ou PID reaproveitado por outro processo -> não tocar!
+                continue;
+              }
+
+              // 1ª tentativa: pg_cancel_backend com timeout limitado
+              try {
+                await Promise.race([
+                  db`SELECT pg_cancel_backend(${target.pid})`,
+                  new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout cancel")), 1000)),
+                ]);
+              } catch (cancelErr) {
+                console.warn(`[cleanupTestGates] Aviso ao tentar pg_cancel_backend no PID ${target.pid}:`, cancelErr);
+              }
+
+              // Breve pausa para dar oportunidade ao backend de encerrar
+              await new Promise((r) => setTimeout(r, 150));
+
+              // Verifica se ainda persiste ativo com a mesma identidade
+              const [stillActive] = await db<{ pid: number }[]>`
+                SELECT pid
+                FROM pg_stat_activity
+                WHERE datname = current_database()
+                  AND pid = ${target.pid}
+                  AND backend_start::text = ${target.backendStart}
+                  AND state = 'active'
+                LIMIT 1
+              `;
+
+              // 2ª tentativa se persistir ativo: pg_terminate_backend com timeout limitado
+              if (stillActive) {
+                try {
+                  await Promise.race([
+                    db`SELECT pg_terminate_backend(${target.pid})`,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout terminate")), 1000)),
+                  ]);
+                } catch (termErr) {
+                  console.warn(`[cleanupTestGates] Aviso ao tentar pg_terminate_backend no PID ${target.pid}:`, termErr);
+                }
+              }
+            } catch (targetErr) {
+              console.warn(
+                `[cleanupTestGates] Erro ao validar/encerrar backend ${target.pid} (${target.label}):`,
+                targetErr
+              );
+            }
+          }
+
+          // Drena promessas residuais após término controlado dos backends do cenário
+          try {
+            await Promise.race([
+              Promise.allSettled(promises),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout final settling")), 1000)),
+            ]);
+          } catch {
+            // tolerante
+          }
         }
       }
     }
 
-    // 3. Remover os triggers e funções agora que as transações terminaram e liberaram as tabelas
+    // 3. Remover os triggers e funções com timeout explícito
     for (const trg of triggers) {
       try {
-        await db.unsafe(`DROP TRIGGER IF EXISTS ${trg.name} ON ${trg.table} CASCADE`);
-      } catch {
-        // tolerante
+        await Promise.race([
+          db.unsafe(`DROP TRIGGER IF EXISTS ${trg.name} ON ${trg.table} CASCADE`),
+          new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout drop trigger ${trg.name}`)), 2000)),
+        ]);
+      } catch (dropTrgErr) {
+        console.warn(`[cleanupTestGates] Aviso ao remover trigger ${trg.name}:`, dropTrgErr);
       }
     }
 
     for (const fn of functions) {
       try {
-        await db.unsafe(`DROP FUNCTION IF EXISTS ${fn} CASCADE`);
-      } catch {
-        // tolerante
+        await Promise.race([
+          db.unsafe(`DROP FUNCTION IF EXISTS ${fn} CASCADE`),
+          new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout drop function ${fn}`)), 2000)),
+        ]);
+      } catch (dropFnErr) {
+        console.warn(`[cleanupTestGates] Aviso ao remover function ${fn}:`, dropFnErr);
       }
     }
   }
@@ -1436,6 +1607,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
 
       let costPromiseA: ReturnType<typeof persistPurchaseCost> | null = null;
       let closePromiseA: ReturnType<typeof closeBuyerCycle> | null = null;
+      const targetBackendsA: TargetBackendIdentity[] = [];
 
       try {
         costPromiseA = persistPurchaseCost(buyerPrincipal, {
@@ -1475,6 +1647,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
           if (lock?.exists) {
             costPaused = true;
             costPausedPid = lock.pid;
+            addTargetBackend(targetBackendsA, await captureBackendIdentity(db, costPausedPid, "persistPurchaseCost-24A"));
             break;
           }
           await new Promise((r) => setTimeout(r, 10));
@@ -1509,6 +1682,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
             observedLockContentionA = true;
             holderPidA = holder.pid;
             waiterPidA = waiter.pid;
+            addTargetBackend(targetBackendsA, await captureBackendIdentity(db, waiterPidA, "closeBuyerCycle-24A"));
             break;
           }
           await new Promise((r) => setTimeout(r, 10));
@@ -1542,9 +1716,20 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
           gateClient,
           db,
           promises: [costPromiseA, closePromiseA].filter(Boolean) as Promise<unknown>[],
+          targetBackends: targetBackendsA,
           triggers: [{ name: "test_wait_cost_xact", table: "purchase_cycle_product_costs" }],
           functions: ["trg_wait_cost_xact()"],
         });
+
+        // Comprova ausência de locks residuais
+        const [locksCountA] = await db<{ count: number }[]>`
+          SELECT count(*)::int as count FROM pg_locks l
+          JOIN pg_database d ON d.oid = l.database
+          WHERE d.datname = current_database()
+            AND l.locktype = 'advisory'
+            AND l.classid IN (888888, ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE})
+        `;
+        expect(locksCountA.count).toBe(0);
       }
 
       // ==========================================
@@ -1583,6 +1768,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
 
       let closePromiseB: ReturnType<typeof closeBuyerCycle> | null = null;
       let costPromiseB: ReturnType<typeof persistPurchaseCost> | null = null;
+      const targetBackendsB: TargetBackendIdentity[] = [];
 
       try {
         closePromiseB = closeBuyerCycle(buyerPrincipal, cycleDateB);
@@ -1616,6 +1802,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
           if (lock?.exists) {
             closePaused = true;
             closePausedPid = lock.pid;
+            addTargetBackend(targetBackendsB, await captureBackendIdentity(db, closePausedPid, "closeBuyerCycle-24B"));
             break;
           }
           await new Promise((r) => setTimeout(r, 10));
@@ -1655,6 +1842,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
             observedLockContentionB = true;
             holderPidB = holder.pid;
             waiterPidB = waiter.pid;
+            addTargetBackend(targetBackendsB, await captureBackendIdentity(db, waiterPidB, "persistPurchaseCost-24B"));
             break;
           }
           await new Promise((r) => setTimeout(r, 10));
@@ -1691,9 +1879,20 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
           gateClient,
           db,
           promises: [closePromiseB, costPromiseB].filter(Boolean) as Promise<unknown>[],
+          targetBackends: targetBackendsB,
           triggers: [{ name: "test_wait_buyer_close_xact", table: "purchase_cycle_buyer_closures" }],
           functions: ["trg_wait_buyer_close_xact()"],
         });
+
+        // Comprova ausência de locks residuais
+        const [locksCountB] = await db<{ count: number }[]>`
+          SELECT count(*)::int as count FROM pg_locks l
+          JOIN pg_database d ON d.oid = l.database
+          WHERE d.datname = current_database()
+            AND l.locktype = 'advisory'
+            AND l.classid IN (888888, ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE})
+        `;
+        expect(locksCountB.count).toBe(0);
       }
     } finally {
       await gateClient.end({ timeout: 5 }).catch(() => {});
@@ -2550,6 +2749,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
 
       let closePromise: ReturnType<typeof closeBuyerCycle> | null = null;
       let readPromise: ReturnType<typeof readBuyerAllocationWorkspace> | null = null;
+      const targetBackends36: TargetBackendIdentity[] = [];
 
       try {
         // Dispara fechamento - válido para Ponta da Fruta
@@ -2584,6 +2784,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
           if (lock?.exists) {
             closePaused = true;
             closePausedPid = lock.pid;
+            addTargetBackend(targetBackends36, await captureBackendIdentity(db, closePausedPid, "closeBuyerCycle-36"));
             break;
           }
           await new Promise((r) => setTimeout(r, 10));
@@ -2623,6 +2824,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
             observedLockContention = true;
             holderPid = holder.pid;
             waiterPid = waiter.pid;
+            addTargetBackend(targetBackends36, await captureBackendIdentity(db, waiterPid, "readBuyerAllocationWorkspace-36"));
             break;
           }
           await new Promise((r) => setTimeout(r, 10));
@@ -2668,9 +2870,20 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
           gateClient,
           db,
           promises: [closePromise, readPromise].filter(Boolean) as Promise<unknown>[],
+          targetBackends: targetBackends36,
           triggers: [{ name: "test_gate_close_f1", table: "purchase_cycle_buyer_closures" }],
           functions: ["trg_gate_close_f1()"],
         });
+
+        // Comprova ausência de locks residuais
+        const [locksCount36] = await db<{ count: number }[]>`
+          SELECT count(*)::int as count FROM pg_locks l
+          JOIN pg_database d ON d.oid = l.database
+          WHERE d.datname = current_database()
+            AND l.locktype = 'advisory'
+            AND l.classid IN (888888, ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE})
+        `;
+        expect(locksCount36.count).toBe(0);
       }
     } finally {
       await gateClient.end({ timeout: 5 }).catch(() => {});
@@ -2717,6 +2930,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
 
       let readPromise: ReturnType<typeof readBuyerAllocationWorkspace> | null = null;
       let closePromise: ReturnType<typeof closeBuyerCycle> | null = null;
+      const targetBackends37: TargetBackendIdentity[] = [];
 
       try {
         // Dispara reconciliação (leitura do workspace)
@@ -2751,6 +2965,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
           if (lock?.exists) {
             reconcilePaused = true;
             reconcilePausedPid = lock.pid;
+            addTargetBackend(targetBackends37, await captureBackendIdentity(db, reconcilePausedPid, "readBuyerAllocationWorkspace-37"));
             break;
           }
           await new Promise((r) => setTimeout(r, 10));
@@ -2783,6 +2998,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
             observedLockContention = true;
             holderPid = holder.pid;
             waiterPid = waiter.pid;
+            addTargetBackend(targetBackends37, await captureBackendIdentity(db, waiterPid, "closeBuyerCycle-37"));
             break;
           }
           await new Promise((r) => setTimeout(r, 10));
@@ -2822,9 +3038,20 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
           gateClient,
           db,
           promises: [readPromise, closePromise].filter(Boolean) as Promise<unknown>[],
+          targetBackends: targetBackends37,
           triggers: [{ name: "test_gate_reconcile_f1", table: "purchase_cycle_participating_stores" }],
           functions: ["trg_gate_reconcile_f1()"],
         });
+
+        // Comprova ausência de locks residuais
+        const [locksCount37] = await db<{ count: number }[]>`
+          SELECT count(*)::int as count FROM pg_locks l
+          JOIN pg_database d ON d.oid = l.database
+          WHERE d.datname = current_database()
+            AND l.locktype = 'advisory'
+            AND l.classid IN (888888, ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE})
+        `;
+        expect(locksCount37.count).toBe(0);
       }
     } finally {
       await gateClient.end({ timeout: 5 }).catch(() => {});
@@ -2898,6 +3125,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     let closePromise: Promise<unknown> | null = null;
     let injectedError: Error | null = null;
     let cleanupDurationMs = 0;
+    const targetBackends40: TargetBackendIdentity[] = [];
 
     try {
       // 1. Configura gate determinístico 888888, 40
@@ -2955,6 +3183,7 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
         if (lock?.exists) {
           costPaused = true;
           costPausedPid = lock.pid;
+          addTargetBackend(targetBackends40, await captureBackendIdentity(db, costPausedPid, "persistPurchaseCost-40"));
           break;
         }
         await new Promise((r) => setTimeout(r, 10));
@@ -2979,8 +3208,10 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
             AND l.objsubid = 2
             AND l.objid::int = hashtext(${cycleDate}::text)
         `;
-        if (locks.some((l) => l.granted === true) && locks.some((l) => l.granted === false)) {
+        const waiter = locks.find((l) => l.granted === false);
+        if (locks.some((l) => l.granted === true) && waiter) {
           contentionObserved = true;
+          addTargetBackend(targetBackends40, await captureBackendIdentity(db, waiter.pid, "closeBuyerCycle-40"));
           break;
         }
         await new Promise((r) => setTimeout(r, 10));
@@ -3003,11 +3234,12 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
       expect((testErr as Error).message).toBe("FALHA_INJETADA_ENQUANTO_PRESO_NO_GATE");
     } finally {
       const cleanupStart = Date.now();
-      // 5. Executa a rotina de cleanup com a ordem rigorosamente corrigida
+      // 5. Executa a rotina de cleanup com a ordem rigorosamente corrigida e lista explícita de alvos
       await cleanupTestGates({
         gateClient,
         db,
         promises: [costPromise, closePromise].filter(Boolean) as Promise<unknown>[],
+        targetBackends: targetBackends40,
         triggers: [{ name: "test_wait_forced_failure", table: "purchase_cycle_product_costs" }],
         functions: ["trg_wait_forced_failure()"],
         timeoutMs: 4000,
@@ -3048,5 +3280,169 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
       expectedVersion: 1, // version incrementada após o commit anterior ter sido drenado
     });
     expect(postCleanupCost.cost).toBe("88.00");
+  });
+
+  it("41. F3 Regressão: Isolamento estrito de cancelamento/terminação com sentinela real em timeout forçado", async () => {
+    // 1. Cria conexão sentinela alheia ao cenário no mesmo banco descartável e mesmo usuário
+    const sentinelClient = postgres(testDatabaseUrl, { max: 1 });
+    const sentinelIdentity = await getClientBackendIdentity(sentinelClient, "sentinel-foreign");
+    expect(sentinelIdentity).not.toBeNull();
+    expect(sentinelIdentity!.pid).toBeGreaterThan(0);
+
+    // 2. Inicia consulta sentinela ativa com texto que propositalmente conteria termos coincidentes
+    // com buscas textuais antigas (/* purchase_cycle unrelated control query pg_advisory */)
+    // O uso de .execute() força o envio imediato da consulta ao socket TCP do PostgreSQL.
+    const sentinelPromise = sentinelClient.unsafe(`
+      SELECT pg_sleep(3) as sleep_result /* purchase_cycle unrelated control query pg_advisory */
+    `).execute();
+
+    // Aguarda a sentinela estar efetivamente ativa em pg_stat_activity
+    let sentinelObserved = false;
+    const sentinelDeadline = Date.now() + 3000;
+    while (Date.now() < sentinelDeadline) {
+      const [act] = await db<{ is_active: boolean }[]>`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_stat_activity
+          WHERE datname = current_database()
+            AND pid = ${sentinelIdentity!.pid}
+            AND state = 'active'
+        ) as is_active
+      `;
+      if (act?.is_active) {
+        sentinelObserved = true;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    expect(sentinelObserved).toBe(true);
+
+    // 3. Cria conexão dedicada pertencente ao cenário de teste
+    const scenarioWorker = postgres(testDatabaseUrl, { max: 1 });
+    const scenarioIdentity = await getClientBackendIdentity(scenarioWorker, "scenario-target-worker");
+    expect(scenarioIdentity).not.toBeNull();
+    expect(scenarioIdentity!.pid).toBeGreaterThan(0);
+    expect(scenarioIdentity!.pid).not.toBe(sentinelIdentity!.pid);
+
+    // Dispara consulta bloqueante/longa no backend do cenário com .execute() imediato
+    const scenarioPromise = scenarioWorker.unsafe(`
+      SELECT pg_sleep(15) as scenario_sleep /* scenario worker query */
+    `).execute();
+
+    // Aguarda o worker do cenário estar ativo em pg_stat_activity
+    let scenarioObserved = false;
+    const scenarioDeadline = Date.now() + 3000;
+    while (Date.now() < scenarioDeadline) {
+      const [act] = await db<{ is_active: boolean }[]>`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_stat_activity
+          WHERE datname = current_database()
+            AND pid = ${scenarioIdentity!.pid}
+            AND state = 'active'
+        ) as is_active
+      `;
+      if (act?.is_active) {
+        scenarioObserved = true;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    expect(scenarioObserved).toBe(true);
+
+    // 4. Lista explícita de alvos autorizados para este cenário
+    const scenarioTargetBackends: TargetBackendIdentity[] = [scenarioIdentity!];
+
+    // Comprova que a sentinela NUNCA está na lista de alvos autorizados
+    expect(scenarioTargetBackends.some((t) => t.pid === sentinelIdentity!.pid)).toBe(false);
+
+    // 5. EXERCITA O CAMINHO DE EMERGÊNCIA/TIMEOUT DO CLEANUP:
+    // Passamos timeoutMs reduzido (150ms) para forçar deterministicamente o branch de cancelamento/terminação
+    const cleanupStart = Date.now();
+    await cleanupTestGates({
+      gateClient: null,
+      db,
+      promises: [scenarioPromise],
+      targetBackends: scenarioTargetBackends,
+      timeoutMs: 150,
+    });
+    const cleanupDurationMs = Date.now() - cleanupStart;
+
+    // Cleanup conclui rapidamente dentro do timeout limitado
+    expect(cleanupDurationMs).toBeLessThan(3500);
+
+    // 6. COMPROVAÇÃO DO ISOLAMENTO E PRESERVAÇÃO DA SENTINELA:
+    // A) A consulta ativa da sentinela NÃO foi cancelada nem terminada
+    const sentinelResult = await sentinelPromise;
+    expect(sentinelResult).toBeDefined();
+
+    // B) A conexão da sentinela continua perfeitamente operante para consultas subsequentes
+    const postSentinelQuery = await sentinelClient<{ test_val: number }[]>`SELECT 9999 as test_val`;
+    expect(postSentinelQuery[0].test_val).toBe(9999);
+
+    // C) O backend do cenário foi de fato encerrado pelo fallback controlado
+    const scenarioSettled = await scenarioPromise.catch((err) => err);
+    expect(scenarioSettled).toBeDefined();
+
+    const [scenarioStillActive] = await db<{ count: number }[]>`
+      SELECT count(*)::int as count FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND pid = ${scenarioIdentity!.pid}
+        AND backend_start::text = ${scenarioIdentity!.backendStart}
+        AND state = 'active'
+    `;
+    expect(scenarioStillActive.count).toBe(0);
+
+    // 7. COMPROVAÇÃO DE CASO DE BORDA 1: Ausência de identidade registrada
+    // Se ocorrer timeout mas a lista de alvos for vazia, nenhum backend alheio é terminado
+    let dummyDone = false;
+    const unmonitoredPromise = new Promise((resolve) => setTimeout(() => {
+      dummyDone = true;
+      resolve("done");
+    }, 250));
+
+    await cleanupTestGates({
+      gateClient: null,
+      db,
+      promises: [unmonitoredPromise],
+      targetBackends: [], // Lista vazia: ausência de identidade registrada
+      timeoutMs: 50,
+    });
+
+    // A sentinela permanece intocada e funcional
+    const sentinelCheckUnmonitored = await sentinelClient<{ val: number }[]>`SELECT 1111 as val`;
+    expect(sentinelCheckUnmonitored[0].val).toBe(1111);
+    await unmonitoredPromise;
+    expect(dummyDone).toBe(true);
+
+    // 8. COMPROVAÇÃO DE CASO DE BORDA 2: Backend já encerrado antes do cleanup
+    const deadClient = postgres(testDatabaseUrl, { max: 1 });
+    const deadIdentity = await getClientBackendIdentity(deadClient, "already-dead-client");
+    expect(deadIdentity).not.toBeNull();
+    await deadClient.end(); // Encerra antes de chamar cleanup
+
+    // Cleanup executado com backend já fechado não lança erro nem afeta outras sessões
+    await cleanupTestGates({
+      gateClient: null,
+      db,
+      promises: [],
+      targetBackends: [deadIdentity!],
+      timeoutMs: 100,
+    });
+
+    // A sentinela permanece intocada e funcional
+    const sentinelCheckDead = await sentinelClient<{ val: number }[]>`SELECT 2222 as val`;
+    expect(sentinelCheckDead[0].val).toBe(2222);
+
+    // 9. Encerramento limpo e verificação de ausência de resíduos
+    await sentinelClient.end({ timeout: 5 }).catch(() => {});
+    await scenarioWorker.end({ timeout: 5 }).catch(() => {});
+
+    const [finalLocks] = await db<{ count: number }[]>`
+      SELECT count(*)::int as count FROM pg_locks l
+      JOIN pg_database d ON d.oid = l.database
+      WHERE d.datname = current_database()
+        AND l.locktype = 'advisory'
+        AND l.classid IN (888888, ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE})
+    `;
+    expect(finalLocks.count).toBe(0);
   });
 });
