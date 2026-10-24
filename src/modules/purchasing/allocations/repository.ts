@@ -9,6 +9,7 @@ import {
   ExclusivityViolationError,
   calculateDifference,
   calculateStoreCutSummary,
+  calculateSuggestedDestinedQuantity,
   canSupplierProvideProduct,
   computeStoreAllocationsHash,
   computeStoreCostsHash,
@@ -286,18 +287,31 @@ export async function getSupplierEligibleProductIds(
       ${storeId ? sql`AND store_id = ${storeId}::uuid` : sql``}
   `;
 
+  // Produtos que têm pedidos ativos das lojas para este ciclo
+  const orderRows = await sql<{ product_id: string }[]>`
+    SELECT DISTINCT oi.product_id
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    WHERE o.purchase_cycle_date = ${cycleDate}::date
+      AND o.cancelled_at IS NULL
+      AND oi.quantity > 0
+  `;
+  const orderedProductIds = new Set(orderRows.map((r) => r.product_id));
+
   const eligible = new Set<string>();
 
-  // 1. Alocações existentes (se tiver compra nos custos OU destinação positiva para visualizar/zerar)
+  // 1. Alocações existentes: apenas se o produto estiver comprado nos custos OU possuir destinação positiva remanescente (> 0)
   for (const a of allocRows) {
     if (purchasedInCosts.has(a.product_id) || parseQuantity(a.destined_quantity) > 0) {
       eligible.add(a.product_id);
     }
   }
 
-  // 2. Decisões existentes
+  // 2. Decisões existentes: apenas inclui se o produto estiver comprado nos custos
   for (const d of decisionRows) {
-    eligible.add(d.product_id);
+    if (purchasedInCosts.has(d.product_id)) {
+      eligible.add(d.product_id);
+    }
   }
 
   // 3. Produtos comprados nos custos que este fornecedor pode fornecer (conforme regra comercial unificada)
@@ -316,6 +330,19 @@ export async function getSupplierEligibleProductIds(
       })
     ) {
       eligible.add(pid);
+    }
+  }
+
+  // 4. Proteção estrita: produtos com pedido de loja que NÃO foram comprados nos custos (corte)
+  // NUNCA podem aparecer na tela de destinação a menos que possuam destinação positiva anterior a ser zerada
+  for (const pid of [...eligible]) {
+    if (orderedProductIds.has(pid) && !purchasedInCosts.has(pid)) {
+      const hasPositiveAlloc = allocRows.some(
+        (a) => a.product_id === pid && parseQuantity(a.destined_quantity) > 0,
+      );
+      if (!hasPositiveAlloc) {
+        eligible.delete(pid);
+      }
     }
   }
 
@@ -1079,10 +1106,24 @@ export async function readBuyerAllocationWorkspace(
             destinedQty = "0.00";
             isAdditional = false;
           } else {
-            // Se não há alocação salva ainda para esta loja:
-            // Se o produto foi comprado ou pedido, sugere a quantidade do pedido original
-            destinedQty = parseQuantity(orderQty) > 0 ? roundToTwoDecimals(orderQty) : "0.00";
-            isAdditional = parseQuantity(orderQty) === 0;
+            // Se não há alocação salva ainda para esta loja neste fornecedor:
+            // Calcula o quanto já foi destinado para esta loja em OUTROS fornecedores
+            const alreadyDestinedOther = allocationRows
+              .filter(
+                (a) =>
+                  a.product_id === pid &&
+                  a.store_id === store.id &&
+                  a.supplier_id !== resolvedSupplierId &&
+                  parseQuantity(a.destined_quantity) > 0,
+              )
+              .reduce((sum, a) => sum + parseQuantity(a.destined_quantity), 0);
+
+            destinedQty = calculateSuggestedDestinedQuantity({
+              orderedQuantity: orderQty,
+              alreadyDestinedOtherSuppliers: alreadyDestinedOther,
+              isPurchasedInCosts,
+            });
+            isAdditional = parseQuantity(orderQty) === 0 && parseQuantity(destinedQty) > 0;
           }
 
           const diff = calculateDifference(destinedQty, orderQty);
@@ -1801,7 +1842,13 @@ export async function saveSupplierAllocations(
         }
         // Caso 5: Se prevCents === newCents, não gera evento duplicado (inalterado)
 
-        if (destinedNum > 0 || originalOrderNum > 0) {
+        // Gravação da alocação no banco:
+        // Apenas persiste se a quantidade destinada for positiva (> 0) OU se já existia alocação positiva anterior sendo zerada.
+        // Isso evita criar linhas desnecessárias de alocação 0.00 para fornecedores que não atenderam o item.
+        const shouldPersistAllocation =
+          destinedNum > 0 || (existingAlloc && previousDestinedNum > 0);
+
+        if (shouldPersistAllocation) {
           if (destinedNum > 0) {
             await tx`
               DELETE FROM purchase_cycle_product_supplier_decisions
