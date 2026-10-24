@@ -457,8 +457,7 @@ export function hasPendingStoreAllocation(
   if (!allocation) return false;
   const currentCents = Math.round(parseQuantity(allocation.destinedQuantity) * 100);
   if (allocation.persistedDestinedQuantity === null) {
-    const orderedCents = Math.round(parseQuantity(allocation.orderedQuantity) * 100);
-    return currentCents > 0 || orderedCents > 0;
+    return currentCents > 0;
   }
   const persistedCents = Math.round(parseQuantity(allocation.persistedDestinedQuantity) * 100);
   return currentCents !== persistedCents;

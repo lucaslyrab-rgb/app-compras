@@ -216,8 +216,8 @@ export function BuyerAllocationWorkspace({
     );
   };
 
-  const handleSelectStore = (targetStoreId: string) => {
-    if (targetStoreId === navigationContextRef.current.storeId) return;
+  const handleSelectStore = (targetStoreId: string, force = false) => {
+    if (!force && hasExplicitStoreSelection && targetStoreId === navigationContextRef.current.storeId) return;
     if (isDirty && canSave) {
       setPendingAction({ type: "store", targetId: targetStoreId });
       setShowUnsavedModal(true);
@@ -430,9 +430,10 @@ export function BuyerAllocationWorkspace({
           const storeData = product.stores[activeStoreId];
           if (!storeData) return product;
           const persistedDestinedQuantity =
-            parseQuantity(storeData.destinedQuantity) > 0 ||
-            parseQuantity(storeData.orderedQuantity) > 0
+            parseQuantity(storeData.destinedQuantity) > 0
               ? roundToTwoDecimals(storeData.destinedQuantity)
+              : storeData.persistedDestinedQuantity !== null
+              ? "0.00"
               : null;
           return {
             ...product,
@@ -728,9 +729,9 @@ export function BuyerAllocationWorkspace({
             const updatedStore: StoreAllocationData = currentStore
               ? {
                   ...currentStore,
-                  destinedQuantity: confirmRemoveDestined ? "0.00" : currentStore.destinedQuantity,
-                  persistedDestinedQuantity: confirmRemoveDestined ? "0.00" : currentStore.persistedDestinedQuantity,
-                  difference: confirmRemoveDestined ? calculateDifference("0.00", currentStore.orderedQuantity) : currentStore.difference,
+                  destinedQuantity: "0.00",
+                  persistedDestinedQuantity: "0.00",
+                  difference: calculateDifference("0.00", currentStore.orderedQuantity),
                 }
               : {
                   storeId: activeStoreId,
@@ -2693,7 +2694,7 @@ export function BuyerAllocationWorkspace({
                       className={`alloc-store-picker-card ${isCurrentActive ? "alloc-store-picker-card--active" : ""}`}
                       onClick={() => {
                         setShowStoreSelectModal(false);
-                        handleSelectStore(store.id);
+                        handleSelectStore(store.id, true);
                       }}
                     >
                       <div className="alloc-store-picker-card__header">

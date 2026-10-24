@@ -276,6 +276,20 @@ describe("Fase 3 — Vinculação das Compras aos Fornecedores e Fechamento Oper
           destinedQuantity: "0.00",
           persistedDestinedQuantity: null,
         }),
+      ).toBe(false);
+      expect(
+        hasPendingStoreAllocation({
+          orderedQuantity: "5.00",
+          destinedQuantity: "0.00",
+          persistedDestinedQuantity: "0.00",
+        }),
+      ).toBe(false);
+      expect(
+        hasPendingStoreAllocation({
+          orderedQuantity: "5.00",
+          destinedQuantity: "0.00",
+          persistedDestinedQuantity: "5.00",
+        }),
       ).toBe(true);
       expect(
         hasPendingStoreAllocation({

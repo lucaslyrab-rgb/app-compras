@@ -1136,6 +1136,8 @@ export async function readBuyerAllocationWorkspace(
             destinedQuantity: roundToTwoDecimals(destinedQty),
             persistedDestinedQuantity: alloc
               ? roundToTwoDecimals(alloc.destined_quantity)
+              : isNotPurchased
+              ? "0.00"
               : null,
             difference: diff,
             isAdditionalPurchase: isAdditional,
