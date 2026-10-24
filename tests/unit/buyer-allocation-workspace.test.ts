@@ -125,6 +125,12 @@ describe("BuyerAllocationWorkspace — contexto Loja → Fornecedor → Produtos
       root.render(React.createElement(BuyerAllocationWorkspace, { data: workspaceData() }));
     });
 
+    const changeStoreButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Trocar Loja"),
+    );
+    expect(changeStoreButton).toBeDefined();
+    await act(async () => changeStoreButton!.click());
+
     const balnearioButton = Array.from(container.querySelectorAll("button")).find((button) =>
       button.textContent?.includes("Balneário"),
     );
