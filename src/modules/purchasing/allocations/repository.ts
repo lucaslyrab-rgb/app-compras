@@ -1845,10 +1845,10 @@ export async function saveSupplierAllocations(
         // Caso 5: Se prevCents === newCents, não gera evento duplicado (inalterado)
 
         // Gravação da alocação no banco:
-        // Apenas persiste se a quantidade destinada for positiva (> 0) OU se já existia alocação positiva anterior sendo zerada.
-        // Isso evita criar linhas desnecessárias de alocação 0.00 para fornecedores que não atenderam o item.
+        // Persiste quantidades positivas e preserva alocações existentes de itens com pedido.
+        // Não cria linhas zero novas; oportunidades zeradas continuam sendo removidas.
         const shouldPersistAllocation =
-          destinedNum > 0 || (existingAlloc && previousDestinedNum > 0);
+          destinedNum > 0 || (Boolean(existingAlloc) && originalOrderNum > 0);
 
         if (shouldPersistAllocation) {
           if (destinedNum > 0) {
