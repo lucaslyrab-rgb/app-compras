@@ -1383,3 +1383,215 @@
   margin-top: 4px;
 }
 
+/* ==========================================================================
+   Store-First Allocation UX (Nível 1 Active Store Card & Modal Picker)
+   ========================================================================== */
+
+.alloc-active-store-card {
+  margin-bottom: 16px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.alloc-active-store-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.alloc-active-store-card__main {
+  flex: 1;
+  min-width: 280px;
+}
+
+.alloc-active-store-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.alloc-active-store-card__title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.alloc-active-store-card__metrics {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.alloc-metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.alloc-metric-chip strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.alloc-metric-chip--pending {
+  background-color: #fff7ed;
+  border-color: #fdba74;
+  color: #c2410c;
+}
+
+.alloc-metric-chip--pending strong {
+  color: #c2410c;
+}
+
+.alloc-metric-chip--success {
+  background-color: #f0fdf4;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.alloc-metric-chip--success strong {
+  color: #15803d;
+}
+
+.alloc-metric-chip--destined {
+  background-color: #f0f9ff;
+  border-color: #bae6fd;
+  color: #0369a1;
+}
+
+.alloc-metric-chip--destined strong {
+  color: #0369a1;
+}
+
+.alloc-active-store-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Modal Store Picker */
+.alloc-store-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .alloc-store-picker-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.alloc-store-picker-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+  border-radius: 10px;
+  border: 2px solid #e2e8f0;
+  background-color: #f8fafc;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease-in-out;
+}
+
+.alloc-store-picker-card:hover {
+  border-color: #0284c7;
+  background-color: #f0f9ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.alloc-store-picker-card--active {
+  border-color: #0284c7;
+  background-color: #f0f9ff;
+  box-shadow: 0 0 0 2px #bae6fd;
+}
+
+.alloc-store-picker-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.alloc-store-picker-card__icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.alloc-store-picker-card__name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.alloc-store-picker-card__sub {
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.alloc-store-picker-card__metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  background-color: #ffffff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #f1f5f9;
+}
+
+.alloc-store-picker-card__metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.alloc-store-picker-card__metric .label {
+  color: #64748b;
+}
+
+.alloc-store-picker-card__metric .val {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.alloc-store-picker-card__footer {
+  text-align: center;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.alloc-store-picker-card__action {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0284c7;
+}
+
+.alloc-store-picker-card--active .alloc-store-picker-card__action {
+  color: #15803d;
+}
+
+

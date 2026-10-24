@@ -91,6 +91,25 @@ export function calculateDifference(destined: string | number, ordered: string |
   return `${sign}${(abs / 100).toFixed(2)}`;
 }
 
+/**
+ * Calcula a quantidade inteligente sugerida para uma loja em um fornecedor.
+ * - Se o produto NÃO estiver comprado nos custos: retorna "0.00" (bloqueado para sugestão).
+ * - Se o produto ESTIVER comprado nos custos: subtrai o que já foi destinado em OUTROS fornecedores.
+ * - Saldo Restante = max(0, Pedido da Loja - Já Destinado em Outros Fornecedores).
+ */
+export function calculateSuggestedDestinedQuantity(params: {
+  orderedQuantity: string | number;
+  alreadyDestinedOtherSuppliers: string | number;
+  isPurchasedInCosts: boolean;
+}): string {
+  const { orderedQuantity, alreadyDestinedOtherSuppliers, isPurchasedInCosts } = params;
+  if (!isPurchasedInCosts) return "0.00";
+  const orderCents = Math.round(parseQuantity(orderedQuantity) * 100);
+  const otherCents = Math.round(parseQuantity(alreadyDestinedOtherSuppliers) * 100);
+  const remainingCents = Math.max(0, orderCents - otherCents);
+  return (remainingCents / 100).toFixed(2);
+}
+
 export type StoreInfo = {
   id: string;
   slug: string;
@@ -438,8 +457,7 @@ export function hasPendingStoreAllocation(
   if (!allocation) return false;
   const currentCents = Math.round(parseQuantity(allocation.destinedQuantity) * 100);
   if (allocation.persistedDestinedQuantity === null) {
-    const orderedCents = Math.round(parseQuantity(allocation.orderedQuantity) * 100);
-    return currentCents > 0 || orderedCents > 0;
+    return currentCents > 0;
   }
   const persistedCents = Math.round(parseQuantity(allocation.persistedDestinedQuantity) * 100);
   return currentCents !== persistedCents;

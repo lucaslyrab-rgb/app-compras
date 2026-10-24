@@ -25,6 +25,7 @@ export default async function BuyerDestinacaoPage({
   return (
     <BuyerAllocationWorkspace
       data={data}
+      hasExplicitStoreSelection={Boolean(loja)}
       key={`${data.cycleDate}:${data.selectedStoreId ?? "none"}:${data.selectedSupplierId ?? "none"}`}
     />
   );

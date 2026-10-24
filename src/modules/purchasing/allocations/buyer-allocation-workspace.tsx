@@ -45,11 +45,15 @@ type PendingAllocationConflict = {
 
 export function BuyerAllocationWorkspace({
   data,
+  hasExplicitStoreSelection = true,
 }: {
   data: BuyerAllocationWorkspaceData;
+  hasExplicitStoreSelection?: boolean;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+
+  const [showStoreSelectModal, setShowStoreSelectModal] = useState(!hasExplicitStoreSelection);
 
   const {
     cycleDate,
@@ -212,8 +216,8 @@ export function BuyerAllocationWorkspace({
     );
   };
 
-  const handleSelectStore = (targetStoreId: string) => {
-    if (targetStoreId === navigationContextRef.current.storeId) return;
+  const handleSelectStore = (targetStoreId: string, force = false) => {
+    if (!force && hasExplicitStoreSelection && targetStoreId === navigationContextRef.current.storeId) return;
     if (isDirty && canSave) {
       setPendingAction({ type: "store", targetId: targetStoreId });
       setShowUnsavedModal(true);
@@ -426,9 +430,10 @@ export function BuyerAllocationWorkspace({
           const storeData = product.stores[activeStoreId];
           if (!storeData) return product;
           const persistedDestinedQuantity =
-            parseQuantity(storeData.destinedQuantity) > 0 ||
-            parseQuantity(storeData.orderedQuantity) > 0
+            parseQuantity(storeData.destinedQuantity) > 0
               ? roundToTwoDecimals(storeData.destinedQuantity)
+              : storeData.persistedDestinedQuantity !== null
+              ? "0.00"
               : null;
           return {
             ...product,
@@ -724,9 +729,9 @@ export function BuyerAllocationWorkspace({
             const updatedStore: StoreAllocationData = currentStore
               ? {
                   ...currentStore,
-                  destinedQuantity: confirmRemoveDestined ? "0.00" : currentStore.destinedQuantity,
-                  persistedDestinedQuantity: confirmRemoveDestined ? "0.00" : currentStore.persistedDestinedQuantity,
-                  difference: confirmRemoveDestined ? calculateDifference("0.00", currentStore.orderedQuantity) : currentStore.difference,
+                  destinedQuantity: "0.00",
+                  persistedDestinedQuantity: "0.00",
+                  difference: calculateDifference("0.00", currentStore.orderedQuantity),
                 }
               : {
                   storeId: activeStoreId,
@@ -795,7 +800,7 @@ export function BuyerAllocationWorkspace({
   };
 
   const handleOpenBatchConcludeSupplier = () => {
-    if (isDirty) {
+    if (isDirty && canSave) {
       setErrorMessage(
         "Você possui alterações não salvas. Salve ou reverta as alterações antes de concluir a conferência deste fornecedor.",
       );
@@ -822,6 +827,7 @@ export function BuyerAllocationWorkspace({
 
       if (result.status === "success") {
         setShowBatchConcludeSupplierModal(false);
+        setIsDirty(false);
         setProducts((prev) =>
           prev.map((p) => {
             const hasDestined =
@@ -1061,21 +1067,71 @@ export function BuyerAllocationWorkspace({
         </div>
       )}
 
-      {/* NÍVEL 1: SELEÇÃO DA LOJA (DESTAQUE MÁXIMO MOBILE) */}
-      <nav className="alloc-store-nav" aria-label="Seleção da Loja Ativa">
-        <div className="alloc-store-nav__header">
-          <div>
+      {/* NÍVEL 1: LOJA EM CONFERÊNCIA (FOCO NA LOJA ATIVA COM BOTÃO PARA TROCAR) */}
+      <section className="alloc-active-store-card" aria-label="Loja em Conferência">
+        <div className="alloc-active-store-card__header">
+          <div className="alloc-active-store-card__main">
             <span className="alloc-step-indicator">1. LOJA ATIVA:</span>
-            <span className="alloc-store-nav__hint" style={{ marginLeft: "8px" }}>
-              A loja permanece fixa ao alternar fornecedores
-            </span>
+            <div className="alloc-active-store-card__title-row">
+              <h2 className="alloc-active-store-card__title">
+                🏪 {activeStore.name}
+              </h2>
+              {activeStoreSummary?.closureStatus === "CLOSED" && !activeStoreSummary?.isStale ? (
+                <span className="alloc-status-pill alloc-status-pill--closed">
+                  ✓ Finalizada
+                </span>
+              ) : activeStoreSummary?.closureStatus === "CLOSED" && activeStoreSummary?.isStale ? (
+                <span
+                  className="alloc-status-pill alloc-status-pill--stale"
+                  title={activeStoreSummary.staleReason ?? "Reconferir"}
+                >
+                  ⚠️ Reconferir
+                </span>
+              ) : (
+                <span className="alloc-status-pill alloc-status-pill--open">
+                  ⏳ Aberta
+                </span>
+              )}
+            </div>
+            <div className="alloc-active-store-card__metrics">
+              <span className="alloc-metric-chip">
+                Itens pedidos: <strong>{activeStoreSummary?.totalOrderedProducts ?? 0}</strong>
+              </span>
+              <span className="alloc-metric-chip">
+                Conferidos: <strong>{activeStoreSummary?.totalReviewedProducts ?? 0}</strong>
+              </span>
+              <span
+                className={`alloc-metric-chip ${
+                  activeStoreSummary?.totalPendingProducts
+                    ? "alloc-metric-chip--pending"
+                    : "alloc-metric-chip--success"
+                }`}
+              >
+                Pendências:{" "}
+                <strong>{activeStoreSummary?.totalPendingProducts ?? 0}</strong>
+              </span>
+              <span className="alloc-metric-chip alloc-metric-chip--destined">
+                Total destinado:{" "}
+                <strong>{activeStoreSummary?.totalDestinedQuantity ?? "0.00"} CX</strong>
+              </span>
+            </div>
           </div>
-          <div className="alloc-store-header-actions">
+
+          <div className="alloc-active-store-card__actions">
+            <button
+              type="button"
+              className="btn btn--secondary"
+              style={{ fontSize: "13px", minHeight: "36px", padding: "6px 14px", fontWeight: "700" }}
+              onClick={() => setShowStoreSelectModal(true)}
+              title="Abrir modal para selecionar outra loja"
+            >
+              🔄 Trocar Loja
+            </button>
             {activeStoreSummary?.closureStatus === "CLOSED" ? (
               <button
                 type="button"
                 className="btn btn--secondary"
-                style={{ fontSize: "12px", minHeight: "34px", padding: "4px 10px" }}
+                style={{ fontSize: "12px", minHeight: "36px", padding: "6px 12px" }}
                 onClick={() => handleOpenStoreClosure(activeStoreId)}
               >
                 📋 Ver Cortes da Loja
@@ -1084,7 +1140,12 @@ export function BuyerAllocationWorkspace({
               <button
                 type="button"
                 className="btn btn--primary"
-                style={{ fontSize: "12px", minHeight: "34px", padding: "4px 10px", backgroundColor: "#0284c7" }}
+                style={{
+                  fontSize: "12px",
+                  minHeight: "36px",
+                  padding: "6px 12px",
+                  backgroundColor: "#0284c7",
+                }}
                 onClick={() => handleOpenStoreClosure(activeStoreId)}
               >
                 🏁 Conferir Cortes e Finalizar Loja
@@ -1092,63 +1153,7 @@ export function BuyerAllocationWorkspace({
             )}
           </div>
         </div>
-        <div className="alloc-store-tabs">
-          {stores.map((store) => {
-            const isActive = store.id === activeStoreId;
-            const summary = storeSummary[store.id];
-            const cleanName = store.name.replace("MultiShow ", "");
-            const isStoreClosed = summary?.closureStatus === "CLOSED";
-            const isStoreStale = summary?.isStale;
-
-            return (
-              <button
-                key={store.id}
-                type="button"
-                className={`alloc-store-tab ${isActive ? "alloc-store-tab--active" : ""}`}
-                onClick={() => handleSelectStore(store.id)}
-                aria-pressed={isActive}
-              >
-                <div className="alloc-store-tab__top">
-                  <div className="alloc-store-tab__title">
-                    <span className="alloc-store-tab__icon">🏪</span>
-                    <strong>{cleanName}</strong>
-                  </div>
-                  {isStoreClosed && !isStoreStale ? (
-                    <span className="alloc-status-pill alloc-status-pill--closed">
-                      ✓ Finalizada
-                    </span>
-                  ) : isStoreClosed && isStoreStale ? (
-                    <span className="alloc-status-pill alloc-status-pill--stale" title={summary.staleReason ?? "Reconferir"}>
-                      ⚠️ Reconferir
-                    </span>
-                  ) : (
-                    <span className="alloc-status-pill alloc-status-pill--open">
-                      ⏳ Aberta
-                    </span>
-                  )}
-                </div>
-
-                <div className="alloc-store-tab__metrics">
-                  <div className="alloc-store-tab__metric-row">
-                    <span>Exigem conferência:</span>
-                    <strong>{summary?.totalOrderedProducts ?? 0} itens</strong>
-                  </div>
-                  <div className="alloc-store-tab__metric-row">
-                    <span>Conferidos: {summary?.totalReviewedProducts ?? 0}</span>
-                    <span style={{ color: summary?.totalPendingProducts ? "#c2410c" : "#15803d", fontWeight: "700" }}>
-                      Pendências: {summary?.totalPendingProducts ?? 0}
-                    </span>
-                  </div>
-                  <div className="alloc-store-tab__metric-row" style={{ marginTop: "2px", fontWeight: "700" }}>
-                    <span>Destinado:</span>
-                    <span>{summary ? `${summary.totalDestinedQuantity} CX` : "0.00 CX"}</span>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+      </section>
 
       {/* NÍVEL 2: SELEÇÃO DO FORNECEDOR (LOGO ABAIXO DA LOJA) */}
       <section className="alloc-supplier-section" aria-label="Seleção do Fornecedor">
@@ -1576,7 +1581,7 @@ export function BuyerAllocationWorkspace({
                   <span>{activeStoreTotalDestined} CX</span>
                 </div>
                 <span className="alloc-sticky-status">
-                  {isDirty ? (
+                  {isDirty && canSave ? (
                     <strong style={{ color: "#d97706" }}>⚠️ Alterações não salvas</strong>
                   ) : hasUnconfirmedSuggestions ? (
                     <strong style={{ color: "#d97706" }}>⚠️ Sugestões aguardando confirmação</strong>
@@ -2647,6 +2652,117 @@ export function BuyerAllocationWorkspace({
                 {reopeningStore ? "Reabrindo..." : "Confirmar Reabertura da Loja"}
               </button>
             </footer>
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL: SELEÇÃO DA LOJA (ENTRADA OU TROCA DE LOJA) */}
+      {showStoreSelectModal ? (
+        <div className="alloc-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="store-select-modal-title">
+          <div className="alloc-modal" style={{ maxWidth: "680px" }}>
+            <header className="alloc-modal__header">
+              <div>
+                <h2 id="store-select-modal-title">🏪 Selecione a Loja para Destinação</h2>
+                <p style={{ margin: "4px 0 0 0", fontSize: "12px", color: "#64748b" }}>
+                  Ciclo {cycleDate} • Escolha a loja para conferir e destinar as compras
+                </p>
+              </div>
+              {activeStore ? (
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  style={{ minHeight: "32px", padding: "4px 8px" }}
+                  onClick={() => setShowStoreSelectModal(false)}
+                  aria-label="Fechar"
+                >
+                  ✕
+                </button>
+              ) : null}
+            </header>
+            <div className="alloc-modal__body">
+              <div className="alloc-store-picker-grid">
+                {stores.map((store) => {
+                  const summary = storeSummary[store.id];
+                  const cleanName = store.name.replace("MultiShow ", "");
+                  const isStoreClosed = summary?.closureStatus === "CLOSED";
+                  const isStoreStale = summary?.isStale;
+                  const isCurrentActive = store.id === activeStoreId;
+
+                  return (
+                    <button
+                      key={store.id}
+                      type="button"
+                      className={`alloc-store-picker-card ${isCurrentActive ? "alloc-store-picker-card--active" : ""}`}
+                      onClick={() => {
+                        setShowStoreSelectModal(false);
+                        handleSelectStore(store.id, true);
+                      }}
+                    >
+                      <div className="alloc-store-picker-card__header">
+                        <span className="alloc-store-picker-card__icon">🏪</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h3 className="alloc-store-picker-card__name">{cleanName}</h3>
+                          <span className="alloc-store-picker-card__sub">MultiShow</span>
+                        </div>
+                        {isStoreClosed && !isStoreStale ? (
+                          <span className="alloc-status-pill alloc-status-pill--closed">
+                            ✓ Finalizada
+                          </span>
+                        ) : isStoreClosed && isStoreStale ? (
+                          <span className="alloc-status-pill alloc-status-pill--stale" title={summary?.staleReason ?? "Reconferir"}>
+                            ⚠️ Reconferir
+                          </span>
+                        ) : (
+                          <span className="alloc-status-pill alloc-status-pill--open">
+                            ⏳ Aberta
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="alloc-store-picker-card__metrics">
+                        <div className="alloc-store-picker-card__metric">
+                          <span className="label">Itens Pedidos:</span>
+                          <span className="val">{summary?.totalOrderedProducts ?? 0}</span>
+                        </div>
+                        <div className="alloc-store-picker-card__metric">
+                          <span className="label">Total Destinado:</span>
+                          <span className="val">{summary ? `${summary.totalDestinedQuantity} CX` : "0.00 CX"}</span>
+                        </div>
+                        <div className="alloc-store-picker-card__metric">
+                          <span className="label">Pendências:</span>
+                          <span
+                            className="val"
+                            style={{
+                              color: summary?.totalPendingProducts ? "#c2410c" : "#15803d",
+                              fontWeight: "700",
+                            }}
+                          >
+                            {summary?.totalPendingProducts ?? 0}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="alloc-store-picker-card__footer">
+                        <span className="alloc-store-picker-card__action">
+                          {isCurrentActive ? "Loja Selecionada ✓" : "Conferir esta Loja →"}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {activeStore ? (
+              <footer className="alloc-modal__footer" style={{ justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  onClick={() => setShowStoreSelectModal(false)}
+                >
+                  Continuar em {activeStore.name.replace("MultiShow ", "")}
+                </button>
+              </footer>
+            ) : null}
           </div>
         </div>
       ) : null}

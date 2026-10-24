@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateDifference,
+  calculateSuggestedDestinedQuantity,
   canManageDestinations,
   isCycleDate,
   parseQuantity,
@@ -275,6 +276,20 @@ describe("Fase 3 — Vinculação das Compras aos Fornecedores e Fechamento Oper
           destinedQuantity: "0.00",
           persistedDestinedQuantity: null,
         }),
+      ).toBe(false);
+      expect(
+        hasPendingStoreAllocation({
+          orderedQuantity: "5.00",
+          destinedQuantity: "0.00",
+          persistedDestinedQuantity: "0.00",
+        }),
+      ).toBe(false);
+      expect(
+        hasPendingStoreAllocation({
+          orderedQuantity: "5.00",
+          destinedQuantity: "0.00",
+          persistedDestinedQuantity: "5.00",
+        }),
       ).toBe(true);
       expect(
         hasPendingStoreAllocation({
@@ -443,5 +458,72 @@ describe("Fase 3 — Vinculação das Compras aos Fornecedores e Fechamento Oper
       });
     });
   });
+
+  describe("Cálculo Inteligente de Sugestão de Saldo (calculateSuggestedDestinedQuantity)", () => {
+    it("retorna '0.00' se o produto NÃO foi comprado nos custos, mesmo com pedido da loja", () => {
+      const suggested = calculateSuggestedDestinedQuantity({
+        orderedQuantity: "15.00",
+        alreadyDestinedOtherSuppliers: "0.00",
+        isPurchasedInCosts: false,
+      });
+      expect(suggested).toBe("0.00");
+    });
+
+    it("sugere a quantidade total do pedido se o produto foi comprado e outros fornecedores têm 0", () => {
+      const suggested = calculateSuggestedDestinedQuantity({
+        orderedQuantity: "13.00",
+        alreadyDestinedOtherSuppliers: "0.00",
+        isPurchasedInCosts: true,
+      });
+      expect(suggested).toBe("13.00");
+    });
+
+    it("retorna '0.00' se outro fornecedor já atendeu 100% do pedido da loja (caso Banana Prata Kruger vs JEB)", () => {
+      const suggested = calculateSuggestedDestinedQuantity({
+        orderedQuantity: "13.00",
+        alreadyDestinedOtherSuppliers: "13.00",
+        isPurchasedInCosts: true,
+      });
+      expect(suggested).toBe("0.00");
+    });
+
+    it("sugere o saldo restante exato se outro fornecedor atendeu parcialmente o pedido", () => {
+      const suggested = calculateSuggestedDestinedQuantity({
+        orderedQuantity: "13.00",
+        alreadyDestinedOtherSuppliers: "8.00",
+        isPurchasedInCosts: true,
+      });
+      expect(suggested).toBe("5.00");
+    });
+
+    it("retorna '0.00' se outros fornecedores já destinaram mais do que o pedido original", () => {
+      const suggested = calculateSuggestedDestinedQuantity({
+        orderedQuantity: "10.00",
+        alreadyDestinedOtherSuppliers: "12.00",
+        isPurchasedInCosts: true,
+      });
+      expect(suggested).toBe("0.00");
+    });
+
+    it("retorna '0.00' para compras de oportunidade onde o pedido original da loja é zero", () => {
+      const suggested = calculateSuggestedDestinedQuantity({
+        orderedQuantity: "0.00",
+        alreadyDestinedOtherSuppliers: "0.00",
+        isPurchasedInCosts: true,
+      });
+      expect(suggested).toBe("0.00");
+    });
+
+    it("garante que passagem da variável purchasedInCosts funciona corretamente", () => {
+      const purchasedInCosts = false;
+      const suggested = calculateSuggestedDestinedQuantity({
+        orderedQuantity: "10.00",
+        alreadyDestinedOtherSuppliers: "0.00",
+        isPurchasedInCosts: purchasedInCosts,
+      });
+      expect(suggested).toBe("0.00");
+    });
+  });
 });
+
 
