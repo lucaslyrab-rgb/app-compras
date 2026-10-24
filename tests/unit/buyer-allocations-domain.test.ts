@@ -513,6 +513,16 @@ describe("Fase 3 — Vinculação das Compras aos Fornecedores e Fechamento Oper
       });
       expect(suggested).toBe("0.00");
     });
+
+    it("garante que passagem da variável purchasedInCosts funciona corretamente", () => {
+      const purchasedInCosts = false;
+      const suggested = calculateSuggestedDestinedQuantity({
+        orderedQuantity: "10.00",
+        alreadyDestinedOtherSuppliers: "0.00",
+        isPurchasedInCosts: purchasedInCosts,
+      });
+      expect(suggested).toBe("0.00");
+    });
   });
 });
 

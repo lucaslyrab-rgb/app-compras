@@ -800,7 +800,7 @@ export function BuyerAllocationWorkspace({
   };
 
   const handleOpenBatchConcludeSupplier = () => {
-    if (isDirty) {
+    if (isDirty && canSave) {
       setErrorMessage(
         "Você possui alterações não salvas. Salve ou reverta as alterações antes de concluir a conferência deste fornecedor.",
       );
@@ -827,6 +827,7 @@ export function BuyerAllocationWorkspace({
 
       if (result.status === "success") {
         setShowBatchConcludeSupplierModal(false);
+        setIsDirty(false);
         setProducts((prev) =>
           prev.map((p) => {
             const hasDestined =
@@ -1580,7 +1581,7 @@ export function BuyerAllocationWorkspace({
                   <span>{activeStoreTotalDestined} CX</span>
                 </div>
                 <span className="alloc-sticky-status">
-                  {isDirty ? (
+                  {isDirty && canSave ? (
                     <strong style={{ color: "#d97706" }}>⚠️ Alterações não salvas</strong>
                   ) : hasUnconfirmedSuggestions ? (
                     <strong style={{ color: "#d97706" }}>⚠️ Sugestões aguardando confirmação</strong>

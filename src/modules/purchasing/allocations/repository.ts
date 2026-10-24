@@ -1121,7 +1121,7 @@ export async function readBuyerAllocationWorkspace(
             destinedQty = calculateSuggestedDestinedQuantity({
               orderedQuantity: orderQty,
               alreadyDestinedOtherSuppliers: alreadyDestinedOther,
-              isPurchasedInCosts,
+              isPurchasedInCosts: purchasedInCosts,
             });
             isAdditional = parseQuantity(orderQty) === 0 && parseQuantity(destinedQty) > 0;
           }
