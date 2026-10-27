@@ -1,4 +1,7 @@
 import { hasPermission, type Principal } from "@/modules/identity";
+import type { InvoiceRecord } from "../invoices/domain";
+
+export type { InvoiceRecord };
 
 export class AllocationValidationError extends Error {
   constructor(message: string) {
@@ -362,6 +365,7 @@ export type BuyerAllocationWorkspaceData = {
   storeSummary: Record<string, StoreSummaryData>;
   storeClosures: Record<string, StoreClosureSummary>;
   supplierStoreReviews: Record<string, Record<string, SupplierStoreReviewSummary>>;
+  invoicesByStoreSupplier?: Record<string, Record<string, InvoiceRecord[]>>;
   loadedAt: string;
 };
 

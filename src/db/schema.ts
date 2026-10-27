@@ -458,3 +458,48 @@ export const purchaseCycleParticipatingStoresRelations = relations(purchaseCycle
   store: one(stores, { fields: [purchaseCycleParticipatingStores.storeId], references: [stores.id] })
 }));
 
+export const purchaseCycleInvoices = pgTable("purchase_cycle_invoices", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  purchaseCycleDate: date("purchase_cycle_date").notNull(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "restrict" }),
+  supplierId: uuid("supplier_id").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
+  invoiceNumber: text("invoice_number").notNull(),
+  imageS3Key: text("image_s3_key").notNull(),
+  contentType: text("content_type").notNull().default("image/webp"),
+  fileSizeBytes: integer("file_size_bytes").notNull(),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("purchase_cycle_invoices_unique").on(table.purchaseCycleDate, table.storeId, table.supplierId, table.invoiceNumber),
+  index("invoices_cycle_store_idx").on(table.purchaseCycleDate, table.storeId),
+  index("invoices_cycle_supp_idx").on(table.purchaseCycleDate, table.supplierId),
+  index("invoices_cycle_store_supp_idx").on(table.purchaseCycleDate, table.storeId, table.supplierId),
+  check("invoice_number_not_empty", sql`length(trim(${table.invoiceNumber})) > 0`),
+  check("image_s3_key_not_empty", sql`length(trim(${table.imageS3Key})) > 0`),
+  check("file_size_positive", sql`${table.fileSizeBytes} > 0`)
+]);
+
+export const purchaseCycleInvoicesRelations = relations(purchaseCycleInvoices, ({ one, many }) => ({
+  store: one(stores, { fields: [purchaseCycleInvoices.storeId], references: [stores.id] }),
+  supplier: one(suppliers, { fields: [purchaseCycleInvoices.supplierId], references: [suppliers.id] }),
+  creator: one(users, { fields: [purchaseCycleInvoices.createdBy], references: [users.id] }),
+  items: many(purchaseCycleInvoiceItems)
+}));
+
+export const purchaseCycleInvoiceItems = pgTable("purchase_cycle_invoice_items", {
+  invoiceId: uuid("invoice_id").notNull().references(() => purchaseCycleInvoices.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  primaryKey({ columns: [table.invoiceId, table.productId] }),
+  index("invoice_items_product_idx").on(table.productId)
+]);
+
+export const purchaseCycleInvoiceItemsRelations = relations(purchaseCycleInvoiceItems, ({ one }) => ({
+  invoice: one(purchaseCycleInvoices, { fields: [purchaseCycleInvoiceItems.invoiceId], references: [purchaseCycleInvoices.id] }),
+  product: one(products, { fields: [purchaseCycleInvoiceItems.productId], references: [products.id] })
+}));
+

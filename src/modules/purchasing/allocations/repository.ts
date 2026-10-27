@@ -24,6 +24,7 @@ import {
   type CatalogSearchItem,
   type CloseStoreCycleInput,
   type ConcludeSupplierStoreReviewInput,
+  type InvoiceRecord,
   type ProductAllocationItem,
   type ReopenStoreCycleInput,
   type RevertProductSupplierDecisionInput,
@@ -644,6 +645,77 @@ export async function readBuyerAllocationWorkspace(
     };
   }
 
+  // 6.2b Notas Fiscais vinculadas às destinações por ciclo e loja (Fase 4)
+  let invoiceRows: Array<{
+    id: string;
+    purchase_cycle_date: string;
+    store_id: string;
+    supplier_id: string;
+    invoice_number: string;
+    image_s3_key: string;
+    content_type: string;
+    file_size_bytes: number;
+    notes: string | null;
+    created_by: string | null;
+    created_at: string;
+    updated_at: string;
+    item_product_ids: string[];
+  }> = [];
+
+  try {
+    invoiceRows = await sql`
+      SELECT
+        i.id,
+        i.purchase_cycle_date::text AS purchase_cycle_date,
+        i.store_id,
+        i.supplier_id,
+        i.invoice_number,
+        i.image_s3_key,
+        i.content_type,
+        i.file_size_bytes,
+        i.notes,
+        i.created_by,
+        i.created_at::text AS created_at,
+        i.updated_at::text AS updated_at,
+        COALESCE(
+          array_agg(it.product_id) FILTER (WHERE it.product_id IS NOT NULL),
+          ARRAY[]::uuid[]
+        ) AS item_product_ids
+      FROM purchase_cycle_invoices i
+      LEFT JOIN purchase_cycle_invoice_items it ON it.invoice_id = i.id
+      WHERE i.purchase_cycle_date = ${cycleDate}::date
+      GROUP BY i.id
+      ORDER BY i.created_at ASC
+    `;
+  } catch {
+    invoiceRows = [];
+  }
+
+  const invoicesByStoreSupplier: Record<string, Record<string, InvoiceRecord[]>> = {};
+  for (const inv of invoiceRows) {
+    if (!invoicesByStoreSupplier[inv.store_id]) {
+      invoicesByStoreSupplier[inv.store_id] = {};
+    }
+    if (!invoicesByStoreSupplier[inv.store_id][inv.supplier_id]) {
+      invoicesByStoreSupplier[inv.store_id][inv.supplier_id] = [];
+    }
+    invoicesByStoreSupplier[inv.store_id][inv.supplier_id].push({
+      id: inv.id,
+      purchaseCycleDate: inv.purchase_cycle_date,
+      storeId: inv.store_id,
+      supplierId: inv.supplier_id,
+      invoiceNumber: inv.invoice_number,
+      imageS3Key: inv.image_s3_key,
+      contentType: inv.content_type,
+      fileSizeBytes: Number(inv.file_size_bytes),
+      notes: inv.notes,
+      createdBy: inv.created_by,
+      createdAt: inv.created_at,
+      updatedAt: inv.updated_at,
+      itemProductIds: ((inv.item_product_ids as string[]) || []).filter(Boolean),
+    });
+  }
+
   // 6.3 Conferência conjunta dos cortes e finalizações de loja (apenas versões correntes)
   const storeClosureRows = await sql<
     {
@@ -1260,6 +1332,7 @@ export async function readBuyerAllocationWorkspace(
     storeSummary,
     storeClosures,
     supplierStoreReviews,
+    invoicesByStoreSupplier,
     loadedAt: new Date().toISOString(),
   };
 }
