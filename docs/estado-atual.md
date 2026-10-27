@@ -1,16 +1,33 @@
-# Estado atual
+# Estado atual — índice e registro histórico
 
-- **Objetivo:** substituir WhatsApp/planilhas por uma PWA multiusuário para o fluxo FLV das três lojas.
-- **Mudança ativa:** `openspec/changes/fundacao-plataforma/` (fundação técnica e primeiro fluxo vertical).
-- **Revisão:** branch `main`; commit inicial já sincronizado com `lucaslyrab-rgb/app-compras`; materiais originais preservados na raiz.
-- **Decisões válidas:** [TRD](trd.md), [ADRs](adrs/), [PRDs](prds/) e [roadmap](roadmap.md).
-- **Última evidência (2026-09-20):** `npm ci`, lint, typecheck, build, 17 testes unitários (cobertura de linhas 80,35%), 5 testes de integração em PostgreSQL 18.6 efêmero, importação repetida 74/21, Playwright (7 testes verdes + 1 skip desktop, acessibilidade/zoom/login inválido/fluxo móvel) e migration/importação one-shot no database compartilhado (`app_compras`: 3 lojas, 74 produtos, 21 exclusivos); imagem multi-stage não-root saudável e Trivy local sem HIGH/CRITICAL. A stack foi reconciliada com `infra/stack.yml` no Swarm como `app-compras_web` (1/1, digest `b7e5ae…`, rollback configurado), `/api/health` respondeu pelo domínio HTTPS e o ensaio isolado de backup age/restore recuperou `3/74/21`. Verificação direta em execução confirmou `SHOW server_version = 18.6 (Debian 18.6-1)` e a existência de `app_compras`; a documentação de execução usa o bucket `s3://compras-bkp` em `us-east-1`.
-- **Implementado:** schema/migration, autenticação/RBAC, sessões revogáveis, catálogo/inativação, pedido móvel persistente/versionado, conferência A4, Docker, stack Swarm e workflows CI/release. O workflow `35535084939`, disparado pelo commit vazio `afd2b7c`, executou verify, build, scan, publicação GHCR, promoção do manifesto, webhook Portainer e notificação SES com sucesso. A imagem ativa é `ghcr.io/lucaslyrab-rgb/app-compras:sha-afd2b7c63e0d6eb6cc965f115267a68dc0a1808d`; o serviço `app-compras_web` está `1/1` e `/api/health` responde `status=ok` pelo HTTPS.
-- **Credenciais iniciais:** Gestor criado por bootstrap one-shot e confirmado no banco: `lucaslyrab@hotmail.com`, papel `GESTOR`, ativo. A senha aleatória foi entregue diretamente ao operador e não está registrada no repositório, imagem ou documentação.
-- **Ferramentas operacionais (2026-09-20):** host Ubuntu 24.04 agora possui AWS CLI `2.36.49`, `age` `1.1.1`, `pg_dump`/`pg_restore` `16.15` (cliente compatível com o servidor PostgreSQL `18.6`). A identidade AWS validou e o bucket `compras-bkp` respondeu com sucesso; a identidade privada `age` ainda precisa ser provisionada em cofre separado.
-- **Backup:** primeiro backup cifrado validado em `s3://compras-bkp/app-compras-20260920T205933Z.dump.age` (`us-east-1`), com checksum, notificação SES e restauração isolada confirmados (`3/74/21`). A identidade AGE está em `/var/lib/app-compras/backup/age-identity.txt` com modo `600`; a chave privada não está no repositório.
-- **Pendências externas:** executar rollback operacional formal e UAT dos papéis Loja/Comprador/Gestor em aparelhos reais. Disponibilidade, recuperação da task, backup/restore, Registry, webhook e secret `PORTAINER_WEBHOOK_URL` já foram validados.
-- **Adoção Portainer:** migração executada com autorização. A stack `app-compras` agora é Portainer ID 4, Swarm `primary`, Git `refs/heads/main`, compose `infra/stack.yml`, Registry GHCR ID 1, polling de 5 minutos e webhook presente; o webhook foi testado com HTTP 204. Serviço `1/1` e healthcheck HTTPS permaneceram saudáveis.
-- **Roteiro UAT:** [docs/operacao/uat.md](operacao/uat.md) foi preparado para registrar evidência por aparelho e papel; a aprovação real ainda não foi registrada.
-- **Notificação SES:** o job `Notify release by email` envia sucesso/falha via SES. O run final `35535084939` terminou com `success`, incluindo a notificação ao endereço verificado `lucaslyrab@hotmail.com`. Os runs intermediários `35533501467` e `35534297909` documentaram, respectivamente, secret de webhook desatualizada e corrida de promoção; ambos foram resolvidos antes da validação final.
-- **Próxima ação autorizada:** concluir os itens OpenSpec que exigem esses recursos operacionais, sem marcar evidência ausente como concluída; PostgreSQL compartilhado confirmado na versão 18.6.
+**Atualização documental: 26/10/2026.** O planejamento oficial aprovado está em [docs/PLANEJAMENTO.md](PLANEJAMENTO.md), e a sequência resumida em [docs/roadmap.md](roadmap.md).
+
+## Situação funcional conhecida
+
+- **Fase 1:** fundação e pedidos das lojas — implementada.
+- **Fase 2:** consolidação, custos e operação de compras — base implementada.
+- **Fase 3:** destinação, fornecedores e fechamento operacional — em estabilização, incluindo validação dos casos Maçã Fuji e Batata Bolinha.
+- **Fases 4–6:** planejamento aprovado, **sem declaração de implementação**.
+- **Fase 4:** registro de nota (número + fotografia) na tela de destinação; uma nota por loja; bloqueio de fechamento por destinações positivas sem nota somente depois de implementar e validar a fase.
+- **Fase 5:** conferência do pedido original em KG, salvamento parcial e finalização após verificação de todos os produtos; perdas armazenadas no banco FLV.
+- **Fase 6:** confronto de pedido/destinação/conferência, divergências informativas e confirmação de notas físicas pelo CPD; relatórios detalhados serão definidos depois.
+
+**Atenção:** o quadro acima reflete o planejamento e o histórico operacional informado; não substitui auditoria técnica de código ou produção.
+
+## Evidências técnicas históricas (20/09/2026)
+
+Os registros a seguir são um **retrato datado** da validação técnica de 20/09/2026. Não devem ser interpretados como identificação garantida da versão, imagem, estado do deploy ou pendências de hoje.
+
+- O projeto foi preparado como PWA multiusuário para substituir o fluxo de WhatsApp/planilhas das três lojas.
+- A mudança OpenSpec então ativa era `openspec/changes/fundacao-plataforma/`.
+- Foram registrados testes de instalação, lint, typecheck, build, testes unitários e de integração, Playwright, importação administrativa, imagem OCI e verificação de segurança.
+- O ambiente registrado incluía PostgreSQL 18.6, serviço Swarm `app-compras_web`, GHCR, Portainer e endpoint HTTPS `/api/health`.
+- O procedimento de backup cifrado e restauração isolada foi validado naquela data, com armazenamento S3.
+- O Portainer foi registrado como responsável pelo stack GitOps; os testes de webhook, healthcheck e pipeline tiveram evidências positivas.
+- O roteiro de UAT está documentado em [docs/operacao/uat.md](operacao/uat.md). A aprovação de UAT em aparelhos reais não foi comprovada nesse registro.
+
+## Cuidados operacionais
+
+Este documento não contém credenciais, chaves privadas, senhas nem valores de secrets. Para operações e diagnósticos, consultar os runbooks atualizados e verificar diretamente o estado do ambiente antes de qualquer ação.
+
+**Próximo passo de produto:** estabilizar a Fase 3. A aprovação documental v2.0 **não autoriza** alterações de código, banco, migrações, CI/CD ou produção.
