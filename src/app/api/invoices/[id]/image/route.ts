@@ -84,7 +84,7 @@ export async function GET(
       );
     }
 
-    log.error({
+    log("error", "Falha ao consultar fotografia de nota fiscal no S3", {
       event: "S3_GET_INVOICE_IMAGE_ERROR",
       invoiceId,
       error: err instanceof Error ? err.message : String(err),

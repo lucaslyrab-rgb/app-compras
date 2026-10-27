@@ -10,6 +10,7 @@ import { GET } from "@/app/api/invoices/[id]/image/route";
 import * as session from "@/modules/identity/session";
 import * as invoices from "@/modules/purchasing/invoices/repository";
 import * as s3Invoices from "@/lib/s3-invoices";
+import * as logging from "@/shared/logging";
 
 const invoice: InvoiceRecord = {
   id: "123e4567-e89b-42d3-a456-426614174000",
@@ -33,6 +34,7 @@ function requestImage() {
 describe("fotografia de nota fiscal — autorização e troca de sessão", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(logging, "log").mockImplementation(() => {});
     vi.spyOn(session, "currentPrincipal").mockResolvedValue(null);
     vi.spyOn(invoices, "getInvoiceById").mockResolvedValue(invoice);
     vi.spyOn(s3Invoices, "getInvoiceFromS3").mockImplementation(async () => ({
@@ -94,5 +96,18 @@ describe("fotografia de nota fiscal — autorização e troca de sessão", () =>
     expect((await requestImage()).status).toBe(401);
     expect((await requestImage()).status).toBe(403);
     expect(s3Invoices.getInvoiceFromS3).toHaveBeenCalledTimes(1);
+  });
+
+  it("registra falha do S3 e retorna erro controlado sem expor a mensagem interna", async () => {
+    vi.mocked(session.currentPrincipal).mockResolvedValue({
+      userId: "buyer", role: "COMPRADOR", storeId: null, permissions: ["compras:destinacao"],
+    });
+    vi.mocked(s3Invoices.getInvoiceFromS3).mockRejectedValue(new Error("internal storage error"));
+    const response = await requestImage();
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toContain("internal storage error");
+    expect(logging.log).toHaveBeenCalledWith("error", expect.any(String), expect.objectContaining({
+      event: "S3_GET_INVOICE_IMAGE_ERROR", invoiceId: invoice.id,
+    }));
   });
 });

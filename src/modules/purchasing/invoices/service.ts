@@ -50,7 +50,7 @@ export async function registerInvoiceService(data: {
     try {
       await deleteInvoiceFromS3(s3Key);
     } catch (cleanupError) {
-      log.error({
+      log("error", "Falha ao remover imagem órfã de nota fiscal", {
         event: "INVOICE_S3_CLEANUP_ORPHAN_ERROR",
         s3Key,
         error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
@@ -72,7 +72,7 @@ export async function deleteInvoiceService(
   try {
     await deleteInvoiceFromS3(deleted.imageS3Key);
   } catch (s3Error) {
-    log.error({
+    log("error", "Falha ao remover fotografia de nota fiscal do S3", {
       event: "INVOICE_S3_DELETE_ERROR",
       s3Key: deleted.imageS3Key,
       error: s3Error instanceof Error ? s3Error.message : String(s3Error),
