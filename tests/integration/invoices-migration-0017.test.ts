@@ -82,6 +82,7 @@ integration("Fase 4: Migração 0017 e Repositório de Notas Fiscais", () => {
         product_id,
         store_id,
         destined_quantity,
+        purchase_format,
         version
       ) VALUES (
         ${cycleDate}::date,
@@ -89,6 +90,7 @@ integration("Fase 4: Migração 0017 e Repositório de Notas Fiscais", () => {
         ${productId}::uuid,
         ${storeId}::uuid,
         15.00,
+        'CX',
         1
       )
     `;

@@ -196,6 +196,22 @@ export function BuyerAllocationWorkspace({
     });
   }, [products, activeStoreId]);
 
+  // Conjunto de IDs de produtos cobertos por ao menos uma nota fiscal para o fornecedor e loja selecionados
+  const coveredProductIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const inv of currentSupplierInvoices) {
+      for (const pid of inv.itemProductIds || []) {
+        ids.add(pid);
+      }
+    }
+    return ids;
+  }, [currentSupplierInvoices]);
+
+  // Produtos destinados que ainda não foram vinculados a nenhuma nota fiscal
+  const unlinkedDestinedProducts = useMemo(() => {
+    return destinedProductsForSupplierAndStore.filter((p) => !coveredProductIds.has(p.productId));
+  }, [destinedProductsForSupplierAndStore, coveredProductIds]);
+
   // Formulário de registro de nota fiscal
   const [invoiceNumberInput, setInvoiceNumberInput] = useState("");
   const [invoiceNotesInput, setInvoiceNotesInput] = useState("");
@@ -215,7 +231,12 @@ export function BuyerAllocationWorkspace({
     if (invoicePreviewUrl) URL.revokeObjectURL(invoicePreviewUrl);
     setInvoicePreviewUrl(null);
     setRegisterInvoiceError(null);
-    setSelectedInvoiceProductIds(destinedProductsForSupplierAndStore.map((p) => p.productId));
+    // Prioriza pré-seleção dos produtos ainda pendentes de nota fiscal
+    const initialSelected =
+      unlinkedDestinedProducts.length > 0
+        ? unlinkedDestinedProducts.map((p) => p.productId)
+        : destinedProductsForSupplierAndStore.map((p) => p.productId);
+    setSelectedInvoiceProductIds(initialSelected);
     setShowRegisterInvoiceModal(true);
   };
 
@@ -1379,23 +1400,46 @@ export function BuyerAllocationWorkspace({
                   >
                     📄 {currentSupplierInvoices.length === 1 ? `NF ${currentSupplierInvoices[0].invoiceNumber}` : `${currentSupplierInvoices.length} Notas`} (Ver fotos)
                   </button>
-                ) : parseQuantity(activeStoreTotalDestined) > 0 ? (
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      backgroundColor: "#fef3c7",
-                      color: "#92400e",
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      border: "1px solid #fde68a",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    ⚠️ Sem Nota
-                  </span>
+                ) : null}
+
+                {destinedProductsForSupplierAndStore.length > 0 ? (
+                  unlinkedDestinedProducts.length > 0 ? (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        backgroundColor: "#fef3c7",
+                        color: "#92400e",
+                        padding: "4px 8px",
+                        borderRadius: "6px",
+                        border: "1px solid #fde68a",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                      title="Existem produtos destinados deste fornecedor nesta loja sem nota fiscal vinculada"
+                    >
+                      ⚠️ {currentSupplierInvoices.length > 0 ? `${unlinkedDestinedProducts.length} item(ns) sem nota` : `Sem Nota (${destinedProductsForSupplierAndStore.length})`}
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        backgroundColor: "#f0fdf4",
+                        color: "#166534",
+                        padding: "4px 8px",
+                        borderRadius: "6px",
+                        border: "1px solid #bbf7d0",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                      title="Todos os produtos destinados deste fornecedor nesta loja possuem nota fiscal vinculada"
+                    >
+                      ✓ 100% com nota
+                    </span>
+                  )
                 ) : null}
 
                 {!isClosed ? (
@@ -1430,25 +1474,71 @@ export function BuyerAllocationWorkspace({
                   ✓ Conferência concluída para {activeStore.name.replace("MultiShow ", "")}
                 </span>
               ) : null}
-              {currentSupplierInvoices.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setShowViewInvoicesModal(true)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                >
-                  <span className="alloc-meta-item" style={{ color: "#15803d", backgroundColor: "#dcfce7", padding: "2px 8px", borderRadius: "9999px", fontWeight: 600 }}>
-                    ✓ {currentSupplierInvoices.length} Nota(s) vinculada(s)
+              {destinedProductsForSupplierAndStore.length > 0 ? (
+                currentSupplierInvoices.length > 0 ? (
+                  unlinkedDestinedProducts.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowViewInvoicesModal(true)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      <span
+                        className="alloc-meta-item"
+                        style={{
+                          color: "#b45309",
+                          backgroundColor: "#fef3c7",
+                          padding: "2px 8px",
+                          borderRadius: "9999px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        ⚠️ {unlinkedDestinedProducts.length} de {destinedProductsForSupplierAndStore.length} item(ns) sem nota
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowViewInvoicesModal(true)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      <span
+                        className="alloc-meta-item"
+                        style={{
+                          color: "#15803d",
+                          backgroundColor: "#dcfce7",
+                          padding: "2px 8px",
+                          borderRadius: "9999px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        ✓ Todas destinações com nota
+                      </span>
+                    </button>
+                  )
+                ) : (
+                  <span
+                    className="alloc-meta-item"
+                    style={{
+                      color: "#b45309",
+                      backgroundColor: "#fef3c7",
+                      padding: "2px 8px",
+                      borderRadius: "9999px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    ⚠️ Destinação sem nota fiscal vinculada
                   </span>
-                </button>
-              ) : parseQuantity(activeStoreTotalDestined) > 0 ? (
-                <span className="alloc-meta-item" style={{ color: "#b45309", backgroundColor: "#fef3c7", padding: "2px 8px", borderRadius: "9999px", fontWeight: 600 }}>
-                  ⚠️ Destinação sem nota fiscal vinculada
-                </span>
+                )
               ) : null}
               <span className="alloc-meta-item alloc-meta-item--highlight">
                 <strong>Destinado em {activeStore.name.replace("MultiShow ", "")}:</strong>{" "}
@@ -1544,6 +1634,35 @@ export function BuyerAllocationWorkspace({
                           </span>
                         </div>
                         <div className="alloc-badges">
+                          {hasDestinedInActiveStore ? (
+                            coveredProductIds.has(prod.productId) ? (
+                              <span
+                                className="alloc-badge"
+                                style={{
+                                  backgroundColor: "#dcfce7",
+                                  color: "#166534",
+                                  border: "1px solid #86efac",
+                                  fontWeight: "600",
+                                }}
+                                title="Produto com nota fiscal vinculada"
+                              >
+                                ✓ Com Nota
+                              </span>
+                            ) : (
+                              <span
+                                className="alloc-badge"
+                                style={{
+                                  backgroundColor: "#fef3c7",
+                                  color: "#92400e",
+                                  border: "1px solid #fde68a",
+                                  fontWeight: "600",
+                                }}
+                                title="Destinação positiva sem nota fiscal vinculada"
+                              >
+                                ⚠️ Sem Nota
+                              </span>
+                            )
+                          ) : null}
                           {isUnpurchasedWithOrders ? (
                             <span
                               className="alloc-badge"
@@ -2050,11 +2169,54 @@ export function BuyerAllocationWorkspace({
                       </ul>
                     </div>
                   ) : null}
+                  {closure.missingInvoices && closure.missingInvoices.length > 0 ? (
+                    <div style={{ marginTop: "8px" }}>
+                      <p style={{ margin: "2px 0 6px 0", fontSize: "12px", fontWeight: "700", color: "#991b1b" }}>
+                        Destinações positivas sem nota fiscal vinculada ({closure.missingInvoices.length}):
+                      </p>
+                      <ul
+                        style={{
+                          margin: 0,
+                          paddingLeft: "18px",
+                          fontSize: "12px",
+                          color: "#7f1d1d",
+                          maxHeight: "140px",
+                          overflowY: "auto",
+                        }}
+                      >
+                        {closure.missingInvoices.map((inv, idx) => (
+                          <li key={idx} style={{ marginBottom: "2px" }}>
+                            <strong>{inv.storeName}</strong> • {inv.supplierName}: {inv.productName}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
-                <p style={{ color: "#166534", fontWeight: "600" }}>
-                  ✓ Todas as lojas ({stores.length}) foram conferidas e finalizadas sem pendências, e todos os produtos comprados possuem destinação atribuída.
-                </p>
+                <>
+                  <p style={{ color: "#166534", fontWeight: "600" }}>
+                    ✓ Todas as lojas ({stores.length}) foram conferidas e finalizadas sem pendências, e todos os produtos comprados possuem destinação atribuída.
+                  </p>
+                  {closure.missingInvoices && closure.missingInvoices.length > 0 ? (
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        padding: "8px 12px",
+                        backgroundColor: "#fef3c7",
+                        borderRadius: "6px",
+                        border: "1px solid #fde68a",
+                      }}
+                    >
+                      <p style={{ margin: "0 0 4px 0", fontSize: "12px", fontWeight: "700", color: "#92400e" }}>
+                        ℹ️ Fase de homologação de notas fiscais:
+                      </p>
+                      <p style={{ margin: 0, fontSize: "12px", color: "#78350f" }}>
+                        Existem {closure.missingInvoices.length} destinação(ões) positiva(s) sem nota fiscal vinculada. O fechamento é permitido nesta etapa de transição, mas recomenda-se registrar as notas antes de finalizar.
+                      </p>
+                    </div>
+                  ) : null}
+                </>
               )}
 
               {closeError ? (
@@ -3296,6 +3458,14 @@ export function BuyerAllocationWorkspace({
                           <div style={{ fontSize: "12px", color: "#64748b" }}>
                             {(inv.fileSizeBytes / 1024).toFixed(0)} KB • Registrada em {new Date(inv.createdAt).toLocaleString("pt-BR")}
                           </div>
+                          {inv.itemProductIds && inv.itemProductIds.length > 0 ? (
+                            <div style={{ fontSize: "12px", color: "#0369a1", marginTop: "3px" }}>
+                              <strong>Produtos vinculados:</strong>{" "}
+                              {inv.itemProductIds
+                                .map((pid) => products.find((p) => p.productId === pid)?.productName || pid)
+                                .join(", ")}
+                            </div>
+                          ) : null}
                           {inv.notes ? (
                             <div style={{ fontSize: "12px", color: "#334155", marginTop: "2px" }}>
                               <em>{inv.notes}</em>
@@ -3327,6 +3497,25 @@ export function BuyerAllocationWorkspace({
                       </div>
                     </div>
                   ))}
+                  {unlinkedDestinedProducts.length > 0 ? (
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        padding: "10px 12px",
+                        backgroundColor: "#fffbeb",
+                        border: "1px solid #fde68a",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                      }}
+                    >
+                      <strong style={{ color: "#92400e" }}>
+                        ⚠️ Produtos destinados ainda sem nota fiscal ({unlinkedDestinedProducts.length}):
+                      </strong>
+                      <div style={{ color: "#78350f", marginTop: "4px" }}>
+                        {unlinkedDestinedProducts.map((p) => p.productName).join(", ")}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>

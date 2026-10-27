@@ -327,7 +327,24 @@ export async function deleteInvoiceRecord(
   const { sql } = database();
 
   return await sql.begin(async (tx) => {
-    // 1. Busca os dados da nota
+    // 1. Identifica a data do ciclo da nota (sem row lock) para garantir ordem estrita de locking:
+    // Advisory Lock de Ciclo -> Row Lock em purchase_cycle_invoices (mesma hierarquia de createInvoiceRecord)
+    const lookupRows = await tx<{
+      id: string;
+      purchase_cycle_date: string;
+    }[]>`
+      SELECT id, purchase_cycle_date::text AS purchase_cycle_date
+      FROM purchase_cycle_invoices
+      WHERE id = ${invoiceId}::uuid
+    `;
+
+    if (lookupRows.length === 0) return null;
+    const cycleDate = lookupRows[0].purchase_cycle_date;
+
+    // 2. Lock transacional no ciclo (Advisory Lock primeiro)
+    await tx`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${cycleDate}::text))`;
+
+    // 3. Com o lock de ciclo adquirido na ordem padronizada, obtém o row lock na nota
     const existingRows = await tx<{
       id: string;
       purchase_cycle_date: string;
@@ -350,9 +367,6 @@ export async function deleteInvoiceRecord(
 
     if (existingRows.length === 0) return null;
     const existing = existingRows[0];
-
-    // 2. Lock transacional no ciclo
-    await tx`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${existing.purchase_cycle_date}::text))`;
 
     // 3. Valida se o ciclo geral está fechado
     const [buyerClosure] = await tx<{ status: string }[]>`

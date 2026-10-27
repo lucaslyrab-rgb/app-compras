@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { currentPrincipal } from "@/modules/identity/session";
+import { hasAnyPermission } from "@/modules/identity";
 import { getInvoiceById } from "@/modules/purchasing/invoices/repository";
 import { getInvoiceFromS3 } from "@/lib/s3-invoices";
 import { log } from "@/shared/logging";
@@ -26,9 +27,27 @@ export async function GET(
     return NextResponse.json({ error: "Nota fiscal não encontrada." }, { status: 404 });
   }
 
-  // Verifica permissão: Comprador e Gestor têm acesso geral; Loja só vê notas destinadas a ela
-  if (principal.role === "LOJA" && principal.storeId !== invoice.storeId) {
-    return NextResponse.json({ error: "Acesso negado para esta loja." }, { status: 403 });
+  // Política de autorização explícita:
+  // - Usuários LOJA: devem pertencer à loja da nota E possuir permissão de histórico/pedidos
+  // - Usuários COMPRADOR/GESTOR: devem possuir permissão explícita de destinação ou fornecedores
+  let isAuthorized = false;
+  if (principal.role === "LOJA") {
+    isAuthorized =
+      principal.storeId === invoice.storeId &&
+      hasAnyPermission(principal, ["pedidos:historico", "pedidos:criar"]);
+  } else if (principal.role === "COMPRADOR" || principal.role === "GESTOR") {
+    isAuthorized = hasAnyPermission(principal, [
+      "compras:destinacao",
+      "compras:fornecedores",
+      "gestor:fornecedores",
+    ]);
+  }
+
+  if (!isAuthorized) {
+    return NextResponse.json(
+      { error: "Acesso negado para visualização deste documento fiscal." },
+      { status: 403 }
+    );
   }
 
   try {
