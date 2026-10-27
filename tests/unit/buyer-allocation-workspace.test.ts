@@ -23,6 +23,11 @@ vi.mock("@/modules/purchasing/allocations/actions", () => ({
   saveSupplierAllocationsAction: vi.fn(),
 }));
 
+vi.mock("@/modules/purchasing/invoices/actions", () => ({
+  registerInvoiceAction: vi.fn(),
+  deleteInvoiceAction: vi.fn(),
+}));
+
 import { BuyerAllocationWorkspace } from "@/modules/purchasing/allocations/buyer-allocation-workspace";
 
 const storePonta = {

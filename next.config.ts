@@ -5,7 +5,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   allowedDevOrigins: ["127.0.0.1"],
   serverExternalPackages: ["sharp"],
-  experimental: { typedEnv: true },
+  experimental: {
+    typedEnv: true,
+    serverActions: {
+      bodySizeLimit: "12mb",
+    },
+  },
 };
 
 export default nextConfig;

@@ -24,6 +24,7 @@ import {
   type CatalogSearchItem,
   type CloseStoreCycleInput,
   type ConcludeSupplierStoreReviewInput,
+  type InvoiceRecord,
   type ProductAllocationItem,
   type ReopenStoreCycleInput,
   type RevertProductSupplierDecisionInput,
@@ -644,6 +645,77 @@ export async function readBuyerAllocationWorkspace(
     };
   }
 
+  // 6.2b Notas Fiscais vinculadas às destinações por ciclo e loja (Fase 4)
+  let invoiceRows: Array<{
+    id: string;
+    purchase_cycle_date: string;
+    store_id: string;
+    supplier_id: string;
+    invoice_number: string;
+    image_s3_key: string;
+    content_type: string;
+    file_size_bytes: number;
+    notes: string | null;
+    created_by: string | null;
+    created_at: string;
+    updated_at: string;
+    item_product_ids: string[];
+  }> = [];
+
+  try {
+    invoiceRows = await sql`
+      SELECT
+        i.id,
+        i.purchase_cycle_date::text AS purchase_cycle_date,
+        i.store_id,
+        i.supplier_id,
+        i.invoice_number,
+        i.image_s3_key,
+        i.content_type,
+        i.file_size_bytes,
+        i.notes,
+        i.created_by,
+        i.created_at::text AS created_at,
+        i.updated_at::text AS updated_at,
+        COALESCE(
+          array_agg(it.product_id) FILTER (WHERE it.product_id IS NOT NULL),
+          ARRAY[]::uuid[]
+        ) AS item_product_ids
+      FROM purchase_cycle_invoices i
+      LEFT JOIN purchase_cycle_invoice_items it ON it.invoice_id = i.id
+      WHERE i.purchase_cycle_date = ${cycleDate}::date
+      GROUP BY i.id
+      ORDER BY i.created_at ASC
+    `;
+  } catch {
+    invoiceRows = [];
+  }
+
+  const invoicesByStoreSupplier: Record<string, Record<string, InvoiceRecord[]>> = {};
+  for (const inv of invoiceRows) {
+    if (!invoicesByStoreSupplier[inv.store_id]) {
+      invoicesByStoreSupplier[inv.store_id] = {};
+    }
+    if (!invoicesByStoreSupplier[inv.store_id][inv.supplier_id]) {
+      invoicesByStoreSupplier[inv.store_id][inv.supplier_id] = [];
+    }
+    invoicesByStoreSupplier[inv.store_id][inv.supplier_id].push({
+      id: inv.id,
+      purchaseCycleDate: inv.purchase_cycle_date,
+      storeId: inv.store_id,
+      supplierId: inv.supplier_id,
+      invoiceNumber: inv.invoice_number,
+      imageS3Key: inv.image_s3_key,
+      contentType: inv.content_type,
+      fileSizeBytes: Number(inv.file_size_bytes),
+      notes: inv.notes,
+      createdBy: inv.created_by,
+      createdAt: inv.created_at,
+      updatedAt: inv.updated_at,
+      itemProductIds: ((inv.item_product_ids as string[]) || []).filter(Boolean),
+    });
+  }
+
   // 6.3 Conferência conjunta dos cortes e finalizações de loja (apenas versões correntes)
   const storeClosureRows = await sql<
     {
@@ -1222,12 +1294,54 @@ export async function readBuyerAllocationWorkspace(
     });
   }
 
-  const { canClose, missingStores, missingProducts } = validateCycleClosureReadinessStoreFirst({
+  // Busca destinações positivas sem nota fiscal vinculada (Fase 4)
+  let unlinkedInvoiceRows: Array<{
+    store_name: string;
+    supplier_name: string;
+    product_name: string;
+  }> = [];
+  try {
+    unlinkedInvoiceRows = await sql`
+      SELECT
+        st.name AS store_name,
+        sup.corporate_name AS supplier_name,
+        p.name AS product_name
+      FROM purchase_cycle_product_allocations a
+      JOIN stores st ON st.id = a.store_id
+      JOIN suppliers sup ON sup.id = a.supplier_id
+      JOIN products p ON p.id = a.product_id
+      WHERE a.purchase_cycle_date = ${cycleDate}::date
+        AND a.destined_quantity > 0
+        AND NOT EXISTS (
+          SELECT 1
+          FROM purchase_cycle_invoices inv
+          JOIN purchase_cycle_invoice_items item ON item.invoice_id = inv.id
+          WHERE inv.purchase_cycle_date = a.purchase_cycle_date
+            AND inv.store_id = a.store_id
+            AND inv.supplier_id = a.supplier_id
+            AND item.product_id = a.product_id
+        )
+    `;
+  } catch {
+    unlinkedInvoiceRows = [];
+  }
+
+  const unlinkedDestinations = unlinkedInvoiceRows.map((r) => ({
+    storeName: r.store_name,
+    supplierName: r.supplier_name,
+    productName: r.product_name,
+  }));
+
+  const requireInvoicesForClosure = process.env.REQUIRE_INVOICES_FOR_CLOSURE === "true";
+
+  const { canClose, missingStores, missingProducts, missingInvoices } = validateCycleClosureReadinessStoreFirst({
     stores,
     storeClosures,
     purchasedProductIds,
     globallyAllocatedProductIds,
     catalogMap: simpleCatalogMap,
+    unlinkedInvoiceDestinations: unlinkedDestinations,
+    requireInvoicesForClosure,
   });
 
   const closure: BuyerCycleClosureSummary = {
@@ -1242,6 +1356,7 @@ export async function readBuyerAllocationWorkspace(
     totalAllocatedProducts: globallyAllocatedProductIds.size,
     missingProducts,
     missingStores,
+    missingInvoices,
     canClose,
   };
 
@@ -1260,6 +1375,7 @@ export async function readBuyerAllocationWorkspace(
     storeSummary,
     storeClosures,
     supplierStoreReviews,
+    invoicesByStoreSupplier,
     loadedAt: new Date().toISOString(),
   };
 }
@@ -2160,6 +2276,53 @@ export async function closeBuyerCycle(
       const invalidList = invalidAllocatedRows.map((p) => `[${p.erp_code}] ${p.name}`).join(", ");
       throw new AllocationValidationError(
         `Não é possível fechar o ciclo. Há produto(s) com pedido das lojas não marcado(s) como comprado(s) nos custos que possuem destinação ativa: ${invalidList}. Zere a destinação ou marque como comprado nos custos.`,
+      );
+    }
+
+    // 3.2 Validação de Notas Fiscais (Fase 4):
+    // Identifica destinações positivas sem nota fiscal vinculada
+    let unlinkedInvoiceRows: Array<{
+      store_name: string;
+      supplier_name: string;
+      erp_code: number;
+      product_name: string;
+    }> = [];
+    try {
+      unlinkedInvoiceRows = await tx`
+        SELECT
+          st.name AS store_name,
+          sup.corporate_name AS supplier_name,
+          p.erp_code,
+          p.name AS product_name
+        FROM purchase_cycle_product_allocations a
+        JOIN stores st ON st.id = a.store_id
+        JOIN suppliers sup ON sup.id = a.supplier_id
+        JOIN products p ON p.id = a.product_id
+        WHERE a.purchase_cycle_date = ${cycleDate}::date
+          AND a.destined_quantity > 0
+          AND NOT EXISTS (
+            SELECT 1
+            FROM purchase_cycle_invoices inv
+            JOIN purchase_cycle_invoice_items item ON item.invoice_id = inv.id
+            WHERE inv.purchase_cycle_date = a.purchase_cycle_date
+              AND inv.store_id = a.store_id
+              AND inv.supplier_id = a.supplier_id
+              AND item.product_id = a.product_id
+          )
+      `;
+    } catch {
+      unlinkedInvoiceRows = [];
+    }
+
+    const requireInvoicesForClosure = process.env.REQUIRE_INVOICES_FOR_CLOSURE === "true";
+    if (unlinkedInvoiceRows.length > 0 && requireInvoicesForClosure) {
+      const sample = unlinkedInvoiceRows
+        .slice(0, 3)
+        .map((r) => `${r.store_name} • ${r.supplier_name}: [${r.erp_code}] ${r.product_name}`)
+        .join("; ");
+      const extra = unlinkedInvoiceRows.length > 3 ? ` e mais ${unlinkedInvoiceRows.length - 3}` : "";
+      throw new AllocationValidationError(
+        `Não é possível fechar o ciclo de compras. Existem ${unlinkedInvoiceRows.length} destinação(ões) positiva(s) sem nota fiscal vinculada: ${sample}${extra}. Registre as notas fiscais antes de fechar o ciclo.`,
       );
     }
 

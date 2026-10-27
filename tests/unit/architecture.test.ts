@@ -22,11 +22,18 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0016", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0017", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 16 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 17 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
+  });
+
+  it("mantém a 0017 aditiva com registro e vinculação de notas fiscais às destinações", async () => {
+    const migration = await readFile("migrations/0017_purchase_cycle_invoices.sql", "utf8");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_invoices");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_invoice_items");
+    expect(migration).toContain("purchase_cycle_invoices_unique");
   });
 
   it("mantém a 0016 aditiva com decisões de fornecedor, revisões e fechamento por loja", async () => {

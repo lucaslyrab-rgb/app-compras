@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { formatTaxId } from "@/modules/suppliers/domain";
@@ -14,6 +15,11 @@ import {
   saveSupplierAllocationsAction,
   setProductSupplierDecisionAction,
 } from "./actions";
+import {
+  registerInvoiceAction,
+  deleteInvoiceAction,
+} from "@/modules/purchasing/invoices/actions";
+import type { InvoiceRecord } from "@/modules/purchasing/invoices/domain";
 import {
   calculateDifference,
   hasPendingStoreAllocation,
@@ -70,6 +76,7 @@ export function BuyerAllocationWorkspace({
     storeSummary,
     storeClosures = {},
     supplierStoreReviews = {},
+    invoicesByStoreSupplier = {},
   } = data;
 
   const isClosed = closure.status === "CLOSED";
@@ -170,6 +177,159 @@ export function BuyerAllocationWorkspace({
 
   const activeSupplier = suppliers.find((s) => s.id === selectedSupplierId);
   const activeSupplierReview = selectedSupplierId ? supplierStoreReviews[selectedSupplierId]?.[activeStoreId] : null;
+
+  // Notas Fiscais do fornecedor selecionado para a loja ativa (Fase 4)
+  const currentSupplierInvoices: InvoiceRecord[] = useMemo(() => {
+    if (!selectedSupplierId || !invoicesByStoreSupplier[activeStoreId]) return [];
+    return invoicesByStoreSupplier[activeStoreId][selectedSupplierId] || [];
+  }, [invoicesByStoreSupplier, activeStoreId, selectedSupplierId]);
+
+  // Modais de Nota Fiscal
+  const [showRegisterInvoiceModal, setShowRegisterInvoiceModal] = useState(false);
+  const [showViewInvoicesModal, setShowViewInvoicesModal] = useState(false);
+  const [viewingPhotoUrl, setViewingPhotoUrl] = useState<string | null>(null);
+
+  // Produtos com destinação positiva na loja ativa para o fornecedor selecionado
+  const destinedProductsForSupplierAndStore = useMemo(() => {
+    return products.filter((p) => {
+      const storeData = p.stores[activeStoreId];
+      return storeData && parseQuantity(storeData.destinedQuantity) > 0;
+    });
+  }, [products, activeStoreId]);
+
+  // Conjunto de IDs de produtos cobertos por ao menos uma nota fiscal para o fornecedor e loja selecionados
+  const coveredProductIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const inv of currentSupplierInvoices) {
+      for (const pid of inv.itemProductIds || []) {
+        ids.add(pid);
+      }
+    }
+    return ids;
+  }, [currentSupplierInvoices]);
+
+  // Produtos destinados que ainda não foram vinculados a nenhuma nota fiscal
+  const unlinkedDestinedProducts = useMemo(() => {
+    return destinedProductsForSupplierAndStore.filter((p) => !coveredProductIds.has(p.productId));
+  }, [destinedProductsForSupplierAndStore, coveredProductIds]);
+
+  // Formulário de registro de nota fiscal
+  const [invoiceNumberInput, setInvoiceNumberInput] = useState("");
+  const [invoiceNotesInput, setInvoiceNotesInput] = useState("");
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [invoicePreviewUrl, setInvoicePreviewUrl] = useState<string | null>(null);
+  const [selectedInvoiceProductIds, setSelectedInvoiceProductIds] = useState<string[]>([]);
+  const [registeringInvoice, setRegisteringInvoice] = useState(false);
+  const [registerInvoiceError, setRegisterInvoiceError] = useState<string | null>(null);
+
+  // Exclusão de nota fiscal
+  const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
+
+  const handleOpenRegisterInvoice = () => {
+    setInvoiceNumberInput("");
+    setInvoiceNotesInput("");
+    setInvoiceFile(null);
+    if (invoicePreviewUrl) URL.revokeObjectURL(invoicePreviewUrl);
+    setInvoicePreviewUrl(null);
+    setRegisterInvoiceError(null);
+    // Prioriza pré-seleção dos produtos ainda pendentes de nota fiscal
+    const initialSelected =
+      unlinkedDestinedProducts.length > 0
+        ? unlinkedDestinedProducts.map((p) => p.productId)
+        : destinedProductsForSupplierAndStore.map((p) => p.productId);
+    setSelectedInvoiceProductIds(initialSelected);
+    setShowRegisterInvoiceModal(true);
+  };
+
+  const handleInvoiceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setRegisterInvoiceError("O tamanho da imagem excede o limite permitido de 10 MB.");
+      return;
+    }
+    if (invoicePreviewUrl) URL.revokeObjectURL(invoicePreviewUrl);
+    setInvoiceFile(file);
+    setInvoicePreviewUrl(URL.createObjectURL(file));
+    setRegisterInvoiceError(null);
+  };
+
+  const handleRemoveInvoiceFile = () => {
+    if (invoicePreviewUrl) URL.revokeObjectURL(invoicePreviewUrl);
+    setInvoiceFile(null);
+    setInvoicePreviewUrl(null);
+  };
+
+  const handleSaveInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSupplierId) return;
+    if (!invoiceNumberInput.trim()) {
+      setRegisterInvoiceError("Número da nota fiscal é obrigatório.");
+      return;
+    }
+    if (!invoiceFile) {
+      setRegisterInvoiceError("A fotografia da nota fiscal é obrigatória.");
+      return;
+    }
+    if (destinedProductsForSupplierAndStore.length === 0) {
+      setRegisterInvoiceError("Não há produtos com destinação positiva para vincular a esta nota.");
+      return;
+    }
+    if (selectedInvoiceProductIds.length === 0) {
+      setRegisterInvoiceError("Selecione ao menos um produto destinado para vincular à nota fiscal.");
+      return;
+    }
+
+    setRegisteringInvoice(true);
+    setRegisterInvoiceError(null);
+
+    const formData = new FormData();
+    formData.append("cycleDate", cycleDate);
+    formData.append("storeId", activeStoreId);
+    formData.append("supplierId", selectedSupplierId);
+    formData.append("invoiceNumber", invoiceNumberInput.trim());
+    if (invoiceNotesInput.trim()) {
+      formData.append("notes", invoiceNotesInput.trim());
+    }
+    formData.append("productIds", JSON.stringify(selectedInvoiceProductIds));
+    formData.append("file", invoiceFile);
+
+    try {
+      const res = await registerInvoiceAction(formData);
+      if (res.status === "success") {
+        setShowRegisterInvoiceModal(false);
+        handleRemoveInvoiceFile();
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        setRegisterInvoiceError(res.message);
+      }
+    } catch {
+      setRegisterInvoiceError("Erro ao registrar a nota fiscal. Tente novamente.");
+    } finally {
+      setRegisteringInvoice(false);
+    }
+  };
+
+  const handleDeleteInvoice = async (invoiceId: string) => {
+    if (!confirm("Deseja realmente excluir esta nota fiscal?")) return;
+    setDeletingInvoiceId(invoiceId);
+    try {
+      const res = await deleteInvoiceAction(invoiceId);
+      if (res.status === "success") {
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        alert(res.message);
+      }
+    } catch {
+      alert("Erro ao excluir nota fiscal.");
+    } finally {
+      setDeletingInvoiceId(null);
+    }
+  };
 
   const unreviewedItemsForSupplier = useMemo(
     () =>
@@ -1221,7 +1381,79 @@ export function BuyerAllocationWorkspace({
                   </span>
                 ) : null}
               </div>
-              <div className="alloc-supplier-actions">
+              <div className="alloc-supplier-actions" style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                {currentSupplierInvoices.length > 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn--secondary btn--sm"
+                    style={{
+                      fontSize: "12px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      backgroundColor: "#f0fdf4",
+                      color: "#166534",
+                      borderColor: "#86efac",
+                      fontWeight: 600,
+                    }}
+                    onClick={() => setShowViewInvoicesModal(true)}
+                    title="Clique para visualizar as fotos das notas registradas"
+                  >
+                    📄 {currentSupplierInvoices.length === 1 ? `NF ${currentSupplierInvoices[0].invoiceNumber}` : `${currentSupplierInvoices.length} Notas`} (Ver fotos)
+                  </button>
+                ) : null}
+
+                {destinedProductsForSupplierAndStore.length > 0 ? (
+                  unlinkedDestinedProducts.length > 0 ? (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        backgroundColor: "#fef3c7",
+                        color: "#92400e",
+                        padding: "4px 8px",
+                        borderRadius: "6px",
+                        border: "1px solid #fde68a",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                      title="Existem produtos destinados deste fornecedor nesta loja sem nota fiscal vinculada"
+                    >
+                      ⚠️ {currentSupplierInvoices.length > 0 ? `${unlinkedDestinedProducts.length} item(ns) sem nota` : `Sem Nota (${destinedProductsForSupplierAndStore.length})`}
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        backgroundColor: "#f0fdf4",
+                        color: "#166534",
+                        padding: "4px 8px",
+                        borderRadius: "6px",
+                        border: "1px solid #bbf7d0",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                      title="Todos os produtos destinados deste fornecedor nesta loja possuem nota fiscal vinculada"
+                    >
+                      ✓ 100% com nota
+                    </span>
+                  )
+                ) : null}
+
+                {!isClosed ? (
+                  <button
+                    type="button"
+                    className="btn btn--secondary btn--sm"
+                    style={{ fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                    onClick={handleOpenRegisterInvoice}
+                  >
+                    {currentSupplierInvoices.length > 0 ? "+ Adicionar NF" : "📄 Registrar Nota"}
+                  </button>
+                ) : null}
+
                 <Link
                   href={`/comprador/fornecedores/${selectedSupplier.id}/faturamento`}
                   className="alloc-billing-link"
@@ -1242,6 +1474,72 @@ export function BuyerAllocationWorkspace({
                 <span className="alloc-meta-item" style={{ color: "#166534", backgroundColor: "#dcfce7", padding: "2px 8px", borderRadius: "9999px", fontWeight: 600 }}>
                   ✓ Conferência concluída para {activeStore.name.replace("MultiShow ", "")}
                 </span>
+              ) : null}
+              {destinedProductsForSupplierAndStore.length > 0 ? (
+                currentSupplierInvoices.length > 0 ? (
+                  unlinkedDestinedProducts.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowViewInvoicesModal(true)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      <span
+                        className="alloc-meta-item"
+                        style={{
+                          color: "#b45309",
+                          backgroundColor: "#fef3c7",
+                          padding: "2px 8px",
+                          borderRadius: "9999px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        ⚠️ {unlinkedDestinedProducts.length} de {destinedProductsForSupplierAndStore.length} item(ns) sem nota
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowViewInvoicesModal(true)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      <span
+                        className="alloc-meta-item"
+                        style={{
+                          color: "#15803d",
+                          backgroundColor: "#dcfce7",
+                          padding: "2px 8px",
+                          borderRadius: "9999px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        ✓ Todas destinações com nota
+                      </span>
+                    </button>
+                  )
+                ) : (
+                  <span
+                    className="alloc-meta-item"
+                    style={{
+                      color: "#b45309",
+                      backgroundColor: "#fef3c7",
+                      padding: "2px 8px",
+                      borderRadius: "9999px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    ⚠️ Destinação sem nota fiscal vinculada
+                  </span>
+                )
               ) : null}
               <span className="alloc-meta-item alloc-meta-item--highlight">
                 <strong>Destinado em {activeStore.name.replace("MultiShow ", "")}:</strong>{" "}
@@ -1337,6 +1635,35 @@ export function BuyerAllocationWorkspace({
                           </span>
                         </div>
                         <div className="alloc-badges">
+                          {hasDestinedInActiveStore ? (
+                            coveredProductIds.has(prod.productId) ? (
+                              <span
+                                className="alloc-badge"
+                                style={{
+                                  backgroundColor: "#dcfce7",
+                                  color: "#166534",
+                                  border: "1px solid #86efac",
+                                  fontWeight: "600",
+                                }}
+                                title="Produto com nota fiscal vinculada"
+                              >
+                                ✓ Com Nota
+                              </span>
+                            ) : (
+                              <span
+                                className="alloc-badge"
+                                style={{
+                                  backgroundColor: "#fef3c7",
+                                  color: "#92400e",
+                                  border: "1px solid #fde68a",
+                                  fontWeight: "600",
+                                }}
+                                title="Destinação positiva sem nota fiscal vinculada"
+                              >
+                                ⚠️ Sem Nota
+                              </span>
+                            )
+                          ) : null}
                           {isUnpurchasedWithOrders ? (
                             <span
                               className="alloc-badge"
@@ -1843,11 +2170,54 @@ export function BuyerAllocationWorkspace({
                       </ul>
                     </div>
                   ) : null}
+                  {closure.missingInvoices && closure.missingInvoices.length > 0 ? (
+                    <div style={{ marginTop: "8px" }}>
+                      <p style={{ margin: "2px 0 6px 0", fontSize: "12px", fontWeight: "700", color: "#991b1b" }}>
+                        Destinações positivas sem nota fiscal vinculada ({closure.missingInvoices.length}):
+                      </p>
+                      <ul
+                        style={{
+                          margin: 0,
+                          paddingLeft: "18px",
+                          fontSize: "12px",
+                          color: "#7f1d1d",
+                          maxHeight: "140px",
+                          overflowY: "auto",
+                        }}
+                      >
+                        {closure.missingInvoices.map((inv, idx) => (
+                          <li key={idx} style={{ marginBottom: "2px" }}>
+                            <strong>{inv.storeName}</strong> • {inv.supplierName}: {inv.productName}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
-                <p style={{ color: "#166534", fontWeight: "600" }}>
-                  ✓ Todas as lojas ({stores.length}) foram conferidas e finalizadas sem pendências, e todos os produtos comprados possuem destinação atribuída.
-                </p>
+                <>
+                  <p style={{ color: "#166534", fontWeight: "600" }}>
+                    ✓ Todas as lojas ({stores.length}) foram conferidas e finalizadas sem pendências, e todos os produtos comprados possuem destinação atribuída.
+                  </p>
+                  {closure.missingInvoices && closure.missingInvoices.length > 0 ? (
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        padding: "8px 12px",
+                        backgroundColor: "#fef3c7",
+                        borderRadius: "6px",
+                        border: "1px solid #fde68a",
+                      }}
+                    >
+                      <p style={{ margin: "0 0 4px 0", fontSize: "12px", fontWeight: "700", color: "#92400e" }}>
+                        ℹ️ Fase de homologação de notas fiscais:
+                      </p>
+                      <p style={{ margin: 0, fontSize: "12px", color: "#78350f" }}>
+                        Existem {closure.missingInvoices.length} destinação(ões) positiva(s) sem nota fiscal vinculada. O fechamento é permitido nesta etapa de transição, mas recomenda-se registrar as notas antes de finalizar.
+                      </p>
+                    </div>
+                  ) : null}
+                </>
               )}
 
               {closeError ? (
@@ -2763,6 +3133,485 @@ export function BuyerAllocationWorkspace({
                 </button>
               </footer>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL: REGISTRAR NOTA FISCAL (FASE 4) */}
+      {showRegisterInvoiceModal ? (
+        <div className="alloc-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="alloc-modal" style={{ maxWidth: "480px" }}>
+            <header className="alloc-modal__header">
+              <h3>📄 Registrar Nota Fiscal</h3>
+              <button
+                type="button"
+                className="alloc-modal__close"
+                onClick={() => {
+                  setShowRegisterInvoiceModal(false);
+                  handleRemoveInvoiceFile();
+                }}
+                aria-label="Fechar"
+              >
+                ✕
+              </button>
+            </header>
+
+            <form onSubmit={handleSaveInvoice}>
+              <div className="alloc-modal__body" style={{ padding: "16px 20px" }}>
+                <div style={{ backgroundColor: "#f8fafc", padding: "10px 12px", borderRadius: "6px", marginBottom: "14px", fontSize: "13px" }}>
+                  <div><strong>Loja:</strong> {activeStore.name}</div>
+                  <div><strong>Fornecedor:</strong> {selectedSupplier?.corporateName}</div>
+                  <div><strong>Ciclo:</strong> {cycleDate}</div>
+                </div>
+
+                {registerInvoiceError ? (
+                  <div className="alloc-banner alloc-banner--closed" style={{ backgroundColor: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca", marginBottom: "12px", fontSize: "13px", padding: "8px 12px" }}>
+                    ⚠️ {registerInvoiceError}
+                  </div>
+                ) : null}
+
+                <div style={{ marginBottom: "14px" }}>
+                  <label htmlFor="invoice-number-input" style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>
+                    Número da Nota Fiscal <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <input
+                    id="invoice-number-input"
+                    type="text"
+                    required
+                    value={invoiceNumberInput}
+                    onChange={(e) => setInvoiceNumberInput(e.target.value)}
+                    placeholder="Ex: 12345"
+                    className="alloc-qty-input"
+                    style={{ width: "100%", padding: "8px 12px", fontSize: "14px", borderRadius: "6px", border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                  />
+                </div>
+
+                {/* VINCULAÇÃO EXPLÍCITA AOS PRODUTOS DESTINADOS (FASE 4) */}
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px" }}>
+                    Produtos Destinados Abrangidos por esta Nota <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  {destinedProductsForSupplierAndStore.length === 0 ? (
+                    <div style={{ padding: "8px 12px", backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: "6px", color: "#92400e", fontSize: "12px" }}>
+                      ⚠️ Não há produtos com destinação positiva para este fornecedor nesta loja. Destine ao menos um produto antes de cadastrar a nota fiscal.
+                    </div>
+                  ) : (
+                    <div style={{ maxHeight: "140px", overflowY: "auto", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "6px 8px", backgroundColor: "#ffffff" }}>
+                      {destinedProductsForSupplierAndStore.map((p) => {
+                        const isChecked = selectedInvoiceProductIds.includes(p.productId);
+                        const storeData = p.stores[activeStoreId];
+                        return (
+                          <label
+                            key={p.productId}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              padding: "4px 6px",
+                              fontSize: "13px",
+                              cursor: "pointer",
+                              borderRadius: "4px",
+                              backgroundColor: isChecked ? "#f0fdf4" : "transparent",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedInvoiceProductIds((prev) => [...prev, p.productId]);
+                                } else {
+                                  setSelectedInvoiceProductIds((prev) => prev.filter((id) => id !== p.productId));
+                                }
+                              }}
+                            />
+                            <span>
+                              <strong>[{p.erpCode}] {p.productName}</strong> — {storeData.destinedQuantity} {p.purchaseFormat}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>
+                    Fotografia da Nota <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+
+                  {!invoiceFile ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                      {/* Opção 1: Câmera direta do celular */}
+                      <label
+                        htmlFor="invoice-file-camera"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "16px 8px",
+                          border: "2px dashed #0284c7",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          backgroundColor: "#f0f9ff",
+                          textAlign: "center",
+                        }}
+                      >
+                        <span style={{ fontSize: "28px", marginBottom: "4px" }}>📸</span>
+                        <strong style={{ fontSize: "13px", color: "#0369a1" }}>Tirar Foto (Câmera)</strong>
+                        <span style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>Abre a câmera do celular</span>
+                      </label>
+                      <input
+                        id="invoice-file-camera"
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        style={{ display: "none" }}
+                        onChange={handleInvoiceFileChange}
+                      />
+
+                      {/* Opção 2: Escolher da galeria / arquivos */}
+                      <label
+                        htmlFor="invoice-file-gallery"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "16px 8px",
+                          border: "2px dashed #cbd5e1",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          backgroundColor: "#f8fafc",
+                          textAlign: "center",
+                        }}
+                      >
+                        <span style={{ fontSize: "28px", marginBottom: "4px" }}>📁</span>
+                        <strong style={{ fontSize: "13px", color: "#334155" }}>Galeria / Arquivo</strong>
+                        <span style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>Seleciona imagem existente</span>
+                      </label>
+                      <input
+                        id="invoice-file-gallery"
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={handleInvoiceFileChange}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", padding: "10px", backgroundColor: "#f8fafc" }}>
+                      {invoicePreviewUrl ? (
+                        <div style={{ textAlign: "center", marginBottom: "8px" }}>
+                          <Image
+                            src={invoicePreviewUrl}
+                            alt="Prévia da Nota Fiscal"
+                            width={1600}
+                            height={1600}
+                            unoptimized
+                            style={{ width: "auto", height: "auto", maxHeight: "200px", maxWidth: "100%", objectFit: "contain", borderRadius: "4px" }}
+                          />
+                        </div>
+                      ) : null}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "12px", color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "200px" }}>
+                          {invoiceFile.name} ({(invoiceFile.size / 1024).toFixed(0)} KB)
+                        </span>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <label
+                            htmlFor="invoice-file-replace"
+                            className="btn btn--secondary btn--sm"
+                            style={{ cursor: "pointer", fontSize: "12px", padding: "4px 8px" }}
+                          >
+                            Trocar Foto
+                          </label>
+                          <input
+                            id="invoice-file-replace"
+                            type="file"
+                            accept="image/*"
+                            style={{ display: "none" }}
+                            onChange={handleInvoiceFileChange}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn--danger btn--sm"
+                            style={{ fontSize: "12px", padding: "4px 8px" }}
+                            onClick={handleRemoveInvoiceFile}
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ marginBottom: "10px" }}>
+                  <label htmlFor="invoice-notes-input" style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>
+                    Observações (opcional)
+                  </label>
+                  <textarea
+                    id="invoice-notes-input"
+                    value={invoiceNotesInput}
+                    onChange={(e) => setInvoiceNotesInput(e.target.value)}
+                    placeholder="Ex: Primeira remessa da manhã"
+                    rows={2}
+                    style={{ width: "100%", padding: "8px 12px", fontSize: "13px", borderRadius: "6px", border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                  />
+                </div>
+              </div>
+
+              <footer className="alloc-modal__footer" style={{ display: "flex", justifyContent: "flex-end", gap: "8px", padding: "12px 20px" }}>
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  disabled={registeringInvoice}
+                  onClick={() => {
+                    setShowRegisterInvoiceModal(false);
+                    handleRemoveInvoiceFile();
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn--primary"
+                  disabled={
+                    registeringInvoice ||
+                    !invoiceNumberInput.trim() ||
+                    !invoiceFile ||
+                    destinedProductsForSupplierAndStore.length === 0 ||
+                    selectedInvoiceProductIds.length === 0
+                  }
+                >
+                  {registeringInvoice ? "Salvando Nota..." : "Salvar Nota Fiscal"}
+                </button>
+              </footer>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL: VISUALIZAR NOTAS FISCAIS DA COMBINAÇÃO (FASE 4) */}
+      {showViewInvoicesModal ? (
+        <div className="alloc-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="alloc-modal" style={{ maxWidth: "560px" }}>
+            <header className="alloc-modal__header">
+              <h3>📄 Notas Fiscais Registradas</h3>
+              <button
+                type="button"
+                className="alloc-modal__close"
+                onClick={() => setShowViewInvoicesModal(false)}
+                aria-label="Fechar"
+              >
+                ✕
+              </button>
+            </header>
+
+            <div className="alloc-modal__body" style={{ padding: "16px 20px" }}>
+              <div style={{ backgroundColor: "#f8fafc", padding: "10px 12px", borderRadius: "6px", marginBottom: "14px", fontSize: "13px" }}>
+                <div><strong>Loja:</strong> {activeStore.name}</div>
+                <div><strong>Fornecedor:</strong> {selectedSupplier?.corporateName}</div>
+                <div><strong>Ciclo:</strong> {cycleDate}</div>
+              </div>
+
+              {currentSupplierInvoices.length === 0 ? (
+                <p style={{ textAlign: "center", color: "#64748b", padding: "20px" }}>
+                  Nenhuma nota fiscal registrada para este fornecedor nesta loja.
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {currentSupplierInvoices.map((inv) => (
+                    <div
+                      key={inv.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "12px",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "8px",
+                        backgroundColor: "#ffffff",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div
+                          style={{
+                            width: "56px",
+                            height: "56px",
+                            borderRadius: "6px",
+                            overflow: "hidden",
+                            backgroundColor: "#f1f5f9",
+                            cursor: "pointer",
+                            flexShrink: 0,
+                            border: "1px solid #cbd5e1",
+                          }}
+                          onClick={() => setViewingPhotoUrl(`/api/invoices/${inv.id}/image`)}
+                          title="Clique para ver a foto ampliada"
+                        >
+                          <Image
+                            src={`/api/invoices/${inv.id}/image`}
+                            alt={`NF ${inv.invoiceNumber}`}
+                            width={56}
+                            height={56}
+                            unoptimized
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: "15px", color: "#0f172a" }}>
+                            NF {inv.invoiceNumber}
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#64748b" }}>
+                            {(inv.fileSizeBytes / 1024).toFixed(0)} KB • Registrada em {new Date(inv.createdAt).toLocaleString("pt-BR")}
+                          </div>
+                          {inv.itemProductIds && inv.itemProductIds.length > 0 ? (
+                            <div style={{ fontSize: "12px", color: "#0369a1", marginTop: "3px" }}>
+                              <strong>Produtos vinculados:</strong>{" "}
+                              {inv.itemProductIds
+                                .map((pid) => products.find((p) => p.productId === pid)?.productName || pid)
+                                .join(", ")}
+                            </div>
+                          ) : null}
+                          {inv.notes ? (
+                            <div style={{ fontSize: "12px", color: "#334155", marginTop: "2px" }}>
+                              <em>{inv.notes}</em>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          className="btn btn--secondary btn--sm"
+                          style={{ fontSize: "12px" }}
+                          onClick={() => setViewingPhotoUrl(`/api/invoices/${inv.id}/image`)}
+                        >
+                          Ver Foto
+                        </button>
+                        {!isClosed ? (
+                          <button
+                            type="button"
+                            className="btn btn--danger btn--sm"
+                            style={{ fontSize: "12px" }}
+                            disabled={deletingInvoiceId === inv.id}
+                            onClick={() => handleDeleteInvoice(inv.id)}
+                          >
+                            {deletingInvoiceId === inv.id ? "Excluindo..." : "Excluir"}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                  {unlinkedDestinedProducts.length > 0 ? (
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        padding: "10px 12px",
+                        backgroundColor: "#fffbeb",
+                        border: "1px solid #fde68a",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                      }}
+                    >
+                      <strong style={{ color: "#92400e" }}>
+                        ⚠️ Produtos destinados ainda sem nota fiscal ({unlinkedDestinedProducts.length}):
+                      </strong>
+                      <div style={{ color: "#78350f", marginTop: "4px" }}>
+                        {unlinkedDestinedProducts.map((p) => p.productName).join(", ")}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+
+            <footer className="alloc-modal__footer" style={{ display: "flex", justifyContent: "space-between", padding: "12px 20px" }}>
+              {!isClosed ? (
+                <button
+                  type="button"
+                  className="btn btn--secondary btn--sm"
+                  onClick={() => {
+                    setShowViewInvoicesModal(false);
+                    handleOpenRegisterInvoice();
+                  }}
+                >
+                  + Adicionar Outra Nota
+                </button>
+              ) : <div />}
+              <button
+                type="button"
+                className="btn btn--primary btn--sm"
+                onClick={() => setShowViewInvoicesModal(false)}
+              >
+                Fechar
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
+
+      {/* LIGHTBOX: FOTO AMPLIADA DA NOTA FISCAL */}
+      {viewingPhotoUrl ? (
+        <div
+          className="alloc-modal-backdrop"
+          style={{ zIndex: 1100, backgroundColor: "rgba(0, 0, 0, 0.85)" }}
+          onClick={() => setViewingPhotoUrl(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            style={{
+              position: "relative",
+              maxWidth: "92vw",
+              maxHeight: "92vh",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              style={{
+                position: "absolute",
+                top: "-36px",
+                right: "0",
+                background: "white",
+                border: "none",
+                borderRadius: "50%",
+                width: "32px",
+                height: "32px",
+                fontSize: "16px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onClick={() => setViewingPhotoUrl(null)}
+              aria-label="Fechar Foto"
+            >
+              ✕
+            </button>
+            <Image
+              src={viewingPhotoUrl}
+              alt="Fotografia da Nota Fiscal"
+              width={1600}
+              height={1600}
+              unoptimized
+              style={{
+                width: "auto",
+                height: "auto",
+                maxWidth: "100%",
+                maxHeight: "85vh",
+                objectFit: "contain",
+                borderRadius: "8px",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
+              }}
+            />
           </div>
         </div>
       ) : null}
