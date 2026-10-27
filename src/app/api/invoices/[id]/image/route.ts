@@ -58,7 +58,7 @@ export async function GET(
 
     const headers = new Headers();
     headers.set("Content-Type", invoice.contentType || "image/webp");
-    headers.set("Cache-Control", "private, max-age=86400");
+    headers.set("Cache-Control", "private, no-store");
 
     if (s3Response.ContentLength) {
       headers.set("Content-Length", String(s3Response.ContentLength));
