@@ -6,7 +6,7 @@ import {
 } from "@/lib/s3-invoices";
 import { log } from "@/shared/logging";
 import { validateInvoiceNumber, type InvoiceRecord } from "./domain";
-import { createInvoiceRecord, deleteInvoiceRecord, getInvoiceById } from "./repository";
+import { createInvoiceRecord, deleteInvoiceRecord } from "./repository";
 
 export async function registerInvoiceService(data: {
   cycleDate: string;
@@ -30,7 +30,7 @@ export async function registerInvoiceService(data: {
   await uploadInvoiceToS3(s3Key, processed.buffer);
 
   try {
-    // 4. Persiste no banco de dados
+    // 4. Persiste no banco de dados com auditoria atômica e vinculação validada dos produtos destinados
     const invoice = await createInvoiceRecord({
       cycleDate: data.cycleDate,
       storeId: data.storeId,
@@ -46,7 +46,7 @@ export async function registerInvoiceService(data: {
 
     return invoice;
   } catch (dbError) {
-    // 5. Em caso de falha no banco (ex: nota duplicada), remove imagem órfã do S3
+    // 5. Em caso de falha no banco (ex: ciclo fechado, nota duplicada, validação de produtos), remove imagem órfã do S3
     try {
       await deleteInvoiceFromS3(s3Key);
     } catch (cleanupError) {
@@ -60,23 +60,24 @@ export async function registerInvoiceService(data: {
   }
 }
 
-export async function deleteInvoiceService(invoiceId: string): Promise<boolean> {
-  const existing = await getInvoiceById(invoiceId);
-  if (!existing) return false;
+export async function deleteInvoiceService(
+  invoiceId: string,
+  actorId: string | null
+): Promise<boolean> {
+  // 1. Executa a exclusão com auditoria no banco dentro de transação com verificação de ciclo fechado
+  const deleted = await deleteInvoiceRecord(invoiceId, actorId);
+  if (!deleted) return false;
 
-  const deleted = await deleteInvoiceRecord(invoiceId);
-  if (deleted) {
-    try {
-      await deleteInvoiceFromS3(deleted.imageS3Key);
-    } catch (s3Error) {
-      log.error({
-        event: "INVOICE_S3_DELETE_ERROR",
-        s3Key: deleted.imageS3Key,
-        error: s3Error instanceof Error ? s3Error.message : String(s3Error),
-      });
-    }
-    return true;
+  // 2. Somente após a confirmação transacional no banco e auditoria, exclui o objeto no S3
+  try {
+    await deleteInvoiceFromS3(deleted.imageS3Key);
+  } catch (s3Error) {
+    log.error({
+      event: "INVOICE_S3_DELETE_ERROR",
+      s3Key: deleted.imageS3Key,
+      error: s3Error instanceof Error ? s3Error.message : String(s3Error),
+    });
   }
 
-  return false;
+  return true;
 }

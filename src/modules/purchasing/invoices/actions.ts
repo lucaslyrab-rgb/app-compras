@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requirePrincipal } from "@/modules/identity/session";
-import { recordAudit } from "@/modules/identity/audit";
-import { InvoiceValidationError } from "./domain";
+import { assertPermission } from "@/modules/identity";
+import { MAX_INVOICE_BYTES } from "@/lib/s3-invoices";
+import { CycleClosedError, InvoiceValidationError } from "./domain";
 import { registerInvoiceService, deleteInvoiceService } from "./service";
 
 const registerInvoiceSchema = z.object({
@@ -18,8 +19,10 @@ const registerInvoiceSchema = z.object({
 
 export async function registerInvoiceAction(formData: FormData) {
   const principal = await requirePrincipal();
-  if (principal.role !== "COMPRADOR" && principal.role !== "GESTOR") {
-    return { status: "error" as const, message: "Acesso não autorizado para registro de notas fiscais." };
+  try {
+    assertPermission(principal, "compras:destinacao");
+  } catch {
+    return { status: "error" as const, message: "Acesso não autorizado para operação de notas fiscais na destinação." };
   }
 
   const cycleDate = formData.get("cycleDate") as string;
@@ -60,6 +63,10 @@ export async function registerInvoiceAction(formData: FormData) {
     return { status: "error" as const, message: "A fotografia da nota fiscal é obrigatória." };
   }
 
+  if (file.size > MAX_INVOICE_BYTES) {
+    return { status: "error" as const, message: "O tamanho da imagem excede o limite permitido de 10 MB." };
+  }
+
   try {
     const arrayBuffer = await file.arrayBuffer();
     const imageBuffer = Buffer.from(arrayBuffer);
@@ -75,24 +82,10 @@ export async function registerInvoiceAction(formData: FormData) {
       productIds: parsed.data.productIds,
     });
 
-    await recordAudit({
-      actorId: principal.userId,
-      action: "INVOICE_REGISTERED",
-      entityType: "purchase_cycle_invoice",
-      entityId: invoice.id,
-      metadata: {
-        cycleDate: parsed.data.cycleDate,
-        storeId: parsed.data.storeId,
-        supplierId: parsed.data.supplierId,
-        invoiceNumber: parsed.data.invoiceNumber,
-        fileSizeBytes: invoice.fileSizeBytes,
-      },
-    });
-
     revalidatePath("/comprador/destinacao");
     return { status: "success" as const, invoice };
   } catch (err: unknown) {
-    if (err instanceof InvoiceValidationError) {
+    if (err instanceof InvoiceValidationError || err instanceof CycleClosedError) {
       return { status: "error" as const, message: err.message };
     }
     const message = err instanceof Error ? err.message : String(err);
@@ -104,15 +97,17 @@ export async function registerInvoiceAction(formData: FormData) {
     }
     return {
       status: "error" as const,
-      message: "Não foi possível registrar a nota fiscal. Tente novamente.",
+      message: message || "Não foi possível registrar a nota fiscal. Tente novamente.",
     };
   }
 }
 
 export async function deleteInvoiceAction(invoiceId: string) {
   const principal = await requirePrincipal();
-  if (principal.role !== "COMPRADOR" && principal.role !== "GESTOR") {
-    return { status: "error" as const, message: "Acesso não autorizado para remoção de notas fiscais." };
+  try {
+    assertPermission(principal, "compras:destinacao");
+  } catch {
+    return { status: "error" as const, message: "Acesso não autorizado para remoção de notas fiscais na destinação." };
   }
 
   if (!invoiceId || !z.string().uuid().safeParse(invoiceId).success) {
@@ -120,25 +115,21 @@ export async function deleteInvoiceAction(invoiceId: string) {
   }
 
   try {
-    const success = await deleteInvoiceService(invoiceId);
+    const success = await deleteInvoiceService(invoiceId, principal.userId);
     if (!success) {
       return { status: "error" as const, message: "Nota fiscal não encontrada para remoção." };
     }
 
-    await recordAudit({
-      actorId: principal.userId,
-      action: "INVOICE_DELETED",
-      entityType: "purchase_cycle_invoice",
-      entityId: invoiceId,
-      metadata: {},
-    });
-
     revalidatePath("/comprador/destinacao");
     return { status: "success" as const };
-  } catch (err) {
+  } catch (err: unknown) {
+    if (err instanceof CycleClosedError || err instanceof InvoiceValidationError) {
+      return { status: "error" as const, message: err.message };
+    }
+    const message = err instanceof Error ? err.message : String(err);
     return {
       status: "error" as const,
-      message: "Não foi possível remover a nota fiscal. Tente novamente.",
+      message: message || "Não foi possível remover a nota fiscal. Tente novamente.",
     };
   }
 }

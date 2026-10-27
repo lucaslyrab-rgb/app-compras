@@ -180,6 +180,7 @@ export type BuyerCycleClosureSummary = {
   totalAllocatedProducts: number;
   missingProducts: Array<{ id: string; erpCode: number; name: string }>;
   missingStores?: Array<{ id: string; name: string; reason: string }>;
+  missingInvoices?: Array<{ storeName: string; supplierName: string; productName: string }>;
   canClose: boolean;
 };
 
@@ -613,10 +614,13 @@ export function validateCycleClosureReadinessStoreFirst(params: {
   purchasedProductIds: string[];
   globallyAllocatedProductIds: Set<string>;
   catalogMap: Map<string, { id: string; erpCode: number; name: string }>;
+  unlinkedInvoiceDestinations?: Array<{ storeName: string; supplierName: string; productName: string }>;
+  requireInvoicesForClosure?: boolean;
 }): {
   canClose: boolean;
   missingStores: Array<{ id: string; name: string; reason: string }>;
   missingProducts: Array<{ id: string; erpCode: number; name: string }>;
+  missingInvoices: Array<{ storeName: string; supplierName: string; productName: string }>;
 } {
   const {
     stores,
@@ -624,10 +628,13 @@ export function validateCycleClosureReadinessStoreFirst(params: {
     purchasedProductIds,
     globallyAllocatedProductIds,
     catalogMap,
+    unlinkedInvoiceDestinations = [],
+    requireInvoicesForClosure = false,
   } = params;
 
   const missingStores: Array<{ id: string; name: string; reason: string }> = [];
   const missingProducts: Array<{ id: string; erpCode: number; name: string }> = [];
+  const missingInvoices = unlinkedInvoiceDestinations;
 
   // Regra F2: Um ciclo sem participantes identificadas NÃO pode ser considerado pronto para fechamento
   if (stores.length === 0) {
@@ -641,6 +648,7 @@ export function validateCycleClosureReadinessStoreFirst(params: {
         },
       ],
       missingProducts: [],
+      missingInvoices: [],
     };
   }
 
@@ -674,10 +682,15 @@ export function validateCycleClosureReadinessStoreFirst(params: {
     }
   }
 
+  // 3. Validação de Notas Fiscais (Fase 4):
+  // Se requireInvoicesForClosure estiver ativo, exige que todas as destinações positivas tenham nota vinculada
+  const invoicesBlockClosure = requireInvoicesForClosure && missingInvoices.length > 0;
+
   return {
-    canClose: missingStores.length === 0 && missingProducts.length === 0,
+    canClose: missingStores.length === 0 && missingProducts.length === 0 && !invoicesBlockClosure,
     missingStores,
     missingProducts,
+    missingInvoices,
   };
 }
 

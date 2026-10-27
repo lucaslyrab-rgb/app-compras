@@ -7,12 +7,11 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import sharp, { type Metadata } from "sharp";
+import { InvoiceValidationError } from "@/modules/purchasing/invoices/domain";
+
+export { InvoiceValidationError };
 
 export const MAX_INVOICE_BYTES = 10 * 1024 * 1024; // 10 MB
-
-export class InvoiceValidationError extends Error {
-  override name = "InvoiceValidationError";
-}
 
 let s3ClientInstance: S3Client | null = null;
 

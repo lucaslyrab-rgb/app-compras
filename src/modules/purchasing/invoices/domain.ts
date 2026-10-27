@@ -24,6 +24,16 @@ export interface SupplierInvoiceSummary {
 
 export class InvoiceValidationError extends Error {
   override name = "InvoiceValidationError";
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export class CycleClosedError extends Error {
+  override name = "CycleClosedError";
+  constructor(message: string) {
+    super(message);
+  }
 }
 
 export function validateInvoiceNumber(raw: unknown): string {

@@ -1,5 +1,10 @@
 import { database } from "@/db/client";
-import type { InvoiceRecord } from "./domain";
+import { BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE } from "../allocations/domain";
+import {
+  CycleClosedError,
+  InvoiceValidationError,
+  type InvoiceRecord,
+} from "./domain";
 
 export async function listInvoicesForCycleAndStore(
   cycleDate: string,
@@ -157,6 +162,71 @@ export async function createInvoiceRecord(data: {
   const { sql } = database();
 
   return await sql.begin(async (tx) => {
+    // 1. Lock transacional serializado por ciclo para evitar concorrência com fechamento
+    await tx`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${data.cycleDate}::text))`;
+
+    // 2. Valida se o ciclo geral de compras está fechado
+    const [buyerClosure] = await tx<{ status: string }[]>`
+      SELECT status
+      FROM purchase_cycle_buyer_closures
+      WHERE purchase_cycle_date = ${data.cycleDate}::date
+    `;
+    if (buyerClosure && buyerClosure.status === "CLOSED") {
+      throw new CycleClosedError(
+        "O ciclo de compras está fechado. Não é permitido registrar notas fiscais neste ciclo."
+      );
+    }
+
+    // 3. Valida se a conferência desta loja está finalizada
+    const [storeClosure] = await tx<{ status: string }[]>`
+      SELECT status
+      FROM purchase_cycle_store_closures
+      WHERE purchase_cycle_date = ${data.cycleDate}::date
+        AND store_id = ${data.storeId}::uuid
+        AND is_current = true
+    `;
+    if (storeClosure && storeClosure.status === "CLOSED") {
+      throw new CycleClosedError(
+        "A conferência desta loja já foi finalizada neste ciclo. Reabra a conferência para realizar alterações."
+      );
+    }
+
+    // 4. Busca os produtos efetivamente destinados (destined_quantity > 0) para esta loja e fornecedor
+    const destinedRows = await tx<{ product_id: string; destined_quantity: string }[]>`
+      SELECT product_id, destined_quantity::text
+      FROM purchase_cycle_product_allocations
+      WHERE purchase_cycle_date = ${data.cycleDate}::date
+        AND store_id = ${data.storeId}::uuid
+        AND supplier_id = ${data.supplierId}::uuid
+        AND destined_quantity > 0
+    `;
+
+    if (destinedRows.length === 0) {
+      throw new InvoiceValidationError(
+        "Não é possível vincular nota fiscal: não há produtos com destinação positiva para esta loja e fornecedor neste ciclo."
+      );
+    }
+
+    const destinedProductSet = new Set(destinedRows.map((r) => r.product_id));
+
+    // Determina quais produtos serão vinculados
+    let targetProductIds: string[];
+    if (data.productIds && data.productIds.length > 0) {
+      // Valida estritamente se todos os produtos enviados pertencem às destinações válidas
+      for (const pid of data.productIds) {
+        if (!destinedProductSet.has(pid)) {
+          throw new InvoiceValidationError(
+            "Um ou mais produtos selecionados não possuem destinação positiva para esta loja e fornecedor."
+          );
+        }
+      }
+      targetProductIds = data.productIds;
+    } else {
+      // Se não especificado explicitamente, vincula a todos os produtos destinados da combinação
+      targetProductIds = Array.from(destinedProductSet);
+    }
+
+    // 5. Insere a nota fiscal
     const inserted = await tx`
       INSERT INTO purchase_cycle_invoices (
         purchase_cycle_date,
@@ -199,16 +269,38 @@ export async function createInvoiceRecord(data: {
     const invoiceRow = inserted[0];
     const invoiceId = invoiceRow.id as string;
 
-    const productIds = (data.productIds || []).filter(Boolean);
-    if (productIds.length > 0) {
-      for (const prodId of productIds) {
-        await tx`
-          INSERT INTO purchase_cycle_invoice_items (invoice_id, product_id)
-          VALUES (${invoiceId}::uuid, ${prodId}::uuid)
-          ON CONFLICT DO NOTHING
-        `;
-      }
+    // 6. Insere os vínculos de produtos na tabela purchase_cycle_invoice_items
+    for (const prodId of targetProductIds) {
+      await tx`
+        INSERT INTO purchase_cycle_invoice_items (invoice_id, product_id)
+        VALUES (${invoiceId}::uuid, ${prodId}::uuid)
+        ON CONFLICT DO NOTHING
+      `;
     }
+
+    // 7. Grava a auditoria atomicamente na mesma transação
+    await tx`
+      INSERT INTO audit_events (
+        actor_id,
+        action,
+        entity_type,
+        entity_id,
+        metadata
+      ) VALUES (
+        ${data.createdBy ?? null}::uuid,
+        'INVOICE_REGISTERED',
+        'purchase_cycle_invoice',
+        ${invoiceId},
+        ${JSON.stringify({
+          cycleDate: data.cycleDate,
+          storeId: data.storeId,
+          supplierId: data.supplierId,
+          invoiceNumber: data.invoiceNumber,
+          fileSizeBytes: data.fileSizeBytes,
+          productIds: targetProductIds,
+        })}::jsonb
+      )
+    `;
 
     return {
       id: invoiceId,
@@ -223,23 +315,103 @@ export async function createInvoiceRecord(data: {
       createdBy: invoiceRow.created_by as string | null,
       createdAt: invoiceRow.created_at as string,
       updatedAt: invoiceRow.updated_at as string,
-      itemProductIds: productIds,
+      itemProductIds: targetProductIds,
     };
   });
 }
 
 export async function deleteInvoiceRecord(
-  invoiceId: string
+  invoiceId: string,
+  actorId: string | null
 ): Promise<{ id: string; imageS3Key: string } | null> {
   const { sql } = database();
-  const deleted = await sql`
-    DELETE FROM purchase_cycle_invoices
-    WHERE id = ${invoiceId}::uuid
-    RETURNING id, image_s3_key
-  `;
-  if (deleted.length === 0) return null;
-  return {
-    id: deleted[0].id as string,
-    imageS3Key: deleted[0].image_s3_key as string,
-  };
+
+  return await sql.begin(async (tx) => {
+    // 1. Busca os dados da nota
+    const existingRows = await tx<{
+      id: string;
+      purchase_cycle_date: string;
+      store_id: string;
+      supplier_id: string;
+      invoice_number: string;
+      image_s3_key: string;
+    }[]>`
+      SELECT
+        id,
+        purchase_cycle_date::text AS purchase_cycle_date,
+        store_id,
+        supplier_id,
+        invoice_number,
+        image_s3_key
+      FROM purchase_cycle_invoices
+      WHERE id = ${invoiceId}::uuid
+      FOR UPDATE
+    `;
+
+    if (existingRows.length === 0) return null;
+    const existing = existingRows[0];
+
+    // 2. Lock transacional no ciclo
+    await tx`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${existing.purchase_cycle_date}::text))`;
+
+    // 3. Valida se o ciclo geral está fechado
+    const [buyerClosure] = await tx<{ status: string }[]>`
+      SELECT status
+      FROM purchase_cycle_buyer_closures
+      WHERE purchase_cycle_date = ${existing.purchase_cycle_date}::date
+    `;
+    if (buyerClosure && buyerClosure.status === "CLOSED") {
+      throw new CycleClosedError(
+        "O ciclo de compras está fechado. Não é permitido excluir notas fiscais deste ciclo."
+      );
+    }
+
+    // 4. Valida se a conferência da loja está fechada
+    const [storeClosure] = await tx<{ status: string }[]>`
+      SELECT status
+      FROM purchase_cycle_store_closures
+      WHERE purchase_cycle_date = ${existing.purchase_cycle_date}::date
+        AND store_id = ${existing.store_id}::uuid
+        AND is_current = true
+    `;
+    if (storeClosure && storeClosure.status === "CLOSED") {
+      throw new CycleClosedError(
+        "A conferência desta loja já foi finalizada neste ciclo. Reabra a conferência para realizar alterações."
+      );
+    }
+
+    // 5. Exclui a nota (os itens em purchase_cycle_invoice_items são removidos em cascata pela FK)
+    await tx`
+      DELETE FROM purchase_cycle_invoices
+      WHERE id = ${invoiceId}::uuid
+    `;
+
+    // 6. Grava a auditoria atomicamente na mesma transação
+    await tx`
+      INSERT INTO audit_events (
+        actor_id,
+        action,
+        entity_type,
+        entity_id,
+        metadata
+      ) VALUES (
+        ${actorId ?? null}::uuid,
+        'INVOICE_DELETED',
+        'purchase_cycle_invoice',
+        ${invoiceId},
+        ${JSON.stringify({
+          cycleDate: existing.purchase_cycle_date,
+          storeId: existing.store_id,
+          supplierId: existing.supplier_id,
+          invoiceNumber: existing.invoice_number,
+          imageS3Key: existing.image_s3_key,
+        })}::jsonb
+      )
+    `;
+
+    return {
+      id: existing.id,
+      imageS3Key: existing.image_s3_key,
+    };
+  });
 }

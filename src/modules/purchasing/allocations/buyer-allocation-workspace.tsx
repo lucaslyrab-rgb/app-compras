@@ -188,11 +188,20 @@ export function BuyerAllocationWorkspace({
   const [showViewInvoicesModal, setShowViewInvoicesModal] = useState(false);
   const [viewingPhotoUrl, setViewingPhotoUrl] = useState<string | null>(null);
 
+  // Produtos com destinação positiva na loja ativa para o fornecedor selecionado
+  const destinedProductsForSupplierAndStore = useMemo(() => {
+    return products.filter((p) => {
+      const storeData = p.stores[activeStoreId];
+      return storeData && parseQuantity(storeData.destinedQuantity) > 0;
+    });
+  }, [products, activeStoreId]);
+
   // Formulário de registro de nota fiscal
   const [invoiceNumberInput, setInvoiceNumberInput] = useState("");
   const [invoiceNotesInput, setInvoiceNotesInput] = useState("");
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [invoicePreviewUrl, setInvoicePreviewUrl] = useState<string | null>(null);
+  const [selectedInvoiceProductIds, setSelectedInvoiceProductIds] = useState<string[]>([]);
   const [registeringInvoice, setRegisteringInvoice] = useState(false);
   const [registerInvoiceError, setRegisterInvoiceError] = useState<string | null>(null);
 
@@ -206,12 +215,17 @@ export function BuyerAllocationWorkspace({
     if (invoicePreviewUrl) URL.revokeObjectURL(invoicePreviewUrl);
     setInvoicePreviewUrl(null);
     setRegisterInvoiceError(null);
+    setSelectedInvoiceProductIds(destinedProductsForSupplierAndStore.map((p) => p.productId));
     setShowRegisterInvoiceModal(true);
   };
 
   const handleInvoiceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setRegisterInvoiceError("O tamanho da imagem excede o limite permitido de 10 MB.");
+      return;
+    }
     if (invoicePreviewUrl) URL.revokeObjectURL(invoicePreviewUrl);
     setInvoiceFile(file);
     setInvoicePreviewUrl(URL.createObjectURL(file));
@@ -235,6 +249,14 @@ export function BuyerAllocationWorkspace({
       setRegisterInvoiceError("A fotografia da nota fiscal é obrigatória.");
       return;
     }
+    if (destinedProductsForSupplierAndStore.length === 0) {
+      setRegisterInvoiceError("Não há produtos com destinação positiva para vincular a esta nota.");
+      return;
+    }
+    if (selectedInvoiceProductIds.length === 0) {
+      setRegisterInvoiceError("Selecione ao menos um produto destinado para vincular à nota fiscal.");
+      return;
+    }
 
     setRegisteringInvoice(true);
     setRegisterInvoiceError(null);
@@ -247,6 +269,7 @@ export function BuyerAllocationWorkspace({
     if (invoiceNotesInput.trim()) {
       formData.append("notes", invoiceNotesInput.trim());
     }
+    formData.append("productIds", JSON.stringify(selectedInvoiceProductIds));
     formData.append("file", invoiceFile);
 
     try {
@@ -3000,21 +3023,100 @@ export function BuyerAllocationWorkspace({
                   />
                 </div>
 
+                {/* VINCULAÇÃO EXPLÍCITA AOS PRODUTOS DESTINADOS (FASE 4) */}
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px" }}>
+                    Produtos Destinados Abrangidos por esta Nota <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  {destinedProductsForSupplierAndStore.length === 0 ? (
+                    <div style={{ padding: "8px 12px", backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: "6px", color: "#92400e", fontSize: "12px" }}>
+                      ⚠️ Não há produtos com destinação positiva para este fornecedor nesta loja. Destine ao menos um produto antes de cadastrar a nota fiscal.
+                    </div>
+                  ) : (
+                    <div style={{ maxHeight: "140px", overflowY: "auto", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "6px 8px", backgroundColor: "#ffffff" }}>
+                      {destinedProductsForSupplierAndStore.map((p) => {
+                        const isChecked = selectedInvoiceProductIds.includes(p.productId);
+                        const storeData = p.stores[activeStoreId];
+                        return (
+                          <label
+                            key={p.productId}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              padding: "4px 6px",
+                              fontSize: "13px",
+                              cursor: "pointer",
+                              borderRadius: "4px",
+                              backgroundColor: isChecked ? "#f0fdf4" : "transparent",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedInvoiceProductIds((prev) => [...prev, p.productId]);
+                                } else {
+                                  setSelectedInvoiceProductIds((prev) => prev.filter((id) => id !== p.productId));
+                                }
+                              }}
+                            />
+                            <span>
+                              <strong>[{p.erpCode}] {p.productName}</strong> — {storeData.destinedQuantity} {p.purchaseFormat}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ marginBottom: "14px" }}>
                   <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>
                     Fotografia da Nota <span style={{ color: "#dc2626" }}>*</span>
                   </label>
 
                   {!invoiceFile ? (
-                    <div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                      {/* Opção 1: Câmera direta do celular */}
                       <label
-                        htmlFor="invoice-file-input"
+                        htmlFor="invoice-file-camera"
                         style={{
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
                           justifyContent: "center",
-                          padding: "20px",
+                          padding: "16px 8px",
+                          border: "2px dashed #0284c7",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          backgroundColor: "#f0f9ff",
+                          textAlign: "center",
+                        }}
+                      >
+                        <span style={{ fontSize: "28px", marginBottom: "4px" }}>📸</span>
+                        <strong style={{ fontSize: "13px", color: "#0369a1" }}>Tirar Foto (Câmera)</strong>
+                        <span style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>Abre a câmera do celular</span>
+                      </label>
+                      <input
+                        id="invoice-file-camera"
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        style={{ display: "none" }}
+                        onChange={handleInvoiceFileChange}
+                      />
+
+                      {/* Opção 2: Escolher da galeria / arquivos */}
+                      <label
+                        htmlFor="invoice-file-gallery"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "16px 8px",
                           border: "2px dashed #cbd5e1",
                           borderRadius: "8px",
                           cursor: "pointer",
@@ -3022,17 +3124,14 @@ export function BuyerAllocationWorkspace({
                           textAlign: "center",
                         }}
                       >
-                        <span style={{ fontSize: "28px", marginBottom: "4px" }}>📷</span>
-                        <strong style={{ fontSize: "14px", color: "#0284c7" }}>Tirar foto ou anexar imagem</strong>
-                        <span style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
-                          Câmera do celular ou arquivo (JPEG, PNG, WebP até 10MB)
-                        </span>
+                        <span style={{ fontSize: "28px", marginBottom: "4px" }}>📁</span>
+                        <strong style={{ fontSize: "13px", color: "#334155" }}>Galeria / Arquivo</strong>
+                        <span style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>Seleciona imagem existente</span>
                       </label>
                       <input
-                        id="invoice-file-input"
+                        id="invoice-file-gallery"
                         type="file"
                         accept="image/*"
-                        capture="environment"
                         style={{ display: "none" }}
                         onChange={handleInvoiceFileChange}
                       />
@@ -3064,7 +3163,6 @@ export function BuyerAllocationWorkspace({
                             id="invoice-file-replace"
                             type="file"
                             accept="image/*"
-                            capture="environment"
                             style={{ display: "none" }}
                             onChange={handleInvoiceFileChange}
                           />
@@ -3112,7 +3210,13 @@ export function BuyerAllocationWorkspace({
                 <button
                   type="submit"
                   className="btn btn--primary"
-                  disabled={registeringInvoice || !invoiceNumberInput.trim() || !invoiceFile}
+                  disabled={
+                    registeringInvoice ||
+                    !invoiceNumberInput.trim() ||
+                    !invoiceFile ||
+                    destinedProductsForSupplierAndStore.length === 0 ||
+                    selectedInvoiceProductIds.length === 0
+                  }
                 >
                   {registeringInvoice ? "Salvando Nota..." : "Salvar Nota Fiscal"}
                 </button>
