@@ -93,6 +93,9 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
   ) {
     const ws = await readBuyerAllocationWorkspace(principal, cycle, null, storeId);
     const sc = ws.storeClosures[storeId];
+    if (!sc) {
+      throw new Error(`Loja ${storeId} não consta como participante do ciclo ${cycle} no cenário de teste.`);
+    }
     return await closeStoreCycle(principal, {
       cycleDate: cycle,
       storeId,
@@ -834,8 +837,27 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     const cycleDate = "2026-10-25";
     const [store] = await db<{ id: string }[]>`SELECT id FROM stores LIMIT 1`;
 
+    // O ciclo é histórico em relação à criação do banco temporário de CI.
+    // Registra atividade real para tornar a loja participante sem alterar a regra de produção.
+    const [prod] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9025, 'MAMÃO FORMOSA', 'CX', 'KG', 25.00, true)
+      RETURNING id
+    `;
+    const [order] = await db<{ id: string }[]>`
+      INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, submitted_by)
+      VALUES (${cycleDate}::date, ${cycleDate}::date, now(), ${store.id}::uuid, 1, now(), ${buyerPrincipal.userId}::uuid)
+      RETURNING id
+    `;
+    await db`
+      INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+      VALUES (${order.id}::uuid, ${prod.id}::uuid, 0.00, 3.00, 9025, 'MAMÃO FORMOSA', 'CX')
+    `;
+
     // Fecha loja
     await closeStoreWithPreview(buyerPrincipal, cycleDate, store.id);
+    const closedWorkspace = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, null, store.id);
+    expect(closedWorkspace.storeClosures[store.id].status).toBe("CLOSED");
 
     // Reabre conferência da loja informando justificativa
     const reopenResult = await reopenStoreCycle(buyerPrincipal, {
