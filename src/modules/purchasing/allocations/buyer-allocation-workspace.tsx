@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { formatTaxId } from "@/modules/suppliers/domain";
@@ -3302,10 +3303,13 @@ export function BuyerAllocationWorkspace({
                     <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", padding: "10px", backgroundColor: "#f8fafc" }}>
                       {invoicePreviewUrl ? (
                         <div style={{ textAlign: "center", marginBottom: "8px" }}>
-                          <img
+                          <Image
                             src={invoicePreviewUrl}
                             alt="Prévia da Nota Fiscal"
-                            style={{ maxHeight: "200px", maxWidth: "100%", objectFit: "contain", borderRadius: "4px" }}
+                            width={1600}
+                            height={1600}
+                            unoptimized
+                            style={{ width: "auto", height: "auto", maxHeight: "200px", maxWidth: "100%", objectFit: "contain", borderRadius: "4px" }}
                           />
                         </div>
                       ) : null}
@@ -3445,9 +3449,12 @@ export function BuyerAllocationWorkspace({
                           onClick={() => setViewingPhotoUrl(`/api/invoices/${inv.id}/image`)}
                           title="Clique para ver a foto ampliada"
                         >
-                          <img
+                          <Image
                             src={`/api/invoices/${inv.id}/image`}
                             alt={`NF ${inv.invoiceNumber}`}
+                            width={56}
+                            height={56}
+                            unoptimized
                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
                         </div>
@@ -3589,10 +3596,15 @@ export function BuyerAllocationWorkspace({
             >
               ✕
             </button>
-            <img
+            <Image
               src={viewingPhotoUrl}
               alt="Fotografia da Nota Fiscal"
+              width={1600}
+              height={1600}
+              unoptimized
               style={{
+                width: "auto",
+                height: "auto",
                 maxWidth: "100%",
                 maxHeight: "85vh",
                 objectFit: "contain",
