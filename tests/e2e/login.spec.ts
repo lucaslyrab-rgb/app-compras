@@ -42,6 +42,8 @@ test("Loja salva, recupera e envia pedido móvel", async ({ page }, testInfo) =>
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("dialog", { name: "Acesso Operacional" })).toBeVisible();
+  await page.getByRole("dialog").getByRole("link", { name: /Fazer Pedido/ }).click();
   await expect(page.getByRole("heading", { name: "Pedido de hoje" })).toBeVisible();
   const card = page.locator(".product-card").first();
   const productName = await card.locator("h2").textContent();
@@ -91,6 +93,7 @@ test("Enter percorre estoque e pedido sem enviar no último campo", async ({ pag
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
+  await page.getByRole("dialog", { name: "Acesso Operacional" }).getByRole("link", { name: /Fazer Pedido/ }).click();
   await expect(page.getByRole("heading", { name: "Pedido de hoje" })).toBeVisible();
   const stock = page.locator('input[name="stock"]');
   const quantity = page.locator('input[name="quantity"]');
@@ -114,6 +117,7 @@ test("busca e filtros alteram a coleção realmente renderizada", async ({ page 
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
+  await page.getByRole("dialog", { name: "Acesso Operacional" }).getByRole("link", { name: /Fazer Pedido/ }).click();
   const first = page.locator(".product-card").first();
   const name = (await first.locator("h2").textContent()) ?? "";
   await page.getByPlaceholder("Buscar produto…").fill(name.slice(0, 5));

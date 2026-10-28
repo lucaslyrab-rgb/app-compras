@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { logoutAction } from "@/app/login/actions";
 
 export type StoreNavProps = {
@@ -23,12 +23,47 @@ export function StoreNavigation({
 }: StoreNavProps) {
   const pathname = usePathname() ?? "";
   const [hubOpen, setHubOpen] = useState(showHubOnMount);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!hubOpen) return;
+    const previousFocus = document.activeElement;
+    const dialog = dialogRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialog?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setHubOpen(false);
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const controls = dialog.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)');
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog)) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+    };
+  }, [hubOpen]);
 
   return (
     <>
       <header className="topbar no-print" style={{ borderBottom: "1px solid #cbd5e1", background: "#ffffff" }}>
-        <div className="topbar__inner" style={{ maxWidth: 1200, margin: "0 auto", padding: "8px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div className="topbar__inner" style={{ maxWidth: 1200, margin: "0 auto", padding: "8px 16px", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
             <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
               <Image src="/brand/MS-H.png" alt="MultiShow FLV" width={140} height={35} priority style={{ objectFit: "contain" }} />
               <div>
@@ -49,7 +84,7 @@ export function StoreNavigation({
           </div>
 
           {/* Abas Rápidas no Topo */}
-          <nav style={{ display: "flex", gap: 6, alignItems: "center" }} aria-label="Navegação da loja">
+          <nav style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }} aria-label="Navegação da loja">
             {hasOrderPermission && (
               <Link
                 href="/"
@@ -150,7 +185,9 @@ export function StoreNavigation({
           }}
         >
           <div
+            ref={dialogRef}
             role="dialog"
+            tabIndex={-1}
             aria-modal="true"
             aria-labelledby="hub-title"
             onClick={(e) => e.stopPropagation()}
@@ -159,6 +196,8 @@ export function StoreNavigation({
               borderRadius: 14,
               maxWidth: 420,
               width: "100%",
+              maxHeight: "calc(100dvh - 32px)",
+              overflowY: "auto",
               padding: 24,
               boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)",
               display: "flex",
@@ -175,6 +214,7 @@ export function StoreNavigation({
               </div>
               <button
                 type="button"
+                aria-label="Fechar menu de módulos"
                 onClick={() => setHubOpen(false)}
                 style={{ background: "transparent", border: "none", fontSize: 20, cursor: "pointer", color: "#94a3b8" }}
               >

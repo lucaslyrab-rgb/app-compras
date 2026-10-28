@@ -35,7 +35,7 @@ export async function loginAction(_state: { error: string | undefined }, form: F
     log("error", "Falha interna no login", { error: error instanceof Error ? error.message : "unknown" });
     return { error: "Não foi possível entrar agora. Tente novamente." };
   }
-  redirect("/");
+  redirect("/inicio");
 }
 
 export async function logoutAction() {
