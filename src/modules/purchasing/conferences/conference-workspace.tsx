@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useActionState, useMemo, useState, type MouseEvent } from "react";
 import { ProductPhoto } from "@/components/product-photo";
 import { StoreNavigation } from "@/components/store-navigation";
 import { ConferenceCycleSelector } from "./conference-cycle-selector";
@@ -72,10 +72,13 @@ export function ConferenceWorkspace({
   // Salvar/Finalizar - não o valor atual de itemsJsonPayload, que pode já ter
   // mudado (o operador pode continuar digitando enquanto a resposta não chega).
   // Sem isso, uma resposta de sucesso marcaria como "salvo" um conteúdo que na
-  // verdade nunca foi enviado ao servidor.
-  const submittedPayloadRef = useRef(itemsJsonPayload);
+  // verdade nunca foi enviado ao servidor. Usa estado (não ref): o valor só
+  // precisa ser lido depois que a ação conclui, mas a leitura durante a
+  // renderização (nos ratchets abaixo) exige estado - refs não podem ser lidos
+  // durante a renderização (react-hooks/refs).
+  const [submittedPayload, setSubmittedPayload] = useState(itemsJsonPayload);
   function captureSubmittedPayload() {
-    submittedPayloadRef.current = itemsJsonPayload;
+    setSubmittedPayload(itemsJsonPayload);
   }
 
   const [saveState, saveAction, isSaving] = useActionState(saveConferenceDraftAction, {});
@@ -91,14 +94,14 @@ export function ConferenceWorkspace({
     setSyncedSaveState(saveState);
     if (saveState.status === "success" && typeof saveState.version === "number") {
       setVersion(saveState.version);
-      setLastSavedPayload(submittedPayloadRef.current);
+      setLastSavedPayload(submittedPayload);
     }
   }
   const [syncedFinalizeStateForSavedPayload, setSyncedFinalizeStateForSavedPayload] = useState(finalizeState);
   if (finalizeState !== syncedFinalizeStateForSavedPayload) {
     setSyncedFinalizeStateForSavedPayload(finalizeState);
     if (finalizeState.status === "success") {
-      setLastSavedPayload(submittedPayloadRef.current);
+      setLastSavedPayload(submittedPayload);
     }
   }
 
