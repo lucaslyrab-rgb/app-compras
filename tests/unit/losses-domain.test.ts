@@ -124,10 +124,58 @@ describe("Domínio de Registro e Consulta de Perdas (Fase 5)", () => {
       const kpis = calculateLossDashboardKpis(records);
       expect(kpis.totalRecords).toBe(3);
       expect(kpis.totals.kg).toBe(25.0);
-      expect(kpis.topStore?.storeName).toBe("Balneário");
-      expect(kpis.topStore?.totalKg).toBe(18.2);
-      expect(kpis.topProduct?.productName).toBe("Melancia Graúda");
-      expect(kpis.topProduct?.totalKg).toBe(18.2);
+      expect(kpis.topStoreByUnit.KG?.storeName).toBe("Balneário");
+      expect(kpis.topStoreByUnit.KG?.total).toBe(18.2);
+      expect(kpis.topProductByUnit.KG?.productName).toBe("Melancia Graúda");
+      expect(kpis.topProductByUnit.KG?.total).toBe(18.2);
+      expect(kpis.topStoreByUnit.UND).toBeNull();
+      expect(kpis.topProductByUnit.UND).toBeNull();
+    });
+
+    it("não mistura KG e UND no ranking de loja/produto líder", () => {
+      const records: StoreLossRecord[] = [
+        {
+          id: "1",
+          storeId: "s1",
+          storeName: "Ponta da Fruta",
+          productId: "p1",
+          erpCode: 100,
+          productName: "Ovo Branco",
+          photoKey: null,
+          photoUpdatedAt: null,
+          quantity: 10,
+          unit: "UND",
+          reason: "Quebra Interna / Manuseio",
+          notes: null,
+          recordedAt: "2026-10-28T10:00:00Z",
+          recordedBy: "u1",
+        },
+        {
+          id: "2",
+          storeId: "s2",
+          storeName: "Balneário",
+          productId: "p2",
+          erpCode: 200,
+          productName: "Abacaxi",
+          photoKey: null,
+          photoUpdatedAt: null,
+          quantity: 8,
+          unit: "KG",
+          reason: "Maduro / Passado",
+          notes: null,
+          recordedAt: "2026-10-28T11:00:00Z",
+          recordedBy: "u2",
+        },
+      ];
+
+      const kpis = calculateLossDashboardKpis(records);
+      // 10 UND não pode superar 8 KG só porque o número bruto é maior.
+      expect(kpis.topStoreByUnit.UND?.storeName).toBe("Ponta da Fruta");
+      expect(kpis.topStoreByUnit.UND?.total).toBe(10);
+      expect(kpis.topStoreByUnit.KG?.storeName).toBe("Balneário");
+      expect(kpis.topStoreByUnit.KG?.total).toBe(8);
+      expect(kpis.topProductByUnit.UND?.productName).toBe("Ovo Branco");
+      expect(kpis.topProductByUnit.KG?.productName).toBe("Abacaxi");
     });
   });
 

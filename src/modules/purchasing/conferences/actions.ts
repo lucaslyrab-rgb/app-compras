@@ -10,7 +10,17 @@ export type ConferenceActionState = {
   status?: "success" | "error";
   message?: string;
   progress?: { total: number; verified: number; pending: number; percent: number };
+  version?: number;
 };
+
+function parseExpectedVersion(formData: FormData): number {
+  const raw = String(formData.get("version") ?? "");
+  const version = Number(raw);
+  if (!Number.isInteger(version) || version < 1) {
+    throw new ConferenceValidationError("Versão da conferência não informada ou inválida.");
+  }
+  return version;
+}
 
 export async function saveConferenceDraftAction(
   _prevState: ConferenceActionState,
@@ -32,6 +42,8 @@ export async function saveConferenceDraftAction(
       throw new ConferenceValidationError("Identificador de conferência não informado.");
     }
 
+    const expectedVersion = parseExpectedVersion(formData);
+
     let parsedItemsList: Array<{ productId: string; receivedWeightKg: number | null; isUnreceived: boolean }> = [];
     try {
       const parsed = JSON.parse(rawItems);
@@ -49,6 +61,7 @@ export async function saveConferenceDraftAction(
       conferenceId,
       storeId,
       userId: principal.userId,
+      expectedVersion,
       items: parsedItemsList,
     });
 
@@ -57,6 +70,7 @@ export async function saveConferenceDraftAction(
       status: "success",
       message: "Conferência salva parcialmente com sucesso.",
       progress,
+      version: progress.version,
     };
   } catch (error) {
     return {
@@ -86,6 +100,8 @@ export async function finalizeConferenceAction(
       throw new ConferenceValidationError("Identificador de conferência não informado.");
     }
 
+    const expectedVersion = parseExpectedVersion(formData);
+
     let parsedItemsList: Array<{ productId: string; receivedWeightKg: number | null; isUnreceived: boolean }> = [];
     try {
       const parsed = JSON.parse(rawItems);
@@ -103,6 +119,7 @@ export async function finalizeConferenceAction(
       conferenceId,
       storeId,
       userId: principal.userId,
+      expectedVersion,
       items: parsedItemsList,
     });
 

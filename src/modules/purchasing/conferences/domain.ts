@@ -33,6 +33,20 @@ export type ConferenceHeader = {
   version: number;
   createdAt: string;
   updatedAt: string;
+  /**
+   * true quando a loja revisou ou cancelou o pedido depois que esta conferência
+   * (ainda em andamento) foi criada a partir de uma revisão anterior. A conferência
+   * não é apagada nem recriada automaticamente; a finalização é bloqueada até a
+   * divergência ser resolvida.
+   */
+  orderOutOfSync: boolean;
+};
+
+export type ConferenceCycleOption = {
+  cycleDate: string;
+  status: "NOT_STARTED" | "IN_PROGRESS" | "FINALIZED";
+  totalItems: number;
+  verifiedItems: number;
 };
 
 export class ConferenceValidationError extends Error {

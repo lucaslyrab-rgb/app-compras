@@ -204,12 +204,17 @@ export async function cancelStoreLoss(input: {
   });
 }
 
+// Teto de segurança apenas para evitar um resultado patologicamente grande;
+// não é o tamanho de página exibido na tela (ver paginação em loss-dashboard-workspace).
+// Os KPIs e a lista completa usada para os totais do período vêm desta mesma consulta,
+// nunca de um subconjunto já paginado.
+const MANAGEMENT_QUERY_SAFETY_CAP = 5000;
+
 export async function queryLossesForManagement(filters: {
   storeId?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   search?: string | null;
-  limit?: number;
 }): Promise<StoreLossRecord[]> {
   const { sql } = database();
 
@@ -219,7 +224,6 @@ export async function queryLossesForManagement(filters: {
   const searchCondition = filters.search
     ? sql`AND (p.name ILIKE ${`%${filters.search}%`} OR p.erp_code::text ILIKE ${`%${filters.search}%`})`
     : sql``;
-  const limitValue = filters.limit ?? 200;
 
   const rows = await sql`
     SELECT
@@ -248,7 +252,7 @@ export async function queryLossesForManagement(filters: {
       ${endCondition}
       ${searchCondition}
     ORDER BY sl.recorded_at DESC
-    LIMIT ${limitValue}
+    LIMIT ${MANAGEMENT_QUERY_SAFETY_CAP}
   `;
 
   return rows.map((r) => ({

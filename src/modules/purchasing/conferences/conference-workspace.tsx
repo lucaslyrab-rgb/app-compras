@@ -3,22 +3,29 @@
 import { useActionState, useMemo, useState } from "react";
 import { ProductPhoto } from "@/components/product-photo";
 import { StoreNavigation } from "@/components/store-navigation";
+import { ConferenceCycleSelector } from "./conference-cycle-selector";
 import {
   calculateConferenceProgress,
   getItemStatus,
   type ConferenceHeader,
   type ConferenceItem,
 } from "./domain";
-import { saveConferenceDraftAction, finalizeConferenceAction } from "./actions";
+import { saveConferenceDraftAction, finalizeConferenceAction, type ConferenceActionState } from "./actions";
 
 type FilterType = "ALL" | "PENDING" | "VERIFIED";
 
 export function ConferenceWorkspace({
   header,
   initialItems,
+  cycles,
+  hasOrderPermission,
+  hasLossPermission,
 }: {
   header: ConferenceHeader;
   initialItems: ConferenceItem[];
+  cycles: string[];
+  hasOrderPermission: boolean;
+  hasLossPermission: boolean;
 }) {
   const [items, setItems] = useState<ConferenceItem[]>(initialItems);
   const [filter, setFilter] = useState<FilterType>("ALL");
@@ -35,6 +42,32 @@ export function ConferenceWorkspace({
 
   const [saveState, saveAction, isSaving] = useActionState(saveConferenceDraftAction, {});
   const [finalizeState, finalizeAction, isFinalizing] = useActionState(finalizeConferenceAction, {});
+
+  // Ratchet: só avança para uma versão mais nova após uma gravação confirmada pelo
+  // servidor; nunca regride para a versão inicial do carregamento em caso de erro.
+  const [version, setVersion] = useState(header.version);
+  const [syncedSaveState, setSyncedSaveState] = useState(saveState);
+  if (saveState !== syncedSaveState) {
+    setSyncedSaveState(saveState);
+    if (saveState.status === "success" && typeof saveState.version === "number") {
+      setVersion(saveState.version);
+    }
+  }
+
+  // Rastreia qual das duas ações (salvar parcial/finalizar) foi disparada mais
+  // recentemente, em vez de dar prioridade permanente a finalizeState sempre que
+  // ele tiver mensagem (o que esconderia o resultado de um Salvar Parcial seguinte).
+  const [feedback, setFeedback] = useState<ConferenceActionState>({});
+  const [syncedFeedbackSaveState, setSyncedFeedbackSaveState] = useState(saveState);
+  if (saveState !== syncedFeedbackSaveState) {
+    setSyncedFeedbackSaveState(saveState);
+    setFeedback(saveState);
+  }
+  const [syncedFinalizeState, setSyncedFinalizeState] = useState(finalizeState);
+  if (finalizeState !== syncedFinalizeState) {
+    setSyncedFinalizeState(finalizeState);
+    setFeedback(finalizeState);
+  }
 
   const isFinalized = header.status === "FINALIZED";
 
@@ -105,13 +138,38 @@ export function ConferenceWorkspace({
     );
   }, [items]);
 
-  const feedback = finalizeState.message ? finalizeState : saveState;
-
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", paddingBottom: 100 }}>
-      <StoreNavigation storeName={header.storeName} />
+      <StoreNavigation
+        storeName={header.storeName}
+        hasOrderPermission={hasOrderPermission}
+        hasConferencePermission
+        hasLossPermission={hasLossPermission}
+      />
 
       <main style={{ maxWidth: 800, margin: "0 auto", padding: "16px 12px" }}>
+        <ConferenceCycleSelector cycleDate={header.purchaseCycleDate} cycles={cycles} />
+
+        {header.orderOutOfSync && (
+          <div
+            role="alert"
+            style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              marginBottom: 14,
+              fontSize: 13,
+              fontWeight: 700,
+              background: "#fef3c7",
+              color: "#92400e",
+              border: "1px solid #f59e0b",
+            }}
+          >
+            ⚠️ O pedido desta loja foi revisado ou cancelado depois que esta conferência foi
+            iniciada. Você ainda pode salvar o progresso de pesagem, mas a finalização fica
+            bloqueada até o comprador/gestor resolver a divergência.
+          </div>
+        )}
+
         {/* Banner do Ciclo e Progresso */}
         <div
           style={{
@@ -390,6 +448,7 @@ export function ConferenceWorkspace({
             <form action={saveAction} style={{ flex: 1 }}>
               <input type="hidden" name="storeId" value={header.storeId} />
               <input type="hidden" name="conferenceId" value={header.id} />
+              <input type="hidden" name="version" value={version} />
               <input type="hidden" name="items" value={itemsJsonPayload} />
               <button
                 type="submit"
@@ -405,22 +464,25 @@ export function ConferenceWorkspace({
             <form action={finalizeAction} style={{ flex: 1 }}>
               <input type="hidden" name="storeId" value={header.storeId} />
               <input type="hidden" name="conferenceId" value={header.id} />
+              <input type="hidden" name="version" value={version} />
               <input type="hidden" name="items" value={itemsJsonPayload} />
               <button
                 type="submit"
-                disabled={isSaving || isFinalizing || progress.pending > 0}
+                disabled={isSaving || isFinalizing || progress.pending > 0 || header.orderOutOfSync}
                 className="btn"
                 style={{
                   width: "100%",
                   minHeight: 44,
                   fontSize: 13,
                   fontWeight: 800,
-                  background: progress.pending > 0 ? "#94a3b8" : "#004737",
-                  cursor: progress.pending > 0 ? "not-allowed" : "pointer",
+                  background: progress.pending > 0 || header.orderOutOfSync ? "#94a3b8" : "#004737",
+                  cursor: progress.pending > 0 || header.orderOutOfSync ? "not-allowed" : "pointer",
                 }}
               >
                 {isFinalizing
                   ? "Finalizando..."
+                  : header.orderOutOfSync
+                  ? "Pedido desatualizado"
                   : progress.pending > 0
                   ? `Finalizar (${progress.pending} pendentes)`
                   : "✓ Finalizar Conferência"}

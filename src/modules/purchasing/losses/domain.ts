@@ -98,46 +98,57 @@ export function aggregateLossTotals(losses: Array<{ quantity: number; unit: stri
   };
 }
 
+function normalizeLossUnit(unit: string): LossUnit {
+  const unitUpper = (unit || "KG").trim().toUpperCase();
+  return unitUpper === "UND" || unitUpper === "UN" || unitUpper === "UNIDADE" ? "UND" : "KG";
+}
+
+type UnitRanking<TNameKey extends string> = Record<LossUnit, ({ total: number } & Record<TNameKey, string>) | null>;
+
+function rankByUnit<TNameKey extends string>(
+  losses: StoreLossRecord[],
+  nameKey: TNameKey,
+  getName: (loss: StoreLossRecord) => string
+): UnitRanking<TNameKey> {
+  const maps: Record<LossUnit, Record<string, number>> = { KG: {}, UND: {} };
+
+  for (const l of losses) {
+    const unit = normalizeLossUnit(l.unit);
+    const name = getName(l) || "—";
+    maps[unit][name] = (maps[unit][name] || 0) + l.quantity;
+  }
+
+  const ranking = {} as UnitRanking<TNameKey>;
+  for (const unit of ALLOWED_LOSS_UNITS) {
+    let topName: string | null = null;
+    let maxQty = -1;
+    for (const [name, qty] of Object.entries(maps[unit])) {
+      if (qty > maxQty) {
+        maxQty = qty;
+        topName = name;
+      }
+    }
+    ranking[unit] = topName
+      ? ({ [nameKey]: topName, total: Math.round(maxQty * 100) / 100 } as { total: number } & Record<TNameKey, string>)
+      : null;
+  }
+  return ranking;
+}
+
 export function calculateLossDashboardKpis(losses: StoreLossRecord[]): {
   totals: { kg: number; und: number; formatted: string };
-  topStore: { storeName: string; totalKg: number } | null;
-  topProduct: { productName: string; totalKg: number } | null;
+  // Loja/produto com maior volume, separados por unidade: KG e UND não podem ser
+  // somados ou comparados diretamente sem presumir uma conversão.
+  topStoreByUnit: UnitRanking<"storeName">;
+  topProductByUnit: UnitRanking<"productName">;
   totalRecords: number;
 } {
   const totals = aggregateLossTotals(losses);
 
-  const storeMap: Record<string, number> = {};
-  const productMap: Record<string, number> = {};
-
-  for (const l of losses) {
-    const sName = l.storeName || "Loja";
-    const pName = l.productName || "Produto";
-    storeMap[sName] = (storeMap[sName] || 0) + l.quantity;
-    productMap[pName] = (productMap[pName] || 0) + l.quantity;
-  }
-
-  let topStoreName: string | null = null;
-  let maxStoreQty = -1;
-  for (const [sName, qty] of Object.entries(storeMap)) {
-    if (qty > maxStoreQty) {
-      maxStoreQty = qty;
-      topStoreName = sName;
-    }
-  }
-
-  let topProdName: string | null = null;
-  let maxProdQty = -1;
-  for (const [pName, qty] of Object.entries(productMap)) {
-    if (qty > maxProdQty) {
-      maxProdQty = qty;
-      topProdName = pName;
-    }
-  }
-
   return {
     totals,
-    topStore: topStoreName ? { storeName: topStoreName, totalKg: Math.round(maxStoreQty * 100) / 100 } : null,
-    topProduct: topProdName ? { productName: topProdName, totalKg: Math.round(maxProdQty * 100) / 100 } : null,
+    topStoreByUnit: rankByUnit(losses, "storeName", (l) => l.storeName || "Loja"),
+    topProductByUnit: rankByUnit(losses, "productName", (l) => l.productName || "Produto"),
     totalRecords: losses.length,
   };
 }

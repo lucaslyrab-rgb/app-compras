@@ -138,6 +138,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
 
   describe("Serviço de Conferência de Entrega", () => {
     let confId: string;
+    let version: number;
 
     it("inicializa automaticamente a conferência a partir dos itens do pedido da loja", async () => {
       const result = await getStoreConference(storeId1, cycleDate);
@@ -147,9 +148,23 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
       expect(result!.header.status).toBe("IN_PROGRESS");
       expect(result!.header.totalItems).toBe(2);
       expect(result!.header.verifiedItems).toBe(0);
+      expect(result!.header.orderOutOfSync).toBe(false);
       expect(result!.items.length).toBe(2);
 
       confId = result!.header.id;
+      version = result!.header.version;
+    });
+
+    it("rejeita gravação com versão desatualizada (concorrência entre operadores)", async () => {
+      await expect(
+        saveConferenceDraft({
+          conferenceId: confId,
+          storeId: storeId1,
+          userId: userId1,
+          expectedVersion: version + 999,
+          items: [{ productId: productId1, receivedWeightKg: 162.4, isUnreceived: false }],
+        })
+      ).rejects.toThrow(ConferenceValidationError);
     });
 
     it("salva pesagem parcial de itens e atualiza o progresso", async () => {
@@ -157,6 +172,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
         conferenceId: confId,
         storeId: storeId1,
         userId: userId1,
+        expectedVersion: version,
         items: [
           { productId: productId1, receivedWeightKg: 162.4, isUnreceived: false },
           { productId: productId2, receivedWeightKg: null, isUnreceived: false },
@@ -167,10 +183,12 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
       expect(progress.verified).toBe(1);
       expect(progress.pending).toBe(1);
       expect(progress.percent).toBe(50);
+      version = progress.version;
 
       // Verifica no banco
       const updated = await getStoreConference(storeId1, cycleDate);
       expect(updated!.header.verifiedItems).toBe(1);
+      expect(updated!.header.version).toBe(version);
       expect(updated!.items.find((i) => i.productId === productId1)?.receivedWeightKg).toBe(162.4);
     });
 
@@ -180,6 +198,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
           conferenceId: confId,
           storeId: storeId1,
           userId: userId1,
+          expectedVersion: version,
           items: [
             { productId: productId1, receivedWeightKg: 162.4, isUnreceived: false },
             { productId: productId2, receivedWeightKg: null, isUnreceived: false },
@@ -193,6 +212,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
         conferenceId: confId,
         storeId: storeId1,
         userId: userId1,
+        expectedVersion: version,
         items: [
           { productId: productId1, receivedWeightKg: 162.4, isUnreceived: false },
           { productId: productId2, receivedWeightKg: 0, isUnreceived: true },
@@ -204,6 +224,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
       expect(finalized!.header.verifiedItems).toBe(2);
       expect(finalized!.header.finalizedBy).toBe(userId1);
       expect(finalized!.header.finalizedAt).not.toBeNull();
+      version = finalized!.header.version;
 
       // Confirma registro do evento de auditoria
       const [auditEvent] = await db<{ action: string; entity_id: string }[]>`
@@ -221,6 +242,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
           conferenceId: confId,
           storeId: storeId1,
           userId: userId1,
+          expectedVersion: version,
           items: [{ productId: productId1, receivedWeightKg: 200, isUnreceived: false }],
         })
       ).rejects.toThrow("já está finalizada");

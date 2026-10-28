@@ -19,7 +19,7 @@ type Product = {
 };
 type Filter = "all" | "empty" | "filled";
 
-export function OrderWorkspace({ products, storeId, storeName, initialDraft, date, cycleDate, cutoffAt }: { products: Product[]; storeId: string; storeName: string; initialDraft: { version: number; items: Array<{ productId: string; stock: number; quantity: number }> }; date: string; cycleDate: string; cutoffAt: string }) {
+export function OrderWorkspace({ products, storeId, storeName, initialDraft, date, cycleDate, cutoffAt, hasConferencePermission, hasLossPermission }: { products: Product[]; storeId: string; storeName: string; initialDraft: { version: number; items: Array<{ productId: string; stock: number; quantity: number }> }; date: string; cycleDate: string; cutoffAt: string; hasConferencePermission: boolean; hasLossPermission: boolean }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [values, setValues] = useState<Record<string, { stock: string; quantity: string }>>(() => Object.fromEntries(initialDraft.items.map((item) => [item.productId, { stock: String(item.stock), quantity: String(item.quantity) }])));
@@ -150,7 +150,12 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
 
   return (
     <div className="shell order-workspace">
-      <StoreNavigation storeName={storeName} />
+      <StoreNavigation
+        storeName={storeName}
+        hasOrderPermission
+        hasConferencePermission={hasConferencePermission}
+        hasLossPermission={hasLossPermission}
+      />
       {submitState.status === "success" || submitState.status === "error" ? <div className={`floating-feedback floating-feedback--${submitState.status}`} role="status" aria-live="polite">{submitState.message}</div> : null}
       <form action={saveAction} onSubmit={handleValidateBeforeAction}>
         <input type="hidden" name="storeId" value={storeId} />

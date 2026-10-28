@@ -36,6 +36,8 @@ export default async function StoreLossPage() {
       storeName={storeName}
       products={products}
       initialLosses={initialLosses}
+      hasOrderPermission={hasPermission(principal, "pedidos:criar")}
+      hasConferencePermission={hasPermission(principal, "loja:conferencia")}
     />
   );
 }

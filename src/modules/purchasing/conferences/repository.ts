@@ -4,9 +4,16 @@ import {
   calculateConferenceProgress,
   assertCanFinalizeConference,
   validateReceivedWeight,
+  type ConferenceCycleOption,
   type ConferenceHeader,
   type ConferenceItem,
 } from "./domain";
+
+const CONFERENCE_UNIQUE_VIOLATION = "23505";
+
+function isUniqueViolation(error: unknown): boolean {
+  return Boolean(error) && typeof error === "object" && (error as { code?: string }).code === CONFERENCE_UNIQUE_VIOLATION;
+}
 
 export async function getStoreConference(
   storeId: string,
@@ -41,6 +48,23 @@ export async function getStoreConference(
   `;
 
   if (existing) {
+    // Conferências finalizadas são histórico encerrado: não revalidar contra o pedido atual.
+    // Conferências em andamento precisam refletir se a loja revisou ou cancelou o pedido
+    // depois que esta conferência foi criada a partir de uma revisão anterior.
+    let orderOutOfSync = false;
+    if (existing.status === "IN_PROGRESS") {
+      const [currentOrder] = await sql`
+        SELECT id, revision
+        FROM orders
+        WHERE store_id = ${storeId}::uuid
+          AND purchase_cycle_date = ${cycleDate}::date
+          AND cancelled_at IS NULL
+        ORDER BY revision DESC
+        LIMIT 1
+      `;
+      orderOutOfSync = !currentOrder || currentOrder.id !== existing.order_id;
+    }
+
     const items = await sql`
       SELECT 
         ci.id,
@@ -81,6 +105,7 @@ export async function getStoreConference(
         version: existing.version,
         createdAt: existing.created_at,
         updatedAt: existing.updated_at,
+        orderOutOfSync,
       },
       items: items.map((it) => ({
         id: it.id,
@@ -144,7 +169,8 @@ export async function getStoreConference(
   }
 
   // Inicializa o cabeçalho e itens de conferência atomicamente
-  return await sql.begin(async (tx) => {
+  try {
+    return await sql.begin(async (tx) => {
     const [createdConf] = await tx`
       INSERT INTO store_delivery_conferences (
         purchase_cycle_date,
@@ -246,10 +272,56 @@ export async function getStoreConference(
         version: createdConf.version,
         createdAt: createdConf.created_at,
         updatedAt: createdConf.updated_at,
+        orderOutOfSync: false,
       },
       items: insertedItems,
     };
-  });
+    });
+  } catch (error) {
+    // Duas requisições concorrentes podem checar "não existe conferência" e tentar
+    // criar ao mesmo tempo; a constraint única (purchase_cycle_date, store_id) rejeita
+    // a segunda. Em vez de propagar erro, recarrega a conferência que a outra já criou.
+    if (isUniqueViolation(error)) {
+      return getStoreConference(storeId, cycleDate);
+    }
+    throw error;
+  }
+}
+
+export async function listStoreConferenceCycles(
+  storeId: string,
+  limit = 14
+): Promise<ConferenceCycleOption[]> {
+  const { sql } = database();
+
+  const rows = await sql`
+    WITH cycle_dates AS (
+      SELECT DISTINCT purchase_cycle_date FROM orders
+      WHERE store_id = ${storeId}::uuid AND cancelled_at IS NULL
+      UNION
+      SELECT DISTINCT purchase_cycle_date FROM store_delivery_conferences
+      WHERE store_id = ${storeId}::uuid
+    )
+    SELECT
+      cd.purchase_cycle_date::text AS cycle_date,
+      COALESCE(c.status, 'NOT_STARTED') AS status,
+      COALESCE(c.total_items, 0) AS total_items,
+      COALESCE(c.verified_items, 0) AS verified_items
+    FROM cycle_dates cd
+    LEFT JOIN store_delivery_conferences c
+      ON c.store_id = ${storeId}::uuid AND c.purchase_cycle_date = cd.purchase_cycle_date
+    ORDER BY cd.purchase_cycle_date DESC
+    LIMIT ${limit}
+  `;
+
+  return rows
+    .map((r) => ({
+      cycleDate: r.cycle_date as string,
+      status: r.status as ConferenceCycleOption["status"],
+      totalItems: r.total_items as number,
+      verifiedItems: r.verified_items as number,
+    }))
+    .reverse();
 }
 
 export async function listRecentConferences(
@@ -282,12 +354,13 @@ export async function saveConferenceDraft(params: {
   conferenceId: string;
   storeId: string;
   userId: string;
+  expectedVersion: number;
   items: Array<{
     productId: string;
     receivedWeightKg: number | null;
     isUnreceived: boolean;
   }>;
-}): Promise<{ total: number; verified: number; pending: number; percent: number }> {
+}): Promise<{ total: number; verified: number; pending: number; percent: number; version: number }> {
   const { sql } = database();
 
   return await sql.begin(async (tx) => {
@@ -306,6 +379,16 @@ export async function saveConferenceDraft(params: {
 
     if (conf.status === "FINALIZED") {
       throw new ConferenceValidationError("Esta conferência já está finalizada e não permite alterações.");
+    }
+
+    // 1b. O bloqueio FOR UPDATE serializa escritas concorrentes, mas sem checar a versão
+    // esperada a última gravação sempre venceria mesmo enviando dados antigos (ex.: um
+    // operador reabre a tela antes da pesagem de outro e devolve um item já conferido
+    // para pendente). Rejeita a gravação se a conferência avançou desde que foi lida.
+    if (conf.version !== params.expectedVersion) {
+      throw new ConferenceValidationError(
+        "Esta conferência foi atualizada por outra sessão desde o seu último carregamento. Atualize a página para ver os dados mais recentes antes de salvar."
+      );
     }
 
     // 2. Atualiza cada item enviado
@@ -360,13 +443,14 @@ export async function saveConferenceDraft(params: {
         AND (is_unreceived = true OR (received_weight_kg IS NOT NULL AND received_weight_kg > 0))
     `;
 
-    await tx`
+    const [{ version: newVersion }] = await tx`
       UPDATE store_delivery_conferences
-      SET 
+      SET
         verified_items = ${verifiedCount},
         version = version + 1,
         updated_at = now()
       WHERE id = ${params.conferenceId}::uuid
+      RETURNING version
     `;
 
     // 4. Trilha de auditoria
@@ -389,7 +473,7 @@ export async function saveConferenceDraft(params: {
     `;
 
     const progress = calculateConferenceProgress(params.items);
-    return progress;
+    return { ...progress, version: newVersion as number };
   });
 }
 
@@ -397,6 +481,7 @@ export async function finalizeConference(params: {
   conferenceId: string;
   storeId: string;
   userId: string;
+  expectedVersion: number;
   items: Array<{
     productId: string;
     productName?: string;
@@ -409,7 +494,7 @@ export async function finalizeConference(params: {
   await sql.begin(async (tx) => {
     // 1. Bloqueia a conferência
     const [conf] = await tx`
-      SELECT id, status, total_items, version
+      SELECT id, status, total_items, version, order_id, purchase_cycle_date::text AS purchase_cycle_date
       FROM store_delivery_conferences
       WHERE id = ${params.conferenceId}::uuid
         AND store_id = ${params.storeId}::uuid
@@ -422,6 +507,31 @@ export async function finalizeConference(params: {
 
     if (conf.status === "FINALIZED") {
       throw new ConferenceValidationError("Esta conferência já se encontra finalizada.");
+    }
+
+    if (conf.version !== params.expectedVersion) {
+      throw new ConferenceValidationError(
+        "Esta conferência foi atualizada por outra sessão desde o seu último carregamento. Atualize a página para ver os dados mais recentes antes de finalizar."
+      );
+    }
+
+    // 1b. Reconfirma que o pedido que originou esta conferência continua sendo a
+    // revisão vigente da loja para o ciclo. Revisão nova ou cancelamento depois da
+    // criação da conferência não pode ser finalizado como se nada tivesse mudado.
+    const [currentOrder] = await tx`
+      SELECT id
+      FROM orders
+      WHERE store_id = ${params.storeId}::uuid
+        AND purchase_cycle_date = ${conf.purchase_cycle_date}::date
+        AND cancelled_at IS NULL
+      ORDER BY revision DESC
+      LIMIT 1
+    `;
+
+    if (!currentOrder || currentOrder.id !== conf.order_id) {
+      throw new ConferenceValidationError(
+        "O pedido desta loja foi revisado ou cancelado depois que esta conferência foi iniciada. Peça ao comprador/gestor para resolver a divergência antes de finalizar."
+      );
     }
 
     // 2. Salva todos os itens recebidos

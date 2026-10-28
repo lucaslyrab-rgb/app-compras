@@ -8,17 +8,17 @@ import { logoutAction } from "@/app/login/actions";
 
 export type StoreNavProps = {
   storeName: string;
-  hasOrderPermission?: boolean;
-  hasConferencePermission?: boolean;
-  hasLossPermission?: boolean;
+  hasOrderPermission: boolean;
+  hasConferencePermission: boolean;
+  hasLossPermission: boolean;
   showHubOnMount?: boolean;
 };
 
 export function StoreNavigation({
   storeName,
-  hasOrderPermission = true,
-  hasConferencePermission = true,
-  hasLossPermission = true,
+  hasOrderPermission,
+  hasConferencePermission,
+  hasLossPermission,
   showHubOnMount = false,
 }: StoreNavProps) {
   const pathname = usePathname() ?? "";

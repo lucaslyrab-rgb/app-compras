@@ -9,7 +9,7 @@ import {
   type LossReason,
   type StoreLossRecord,
 } from "./domain";
-import { recordStoreLossAction, cancelStoreLossAction } from "./actions";
+import { recordStoreLossAction, cancelStoreLossAction, type LossActionState } from "./actions";
 
 type ProductOption = {
   id: string;
@@ -26,11 +26,15 @@ export function StoreLossWorkspace({
   storeName,
   products,
   initialLosses,
+  hasOrderPermission,
+  hasConferencePermission,
 }: {
   storeId: string;
   storeName: string;
   products: ProductOption[];
   initialLosses: StoreLossRecord[];
+  hasOrderPermission: boolean;
+  hasConferencePermission: boolean;
 }) {
   const [losses, setLosses] = useState<StoreLossRecord[]>(initialLosses);
   const [syncedInitialLosses, setSyncedInitialLosses] = useState(initialLosses);
@@ -48,6 +52,20 @@ export function StoreLossWorkspace({
 
   const [recordState, recordAction, isRecording] = useActionState(recordStoreLossAction, {});
   const [cancelState, cancelAction, isCancelling] = useActionState(cancelStoreLossAction, {});
+
+  // Rastreia qual das duas ações (registrar/excluir) foi disparada mais recentemente,
+  // em vez de dar prioridade permanente a cancelState sempre que ele tiver mensagem.
+  const [feedback, setFeedback] = useState<LossActionState>({});
+  const [syncedRecordState, setSyncedRecordState] = useState(recordState);
+  if (recordState !== syncedRecordState) {
+    setSyncedRecordState(recordState);
+    setFeedback(recordState);
+  }
+  const [syncedCancelState, setSyncedCancelState] = useState(cancelState);
+  if (cancelState !== syncedCancelState) {
+    setSyncedCancelState(cancelState);
+    setFeedback(cancelState);
+  }
 
   // Totalizadores de hoje
   const totals = useMemo(() => {
@@ -76,11 +94,14 @@ export function StoreLossWorkspace({
     }
   }
 
-  const feedback = cancelState.message ? cancelState : recordState;
-
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", paddingBottom: 60 }}>
-      <StoreNavigation storeName={storeName} />
+      <StoreNavigation
+        storeName={storeName}
+        hasOrderPermission={hasOrderPermission}
+        hasConferencePermission={hasConferencePermission}
+        hasLossPermission
+      />
 
       <main style={{ maxWidth: 800, margin: "0 auto", padding: "16px 12px" }}>
         {/* Banner do Módulo */}
