@@ -14,6 +14,7 @@ const buyerItems: (NavItem & { permission: Permission })[] = [
   { href: "/comprador/custos", label: "Lançamento de Custos", icon: "▣", permission: "compras:custos" },
   { href: "/comprador/destinacao", label: "Destinação", icon: "🚚", permission: "compras:destinacao" },
   { href: "/comprador/fornecedores", label: "Fornecedores", icon: "🏢", permission: "compras:fornecedores" },
+  { href: "/comprador/perdas", label: "Perdas FLV", icon: "🗑️", permission: "perdas:consultar" },
 ];
 const managerItems: (NavItem & { permission: Permission })[] = [
   { href: "/gestor/produtos", label: "Produtos", icon: "•", permission: "gestor:produtos" },
@@ -21,6 +22,7 @@ const managerItems: (NavItem & { permission: Permission })[] = [
   { href: "/gestor/fornecedores", label: "Fornecedores", icon: "🏢", permission: "gestor:fornecedores" },
   { href: "/gestor/configuracoes", label: "Configurações", icon: "⚙", permission: "gestor:configuracoes" },
   { href: "/gestor/usuarios", label: "Usuários", icon: "👤", permission: "gestor:usuarios" },
+  { href: "/gestor/perdas", label: "Perdas FLV", icon: "🗑️", permission: "perdas:consultar" },
 ];
 
 function NavLink({ item, close }: { item: NavItem; close: () => void }) {

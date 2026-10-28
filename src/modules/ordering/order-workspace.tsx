@@ -1,12 +1,11 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { logoutAction } from "@/app/login/actions";
 import { saveDraftAction, submitOrderAction, type State } from "./actions";
 import { formatDateTime, parseQuantityInput, validateOrderQuantity } from "./domain";
 import Link from "next/link";
-import Image from "next/image";
 import { ProductPhoto } from "@/components/product-photo";
+import { StoreNavigation } from "@/components/store-navigation";
 
 type Product = {
   id: string;
@@ -151,7 +150,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
 
   return (
     <div className="shell order-workspace">
-      <header className="topbar no-print"><div className="topbar__inner"><div className="brand"><Image className="brand__logo" src="/brand/MS-H.png" alt="MultiShow FLV" width={170} height={43} priority /><div><h1>MultiShow FLV</h1><p>{storeName} · Pedido da loja</p></div></div><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Link href="/minha-senha" className="btn btn--secondary">Minha senha</Link><form action={logoutAction}><button className="btn btn--secondary">Sair</button></form></div></div></header>
+      <StoreNavigation storeName={storeName} />
       {submitState.status === "success" || submitState.status === "error" ? <div className={`floating-feedback floating-feedback--${submitState.status}`} role="status" aria-live="polite">{submitState.message}</div> : null}
       <form action={saveAction} onSubmit={handleValidateBeforeAction}>
         <input type="hidden" name="storeId" value={storeId} />

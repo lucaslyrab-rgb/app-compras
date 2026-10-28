@@ -1,0 +1,111 @@
+export type ConferenceItemStatus = "PENDING" | "RECEIVED" | "UNRECEIVED";
+
+export type ConferenceItem = {
+  id: string;
+  conferenceId: string;
+  productId: string;
+  erpCode: number;
+  productName: string;
+  photoKey: string | null;
+  photoUpdatedAt: string | null;
+  orderedQuantity: number;
+  orderedUnit: string;
+  receivedWeightKg: number | null;
+  isUnreceived: boolean;
+  checkedAt: string | null;
+  checkedBy: string | null;
+  checkerName?: string | null;
+};
+
+export type ConferenceHeader = {
+  id: string;
+  purchaseCycleDate: string;
+  storeId: string;
+  storeName: string;
+  orderId: string | null;
+  orderRevision: number | null;
+  status: "IN_PROGRESS" | "FINALIZED";
+  totalItems: number;
+  verifiedItems: number;
+  finalizedAt: string | null;
+  finalizedBy: string | null;
+  finalizerName?: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export class ConferenceValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ConferenceValidationError";
+  }
+}
+
+export function getItemStatus(item: {
+  receivedWeightKg: number | null;
+  isUnreceived: boolean;
+}): ConferenceItemStatus {
+  if (item.isUnreceived) return "UNRECEIVED";
+  if (item.receivedWeightKg !== null && item.receivedWeightKg > 0) return "RECEIVED";
+  return "PENDING";
+}
+
+export function parseWeightInput(raw: string | number | null | undefined): number | null {
+  if (raw === null || raw === undefined) return null;
+  const str = String(raw).trim().replace(",", ".");
+  if (str === "") return null;
+  const num = Number(str);
+  if (Number.isNaN(num) || !Number.isFinite(num)) {
+    throw new ConferenceValidationError("Peso inválido: deve ser um número decimal.");
+  }
+  return Math.round(num * 100) / 100;
+}
+
+export function validateReceivedWeight(weight: number | null): void {
+  if (weight === null) return;
+  if (Number.isNaN(weight) || !Number.isFinite(weight)) {
+    throw new ConferenceValidationError("Peso inválido: valor numérico inválido.");
+  }
+  if (weight < 0) {
+    throw new ConferenceValidationError("O peso recebido não pode ser negativo.");
+  }
+  if (weight > 99999.99) {
+    throw new ConferenceValidationError("O peso recebido excede o limite máximo permitido (99.999,99 KG).");
+  }
+}
+
+export function calculateConferenceProgress(items: Array<{
+  receivedWeightKg: number | null;
+  isUnreceived: boolean;
+}>): {
+  total: number;
+  verified: number;
+  pending: number;
+  percent: number;
+} {
+  const total = items.length;
+  let verified = 0;
+  for (const it of items) {
+    const status = getItemStatus(it);
+    if (status === "RECEIVED" || status === "UNRECEIVED") {
+      verified += 1;
+    }
+  }
+  const pending = Math.max(0, total - verified);
+  const percent = total > 0 ? Math.round((verified / total) * 100) : 100;
+  return { total, verified, pending, percent };
+}
+
+export function assertCanFinalizeConference(items: Array<{
+  productName?: string;
+  receivedWeightKg: number | null;
+  isUnreceived: boolean;
+}>): void {
+  const pendingItems = items.filter((it) => getItemStatus(it) === "PENDING");
+  if (pendingItems.length > 0) {
+    throw new ConferenceValidationError(
+      `Não é possível finalizar a conferência: ainda existem ${pendingItems.length} item(ns) pendente(s) de pesagem ou confirmação de não recebido.`
+    );
+  }
+}
