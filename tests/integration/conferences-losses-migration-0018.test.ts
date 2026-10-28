@@ -137,7 +137,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
           ${orderId}::uuid
         )
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/store_delivery_conferences_cycle_store_unique/);
 
     // Impede conferência FINALIZED com itens pendentes ou sem responsável/data
     await expect(
@@ -158,7 +158,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
           1
         )
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/delivery_conf_finalized_coherence_check/);
 
     // Impede contadores negativos ou verified > total
     await expect(
@@ -167,7 +167,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         SET verified_items = 5
         WHERE id = ${conference.id}::uuid
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/delivery_conf_items_count_check/);
   });
 
   it("permite registrar pesagem em KG e confirmação de 'Não recebido' (0 KG) com validação de coerência e rejeição de NaN/NULL", async () => {
@@ -245,7 +245,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         SET received_weight_kg = 15.00
         WHERE id = ${itemUnreceived.id}::uuid
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/conference_items_weight_coherence_check/);
 
     // Rejeita "Não recebido" com peso nulo (garantido por received_weight_kg IS NOT NULL)
     await expect(
@@ -254,7 +254,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         SET received_weight_kg = NULL
         WHERE id = ${itemUnreceived.id}::uuid
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/conference_items_weight_coherence_check/);
 
     // Rejeita "Não recebido" com valor inválido NaN
     await expect(
@@ -263,7 +263,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         SET received_weight_kg = 'NaN'::numeric
         WHERE id = ${itemUnreceived.id}::uuid
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/conference_items_weight_coherence_check/);
 
     // Rejeita item recebido (is_unreceived = false) com peso 0
     await expect(
@@ -272,7 +272,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         SET received_weight_kg = 0.00
         WHERE id = ${itemReceived.id}::uuid
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/conference_items_weight_coherence_check/);
 
     // Rejeita item recebido (is_unreceived = false) com valor inválido NaN
     await expect(
@@ -281,7 +281,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         SET received_weight_kg = 'NaN'::numeric
         WHERE id = ${itemReceived.id}::uuid
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/conference_items_weight_coherence_check/);
 
     // Rejeita peso negativo
     await expect(
@@ -290,24 +290,32 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         SET received_weight_kg = -5.00
         WHERE id = ${itemReceived.id}::uuid
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/conference_items_weight_coherence_check/);
 
-    // Rejeita ordered_quantity com valor inválido NaN ou menor/igual a zero
+    // Rejeita ordered_quantity com valor inválido NaN, zero ou negativo na constraint conference_items_ordered_qty_positive
     await expect(
       db`
-        INSERT INTO store_delivery_conference_items (
-          conference_id,
-          product_id,
-          ordered_quantity,
-          ordered_unit
-        ) VALUES (
-          ${conf.id}::uuid,
-          '50000000-0000-0000-0000-000000000005'::uuid,
-          'NaN'::numeric,
-          'CX'
-        )
+        UPDATE store_delivery_conference_items
+        SET ordered_quantity = 'NaN'::numeric
+        WHERE id = ${itemReceived.id}::uuid
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/conference_items_ordered_qty_positive/);
+
+    await expect(
+      db`
+        UPDATE store_delivery_conference_items
+        SET ordered_quantity = 0.00
+        WHERE id = ${itemReceived.id}::uuid
+      `
+    ).rejects.toThrow(/conference_items_ordered_qty_positive/);
+
+    await expect(
+      db`
+        UPDATE store_delivery_conference_items
+        SET ordered_quantity = -5.00
+        WHERE id = ${itemReceived.id}::uuid
+      `
+    ).rejects.toThrow(/conference_items_ordered_qty_positive/);
   });
 
   it("finaliza a conferência de entrega de forma coerente quando todos os itens estão conferidos", async () => {
@@ -338,7 +346,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
   });
 
   it("registra perdas diárias com loja, produto, quantidade, rejeição de NaN e contrato transacional com auditoria", async () => {
-    // 1. Rejeita quantidade zero ou negativa
+    // 1. Rejeita quantidade zero ou negativa na constraint store_losses_quantity_positive
     await expect(
       db`
         INSERT INTO store_loss_records (
@@ -353,7 +361,23 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
           ${userId}::uuid
         )
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/store_losses_quantity_positive/);
+
+    await expect(
+      db`
+        INSERT INTO store_loss_records (
+          store_id,
+          product_id,
+          quantity,
+          recorded_by
+        ) VALUES (
+          ${storeId}::uuid,
+          ${productId1}::uuid,
+          -2.50,
+          ${userId}::uuid
+        )
+      `
+    ).rejects.toThrow(/store_losses_quantity_positive/);
 
     // 2. Rejeita quantidade NaN (valor numérico inválido)
     await expect(
@@ -370,7 +394,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
           ${userId}::uuid
         )
       `
-    ).rejects.toThrow();
+    ).rejects.toThrow(/store_losses_quantity_positive/);
 
     // 3. Contrato transacional atômico: perda e evento de auditoria gravados na mesma transação
     const { lossRecord, auditLog } = await db.begin(async (tx) => {
