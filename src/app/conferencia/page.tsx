@@ -32,7 +32,7 @@ export default async function ConferencePage({
   // incluindo pendências anteriores, em vez de travar na data de hoje.
   const cycles = await listStoreConferenceCycles(principal.storeId);
   const requestedCycle = ciclo && isCycleDate(ciclo) ? ciclo : null;
-  const pendingCycle = cycles.find((c) => c.status !== "FINALIZED")?.cycleDate;
+  const pendingCycle = cycles.find((c) => c.status !== "FINALIZED" && c.status !== "CANCELLED")?.cycleDate;
   const latestCycle = cycles[cycles.length - 1]?.cycleDate;
   const fallbackCycle = (await currentPurchaseCycle()).cycleDate;
   const cycleDate = requestedCycle ?? pendingCycle ?? latestCycle ?? fallbackCycle;

@@ -17,6 +17,18 @@ export type ConferenceItem = {
   checkerName?: string | null;
 };
 
+/**
+ * SYNCED: a conferência corresponde à revisão vigente do pedido da loja.
+ * REVISED: a loja enviou uma revisão nova depois que a conferência foi criada;
+ *   existe uma revisão vigente diferente da que originou a conferência -
+ *   reconcileConferenceWithCurrentOrder() resolve este caso.
+ * CANCELLED_WITHOUT_REPLACEMENT: a revisão que originou a conferência foi
+ *   cancelada e não há nenhuma revisão vigente para substituí-la - não há
+ *   pedido para conferir; cancelConferenceWithoutReplacementOrder() resolve
+ *   este caso encerrando a conferência (não apaga nada).
+ */
+export type ConferenceOrderSyncStatus = "SYNCED" | "REVISED" | "CANCELLED_WITHOUT_REPLACEMENT";
+
 export type ConferenceHeader = {
   id: string;
   purchaseCycleDate: string;
@@ -24,27 +36,29 @@ export type ConferenceHeader = {
   storeName: string;
   orderId: string | null;
   orderRevision: number | null;
-  status: "IN_PROGRESS" | "FINALIZED";
+  status: "IN_PROGRESS" | "FINALIZED" | "CANCELLED";
   totalItems: number;
   verifiedItems: number;
   finalizedAt: string | null;
   finalizedBy: string | null;
   finalizerName?: string | null;
+  cancelledAt: string | null;
+  cancelledBy: string | null;
+  cancellationReason: string | null;
   version: number;
   createdAt: string;
   updatedAt: string;
   /**
-   * true quando a loja revisou ou cancelou o pedido depois que esta conferência
-   * (ainda em andamento) foi criada a partir de uma revisão anterior. A conferência
-   * não é apagada nem recriada automaticamente; a finalização é bloqueada até a
-   * divergência ser resolvida.
+   * SYNCED enquanto a conferência está IN_PROGRESS e acompanha a revisão vigente.
+   * Para conferências FINALIZED/CANCELLED (histórico encerrado) é sempre SYNCED:
+   * esse status não é revalidado contra o pedido atual.
    */
-  orderOutOfSync: boolean;
+  orderSyncStatus: ConferenceOrderSyncStatus;
 };
 
 export type ConferenceCycleOption = {
   cycleDate: string;
-  status: "NOT_STARTED" | "IN_PROGRESS" | "FINALIZED";
+  status: "NOT_STARTED" | "IN_PROGRESS" | "FINALIZED" | "CANCELLED";
   totalItems: number;
   verifiedItems: number;
 };

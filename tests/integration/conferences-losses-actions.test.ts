@@ -8,12 +8,14 @@ import {
   saveConferenceDraft,
   finalizeConference,
   reconcileConferenceWithCurrentOrder,
+  cancelConferenceWithoutReplacementOrder,
 } from "../../src/modules/purchasing/conferences/repository";
 import {
   recordStoreLoss,
   cancelStoreLoss,
   listTodayLossesForStore,
   queryLossesForManagement,
+  aggregateLossesForManagement,
 } from "../../src/modules/purchasing/losses/repository";
 import { ConferenceValidationError } from "../../src/modules/purchasing/conferences/domain";
 
@@ -149,7 +151,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
       expect(result!.header.status).toBe("IN_PROGRESS");
       expect(result!.header.totalItems).toBe(2);
       expect(result!.header.verifiedItems).toBe(0);
-      expect(result!.header.orderOutOfSync).toBe(false);
+      expect(result!.header.orderSyncStatus).toBe("SYNCED");
       expect(result!.items.length).toBe(2);
 
       confId = result!.header.id;
@@ -280,7 +282,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
     it("inicializa a conferência a partir da revisão 1 e permite pesar um item", async () => {
       const initial = await getStoreConference(storeId2, reconcileCycleDate);
       expect(initial).not.toBeNull();
-      expect(initial!.header.orderOutOfSync).toBe(false);
+      expect(initial!.header.orderSyncStatus).toBe("SYNCED");
       expect(initial!.items.length).toBe(2);
       conferenceId = initial!.header.id;
 
@@ -308,7 +310,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
       `;
 
       const afterRevision = await getStoreConference(storeId2, reconcileCycleDate);
-      expect(afterRevision!.header.orderOutOfSync).toBe(true);
+      expect(afterRevision!.header.orderSyncStatus).toBe("REVISED");
       // A lista ativa ainda reflete a revisão antiga até a reconciliação explícita.
       expect(afterRevision!.items.some((it) => it.productId === productId2)).toBe(true);
     });
@@ -338,7 +340,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
       });
 
       expect(reconciled).not.toBeNull();
-      expect(reconciled!.header.orderOutOfSync).toBe(false);
+      expect(reconciled!.header.orderSyncStatus).toBe("SYNCED");
       expect(reconciled!.header.orderRevision).toBe(2);
       expect(reconciled!.header.totalItems).toBe(2);
       expect(reconciled!.header.verifiedItems).toBe(1);
@@ -371,7 +373,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
 
     it("permite finalizar normalmente após a reconciliação", async () => {
       const synced = await getStoreConference(storeId2, reconcileCycleDate);
-      expect(synced!.header.orderOutOfSync).toBe(false);
+      expect(synced!.header.orderSyncStatus).toBe("SYNCED");
 
       await finalizeConference({
         conferenceId,
@@ -387,6 +389,79 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
       const finalized = await getStoreConference(storeId2, reconcileCycleDate);
       expect(finalized!.header.status).toBe("FINALIZED");
       expect(finalized!.header.verifiedItems).toBe(2);
+    });
+  });
+
+  describe("Cancelamento de conferência sem pedido substituto", () => {
+    const cancelOrderId = "60000000-0000-0000-0000-00000000000a";
+    const cancelCycleDate = "2026-10-30";
+    let conferenceId: string;
+
+    beforeAll(async () => {
+      await db`
+        INSERT INTO orders (id, store_id, order_date, purchase_cycle_date, cutoff_at, revision, submitted_at, submitted_by)
+        VALUES (${cancelOrderId}, ${storeId2}, ${cancelCycleDate}::date, ${cancelCycleDate}::date, now(), 1, now(), ${userId2})
+      `;
+      await db`
+        INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+        VALUES (${cancelOrderId}, ${productId1}, 1.00, 4.00, 8001, 'Tomate Débora Extra', 'CX')
+      `;
+    });
+
+    it("cria a conferência normalmente a partir do pedido ainda vigente", async () => {
+      const initial = await getStoreConference(storeId2, cancelCycleDate);
+      expect(initial).not.toBeNull();
+      expect(initial!.header.orderSyncStatus).toBe("SYNCED");
+      conferenceId = initial!.header.id;
+    });
+
+    it("detecta que não há pedido vigente quando a única revisão é cancelada sem substituta", async () => {
+      await db`
+        UPDATE orders SET cancelled_at = now(), cancelled_by = ${userId2}::uuid
+        WHERE id = ${cancelOrderId}::uuid
+      `;
+
+      const afterCancel = await getStoreConference(storeId2, cancelCycleDate);
+      expect(afterCancel!.header.orderSyncStatus).toBe("CANCELLED_WITHOUT_REPLACEMENT");
+    });
+
+    it("recusa reconciliar (não há revisão vigente para sincronizar)", async () => {
+      await expect(
+        reconcileConferenceWithCurrentOrder({ conferenceId, storeId: storeId2, userId: userId2 })
+      ).rejects.toThrow("Não há pedido vigente");
+    });
+
+    it("cancela a conferência de forma auditada, preservando itens e histórico", async () => {
+      const cancelled = await cancelConferenceWithoutReplacementOrder({
+        conferenceId,
+        storeId: storeId2,
+        userId: userId2,
+        reason: "Loja cancelou o pedido do ciclo sem reenviar.",
+      });
+
+      expect(cancelled).not.toBeNull();
+      expect(cancelled!.header.status).toBe("CANCELLED");
+      expect(cancelled!.header.cancelledBy).toBe(userId2);
+      expect(cancelled!.header.cancellationReason).toContain("Loja cancelou");
+
+      // Nada foi apagado: o item original continua no banco.
+      const [itemRow] = await db<{ product_id: string }[]>`
+        SELECT product_id FROM store_delivery_conference_items
+        WHERE conference_id = ${conferenceId}::uuid AND product_id = ${productId1}::uuid
+      `;
+      expect(itemRow).toBeDefined();
+
+      const [auditEvent] = await db<{ action: string }[]>`
+        SELECT action FROM audit_events
+        WHERE action = 'store_delivery_conference.cancel' AND entity_id = ${conferenceId}::text
+      `;
+      expect(auditEvent).toBeDefined();
+    });
+
+    it("não cancela novamente uma conferência que já não está em andamento", async () => {
+      await expect(
+        cancelConferenceWithoutReplacementOrder({ conferenceId, storeId: storeId2, userId: userId2 })
+      ).rejects.toThrow(ConferenceValidationError);
     });
   });
 
@@ -474,6 +549,30 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
       expect(results.length).toBe(1);
       expect(results[0].productName).toBe("Alface Crespa Hidropônica");
       expect(results[0].unit).toBe("UND");
+    });
+
+    it("calcula KPIs agregados no banco (SUM/GROUP BY) sem erro de coluna ambígua, com KG e UND no mesmo filtro", async () => {
+      // store_loss_records e products têm, ambas, uma coluna "unit"; o agrupamento
+      // por unidade normalizada precisa usar a expressão completa, não o alias,
+      // senão o Postgres recusa a consulta com "column reference is ambiguous".
+      await recordStoreLoss({
+        storeId: storeId1,
+        productId: productId1,
+        quantity: 2.75,
+        unit: "KG",
+        reason: "Quebra Interna / Manuseio",
+        userId: userId1,
+      });
+
+      const kpis = await aggregateLossesForManagement({ storeId: storeId1 });
+
+      expect(kpis.totalRecords).toBe(2);
+      expect(kpis.totals.kg).toBe(2.75);
+      expect(kpis.totals.und).toBe(6);
+      expect(kpis.topStoreByUnit.KG?.total).toBe(2.75);
+      expect(kpis.topStoreByUnit.UND?.total).toBe(6);
+      expect(kpis.topProductByUnit.KG?.productName).toBe("Tomate Débora Extra");
+      expect(kpis.topProductByUnit.UND?.productName).toBe("Alface Crespa Hidropônica");
     });
   });
 });

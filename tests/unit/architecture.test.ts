@@ -22,11 +22,20 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0019", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0020", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 19 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 20 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
+  });
+
+  it("mantém a 0020 aditiva com cancelamento auditado de conferência sem pedido substituto", async () => {
+    const migration = await readFile("migrations/0020_store_delivery_conference_cancellation.sql", "utf8");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS cancelled_at");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS cancelled_by");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS cancellation_reason");
+    expect(migration).toContain("'IN_PROGRESS', 'FINALIZED', 'CANCELLED'");
+    expect(migration).not.toMatch(/DROP COLUMN|DROP TABLE|DELETE FROM/i);
   });
 
   it("mantém a 0019 aditiva com reconciliação de conferência e revisão vigente do pedido", async () => {

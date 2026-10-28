@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useState, type MouseEvent } from "react";
 import { ProductPhoto } from "@/components/product-photo";
 import { StoreNavigation } from "@/components/store-navigation";
 import { ConferenceCycleSelector } from "./conference-cycle-selector";
@@ -9,16 +9,36 @@ import {
   getItemStatus,
   type ConferenceHeader,
   type ConferenceItem,
+  type ConferenceOrderSyncStatus,
 } from "./domain";
 import {
   saveConferenceDraftAction,
   finalizeConferenceAction,
   reconcileConferenceAction,
+  cancelConferenceAction,
   type ConferenceActionState,
   type ConferenceReconcileState,
 } from "./actions";
 
 type FilterType = "ALL" | "PENDING" | "VERIFIED";
+
+function serializeItemsPayload(items: ConferenceItem[]): string {
+  return JSON.stringify(
+    items.map((it) => ({
+      productId: it.productId,
+      receivedWeightKg: it.isUnreceived ? 0 : it.receivedWeightKg,
+      isUnreceived: it.isUnreceived,
+    }))
+  );
+}
+
+function buildEditingWeights(items: ConferenceItem[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const it of items) {
+    if (it.receivedWeightKg !== null) map[it.productId] = String(it.receivedWeightKg);
+  }
+  return map;
+}
 
 export function ConferenceWorkspace({
   header,
@@ -36,19 +56,22 @@ export function ConferenceWorkspace({
   const [items, setItems] = useState<ConferenceItem[]>(initialItems);
   const [filter, setFilter] = useState<FilterType>("ALL");
   const [query, setQuery] = useState("");
-  const [editingWeights, setEditingWeights] = useState<Record<string, string>>(() => {
-    const map: Record<string, string> = {};
-    for (const it of initialItems) {
-      if (it.receivedWeightKg !== null) {
-        map[it.productId] = String(it.receivedWeightKg);
-      }
-    }
-    return map;
-  });
+  const [editingWeights, setEditingWeights] = useState<Record<string, string>>(() => buildEditingWeights(initialItems));
+
+  const itemsJsonPayload = useMemo(() => serializeItemsPayload(items), [items]);
+
+  // Rastreia o último payload confirmado como persistido no servidor (carga
+  // inicial, um Salvar Parcial com sucesso, ou o resultado de uma reconciliação/
+  // cancelamento). Pesagens digitadas que ainda não foram salvas tornam
+  // itemsJsonPayload diferente de lastSavedPayload - usado para não deixar
+  // Sincronizar/Cancelar descartar peso não salvo sem confirmação explícita.
+  const [lastSavedPayload, setLastSavedPayload] = useState(itemsJsonPayload);
+  const hasUnsavedChanges = itemsJsonPayload !== lastSavedPayload;
 
   const [saveState, saveAction, isSaving] = useActionState(saveConferenceDraftAction, {});
   const [finalizeState, finalizeAction, isFinalizing] = useActionState(finalizeConferenceAction, {});
   const [reconcileState, reconcileAction, isReconciling] = useActionState(reconcileConferenceAction, {});
+  const [cancelState, cancelAction, isCancelling] = useActionState(cancelConferenceAction, {});
 
   // Ratchet: só avança para uma versão mais nova após uma gravação confirmada pelo
   // servidor; nunca regride para a versão inicial do carregamento em caso de erro.
@@ -58,36 +81,51 @@ export function ConferenceWorkspace({
     setSyncedSaveState(saveState);
     if (saveState.status === "success" && typeof saveState.version === "number") {
       setVersion(saveState.version);
+      setLastSavedPayload(itemsJsonPayload);
     }
   }
 
-  // orderOutOfSync começa a partir do header carregado do servidor, mas depois de
-  // uma reconciliação bem-sucedida passa a ser controlado localmente (volta a
-  // false) sem exigir um recarregamento completo da página.
-  const [orderOutOfSync, setOrderOutOfSync] = useState(header.orderOutOfSync);
+  // orderSyncStatus reflete o header mais recente recebido do servidor (a cada
+  // revalidação da página - salvar, finalizar, ou só reabrir), preservando os
+  // campos que o operador está editando (items/editingWeights não são tocados
+  // aqui). Sem isso, uma divergência detectada pelo servidor depois da primeira
+  // montagem só apareceria num recarregamento completo da página.
+  const [orderSyncStatus, setOrderSyncStatus] = useState<ConferenceOrderSyncStatus>(header.orderSyncStatus);
+  const [syncedHeaderForOrderStatus, setSyncedHeaderForOrderStatus] = useState(header);
+  if (header !== syncedHeaderForOrderStatus) {
+    setSyncedHeaderForOrderStatus(header);
+    setOrderSyncStatus(header.orderSyncStatus);
+  }
 
-  // Aplica o resultado da reconciliação: itens/pesagens e versão atualizados vêm
-  // do servidor; nada é recalculado no cliente para evitar divergência.
+  // Aplica o resultado da reconciliação/cancelamento: itens/pesagens e versão
+  // atualizados vêm do servidor; nada é recalculado no cliente para evitar
+  // divergência. O payload resultante já é considerado "salvo".
   const [syncedReconcileState, setSyncedReconcileState] = useState(reconcileState);
   if (reconcileState !== syncedReconcileState) {
     setSyncedReconcileState(reconcileState);
     if (reconcileState.status === "success" && reconcileState.header && reconcileState.items) {
       setItems(reconcileState.items);
-      setEditingWeights(() => {
-        const map: Record<string, string> = {};
-        for (const it of reconcileState.items!) {
-          if (it.receivedWeightKg !== null) map[it.productId] = String(it.receivedWeightKg);
-        }
-        return map;
-      });
+      setEditingWeights(buildEditingWeights(reconcileState.items));
       setVersion(reconcileState.header.version);
-      setOrderOutOfSync(reconcileState.header.orderOutOfSync);
+      setOrderSyncStatus(reconcileState.header.orderSyncStatus);
+      setLastSavedPayload(serializeItemsPayload(reconcileState.items));
+    }
+  }
+  const [syncedCancelState, setSyncedCancelState] = useState(cancelState);
+  if (cancelState !== syncedCancelState) {
+    setSyncedCancelState(cancelState);
+    if (cancelState.status === "success" && cancelState.header && cancelState.items) {
+      setItems(cancelState.items);
+      setEditingWeights(buildEditingWeights(cancelState.items));
+      setVersion(cancelState.header.version);
+      setOrderSyncStatus(cancelState.header.orderSyncStatus);
+      setLastSavedPayload(serializeItemsPayload(cancelState.items));
     }
   }
 
-  // Rastreia qual das três ações (salvar parcial/finalizar/reconciliar) foi
-  // disparada mais recentemente, em vez de dar prioridade permanente a uma delas
-  // sempre que tiver mensagem (o que esconderia o resultado de uma ação seguinte).
+  // Rastreia qual das quatro ações foi disparada mais recentemente, em vez de
+  // dar prioridade permanente a uma delas sempre que tiver mensagem (o que
+  // esconderia o resultado de uma ação seguinte).
   const [feedback, setFeedback] = useState<ConferenceActionState | ConferenceReconcileState>({});
   const [syncedFeedbackSaveState, setSyncedFeedbackSaveState] = useState(saveState);
   if (saveState !== syncedFeedbackSaveState) {
@@ -104,8 +142,14 @@ export function ConferenceWorkspace({
     setSyncedFeedbackReconcileState(reconcileState);
     setFeedback(reconcileState);
   }
+  const [syncedFeedbackCancelState, setSyncedFeedbackCancelState] = useState(cancelState);
+  if (cancelState !== syncedFeedbackCancelState) {
+    setSyncedFeedbackCancelState(cancelState);
+    setFeedback(cancelState);
+  }
 
-  const isFinalized = header.status === "FINALIZED";
+  const isClosed = header.status === "FINALIZED" || header.status === "CANCELLED";
+  const isSyncing = isReconciling || isCancelling;
 
   // Progresso em tempo real
   const progress = useMemo(() => {
@@ -164,15 +208,16 @@ export function ConferenceWorkspace({
     );
   }
 
-  const itemsJsonPayload = useMemo(() => {
-    return JSON.stringify(
-      items.map((it) => ({
-        productId: it.productId,
-        receivedWeightKg: it.isUnreceived ? 0 : it.receivedWeightKg,
-        isUnreceived: it.isUnreceived,
-      }))
-    );
-  }, [items]);
+  function confirmDiscardIfDirty(event: MouseEvent<HTMLButtonElement>) {
+    if (
+      hasUnsavedChanges &&
+      !confirm(
+        "Existem pesagens digitadas nesta tela que ainda não foram salvas. Elas serão substituídas pelos dados do servidor. Descartar as alterações não salvas e continuar?"
+      )
+    ) {
+      event.preventDefault();
+    }
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", paddingBottom: 100 }}>
@@ -186,7 +231,7 @@ export function ConferenceWorkspace({
       <main style={{ maxWidth: 800, margin: "0 auto", padding: "16px 12px" }}>
         <ConferenceCycleSelector cycleDate={header.purchaseCycleDate} cycles={cycles} />
 
-        {orderOutOfSync && (
+        {orderSyncStatus === "REVISED" && (
           <div
             role="alert"
             style={{
@@ -204,15 +249,16 @@ export function ConferenceWorkspace({
             }}
           >
             <span>
-              ⚠️ O pedido desta loja foi revisado ou cancelado depois que esta conferência foi
-              iniciada. A finalização fica bloqueada até sincronizar com o pedido vigente.
+              ⚠️ O pedido desta loja foi revisado depois que esta conferência foi iniciada.
+              A finalização fica bloqueada até sincronizar com o pedido vigente.
             </span>
             <form action={reconcileAction}>
               <input type="hidden" name="storeId" value={header.storeId} />
               <input type="hidden" name="conferenceId" value={header.id} />
               <button
                 type="submit"
-                disabled={isReconciling}
+                disabled={isSyncing}
+                onClick={confirmDiscardIfDirty}
                 className="btn"
                 style={{ fontSize: 12, padding: "6px 14px", minHeight: 36, borderRadius: 6, fontWeight: 800, background: "#92400e", alignSelf: "flex-start" }}
               >
@@ -222,6 +268,48 @@ export function ConferenceWorkspace({
             <span style={{ fontWeight: 500, fontSize: 12 }}>
               Pesagens já registradas para produtos que continuam no pedido são preservadas;
               produtos retirados ficam marcados no histórico, nunca apagados.
+              {hasUnsavedChanges && " Pesagens digitadas aqui e ainda não salvas serão descartadas ao sincronizar."}
+            </span>
+          </div>
+        )}
+
+        {orderSyncStatus === "CANCELLED_WITHOUT_REPLACEMENT" && (
+          <div
+            role="alert"
+            style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              marginBottom: 14,
+              fontSize: 13,
+              fontWeight: 700,
+              background: "#fee2e2",
+              color: "#991b1b",
+              border: "1px solid #f87171",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <span>
+              ⚠️ O pedido desta loja foi cancelado e não há nenhuma revisão substituta para este
+              ciclo. Não há o que conferir; esta conferência deve ser cancelada.
+            </span>
+            <form action={cancelAction}>
+              <input type="hidden" name="storeId" value={header.storeId} />
+              <input type="hidden" name="conferenceId" value={header.id} />
+              <button
+                type="submit"
+                disabled={isSyncing}
+                onClick={confirmDiscardIfDirty}
+                className="btn"
+                style={{ fontSize: 12, padding: "6px 14px", minHeight: 36, borderRadius: 6, fontWeight: 800, background: "#991b1b", alignSelf: "flex-start" }}
+              >
+                {isCancelling ? "Cancelando..." : "✕ Cancelar esta conferência"}
+              </button>
+            </form>
+            <span style={{ fontWeight: 500, fontSize: 12 }}>
+              O cancelamento é auditado e preserva o histórico; nenhuma pesagem já registrada é apagada.
+              {hasUnsavedChanges && " Pesagens digitadas aqui e ainda não salvas serão descartadas ao cancelar."}
             </span>
           </div>
         )}
@@ -245,12 +333,12 @@ export function ConferenceWorkspace({
                   fontWeight: 800,
                   padding: "3px 8px",
                   borderRadius: 4,
-                  background: isFinalized ? "#dcfce7" : "#e0f2fe",
-                  color: isFinalized ? "#166534" : "#0369a1",
+                  background: header.status === "FINALIZED" ? "#dcfce7" : header.status === "CANCELLED" ? "#fee2e2" : "#e0f2fe",
+                  color: header.status === "FINALIZED" ? "#166534" : header.status === "CANCELLED" ? "#991b1b" : "#0369a1",
                   letterSpacing: "0.5px",
                 }}
               >
-                {isFinalized ? "CONFERÊNCIA FINALIZADA" : "EM ANDAMENTO"}
+                {header.status === "FINALIZED" ? "CONFERÊNCIA FINALIZADA" : header.status === "CANCELLED" ? "CONFERÊNCIA CANCELADA" : "EM ANDAMENTO"}
               </span>
               <h2 style={{ fontSize: 18, fontWeight: 800, margin: "6px 0 2px", color: "#0f172a" }}>
                 Ciclo {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(new Date(`${header.purchaseCycleDate}T12:00:00`))} • Chegada
@@ -415,7 +503,7 @@ export function ConferenceWorkspace({
                       </div>
 
                       {/* Controles de Pesagem / Ações */}
-                      {!isFinalized && (
+                      {!isClosed && (
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             <input
@@ -424,7 +512,7 @@ export function ConferenceWorkspace({
                               value={editingWeights[item.productId] ?? ""}
                               onChange={(e) => handleWeightChange(item.productId, e.target.value)}
                               placeholder="Peso real..."
-                              disabled={item.isUnreceived}
+                              disabled={item.isUnreceived || isSyncing}
                               style={{
                                 width: 105,
                                 padding: "6px 8px",
@@ -443,6 +531,7 @@ export function ConferenceWorkspace({
                             <button
                               type="button"
                               onClick={() => handleMarkUnreceived(item.productId)}
+                              disabled={isSyncing}
                               className="btn btn--secondary"
                               style={{
                                 fontSize: 11,
@@ -461,6 +550,7 @@ export function ConferenceWorkspace({
                             <button
                               type="button"
                               onClick={() => handleClearWeight(item.productId)}
+                              disabled={isSyncing}
                               className="btn btn--secondary"
                               style={{
                                 fontSize: 11,
@@ -485,7 +575,7 @@ export function ConferenceWorkspace({
       </main>
 
       {/* Barra de Ações Fixa no Rodapé (Mobile Sticky) */}
-      {!isFinalized && (
+      {!isClosed && (
         <footer
           style={{
             position: "fixed",
@@ -508,7 +598,7 @@ export function ConferenceWorkspace({
               <input type="hidden" name="items" value={itemsJsonPayload} />
               <button
                 type="submit"
-                disabled={isSaving || isFinalizing}
+                disabled={isSaving || isFinalizing || isSyncing}
                 className="btn btn--secondary"
                 style={{ width: "100%", minHeight: 44, fontSize: 13, fontWeight: 700 }}
               >
@@ -524,20 +614,20 @@ export function ConferenceWorkspace({
               <input type="hidden" name="items" value={itemsJsonPayload} />
               <button
                 type="submit"
-                disabled={isSaving || isFinalizing || progress.pending > 0 || orderOutOfSync}
+                disabled={isSaving || isFinalizing || isSyncing || progress.pending > 0 || orderSyncStatus !== "SYNCED"}
                 className="btn"
                 style={{
                   width: "100%",
                   minHeight: 44,
                   fontSize: 13,
                   fontWeight: 800,
-                  background: progress.pending > 0 || orderOutOfSync ? "#94a3b8" : "#004737",
-                  cursor: progress.pending > 0 || orderOutOfSync ? "not-allowed" : "pointer",
+                  background: progress.pending > 0 || orderSyncStatus !== "SYNCED" ? "#94a3b8" : "#004737",
+                  cursor: progress.pending > 0 || orderSyncStatus !== "SYNCED" ? "not-allowed" : "pointer",
                 }}
               >
                 {isFinalizing
                   ? "Finalizando..."
-                  : orderOutOfSync
+                  : orderSyncStatus !== "SYNCED"
                   ? "Pedido desatualizado"
                   : progress.pending > 0
                   ? `Finalizar (${progress.pending} pendentes)`

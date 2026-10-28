@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { requirePrincipal } from "@/modules/identity/session";
 import { assertPermission, AuthorizationError } from "@/modules/identity/domain";
 import { parseWeightInput, ConferenceValidationError, type ConferenceHeader, type ConferenceItem } from "./domain";
-import { saveConferenceDraft, finalizeConference, reconcileConferenceWithCurrentOrder } from "./repository";
+import {
+  saveConferenceDraft,
+  finalizeConference,
+  reconcileConferenceWithCurrentOrder,
+  cancelConferenceWithoutReplacementOrder,
+} from "./repository";
 
 export type ConferenceActionState = {
   status?: "success" | "error";
@@ -183,6 +188,50 @@ export async function reconcileConferenceAction(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Erro ao sincronizar a conferência com o pedido vigente.",
+    };
+  }
+}
+
+export async function cancelConferenceAction(
+  _prevState: ConferenceReconcileState,
+  formData: FormData
+): Promise<ConferenceReconcileState> {
+  try {
+    const principal = await requirePrincipal();
+    assertPermission(principal, "loja:conferencia", "Você não tem permissão para conferência de entrega.");
+
+    const storeId = String(formData.get("storeId") ?? "");
+    const conferenceId = String(formData.get("conferenceId") ?? "");
+
+    if (!principal.storeId || principal.storeId !== storeId) {
+      throw new AuthorizationError("Operação permitida apenas para a sua loja vinculada.");
+    }
+
+    if (!conferenceId) {
+      throw new ConferenceValidationError("Identificador de conferência não informado.");
+    }
+
+    const result = await cancelConferenceWithoutReplacementOrder({
+      conferenceId,
+      storeId,
+      userId: principal.userId,
+    });
+
+    if (!result) {
+      throw new ConferenceValidationError("Não foi possível recarregar a conferência após o cancelamento.");
+    }
+
+    revalidatePath("/conferencia");
+    return {
+      status: "success",
+      message: "Conferência cancelada: o pedido desta loja foi cancelado sem revisão substituta para este ciclo.",
+      header: result.header,
+      items: result.items,
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Erro ao cancelar a conferência.",
     };
   }
 }

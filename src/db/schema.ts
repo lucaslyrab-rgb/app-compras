@@ -517,6 +517,9 @@ export const storeDeliveryConferences = pgTable("store_delivery_conferences", {
   version: integer("version").notNull().default(1),
   reconciledAt: timestamp("reconciled_at", { withTimezone: true }),
   reconciledBy: uuid("reconciled_by").references(() => users.id, { onDelete: "set null" }),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  cancelledBy: uuid("cancelled_by").references(() => users.id, { onDelete: "set null" }),
+  cancellationReason: text("cancellation_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 }, (table) => [
@@ -524,9 +527,9 @@ export const storeDeliveryConferences = pgTable("store_delivery_conferences", {
   index("delivery_conferences_cycle_idx").on(table.purchaseCycleDate),
   index("delivery_conferences_store_cycle_idx").on(table.storeId, table.purchaseCycleDate),
   check("store_delivery_conferences_version_check", sql`${table.version} > 0`),
-  check("store_delivery_conferences_status_check", sql`${table.status} IN ('IN_PROGRESS', 'FINALIZED')`),
+  check("store_delivery_conferences_status_check", sql`${table.status} IN ('IN_PROGRESS', 'FINALIZED', 'CANCELLED')`),
   check("delivery_conf_items_count_check", sql`${table.totalItems} >= 0 AND ${table.verifiedItems} >= 0 AND ${table.verifiedItems} <= ${table.totalItems}`),
-  check("delivery_conf_finalized_coherence_check", sql`(${table.status} = 'FINALIZED' AND ${table.finalizedAt} IS NOT NULL AND ${table.finalizedBy} IS NOT NULL AND ${table.totalItems} = ${table.verifiedItems}) OR (${table.status} = 'IN_PROGRESS' AND ${table.finalizedAt} IS NULL AND ${table.finalizedBy} IS NULL)`)
+  check("delivery_conf_closure_coherence_check", sql`(${table.status} = 'FINALIZED' AND ${table.finalizedAt} IS NOT NULL AND ${table.finalizedBy} IS NOT NULL AND ${table.totalItems} = ${table.verifiedItems} AND ${table.cancelledAt} IS NULL AND ${table.cancelledBy} IS NULL) OR (${table.status} = 'CANCELLED' AND ${table.cancelledAt} IS NOT NULL AND ${table.cancelledBy} IS NOT NULL AND ${table.finalizedAt} IS NULL AND ${table.finalizedBy} IS NULL) OR (${table.status} = 'IN_PROGRESS' AND ${table.finalizedAt} IS NULL AND ${table.finalizedBy} IS NULL AND ${table.cancelledAt} IS NULL AND ${table.cancelledBy} IS NULL)`)
 ]);
 
 export const storeDeliveryConferencesRelations = relations(storeDeliveryConferences, ({ one, many }) => ({

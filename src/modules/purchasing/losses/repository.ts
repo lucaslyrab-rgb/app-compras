@@ -342,8 +342,14 @@ export async function aggregateLossesForManagement(filters: LossManagementFilter
       ${searchCondition}
   `;
 
-  const storeTotals = await sql<{ store_name: string; unit: "KG" | "UND"; total: number }[]>`
+  // GROUP BY usa a expressão completa (não o alias "unit"): tanto store_loss_records
+  // quanto products têm uma coluna chamada unit, e o SQL padrão exige resolver um
+  // identificador de GROUP BY ambíguo contra TODAS as colunas de entrada em escopo
+  // antes de considerar aliases de saída - referenciar "unit" pelo nome falha com
+  // 42702 (ambiguous column reference).
+  const storeTotals = await sql<{ store_id: string; store_name: string; unit: "KG" | "UND"; total: number }[]>`
     SELECT
+      s.id AS store_id,
       s.name AS store_name,
       CASE WHEN upper(sl.unit) IN ('UND', 'UN', 'UNIDADE') THEN 'UND' ELSE 'KG' END AS unit,
       SUM(sl.quantity)::float AS total
@@ -355,11 +361,12 @@ export async function aggregateLossesForManagement(filters: LossManagementFilter
       ${startCondition}
       ${endCondition}
       ${searchCondition}
-    GROUP BY s.name, unit
+    GROUP BY s.id, s.name, CASE WHEN upper(sl.unit) IN ('UND', 'UN', 'UNIDADE') THEN 'UND' ELSE 'KG' END
   `;
 
-  const productTotals = await sql<{ product_name: string; unit: "KG" | "UND"; total: number }[]>`
+  const productTotals = await sql<{ product_id: string; product_name: string; unit: "KG" | "UND"; total: number }[]>`
     SELECT
+      p.id AS product_id,
       p.name AS product_name,
       CASE WHEN upper(sl.unit) IN ('UND', 'UN', 'UNIDADE') THEN 'UND' ELSE 'KG' END AS unit,
       SUM(sl.quantity)::float AS total
@@ -371,7 +378,7 @@ export async function aggregateLossesForManagement(filters: LossManagementFilter
       ${startCondition}
       ${endCondition}
       ${searchCondition}
-    GROUP BY p.name, unit
+    GROUP BY p.id, p.name, CASE WHEN upper(sl.unit) IN ('UND', 'UN', 'UNIDADE') THEN 'UND' ELSE 'KG' END
   `;
 
   function topByUnit<TKey extends string, TRow extends { unit: "KG" | "UND"; total: number }>(

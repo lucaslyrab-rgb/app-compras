@@ -23,7 +23,7 @@ export async function getStoreConference(
 
   // 1. Busca conferência existente no ciclo
   const [existing] = await sql`
-    SELECT 
+    SELECT
       c.id,
       c.purchase_cycle_date::text AS purchase_cycle_date,
       c.store_id,
@@ -36,6 +36,9 @@ export async function getStoreConference(
       c.finalized_at::text AS finalized_at,
       c.finalized_by,
       u.name AS finalizer_name,
+      c.cancelled_at::text AS cancelled_at,
+      c.cancelled_by,
+      c.cancellation_reason,
       c.version,
       c.created_at::text AS created_at,
       c.updated_at::text AS updated_at
@@ -48,10 +51,10 @@ export async function getStoreConference(
   `;
 
   if (existing) {
-    // Conferências finalizadas são histórico encerrado: não revalidar contra o pedido atual.
-    // Conferências em andamento precisam refletir se a loja revisou ou cancelou o pedido
-    // depois que esta conferência foi criada a partir de uma revisão anterior.
-    let orderOutOfSync = false;
+    // Conferências finalizadas/canceladas são histórico encerrado: não revalidar
+    // contra o pedido atual. Conferências em andamento precisam refletir se a
+    // loja revisou ou cancelou o pedido depois que esta conferência foi criada.
+    let orderSyncStatus: ConferenceHeader["orderSyncStatus"] = "SYNCED";
     if (existing.status === "IN_PROGRESS") {
       const [currentOrder] = await sql`
         SELECT id, revision
@@ -62,7 +65,11 @@ export async function getStoreConference(
         ORDER BY revision DESC
         LIMIT 1
       `;
-      orderOutOfSync = !currentOrder || currentOrder.id !== existing.order_id;
+      if (!currentOrder) {
+        orderSyncStatus = "CANCELLED_WITHOUT_REPLACEMENT";
+      } else if (currentOrder.id !== existing.order_id) {
+        orderSyncStatus = "REVISED";
+      }
     }
 
     const items = await sql`
@@ -103,10 +110,13 @@ export async function getStoreConference(
         finalizedAt: existing.finalized_at,
         finalizedBy: existing.finalized_by,
         finalizerName: existing.finalizer_name,
+        cancelledAt: existing.cancelled_at,
+        cancelledBy: existing.cancelled_by,
+        cancellationReason: existing.cancellation_reason,
         version: existing.version,
         createdAt: existing.created_at,
         updatedAt: existing.updated_at,
-        orderOutOfSync,
+        orderSyncStatus,
       },
       items: items.map((it) => ({
         id: it.id,
@@ -270,10 +280,13 @@ export async function getStoreConference(
         finalizedAt: createdConf.finalized_at,
         finalizedBy: createdConf.finalized_by,
         finalizerName: null,
+        cancelledAt: null,
+        cancelledBy: null,
+        cancellationReason: null,
         version: createdConf.version,
         createdAt: createdConf.created_at,
         updatedAt: createdConf.updated_at,
-        orderOutOfSync: false,
+        orderSyncStatus: "SYNCED",
       },
       items: insertedItems,
     };
@@ -293,8 +306,8 @@ export async function getStoreConference(
  * Lista os ciclos que o seletor de /conferencia pode oferecer. TODA pendência
  * (NOT_STARTED ou IN_PROGRESS) é sempre incluída, não importa a idade - uma
  * conferência pendente antiga nunca deve desaparecer só porque ciclos novos já
- * finalizados se acumularam. Só o histórico FINALIZADO é limitado/recente, como
- * contexto; ele não representa trabalho pendente.
+ * encerrados (FINALIZED ou CANCELLED) se acumularam. Só o histórico encerrado
+ * é limitado/recente, como contexto; ele não representa trabalho pendente.
  */
 export async function listStoreConferenceCycles(
   storeId: string,
@@ -321,10 +334,10 @@ export async function listStoreConferenceCycles(
         ON c.store_id = ${storeId}::uuid AND c.purchase_cycle_date = cd.purchase_cycle_date
     ),
     pending AS (
-      SELECT * FROM joined WHERE status <> 'FINALIZED'
+      SELECT * FROM joined WHERE status NOT IN ('FINALIZED', 'CANCELLED')
     ),
     recent_finalized AS (
-      SELECT * FROM joined WHERE status = 'FINALIZED'
+      SELECT * FROM joined WHERE status IN ('FINALIZED', 'CANCELLED')
       ORDER BY purchase_cycle_date DESC
       LIMIT ${finalizedHistoryLimit}
     )
@@ -547,9 +560,14 @@ export async function finalizeConference(params: {
       LIMIT 1
     `;
 
-    if (!currentOrder || currentOrder.id !== conf.order_id) {
+    if (!currentOrder) {
       throw new ConferenceValidationError(
-        "O pedido desta loja foi revisado ou cancelado depois que esta conferência foi iniciada. Peça ao comprador/gestor para resolver a divergência antes de finalizar."
+        "O pedido desta loja foi cancelado sem revisão substituta para este ciclo; não há o que finalizar. Cancele esta conferência em vez de finalizá-la."
+      );
+    }
+    if (currentOrder.id !== conf.order_id) {
+      throw new ConferenceValidationError(
+        "O pedido desta loja foi revisado depois que esta conferência foi iniciada. Sincronize com o pedido vigente antes de finalizar."
       );
     }
 
@@ -654,7 +672,7 @@ export async function finalizeConference(params: {
 /**
  * Reconcilia uma conferência em andamento com a revisão de pedido vigente da loja,
  * quando a revisão que originou a conferência foi substituída ou cancelada
- * (ConferenceHeader.orderOutOfSync). Não apaga nada: produtos que saíram da
+ * (ConferenceHeader.orderSyncStatus === "REVISED"). Não apaga nada: produtos que saíram da
  * revisão vigente são marcados `removed_from_order`, preservando a pesagem e o
  * histórico para auditoria; produtos novos entram como pendentes; produtos que
  * continuam na revisão têm apenas `ordered_quantity`/`ordered_unit` atualizados,
@@ -696,7 +714,7 @@ export async function reconcileConferenceWithCurrentOrder(params: {
 
     if (!currentOrder) {
       throw new ConferenceValidationError(
-        "Não há pedido vigente desta loja para este ciclo (o pedido foi cancelado sem substituição). Não é possível reconciliar automaticamente; procure o comprador/gestor."
+        "Não há pedido vigente desta loja para este ciclo (o pedido foi cancelado sem substituição). Use a opção de cancelar a conferência em vez de sincronizar."
       );
     }
 
@@ -804,6 +822,94 @@ export async function reconcileConferenceWithCurrentOrder(params: {
           itemsAdded: added,
           itemsRemoved: removed,
           itemsRestored: updated,
+        })}::jsonb,
+        now()
+      )
+    `;
+
+    return conf.purchase_cycle_date as string;
+  });
+
+  return getStoreConference(params.storeId, cycleDate);
+}
+
+/**
+ * Encerra (cancela) uma conferência em andamento cujo pedido foi cancelado sem
+ * nenhuma revisão substituta - não há pedido para conferir. Não apaga nada: os
+ * itens e a pesagem já registrada permanecem no banco para auditoria; o
+ * encerramento fica rastreável (cancelled_at/cancelled_by/cancellation_reason),
+ * no mesmo espírito do cancelamento lógico já usado em `orders`.
+ */
+export async function cancelConferenceWithoutReplacementOrder(params: {
+  conferenceId: string;
+  storeId: string;
+  userId: string;
+  reason?: string;
+}): Promise<{ header: ConferenceHeader; items: ConferenceItem[] } | null> {
+  const { sql } = database();
+
+  const cycleDate = await sql.begin(async (tx) => {
+    const [conf] = await tx`
+      SELECT id, status, order_id, purchase_cycle_date::text AS purchase_cycle_date
+      FROM store_delivery_conferences
+      WHERE id = ${params.conferenceId}::uuid
+        AND store_id = ${params.storeId}::uuid
+      FOR UPDATE
+    `;
+
+    if (!conf) {
+      throw new ConferenceValidationError("Conferência não encontrada para esta loja.");
+    }
+
+    if (conf.status !== "IN_PROGRESS") {
+      throw new ConferenceValidationError("Esta conferência não está em andamento e não pode ser cancelada por esta via.");
+    }
+
+    // Reconfirma dentro da transação: só cancela por esta via quando realmente
+    // não existe pedido vigente. Se existir, a operação correta é reconciliar.
+    const [currentOrder] = await tx`
+      SELECT id
+      FROM orders
+      WHERE store_id = ${params.storeId}::uuid
+        AND purchase_cycle_date = ${conf.purchase_cycle_date}::date
+        AND cancelled_at IS NULL
+      ORDER BY revision DESC
+      LIMIT 1
+    `;
+
+    if (currentOrder) {
+      throw new ConferenceValidationError(
+        "Existe um pedido vigente para este ciclo; sincronize a conferência em vez de cancelá-la."
+      );
+    }
+
+    const reason = params.reason?.trim() || "Pedido da loja cancelado sem revisão substituta para este ciclo.";
+
+    await tx`
+      UPDATE store_delivery_conferences
+      SET
+        status = 'CANCELLED',
+        cancelled_at = now(),
+        cancelled_by = ${params.userId}::uuid,
+        cancellation_reason = ${reason},
+        version = version + 1,
+        updated_at = now()
+      WHERE id = ${params.conferenceId}::uuid
+    `;
+
+    await tx`
+      INSERT INTO audit_events (
+        id, actor_id, action, entity_type, entity_id, metadata, created_at
+      ) VALUES (
+        gen_random_uuid(),
+        ${params.userId}::uuid,
+        'store_delivery_conference.cancel',
+        'store_delivery_conferences',
+        ${params.conferenceId},
+        ${JSON.stringify({
+          storeId: params.storeId,
+          previousOrderId: conf.order_id,
+          reason,
         })}::jsonb,
         now()
       )
