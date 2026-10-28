@@ -5,6 +5,6 @@ import { OperationalShell } from "@/modules/navigation/operational-shell";
 
 export default async function BuyerLayout({ children }: { children: React.ReactNode }) {
   const principal = await requirePrincipal();
-  if (!hasAnyPermission(principal, ["compras:consolidado", "compras:custos", "compras:fornecedores", "compras:destinacao"])) redirect("/");
+  if (!hasAnyPermission(principal, ["compras:consolidado", "compras:custos", "compras:fornecedores", "compras:destinacao", "perdas:consultar"])) redirect("/");
   return <OperationalShell role={principal.role} permissions={principal.permissions}>{children}</OperationalShell>;
 }

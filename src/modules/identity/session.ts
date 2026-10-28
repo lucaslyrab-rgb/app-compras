@@ -32,7 +32,7 @@ export async function requireAnyPermission(permissions: readonly Permission[]): 
 
 export async function requireManagerPrincipal(): Promise<Principal> {
   const principal = await requirePrincipal();
-  if (!hasAnyPermission(principal, ["gestor:produtos", "gestor:precificacao", "gestor:fornecedores", "gestor:configuracoes", "gestor:usuarios"])) {
+  if (!hasAnyPermission(principal, ["gestor:produtos", "gestor:precificacao", "gestor:fornecedores", "gestor:configuracoes", "gestor:usuarios", "perdas:consultar"])) {
     redirect("/");
   }
   return principal;

@@ -75,6 +75,8 @@ describe("OrderWorkspace Modal de Revisão — Padronização de Horário", () =
           date: "2026-10-07",
           cycleDate: "2026-10-08",
           cutoffAt: "2026-10-07T21:00:00.000Z",
+          hasConferencePermission: true,
+          hasLossPermission: true,
         })
       );
     });
@@ -136,6 +138,8 @@ describe("OrderWorkspace Modal de Revisão — Padronização de Horário", () =
           date: "2026-10-07",
           cycleDate: "2026-10-08",
           cutoffAt: "2026-10-07T21:00:00.000Z",
+          hasConferencePermission: true,
+          hasLossPermission: true,
         })
       );
     });

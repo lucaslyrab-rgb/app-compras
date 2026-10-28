@@ -169,6 +169,15 @@ export function resolveOperationalRoute(principal: Principal): string | null {
   if (hasPermission(principal, "compras:fornecedores")) return "/comprador/fornecedores";
   if (hasPermission(principal, "gestor:configuracoes")) return "/gestor/configuracoes";
   if (hasPermission(principal, "gestor:usuarios")) return "/gestor/usuarios";
+  if (hasPermission(principal, "perdas:consultar")) {
+    return principal.role === "COMPRADOR" ? "/comprador/perdas" : "/gestor/perdas";
+  }
+  if (hasPermission(principal, "loja:conferencia") && Boolean(principal.storeId)) {
+    return "/conferencia";
+  }
+  if (hasPermission(principal, "loja:perdas") && Boolean(principal.storeId)) {
+    return "/perdas";
+  }
   if (hasPermission(principal, "pedidos:historico") && Boolean(principal.storeId)) {
     return "/historico";
   }
@@ -180,7 +189,7 @@ export function hasOperationalRoute(principal: Principal): boolean {
 }
 
 export function assertStoreAccess(principal: Principal, requestedStoreId: string) {
-  if (hasAnyPermission(principal, ["pedidos:criar", "pedidos:historico"])) {
+  if (hasAnyPermission(principal, STORE_PERMISSIONS)) {
     if (!principal.storeId || principal.storeId !== requestedStoreId) {
       throw new AuthorizationError("Acesso negado");
     }

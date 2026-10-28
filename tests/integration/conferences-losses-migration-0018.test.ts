@@ -158,7 +158,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
           1
         )
       `
-    ).rejects.toThrow(/delivery_conf_finalized_coherence_check/);
+    ).rejects.toThrow(/delivery_conf_closure_coherence_check/);
 
     // Impede contadores negativos ou verified > total
     await expect(

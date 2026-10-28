@@ -27,7 +27,19 @@ export default async function HomePage() {
     const date = cycle.localDate;
     const draft = await loadDraft(principal, principal.storeId, date);
     const storeName = await getStoreName(principal.storeId);
-    return <OrderWorkspace products={products} storeId={principal.storeId} storeName={storeName} initialDraft={draft} date={date} cycleDate={cycle.cycleDate} cutoffAt={cycle.cutoffAt.toISOString()} />;
+    return (
+      <OrderWorkspace
+        products={products}
+        storeId={principal.storeId}
+        storeName={storeName}
+        initialDraft={draft}
+        date={date}
+        cycleDate={cycle.cycleDate}
+        cutoffAt={cycle.cutoffAt.toISOString()}
+        hasConferencePermission={hasPermission(principal, "loja:conferencia")}
+        hasLossPermission={hasPermission(principal, "loja:perdas")}
+      />
+    );
   }
 
   const destination = resolveOperationalRoute(principal);

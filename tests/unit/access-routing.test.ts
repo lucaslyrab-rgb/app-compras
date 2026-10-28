@@ -170,6 +170,50 @@ describe("Roteamento operacional e prevenção de loops", () => {
         })
       ).toBe("/gestor/precificacao");
     });
+
+    it("redireciona para /conferencia quando usuário de loja possuir somente loja:conferencia", () => {
+      expect(
+        resolveOperationalRoute({
+          userId: "u-loja-conf",
+          role: "LOJA",
+          storeId: "store-1",
+          permissions: ["loja:conferencia"],
+        })
+      ).toBe("/conferencia");
+    });
+
+    it("redireciona para /perdas quando usuário de loja possuir somente loja:perdas", () => {
+      expect(
+        resolveOperationalRoute({
+          userId: "u-loja-perdas",
+          role: "LOJA",
+          storeId: "store-1",
+          permissions: ["loja:perdas"],
+        })
+      ).toBe("/perdas");
+    });
+
+    it("redireciona Comprador com perdas:consultar para /comprador/perdas", () => {
+      expect(
+        resolveOperationalRoute({
+          userId: "u-buyer-perdas",
+          role: "COMPRADOR",
+          storeId: null,
+          permissions: ["perdas:consultar"],
+        })
+      ).toBe("/comprador/perdas");
+    });
+
+    it("redireciona Gestor com perdas:consultar para /gestor/perdas", () => {
+      expect(
+        resolveOperationalRoute({
+          userId: "u-gestor-perdas",
+          role: "GESTOR",
+          storeId: null,
+          permissions: ["perdas:consultar"],
+        })
+      ).toBe("/gestor/perdas");
+    });
   });
 
   describe("HomePage (/) com diferentes perfis e permissões", () => {

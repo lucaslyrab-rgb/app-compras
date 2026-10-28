@@ -515,6 +515,11 @@ export const storeDeliveryConferences = pgTable("store_delivery_conferences", {
   finalizedAt: timestamp("finalized_at", { withTimezone: true }),
   finalizedBy: uuid("finalized_by").references(() => users.id, { onDelete: "set null" }),
   version: integer("version").notNull().default(1),
+  reconciledAt: timestamp("reconciled_at", { withTimezone: true }),
+  reconciledBy: uuid("reconciled_by").references(() => users.id, { onDelete: "set null" }),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  cancelledBy: uuid("cancelled_by").references(() => users.id, { onDelete: "set null" }),
+  cancellationReason: text("cancellation_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 }, (table) => [
@@ -522,9 +527,9 @@ export const storeDeliveryConferences = pgTable("store_delivery_conferences", {
   index("delivery_conferences_cycle_idx").on(table.purchaseCycleDate),
   index("delivery_conferences_store_cycle_idx").on(table.storeId, table.purchaseCycleDate),
   check("store_delivery_conferences_version_check", sql`${table.version} > 0`),
-  check("store_delivery_conferences_status_check", sql`${table.status} IN ('IN_PROGRESS', 'FINALIZED')`),
+  check("store_delivery_conferences_status_check", sql`${table.status} IN ('IN_PROGRESS', 'FINALIZED', 'CANCELLED')`),
   check("delivery_conf_items_count_check", sql`${table.totalItems} >= 0 AND ${table.verifiedItems} >= 0 AND ${table.verifiedItems} <= ${table.totalItems}`),
-  check("delivery_conf_finalized_coherence_check", sql`(${table.status} = 'FINALIZED' AND ${table.finalizedAt} IS NOT NULL AND ${table.finalizedBy} IS NOT NULL AND ${table.totalItems} = ${table.verifiedItems}) OR (${table.status} = 'IN_PROGRESS' AND ${table.finalizedAt} IS NULL AND ${table.finalizedBy} IS NULL)`)
+  check("delivery_conf_closure_coherence_check", sql`(${table.status} = 'FINALIZED' AND ${table.finalizedAt} IS NOT NULL AND ${table.finalizedBy} IS NOT NULL AND ${table.totalItems} = ${table.verifiedItems} AND ${table.cancelledAt} IS NULL AND ${table.cancelledBy} IS NULL) OR (${table.status} = 'CANCELLED' AND ${table.cancelledAt} IS NOT NULL AND ${table.cancelledBy} IS NOT NULL AND ${table.finalizedAt} IS NULL AND ${table.finalizedBy} IS NULL) OR (${table.status} = 'IN_PROGRESS' AND ${table.finalizedAt} IS NULL AND ${table.finalizedBy} IS NULL AND ${table.cancelledAt} IS NULL AND ${table.cancelledBy} IS NULL)`)
 ]);
 
 export const storeDeliveryConferencesRelations = relations(storeDeliveryConferences, ({ one, many }) => ({
@@ -542,6 +547,7 @@ export const storeDeliveryConferenceItems = pgTable("store_delivery_conference_i
   orderedUnit: text("ordered_unit").notNull(),
   receivedWeightKg: numeric("received_weight_kg", { precision: 10, scale: 2 }),
   isUnreceived: boolean("is_unreceived").notNull().default(false),
+  removedFromOrder: boolean("removed_from_order").notNull().default(false),
   checkedAt: timestamp("checked_at", { withTimezone: true }),
   checkedBy: uuid("checked_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -550,6 +556,7 @@ export const storeDeliveryConferenceItems = pgTable("store_delivery_conference_i
   uniqueIndex("conference_items_unique").on(table.conferenceId, table.productId),
   index("conference_items_product_idx").on(table.productId),
   index("conference_items_conf_idx").on(table.conferenceId),
+  index("conference_items_removed_idx").on(table.conferenceId, table.removedFromOrder),
   check("conference_items_ordered_qty_positive", sql`${table.orderedQuantity} > 0 AND ${table.orderedQuantity} <> 'NaN'::numeric`),
   check("conference_items_weight_coherence_check", sql`(${table.isUnreceived} = true AND ${table.receivedWeightKg} IS NOT NULL AND ${table.receivedWeightKg} = 0) OR (${table.isUnreceived} = false AND (${table.receivedWeightKg} IS NULL OR (${table.receivedWeightKg} > 0 AND ${table.receivedWeightKg} <> 'NaN'::numeric)))`)
 ]);
