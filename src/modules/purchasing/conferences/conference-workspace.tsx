@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState, type MouseEvent } from "react";
+import { useActionState, useMemo, useRef, useState, type MouseEvent } from "react";
 import { ProductPhoto } from "@/components/product-photo";
 import { StoreNavigation } from "@/components/store-navigation";
 import { ConferenceCycleSelector } from "./conference-cycle-selector";
@@ -68,6 +68,16 @@ export function ConferenceWorkspace({
   const [lastSavedPayload, setLastSavedPayload] = useState(itemsJsonPayload);
   const hasUnsavedChanges = itemsJsonPayload !== lastSavedPayload;
 
+  // Guarda o payload exatamente como foi enviado no submit mais recente de
+  // Salvar/Finalizar - não o valor atual de itemsJsonPayload, que pode já ter
+  // mudado (o operador pode continuar digitando enquanto a resposta não chega).
+  // Sem isso, uma resposta de sucesso marcaria como "salvo" um conteúdo que na
+  // verdade nunca foi enviado ao servidor.
+  const submittedPayloadRef = useRef(itemsJsonPayload);
+  function captureSubmittedPayload() {
+    submittedPayloadRef.current = itemsJsonPayload;
+  }
+
   const [saveState, saveAction, isSaving] = useActionState(saveConferenceDraftAction, {});
   const [finalizeState, finalizeAction, isFinalizing] = useActionState(finalizeConferenceAction, {});
   const [reconcileState, reconcileAction, isReconciling] = useActionState(reconcileConferenceAction, {});
@@ -81,7 +91,14 @@ export function ConferenceWorkspace({
     setSyncedSaveState(saveState);
     if (saveState.status === "success" && typeof saveState.version === "number") {
       setVersion(saveState.version);
-      setLastSavedPayload(itemsJsonPayload);
+      setLastSavedPayload(submittedPayloadRef.current);
+    }
+  }
+  const [syncedFinalizeStateForSavedPayload, setSyncedFinalizeStateForSavedPayload] = useState(finalizeState);
+  if (finalizeState !== syncedFinalizeStateForSavedPayload) {
+    setSyncedFinalizeStateForSavedPayload(finalizeState);
+    if (finalizeState.status === "success") {
+      setLastSavedPayload(submittedPayloadRef.current);
     }
   }
 
@@ -591,7 +608,7 @@ export function ConferenceWorkspace({
         >
           <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", gap: 10 }}>
             {/* Form de Salvar Parcial */}
-            <form action={saveAction} style={{ flex: 1 }}>
+            <form action={saveAction} onSubmit={captureSubmittedPayload} style={{ flex: 1 }}>
               <input type="hidden" name="storeId" value={header.storeId} />
               <input type="hidden" name="conferenceId" value={header.id} />
               <input type="hidden" name="version" value={version} />
@@ -607,7 +624,7 @@ export function ConferenceWorkspace({
             </form>
 
             {/* Form de Finalizar */}
-            <form action={finalizeAction} style={{ flex: 1 }}>
+            <form action={finalizeAction} onSubmit={captureSubmittedPayload} style={{ flex: 1 }}>
               <input type="hidden" name="storeId" value={header.storeId} />
               <input type="hidden" name="conferenceId" value={header.id} />
               <input type="hidden" name="version" value={version} />

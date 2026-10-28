@@ -408,8 +408,12 @@ export async function saveConferenceDraft(params: {
       throw new ConferenceValidationError("Conferência não encontrada para esta loja.");
     }
 
-    if (conf.status === "FINALIZED") {
-      throw new ConferenceValidationError("Esta conferência já está finalizada e não permite alterações.");
+    if (conf.status !== "IN_PROGRESS") {
+      throw new ConferenceValidationError(
+        conf.status === "CANCELLED"
+          ? "Esta conferência foi cancelada e não permite alterações."
+          : "Esta conferência já está finalizada e não permite alterações."
+      );
     }
 
     // 1b. O bloqueio FOR UPDATE serializa escritas concorrentes, mas sem checar a versão
@@ -537,8 +541,12 @@ export async function finalizeConference(params: {
       throw new ConferenceValidationError("Conferência não encontrada para esta loja.");
     }
 
-    if (conf.status === "FINALIZED") {
-      throw new ConferenceValidationError("Esta conferência já se encontra finalizada.");
+    if (conf.status !== "IN_PROGRESS") {
+      throw new ConferenceValidationError(
+        conf.status === "CANCELLED"
+          ? "Esta conferência foi cancelada e não pode ser finalizada."
+          : "Esta conferência já se encontra finalizada."
+      );
     }
 
     if (conf.version !== params.expectedVersion) {
@@ -698,8 +706,12 @@ export async function reconcileConferenceWithCurrentOrder(params: {
       throw new ConferenceValidationError("Conferência não encontrada para esta loja.");
     }
 
-    if (conf.status === "FINALIZED") {
-      throw new ConferenceValidationError("Esta conferência já está finalizada e não pode ser reconciliada.");
+    if (conf.status !== "IN_PROGRESS") {
+      throw new ConferenceValidationError(
+        conf.status === "CANCELLED"
+          ? "Esta conferência foi cancelada e não pode ser reconciliada."
+          : "Esta conferência já está finalizada e não pode ser reconciliada."
+      );
     }
 
     const [currentOrder] = await tx`

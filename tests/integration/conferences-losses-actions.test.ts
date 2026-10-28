@@ -329,7 +329,7 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
             isUnreceived: it.productId !== productId1,
           })),
         })
-      ).rejects.toThrow("revisado ou cancelado");
+      ).rejects.toThrow("revisado depois");
     });
 
     it("reconcilia preservando a pesagem aproveitável e marcando o item removido sem apagar histórico", async () => {
@@ -462,6 +462,36 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
       await expect(
         cancelConferenceWithoutReplacementOrder({ conferenceId, storeId: storeId2, userId: userId2 })
       ).rejects.toThrow(ConferenceValidationError);
+    });
+
+    it("rejeita salvar pesagem em conferência cancelada (ocultar o botão na tela não protege o servidor)", async () => {
+      await expect(
+        saveConferenceDraft({
+          conferenceId,
+          storeId: storeId2,
+          userId: userId2,
+          expectedVersion: 1,
+          items: [{ productId: productId1, receivedWeightKg: 999, isUnreceived: false }],
+        })
+      ).rejects.toThrow("cancelada");
+    });
+
+    it("rejeita finalizar conferência cancelada", async () => {
+      await expect(
+        finalizeConference({
+          conferenceId,
+          storeId: storeId2,
+          userId: userId2,
+          expectedVersion: 1,
+          items: [{ productId: productId1, receivedWeightKg: 4, isUnreceived: false }],
+        })
+      ).rejects.toThrow("cancelada");
+    });
+
+    it("rejeita reconciliar conferência já cancelada", async () => {
+      await expect(
+        reconcileConferenceWithCurrentOrder({ conferenceId, storeId: storeId2, userId: userId2 })
+      ).rejects.toThrow("cancelada");
     });
   });
 
