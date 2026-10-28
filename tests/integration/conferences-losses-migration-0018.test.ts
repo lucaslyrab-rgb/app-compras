@@ -170,7 +170,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
     ).rejects.toThrow();
   });
 
-  it("permite registrar pesagem em KG e confirmação de 'Não recebido' (0 KG) com validação de coerência", async () => {
+  it("permite registrar pesagem em KG e confirmação de 'Não recebido' (0 KG) com validação de coerência e rejeição de NaN/NULL", async () => {
     const [conf] = await db<{ id: string }[]>`
       SELECT id FROM store_delivery_conferences
       WHERE purchase_cycle_date = ${cycleDate}::date AND store_id = ${storeId}::uuid
@@ -247,11 +247,20 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
       `
     ).rejects.toThrow();
 
-    // Rejeita "Não recebido" com peso nulo
+    // Rejeita "Não recebido" com peso nulo (garantido por received_weight_kg IS NOT NULL)
     await expect(
       db`
         UPDATE store_delivery_conference_items
         SET received_weight_kg = NULL
+        WHERE id = ${itemUnreceived.id}::uuid
+      `
+    ).rejects.toThrow();
+
+    // Rejeita "Não recebido" com valor inválido NaN
+    await expect(
+      db`
+        UPDATE store_delivery_conference_items
+        SET received_weight_kg = 'NaN'::numeric
         WHERE id = ${itemUnreceived.id}::uuid
       `
     ).rejects.toThrow();
@@ -265,12 +274,38 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
       `
     ).rejects.toThrow();
 
+    // Rejeita item recebido (is_unreceived = false) com valor inválido NaN
+    await expect(
+      db`
+        UPDATE store_delivery_conference_items
+        SET received_weight_kg = 'NaN'::numeric
+        WHERE id = ${itemReceived.id}::uuid
+      `
+    ).rejects.toThrow();
+
     // Rejeita peso negativo
     await expect(
       db`
         UPDATE store_delivery_conference_items
         SET received_weight_kg = -5.00
         WHERE id = ${itemReceived.id}::uuid
+      `
+    ).rejects.toThrow();
+
+    // Rejeita ordered_quantity com valor inválido NaN ou menor/igual a zero
+    await expect(
+      db`
+        INSERT INTO store_delivery_conference_items (
+          conference_id,
+          product_id,
+          ordered_quantity,
+          ordered_unit
+        ) VALUES (
+          ${conf.id}::uuid,
+          '50000000-0000-0000-0000-000000000005'::uuid,
+          'NaN'::numeric,
+          'CX'
+        )
       `
     ).rejects.toThrow();
   });
@@ -302,73 +337,8 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
     expect(finalized.finalized_by).toBe(userId);
   });
 
-  it("registra perdas diárias com loja, produto, quantidade e trilha de auditoria", async () => {
-    const [lossRecord] = await db<{
-      id: string;
-      quantity: string;
-      unit: string;
-      reason: string;
-    }[]>`
-      INSERT INTO store_loss_records (
-        store_id,
-        product_id,
-        quantity,
-        unit,
-        reason,
-        notes,
-        recorded_by
-      ) VALUES (
-        ${storeId}::uuid,
-        ${productId1}::uuid,
-        4.50,
-        'KG',
-        'Maduro / Passado',
-        'Frutos avariados no fundo',
-        ${userId}::uuid
-      )
-      RETURNING id, quantity, unit, reason
-    `;
-
-    expect(lossRecord).toBeDefined();
-    expect(Number(lossRecord.quantity)).toBe(4.50);
-    expect(lossRecord.unit).toBe("KG");
-    expect(lossRecord.reason).toBe("Maduro / Passado");
-
-    // Registra evento de auditoria correspondente
-    const [auditLog] = await db<{
-      id: string;
-      action: string;
-      entity_type: string;
-      entity_id: string;
-    }[]>`
-      INSERT INTO audit_events (
-        actor_id,
-        action,
-        entity_type,
-        entity_id,
-        metadata
-      ) VALUES (
-        ${userId}::uuid,
-        'store_loss.create',
-        'store_loss_records',
-        ${lossRecord.id},
-        ${JSON.stringify({
-          storeId,
-          productId: productId1,
-          quantity: 4.50,
-          unit: 'KG',
-          reason: 'Maduro / Passado'
-        })}
-      )
-      RETURNING id, action, entity_type, entity_id
-    `;
-
-    expect(auditLog).toBeDefined();
-    expect(auditLog.action).toBe("store_loss.create");
-    expect(auditLog.entity_type).toBe("store_loss_records");
-    expect(auditLog.entity_id).toBe(lossRecord.id);
-
-    // Rejeita quantidade zero ou negativa
+  it("registra perdas diárias com loja, produto, quantidade, rejeição de NaN e contrato transacional com auditoria", async () => {
+    // 1. Rejeita quantidade zero ou negativa
     await expect(
       db`
         INSERT INTO store_loss_records (
@@ -384,5 +354,119 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         )
       `
     ).rejects.toThrow();
+
+    // 2. Rejeita quantidade NaN (valor numérico inválido)
+    await expect(
+      db`
+        INSERT INTO store_loss_records (
+          store_id,
+          product_id,
+          quantity,
+          recorded_by
+        ) VALUES (
+          ${storeId}::uuid,
+          ${productId1}::uuid,
+          'NaN'::numeric,
+          ${userId}::uuid
+        )
+      `
+    ).rejects.toThrow();
+
+    // 3. Contrato transacional atômico: perda e evento de auditoria gravados na mesma transação
+    const { lossRecord, auditLog } = await db.begin(async (tx) => {
+      const [loss] = await tx<{
+        id: string;
+        quantity: string;
+        unit: string;
+        reason: string;
+      }[]>`
+        INSERT INTO store_loss_records (
+          store_id,
+          product_id,
+          quantity,
+          unit,
+          reason,
+          notes,
+          recorded_by
+        ) VALUES (
+          ${storeId}::uuid,
+          ${productId1}::uuid,
+          4.50,
+          'KG',
+          'Maduro / Passado',
+          'Frutos avariados no fundo',
+          ${userId}::uuid
+        )
+        RETURNING id, quantity, unit, reason
+      `;
+
+      const [audit] = await tx<{
+        id: string;
+        action: string;
+        entity_type: string;
+        entity_id: string;
+      }[]>`
+        INSERT INTO audit_events (
+          actor_id,
+          action,
+          entity_type,
+          entity_id,
+          metadata
+        ) VALUES (
+          ${userId}::uuid,
+          'store_loss.create',
+          'store_loss_records',
+          ${loss.id},
+          ${JSON.stringify({
+            storeId,
+            productId: productId1,
+            quantity: 4.50,
+            unit: 'KG',
+            reason: 'Maduro / Passado',
+          })}
+        )
+        RETURNING id, action, entity_type, entity_id
+      `;
+
+      return { lossRecord: loss, auditLog: audit };
+    });
+
+    expect(lossRecord).toBeDefined();
+    expect(Number(lossRecord.quantity)).toBe(4.50);
+    expect(lossRecord.unit).toBe("KG");
+    expect(lossRecord.reason).toBe("Maduro / Passado");
+
+    expect(auditLog).toBeDefined();
+    expect(auditLog.action).toBe("store_loss.create");
+    expect(auditLog.entity_type).toBe("store_loss_records");
+    expect(auditLog.entity_id).toBe(lossRecord.id);
+
+    // 4. Prova de atomicidade: se o registro de auditoria falhar dentro da transação, a perda não é gravada
+    const orphanLossId = "50000000-0000-0000-0000-000000000099";
+    await expect(
+      db.begin(async (tx) => {
+        await tx`
+          INSERT INTO store_loss_records (
+            id,
+            store_id,
+            product_id,
+            quantity,
+            recorded_by
+          ) VALUES (
+            ${orphanLossId}::uuid,
+            ${storeId}::uuid,
+            ${productId1}::uuid,
+            2.00,
+            ${userId}::uuid
+          )
+        `;
+        throw new Error("Falha simulada no registro de auditoria");
+      })
+    ).rejects.toThrow("Falha simulada no registro de auditoria");
+
+    const [orphanCheck] = await db<{ id: string }[]>`
+      SELECT id FROM store_loss_records WHERE id = ${orphanLossId}::uuid
+    `;
+    expect(orphanCheck).toBeUndefined();
   });
 });

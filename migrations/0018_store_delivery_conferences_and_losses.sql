@@ -54,10 +54,17 @@ CREATE TABLE IF NOT EXISTS store_delivery_conference_items (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT conference_items_unique UNIQUE (conference_id, product_id),
+  CONSTRAINT conference_items_ordered_qty_positive CHECK (
+    ordered_quantity > 0 AND ordered_quantity <> 'NaN'::numeric
+  ),
   CONSTRAINT conference_items_weight_coherence_check CHECK (
-    (is_unreceived = true AND received_weight_kg = 0)
+    (is_unreceived = true AND received_weight_kg IS NOT NULL AND received_weight_kg = 0)
     OR
-    (is_unreceived = false AND (received_weight_kg IS NULL OR received_weight_kg > 0))
+    (is_unreceived = false AND (
+      received_weight_kg IS NULL
+      OR
+      (received_weight_kg > 0 AND received_weight_kg <> 'NaN'::numeric)
+    ))
   )
 );
 
@@ -82,7 +89,9 @@ CREATE TABLE IF NOT EXISTS store_loss_records (
   cancelled_by uuid REFERENCES users(id) ON DELETE SET NULL,
   cancellation_reason text,
   created_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT store_losses_quantity_positive CHECK (quantity > 0)
+  CONSTRAINT store_losses_quantity_positive CHECK (
+    quantity > 0 AND quantity <> 'NaN'::numeric
+  )
 );
 
 CREATE INDEX IF NOT EXISTS store_losses_store_date_idx

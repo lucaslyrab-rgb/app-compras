@@ -550,7 +550,8 @@ export const storeDeliveryConferenceItems = pgTable("store_delivery_conference_i
   uniqueIndex("conference_items_unique").on(table.conferenceId, table.productId),
   index("conference_items_product_idx").on(table.productId),
   index("conference_items_conf_idx").on(table.conferenceId),
-  check("conference_items_weight_coherence_check", sql`(${table.isUnreceived} = true AND ${table.receivedWeightKg} = 0) OR (${table.isUnreceived} = false AND (${table.receivedWeightKg} IS NULL OR ${table.receivedWeightKg} > 0))`)
+  check("conference_items_ordered_qty_positive", sql`${table.orderedQuantity} > 0 AND ${table.orderedQuantity} <> 'NaN'::numeric`),
+  check("conference_items_weight_coherence_check", sql`(${table.isUnreceived} = true AND ${table.receivedWeightKg} IS NOT NULL AND ${table.receivedWeightKg} = 0) OR (${table.isUnreceived} = false AND (${table.receivedWeightKg} IS NULL OR (${table.receivedWeightKg} > 0 AND ${table.receivedWeightKg} <> 'NaN'::numeric)))`)
 ]);
 
 export const storeDeliveryConferenceItemsRelations = relations(storeDeliveryConferenceItems, ({ one }) => ({
@@ -577,7 +578,7 @@ export const storeLossRecords = pgTable("store_loss_records", {
   index("store_losses_store_date_idx").on(table.storeId, table.recordedAt),
   index("store_losses_product_idx").on(table.productId),
   index("store_losses_date_idx").on(table.recordedAt),
-  check("store_losses_quantity_positive", sql`${table.quantity} > 0`)
+  check("store_losses_quantity_positive", sql`${table.quantity} > 0 AND ${table.quantity} <> 'NaN'::numeric`)
 ]);
 
 export const storeLossRecordsRelations = relations(storeLossRecords, ({ one }) => ({
