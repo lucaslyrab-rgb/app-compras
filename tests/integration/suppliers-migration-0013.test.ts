@@ -232,7 +232,7 @@ integration("Migration 0013: fornecedores, constraints, unicidade, backfill e co
       // - Comprador 2 JÁ com compras:fornecedores (testa idempotência)
       // - Gestor 1 sem permissões de fornecedores
       // - Gestor 2 que já possuía compras:fornecedores, mas não gestor:fornecedores
-      // - Loja (não deve ser afetada)
+      // - Loja (não deve receber permissões de fornecedores)
       const [store] = await client<{ id: string }[]>`
         INSERT INTO stores (slug, name) VALUES ('loja-c-0013', 'Loja C 0013') RETURNING id
       `;
@@ -251,7 +251,7 @@ integration("Migration 0013: fornecedores, constraints, unicidade, backfill e co
         VALUES ('loja1@test.com', 'Loja 1', 'h', 'LOJA', ${store.id}, ARRAY['pedidos:criar', 'pedidos:historico']::text[])
       `;
 
-      // 3. Aplica migration 0013 via runner
+      // 3. Aplica migration 0013 e as posteriores via runner
       const newlyApplied: string[] = [];
       await runMigrations({
         databaseUrl: isolatedUrl.toString(),
@@ -291,9 +291,14 @@ integration("Migration 0013: fornecedores, constraints, unicidade, backfill e co
       expect(g2Perms.filter((p) => p === "compras:fornecedores")).toHaveLength(1);
       expect(g2Perms.filter((p) => p === "gestor:fornecedores")).toHaveLength(1);
 
-      // Loja: inalterada
+      // Loja: mantém pedidos e recebe as permissões da Fase 5 pela migration 0018.
       const l1Perms = userMap.get("loja1@test.com")!;
-      expect(l1Perms).toEqual(["pedidos:criar", "pedidos:historico"]);
+      expect(l1Perms).toEqual([
+        "pedidos:criar",
+        "pedidos:historico",
+        "loja:conferencia",
+        "loja:perdas",
+      ]);
 
       // 5. Idempotência estrita: reexecutar os UPDATEs do backfill não causa duplicação
       await client`

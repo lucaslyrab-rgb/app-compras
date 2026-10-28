@@ -8,6 +8,7 @@ import type {
 import {
   PERMISSION_GROUPS,
   ROLE_DEFAULT_PERMISSIONS,
+  STORE_PERMISSIONS,
   validatePassword,
   type Permission,
   type Role,
@@ -133,7 +134,7 @@ export function UserWorkspace({
     setCreateForm((prev) => {
       const exists = prev.permissions.includes(perm);
       const updated = exists ? prev.permissions.filter((p) => p !== perm) : [...prev.permissions, perm];
-      const hasStorePerm = updated.includes("pedidos:criar") || updated.includes("pedidos:historico");
+      const hasStorePerm = updated.some((p) => STORE_PERMISSIONS.includes(p));
       return {
         ...prev,
         permissions: updated,
@@ -146,9 +147,9 @@ export function UserWorkspace({
     e.preventDefault();
     setFeedback(null);
 
-    const hasStorePerm = createForm.permissions.includes("pedidos:criar") || createForm.permissions.includes("pedidos:historico");
+    const hasStorePerm = createForm.permissions.some((p) => STORE_PERMISSIONS.includes(p));
     if (hasStorePerm && !createForm.storeId) {
-      setFeedback({ type: "error", message: "Selecione uma loja para as permissões de pedidos." });
+      setFeedback({ type: "error", message: "Selecione uma loja para as permissões de loja." });
       return;
     }
     if (createForm.password !== createForm.passwordConfirmation) {
@@ -210,7 +211,7 @@ export function UserWorkspace({
     setEditForm((prev) => {
       const exists = prev.permissions.includes(perm);
       const updated = exists ? prev.permissions.filter((p) => p !== perm) : [...prev.permissions, perm];
-      const hasStorePerm = updated.includes("pedidos:criar") || updated.includes("pedidos:historico");
+      const hasStorePerm = updated.some((p) => STORE_PERMISSIONS.includes(p));
       return {
         ...prev,
         permissions: updated,
@@ -224,9 +225,9 @@ export function UserWorkspace({
     if (!editingUser) return;
     setFeedback(null);
 
-    const hasStorePerm = editForm.permissions.includes("pedidos:criar") || editForm.permissions.includes("pedidos:historico");
+    const hasStorePerm = editForm.permissions.some((p) => STORE_PERMISSIONS.includes(p));
     if (hasStorePerm && !editForm.storeId) {
-      setFeedback({ type: "error", message: "Selecione uma loja para as permissões de pedidos." });
+      setFeedback({ type: "error", message: "Selecione uma loja para as permissões de loja." });
       return;
     }
 
@@ -674,7 +675,7 @@ export function UserWorkspace({
                   <select
                     value={createForm.storeId}
                     onChange={(e) => setCreateForm({ ...createForm, storeId: e.target.value })}
-                    disabled={!createForm.permissions.includes("pedidos:criar") && !createForm.permissions.includes("pedidos:historico")}
+                    disabled={!createForm.permissions.some((p) => STORE_PERMISSIONS.includes(p))}
                     style={{ minHeight: 44, padding: "8px 12px", borderRadius: 7, border: "1px solid #b7c3cc", fontSize: "16px" }}
                   >
                     <option value="">Selecione uma loja...</option>
@@ -821,7 +822,7 @@ export function UserWorkspace({
                   <select
                     value={editForm.storeId}
                     onChange={(e) => setEditForm({ ...editForm, storeId: e.target.value })}
-                    disabled={!editForm.permissions.includes("pedidos:criar") && !editForm.permissions.includes("pedidos:historico")}
+                    disabled={!editForm.permissions.some((p) => STORE_PERMISSIONS.includes(p))}
                     style={{ minHeight: 44, padding: "8px 12px", borderRadius: 7, border: "1px solid #b7c3cc", fontSize: "16px" }}
                   >
                     <option value="">Selecione uma loja...</option>

@@ -6,10 +6,13 @@ function scrypt(password: string, salt: Buffer, length: number, options: { N: nu
 export const PERMISSIONS = [
   "pedidos:criar",
   "pedidos:historico",
+  "loja:conferencia",
+  "loja:perdas",
   "compras:consolidado",
   "compras:custos",
   "compras:fornecedores",
   "compras:destinacao",
+  "perdas:consultar",
   "gestor:produtos",
   "gestor:precificacao",
   "gestor:fornecedores",
@@ -22,6 +25,8 @@ export type Permission = (typeof PERMISSIONS)[number];
 export const STORE_PERMISSIONS: readonly Permission[] = [
   "pedidos:criar",
   "pedidos:historico",
+  "loja:conferencia",
+  "loja:perdas",
 ] as const;
 
 export const roles = ["LOJA", "COMPRADOR", "GESTOR"] as const;
@@ -91,13 +96,25 @@ export function canManageGestor(principal: Principal) {
 }
 
 export const ROLE_DEFAULT_PERMISSIONS: Record<Role, readonly Permission[]> = {
-  LOJA: ["pedidos:criar", "pedidos:historico"],
-  COMPRADOR: ["compras:consolidado", "compras:custos", "compras:destinacao", "compras:fornecedores"],
+  LOJA: [
+    "pedidos:criar",
+    "pedidos:historico",
+    "loja:conferencia",
+    "loja:perdas",
+  ],
+  COMPRADOR: [
+    "compras:consolidado",
+    "compras:custos",
+    "compras:destinacao",
+    "compras:fornecedores",
+    "perdas:consultar",
+  ],
   GESTOR: [
     "compras:consolidado",
     "compras:custos",
     "compras:destinacao",
     "compras:fornecedores",
+    "perdas:consultar",
     "gestor:produtos",
     "gestor:precificacao",
     "gestor:fornecedores",
@@ -112,6 +129,8 @@ export const PERMISSION_GROUPS = [
     permissions: [
       { id: "pedidos:criar", label: "Fazer pedidos" },
       { id: "pedidos:historico", label: "Histórico da loja" },
+      { id: "loja:conferencia", label: "Conferência de entrega" },
+      { id: "loja:perdas", label: "Lançamento de perdas" },
     ],
   },
   {
@@ -121,6 +140,7 @@ export const PERMISSION_GROUPS = [
       { id: "compras:custos", label: "Lançamento de custos" },
       { id: "compras:destinacao", label: "Destinação de compras" },
       { id: "compras:fornecedores", label: "Fornecedores" },
+      { id: "perdas:consultar", label: "Consulta de perdas" },
     ],
   },
   {
@@ -131,6 +151,7 @@ export const PERMISSION_GROUPS = [
       { id: "gestor:fornecedores", label: "Fornecedores" },
       { id: "gestor:configuracoes", label: "Configurações" },
       { id: "gestor:usuarios", label: "Usuários" },
+      { id: "perdas:consultar", label: "Consulta de perdas" },
     ],
   },
 ] as const;

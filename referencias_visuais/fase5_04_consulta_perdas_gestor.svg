@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 680" width="1000" height="680" style="background:#0f172a; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <linearGradient id="headerGradDesktop" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#004737"/>
+      <stop offset="100%" stop-color="#006b4f"/>
+    </linearGradient>
+    <filter id="shadowDesk" x="-2%" y="-2%" width="104%" height="106%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- Container Geral da Janela Desktop -->
+  <rect x="20" y="20" width="960" height="640" rx="14" fill="#f8fafc" stroke="#334155" stroke-width="2"/>
+
+  <!-- Topbar do Sistema -->
+  <rect x="20" y="20" width="960" height="64" rx="14" fill="url(#headerGradDesktop)"/>
+  <rect x="20" y="70" width="960" height="14" fill="url(#headerGradDesktop)"/>
+
+  <!-- Logo e Título -->
+  <text x="44" y="52" font-size="18" font-weight="800" fill="#ffffff" letter-spacing="-0.3">MULTISHOW</text>
+  <text x="170" y="52" font-size="14" font-weight="500" fill="#a7f3d0">| Painel do Gestor e Comprador</text>
+
+  <!-- Abas de Navegação Superior -->
+  <text x="430" y="52" font-size="13" font-weight="600" fill="#a7f3d0">Consolidado</text>
+  <text x="530" y="52" font-size="13" font-weight="600" fill="#a7f3d0">Custos</text>
+  <text x="600" y="52" font-size="13" font-weight="600" fill="#a7f3d0">Destinação</text>
+  
+  <rect x="690" y="32" width="125" height="32" rx="8" fill="#ffffff"/>
+  <text x="752" y="53" font-size="13" font-weight="800" fill="#004737" text-anchor="middle">🗑️ Perdas FLV</text>
+
+  <rect x="880" y="34" width="80" height="28" rx="6" fill="rgba(255,255,255,0.15)"/>
+  <text x="920" y="53" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">Gestor 👤</text>
+
+  <!-- BARRA DE FILTROS -->
+  <g filter="url(#shadowDesk)">
+    <rect x="40" y="98" width="920" height="74" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+
+    <!-- Filtro Loja -->
+    <text x="56" y="122" font-size="11" font-weight="700" fill="#475569">FILTRAR LOJA</text>
+    <rect x="56" y="128" width="180" height="34" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
+    <text x="70" y="150" font-size="12" font-weight="700" fill="#0f172a">Todas as Lojas (3)</text>
+    <text x="224" y="150" font-size="11" fill="#64748b" text-anchor="end">▾</text>
+
+    <!-- Filtro Período -->
+    <text x="256" y="122" font-size="11" font-weight="700" fill="#475569">PERÍODO</text>
+    <rect x="256" y="128" width="220" height="34" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
+    <text x="270" y="150" font-size="12" font-weight="600" fill="#0f172a">20/10/2026 até 27/10/2026</text>
+    <text x="462" y="150" font-size="11" fill="#64748b" text-anchor="end">📅</text>
+
+    <!-- Filtro Produto / Busca -->
+    <text x="496" y="122" font-size="11" font-weight="700" fill="#475569">BUSCA PRODUTO OU ERP</text>
+    <rect x="496" y="128" width="280" height="34" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
+    <text x="510" y="150" font-size="12" fill="#94a3b8">🔍 Digite o produto ou código ERP...</text>
+
+    <!-- Botão Filtrar -->
+    <rect x="796" y="128" width="144" height="34" rx="6" fill="#006b4f"/>
+    <text x="868" y="150" font-size="12" font-weight="800" fill="#ffffff" text-anchor="middle">Aplicar Filtros</text>
+  </g>
+
+  <!-- CARDS DE MÉTRICAS CONSOLIDADAS -->
+  <g filter="url(#shadowDesk)">
+    <rect x="40" y="186" width="290" height="80" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+    <rect x="40" y="186" width="5" height="80" rx="2" fill="#ef4444"/>
+    <text x="58" y="210" font-size="11" font-weight="700" fill="#64748b" text-transform="uppercase">Total Perdas no Período</text>
+    <text x="58" y="238" font-size="22" font-weight="800" fill="#991b1b">342.80 KG</text>
+    <text x="58" y="254" font-size="11" font-weight="500" fill="#64748b">+ 84 unidades avulsas</text>
+  </g>
+
+  <g filter="url(#shadowDesk)">
+    <rect x="355" y="186" width="290" height="80" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+    <rect x="355" y="186" width="5" height="80" rx="2" fill="#f59e0b"/>
+    <text x="373" y="210" font-size="11" font-weight="700" fill="#64748b" text-transform="uppercase">Loja com Maior Volume</text>
+    <text x="373" y="238" font-size="18" font-weight="800" fill="#0f172a">Ponta da Fruta</text>
+    <text x="373" y="254" font-size="11" font-weight="600" fill="#b45309">158.20 KG (46% do total registrado)</text>
+  </g>
+
+  <g filter="url(#shadowDesk)">
+    <rect x="670" y="186" width="290" height="80" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+    <rect x="670" y="186" width="5" height="80" rx="2" fill="#3b82f6"/>
+    <text x="688" y="210" font-size="11" font-weight="700" fill="#64748b" text-transform="uppercase">Item mais Descartado</text>
+    <text x="688" y="238" font-size="18" font-weight="800" fill="#0f172a">Tomate Débora Extra</text>
+    <text x="688" y="254" font-size="11" font-weight="600" fill="#1d4ed8">62.50 KG acumulados na semana</text>
+  </g>
+
+  <!-- TABELA DE LANÇAMENTOS CONSOLIDADOS COM MINIATURAS FOTOGRÁFICAS -->
+  <g filter="url(#shadowDesk)">
+    <rect x="40" y="280" width="920" height="340" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+
+    <!-- Cabeçalho da Tabela -->
+    <rect x="40" y="280" width="920" height="38" rx="10" fill="#f1f5f9"/>
+    <rect x="40" y="308" width="920" height="10" fill="#f1f5f9"/>
+    <line x1="40" y1="318" x2="960" y2="318" stroke="#cbd5e1" stroke-width="1"/>
+
+    <text x="56" y="304" font-size="11" font-weight="800" fill="#475569">DATA/HORA</text>
+    <text x="170" y="304" font-size="11" font-weight="800" fill="#475569">LOJA</text>
+    <text x="310" y="304" font-size="11" font-weight="800" fill="#475569">PRODUTO COM FOTO</text>
+    <text x="550" y="304" font-size="11" font-weight="800" fill="#475569">QUANTIDADE</text>
+    <text x="670" y="304" font-size="11" font-weight="800" fill="#475569">MOTIVO CLASSIFICADO</text>
+    <text x="830" y="304" font-size="11" font-weight="800" fill="#475569">RESPONSÁVEL</text>
+
+    <!-- Linha 1: Tomate Débora -->
+    <text x="56" y="344" font-size="11" font-weight="600" fill="#64748b">27/10 15:40</text>
+    <text x="170" y="344" font-size="12" font-weight="700" fill="#0f172a">Ponta da Fruta</text>
+    
+    <!-- Miniatura e Nome -->
+    <rect x="310" y="326" width="30" height="30" rx="6" fill="#fee2e2" stroke="#fca5a5" stroke-width="1"/>
+    <text x="325" y="347" font-size="16" text-anchor="middle">🍅</text>
+    <text x="348" y="344" font-size="12" font-weight="800" fill="#0f172a">[305] Tomate Débora Extra</text>
+
+    <text x="550" y="344" font-size="13" font-weight="800" fill="#991b1b">4.50 KG</text>
+    <rect x="670" y="330" width="112" height="20" rx="4" fill="#fee2e2"/>
+    <text x="726" y="344" font-size="10" font-weight="700" fill="#991b1b" text-anchor="middle">Maduro / Passado</text>
+    <text x="830" y="344" font-size="11" fill="#475569">Marcos Silva</text>
+    <line x1="40" y1="362" x2="960" y2="362" stroke="#f1f5f9" stroke-width="1"/>
+
+    <!-- Linha 2: Melancia -->
+    <text x="56" y="386" font-size="11" font-weight="600" fill="#64748b">27/10 14:15</text>
+    <text x="170" y="386" font-size="12" font-weight="700" fill="#0f172a">Balneário</text>
+
+    <rect x="310" y="368" width="30" height="30" rx="6" fill="#fee2e2" stroke="#fca5a5" stroke-width="1"/>
+    <text x="325" y="389" font-size="16" text-anchor="middle">🍉</text>
+    <text x="348" y="386" font-size="12" font-weight="800" fill="#0f172a">[204] Melancia Graúda</text>
+
+    <text x="550" y="386" font-size="13" font-weight="800" fill="#991b1b">18.20 KG</text>
+    <rect x="670" y="372" width="112" height="20" rx="4" fill="#fee2e2"/>
+    <text x="726" y="386" font-size="10" font-weight="700" fill="#991b1b" text-anchor="middle">Rachada / Avaria</text>
+    <text x="830" y="386" font-size="11" fill="#475569">Juliana Prado</text>
+    <line x1="40" y1="404" x2="960" y2="404" stroke="#f1f5f9" stroke-width="1"/>
+
+    <!-- Linha 3: Alface Crespa -->
+    <text x="56" y="428" font-size="11" font-weight="600" fill="#64748b">27/10 11:15</text>
+    <text x="170" y="428" font-size="12" font-weight="700" fill="#0f172a">Ponta da Fruta</text>
+
+    <rect x="310" y="410" width="30" height="30" rx="6" fill="#dcfce7" stroke="#86efac" stroke-width="1"/>
+    <text x="325" y="431" font-size="16" text-anchor="middle">🥬</text>
+    <text x="348" y="428" font-size="12" font-weight="800" fill="#0f172a">[120] Alface Crespa Hidropônica</text>
+
+    <text x="550" y="428" font-size="13" font-weight="800" fill="#991b1b">6.00 UND</text>
+    <rect x="670" y="414" width="112" height="20" rx="4" fill="#fee2e2"/>
+    <text x="726" y="428" font-size="10" font-weight="700" fill="#991b1b" text-anchor="middle">Avaria Transporte</text>
+    <text x="830" y="428" font-size="11" fill="#475569">Marcos Silva</text>
+    <line x1="40" y1="446" x2="960" y2="446" stroke="#f1f5f9" stroke-width="1"/>
+
+    <!-- Linha 4: Batata Inglesa -->
+    <text x="56" y="470" font-size="11" font-weight="600" fill="#64748b">27/10 09:30</text>
+    <text x="170" y="470" font-size="12" font-weight="700" fill="#0f172a">Santa Mônica</text>
+
+    <rect x="310" y="452" width="30" height="30" rx="6" fill="#fef3c7" stroke="#fde68a" stroke-width="1"/>
+    <text x="325" y="473" font-size="16" text-anchor="middle">🥔</text>
+    <text x="348" y="470" font-size="12" font-weight="800" fill="#0f172a">[412] Batata Inglesa Lisa</text>
+
+    <text x="550" y="470" font-size="13" font-weight="800" fill="#991b1b">8.90 KG</text>
+    <rect x="670" y="456" width="112" height="20" rx="4" fill="#fee2e2"/>
+    <text x="726" y="470" font-size="10" font-weight="700" fill="#991b1b" text-anchor="middle">Broto / Murcha</text>
+    <text x="830" y="470" font-size="11" fill="#475569">Carlos Eduardo</text>
+    <line x1="40" y1="488" x2="960" y2="488" stroke="#f1f5f9" stroke-width="1"/>
+
+    <!-- Linha 5: Banana Prata -->
+    <text x="56" y="512" font-size="11" font-weight="600" fill="#64748b">27/10 09:20</text>
+    <text x="170" y="512" font-size="12" font-weight="700" fill="#0f172a">Ponta da Fruta</text>
+
+    <rect x="310" y="494" width="30" height="30" rx="6" fill="#fef9c3" stroke="#fef08a" stroke-width="1"/>
+    <text x="325" y="515" font-size="16" text-anchor="middle">🍌</text>
+    <text x="348" y="512" font-size="12" font-weight="800" fill="#0f172a">[101] Banana Prata Especial</text>
+
+    <text x="550" y="512" font-size="13" font-weight="800" fill="#991b1b">12.30 KG</text>
+    <rect x="670" y="498" width="112" height="20" rx="4" fill="#fee2e2"/>
+    <text x="726" y="512" font-size="10" font-weight="700" fill="#991b1b" text-anchor="middle">Triagem Matinal</text>
+    <text x="830" y="512" font-size="11" fill="#475569">Marcos Silva</text>
+
+    <!-- Rodapé de paginação da tabela -->
+    <rect x="40" y="580" width="920" height="40" fill="#f8fafc"/>
+    <line x1="40" y1="580" x2="960" y2="580" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="56" y="605" font-size="11" font-weight="500" fill="#64748b">Exibindo 1 a 5 de 48 registros no período</text>
+    <text x="944" y="605" font-size="11" font-weight="700" fill="#006b4f" text-anchor="end">‹ Página 1 de 10 ›</text>
+  </g>
+
+  <!-- Legenda externa de apresentação -->
+  <text x="500" y="650" font-size="13" font-weight="700" fill="#94a3b8" text-anchor="middle">Fase 5 • Tela 04: Consulta Consolidada de Perdas com Fotos dos Produtos</text>
+</svg>
