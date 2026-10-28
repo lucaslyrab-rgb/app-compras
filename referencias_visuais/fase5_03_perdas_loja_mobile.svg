@@ -81,7 +81,7 @@
 
   <!-- FEED / LISTAGEM DE HOJE COM MINIATURAS FOTOGRÁFICAS -->
   <text x="28" y="468" font-size="13" font-weight="800" fill="#0f172a">Perdas de Hoje nesta Loja</text>
-  <text x="392" y="468" font-size="12" font-weight="700" fill="#006b4f" text-anchor="end">3 lançamentos (22.80 KG)</text>
+  <text x="392" y="468" font-size="12" font-weight="700" fill="#006b4f" text-anchor="end">3 lançamentos (16.80 KG e 6 UND)</text>
 
   <!-- CARD HISTÓRICO 1: TOMATE DÉBORA -->
   <g filter="url(#shadow3)">
@@ -143,7 +143,7 @@
   <!-- Totalizador do rodapé -->
   <rect x="28" y="740" width="364" height="56" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
   <text x="42" y="762" font-size="11" font-weight="700" fill="#475569">TOTAL DESPERDÍCIO HOJE</text>
-  <text x="42" y="782" font-size="15" font-weight="800" fill="#991b1b">22.80 KG e 6.00 UND descartados</text>
+  <text x="42" y="782" font-size="15" font-weight="800" fill="#991b1b">16.80 KG e 6.00 UND descartados</text>
   <text x="376" y="772" font-size="11" font-weight="600" fill="#64748b" text-anchor="end">Auditoria ativa ✓</text>
 
   <!-- Legenda externa de apresentação -->

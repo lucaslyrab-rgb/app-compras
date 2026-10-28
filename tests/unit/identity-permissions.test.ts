@@ -24,21 +24,29 @@ import {
 } from "@/modules/identity/domain";
 
 describe("Fundação de Permissões V1", () => {
-  it("contém exatamente as 11 permissões oficiais", () => {
+  it("contém exatamente as 14 permissões oficiais", () => {
     expect(PERMISSIONS).toEqual([
       "pedidos:criar",
       "pedidos:historico",
+      "loja:conferencia",
+      "loja:perdas",
       "compras:consolidado",
       "compras:custos",
       "compras:fornecedores",
       "compras:destinacao",
+      "perdas:consultar",
       "gestor:produtos",
       "gestor:precificacao",
       "gestor:fornecedores",
       "gestor:configuracoes",
       "gestor:usuarios",
     ]);
-    expect(STORE_PERMISSIONS).toEqual(["pedidos:criar", "pedidos:historico"]);
+    expect(STORE_PERMISSIONS).toEqual([
+      "pedidos:criar",
+      "pedidos:historico",
+      "loja:conferencia",
+      "loja:perdas",
+    ]);
   });
 
   describe("helpers de verificação de permissões", () => {
@@ -240,7 +248,9 @@ describe("Fundação de Permissões V1", () => {
       // Combinações válidas de Loja (tem permissão e tem loja com UUID válido)
       { desc: "pedidos:criar com storeId válido", permissions: ["pedidos:criar"], storeId: validStoreId, expectedValid: true },
       { desc: "pedidos:historico com storeId válido", permissions: ["pedidos:historico"], storeId: validStoreId, expectedValid: true },
-      { desc: "ambas permissões de loja com storeId válido", permissions: ["pedidos:criar", "pedidos:historico"], storeId: validStoreId, expectedValid: true },
+      { desc: "loja:conferencia com storeId válido", permissions: ["loja:conferencia"], storeId: validStoreId, expectedValid: true },
+      { desc: "loja:perdas com storeId válido", permissions: ["loja:perdas"], storeId: validStoreId, expectedValid: true },
+      { desc: "todas as permissões de loja com storeId válido", permissions: ["pedidos:criar", "pedidos:historico", "loja:conferencia", "loja:perdas"], storeId: validStoreId, expectedValid: true },
       { desc: "pedidos:criar com storeId válido com espaços nas pontas (normalizado)", permissions: ["pedidos:criar"], storeId: `  ${validStoreId}  `, expectedValid: true },
 
       // Combinações inválidas de Loja (tem permissão mas não tem loja ou UUID inválido)
@@ -250,7 +260,9 @@ describe("Fundação de Permissões V1", () => {
       { desc: "pedidos:criar com storeId apenas whitespace", permissions: ["pedidos:criar"], storeId: "   ", expectedValid: false },
       { desc: "pedidos:criar com storeId formato UUID inválido (texto arbitrário)", permissions: ["pedidos:criar"], storeId: "loja-1-nao-uuid", expectedValid: false },
       { desc: "pedidos:historico com storeId null", permissions: ["pedidos:historico"], storeId: null, expectedValid: false },
-      { desc: "ambas permissões de loja com storeId null", permissions: ["pedidos:criar", "pedidos:historico"], storeId: null, expectedValid: false },
+      { desc: "loja:conferencia com storeId null", permissions: ["loja:conferencia"], storeId: null, expectedValid: false },
+      { desc: "loja:perdas com storeId null", permissions: ["loja:perdas"], storeId: null, expectedValid: false },
+      { desc: "todas as permissões de loja com storeId null", permissions: ["pedidos:criar", "pedidos:historico", "loja:conferencia", "loja:perdas"], storeId: null, expectedValid: false },
 
       // Combinações válidas não-Loja (não tem permissão de loja e storeId é null/undefined/vazio normalizado)
       { desc: "comprador padrão com storeId null", permissions: ["compras:consolidado", "compras:custos"], storeId: null, expectedValid: true },

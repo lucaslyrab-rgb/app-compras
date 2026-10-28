@@ -15,7 +15,8 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
   let db: postgres.Sql;
 
   let storeId: string;
-  const productId = "50000000-0000-0000-0000-000000000001";
+  const productId1 = "50000000-0000-0000-0000-000000000001";
+  const productId2 = "50000000-0000-0000-0000-000000000004";
   const userId = "50000000-0000-0000-0000-000000000002";
   const orderId = "50000000-0000-0000-0000-000000000003";
   const cycleDate = "2026-10-28";
@@ -42,10 +43,12 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
     `;
     storeId = existingStore.id;
 
-    // Cria produto e usuário de teste
+    // Cria produtos e usuário de teste com esquema real
     await db`
-      INSERT INTO products (id, erp_code, name, purchase_format, sale_unit, conversion_quantity, active)
-      VALUES (${productId}, 9991, 'Tomate Teste Fase 5', 'CX', 'KG', 20.00, true)
+      INSERT INTO products (id, erp_code, name, unit, purchase_format, markup, active)
+      VALUES 
+        (${productId1}, 9991, 'Tomate Débora Fase 5', 'KG', 'CX', 30.00, true),
+        (${productId2}, 9992, 'Banana Prata Fase 5', 'KG', 'CX', 25.00, true)
       ON CONFLICT (erp_code) DO NOTHING
     `;
 
@@ -61,13 +64,13 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         ARRAY['pedidos:criar', 'pedidos:historico', 'loja:conferencia', 'loja:perdas']::text[],
         true
       )
-      ON CONFLICT (email) DO NOTHING
+      ON CONFLICT (lower(email)) DO NOTHING
     `;
 
-    // Cria pedido do ciclo
+    // Cria pedido do ciclo com campos obrigatórios reais (sem coluna status inexistente)
     await db`
-      INSERT INTO orders (id, store_id, order_date, revision, status, submitted_at, submitted_by)
-      VALUES (${orderId}, ${storeId}, ${cycleDate}::date, 1, 'CONFIRMED', now(), ${userId})
+      INSERT INTO orders (id, store_id, order_date, purchase_cycle_date, cutoff_at, revision, submitted_at, submitted_by)
+      VALUES (${orderId}, ${storeId}, ${cycleDate}::date, ${cycleDate}::date, now(), 1, now(), ${userId})
     `;
   });
 
@@ -92,6 +95,8 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
       id: string;
       status: string;
       version: number;
+      total_items: number;
+      verified_items: number;
     }[]>`
       INSERT INTO store_delivery_conferences (
         purchase_cycle_date,
@@ -107,15 +112,17 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         ${orderId}::uuid,
         1,
         'IN_PROGRESS',
-        1,
+        2,
         0
       )
-      RETURNING id, status, version
+      RETURNING id, status, version, total_items, verified_items
     `;
 
     expect(conference).toBeDefined();
     expect(conference.status).toBe("IN_PROGRESS");
     expect(conference.version).toBe(1);
+    expect(conference.total_items).toBe(2);
+    expect(conference.verified_items).toBe(0);
 
     // Impede duplicidade da mesma loja no mesmo ciclo
     await expect(
@@ -131,15 +138,45 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         )
       `
     ).rejects.toThrow();
+
+    // Impede conferência FINALIZED com itens pendentes ou sem responsável/data
+    await expect(
+      db`
+        INSERT INTO store_delivery_conferences (
+          purchase_cycle_date,
+          store_id,
+          order_id,
+          status,
+          total_items,
+          verified_items
+        ) VALUES (
+          '2026-10-29'::date,
+          ${storeId}::uuid,
+          ${orderId}::uuid,
+          'FINALIZED',
+          2,
+          1
+        )
+      `
+    ).rejects.toThrow();
+
+    // Impede contadores negativos ou verified > total
+    await expect(
+      db`
+        UPDATE store_delivery_conferences
+        SET verified_items = 5
+        WHERE id = ${conference.id}::uuid
+      `
+    ).rejects.toThrow();
   });
 
-  it("permite registrar pesagem em KG e confirmação de 'Não recebido' (0 KG)", async () => {
+  it("permite registrar pesagem em KG e confirmação de 'Não recebido' (0 KG) com validação de coerência", async () => {
     const [conf] = await db<{ id: string }[]>`
       SELECT id FROM store_delivery_conferences
       WHERE purchase_cycle_date = ${cycleDate}::date AND store_id = ${storeId}::uuid
     `;
 
-    // Item recebido com peso
+    // Item 1: Recebido com pesagem positiva em KG
     const [itemReceived] = await db<{
       id: string;
       received_weight_kg: string;
@@ -156,7 +193,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         checked_by
       ) VALUES (
         ${conf.id}::uuid,
-        ${productId}::uuid,
+        ${productId1}::uuid,
         8.00,
         'CX',
         162.40,
@@ -170,6 +207,64 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
     expect(Number(itemReceived.received_weight_kg)).toBe(162.40);
     expect(itemReceived.is_unreceived).toBe(false);
 
+    // Item 2: Confirmado como "Não recebido" (exige is_unreceived = true e received_weight_kg = 0.00)
+    const [itemUnreceived] = await db<{
+      id: string;
+      received_weight_kg: string;
+      is_unreceived: boolean;
+    }[]>`
+      INSERT INTO store_delivery_conference_items (
+        conference_id,
+        product_id,
+        ordered_quantity,
+        ordered_unit,
+        received_weight_kg,
+        is_unreceived,
+        checked_at,
+        checked_by
+      ) VALUES (
+        ${conf.id}::uuid,
+        ${productId2}::uuid,
+        5.00,
+        'CX',
+        0.00,
+        true,
+        now(),
+        ${userId}::uuid
+      )
+      RETURNING id, received_weight_kg, is_unreceived
+    `;
+
+    expect(Number(itemUnreceived.received_weight_kg)).toBe(0);
+    expect(itemUnreceived.is_unreceived).toBe(true);
+
+    // Rejeita "Não recebido" com peso positivo
+    await expect(
+      db`
+        UPDATE store_delivery_conference_items
+        SET received_weight_kg = 15.00
+        WHERE id = ${itemUnreceived.id}::uuid
+      `
+    ).rejects.toThrow();
+
+    // Rejeita "Não recebido" com peso nulo
+    await expect(
+      db`
+        UPDATE store_delivery_conference_items
+        SET received_weight_kg = NULL
+        WHERE id = ${itemUnreceived.id}::uuid
+      `
+    ).rejects.toThrow();
+
+    // Rejeita item recebido (is_unreceived = false) com peso 0
+    await expect(
+      db`
+        UPDATE store_delivery_conference_items
+        SET received_weight_kg = 0.00
+        WHERE id = ${itemReceived.id}::uuid
+      `
+    ).rejects.toThrow();
+
     // Rejeita peso negativo
     await expect(
       db`
@@ -180,7 +275,34 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
     ).rejects.toThrow();
   });
 
-  it("registra perdas diárias com loja, produto, quantidade e auditoria", async () => {
+  it("finaliza a conferência de entrega de forma coerente quando todos os itens estão conferidos", async () => {
+    const [conf] = await db<{ id: string }[]>`
+      SELECT id FROM store_delivery_conferences
+      WHERE purchase_cycle_date = ${cycleDate}::date AND store_id = ${storeId}::uuid
+    `;
+
+    // Atualiza verified_items para 2 e finaliza
+    const [finalized] = await db<{
+      status: string;
+      verified_items: number;
+      finalized_by: string;
+    }[]>`
+      UPDATE store_delivery_conferences
+      SET
+        verified_items = 2,
+        status = 'FINALIZED',
+        finalized_at = now(),
+        finalized_by = ${userId}::uuid
+      WHERE id = ${conf.id}::uuid
+      RETURNING status, verified_items, finalized_by
+    `;
+
+    expect(finalized.status).toBe("FINALIZED");
+    expect(finalized.verified_items).toBe(2);
+    expect(finalized.finalized_by).toBe(userId);
+  });
+
+  it("registra perdas diárias com loja, produto, quantidade e trilha de auditoria", async () => {
     const [lossRecord] = await db<{
       id: string;
       quantity: string;
@@ -197,7 +319,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
         recorded_by
       ) VALUES (
         ${storeId}::uuid,
-        ${productId}::uuid,
+        ${productId1}::uuid,
         4.50,
         'KG',
         'Maduro / Passado',
@@ -212,6 +334,40 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
     expect(lossRecord.unit).toBe("KG");
     expect(lossRecord.reason).toBe("Maduro / Passado");
 
+    // Registra evento de auditoria correspondente
+    const [auditLog] = await db<{
+      id: string;
+      action: string;
+      entity_type: string;
+      entity_id: string;
+    }[]>`
+      INSERT INTO audit_events (
+        actor_id,
+        action,
+        entity_type,
+        entity_id,
+        metadata
+      ) VALUES (
+        ${userId}::uuid,
+        'store_loss.create',
+        'store_loss_records',
+        ${lossRecord.id},
+        ${JSON.stringify({
+          storeId,
+          productId: productId1,
+          quantity: 4.50,
+          unit: 'KG',
+          reason: 'Maduro / Passado'
+        })}
+      )
+      RETURNING id, action, entity_type, entity_id
+    `;
+
+    expect(auditLog).toBeDefined();
+    expect(auditLog.action).toBe("store_loss.create");
+    expect(auditLog.entity_type).toBe("store_loss_records");
+    expect(auditLog.entity_id).toBe(lossRecord.id);
+
     // Rejeita quantidade zero ou negativa
     await expect(
       db`
@@ -222,7 +378,7 @@ integration("Fase 5: Migração 0018 (Conferência de Entrega e Registro de Perd
           recorded_by
         ) VALUES (
           ${storeId}::uuid,
-          ${productId}::uuid,
+          ${productId1}::uuid,
           0.00,
           ${userId}::uuid
         )

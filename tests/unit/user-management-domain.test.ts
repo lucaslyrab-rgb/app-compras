@@ -110,18 +110,25 @@ describe("Gestão de Usuários - Domínio e Validações V1", () => {
 
   describe("Templates de Perfil e Agrupamentos", () => {
     it("fornece templates padrão corretos para cada perfil", () => {
-      expect(ROLE_DEFAULT_PERMISSIONS.LOJA).toEqual(["pedidos:criar", "pedidos:historico"]);
+      expect(ROLE_DEFAULT_PERMISSIONS.LOJA).toEqual([
+        "pedidos:criar",
+        "pedidos:historico",
+        "loja:conferencia",
+        "loja:perdas",
+      ]);
       expect(ROLE_DEFAULT_PERMISSIONS.COMPRADOR).toEqual([
         "compras:consolidado",
         "compras:custos",
         "compras:destinacao",
         "compras:fornecedores",
+        "perdas:consultar",
       ]);
       expect(ROLE_DEFAULT_PERMISSIONS.GESTOR).toEqual([
         "compras:consolidado",
         "compras:custos",
         "compras:destinacao",
         "compras:fornecedores",
+        "perdas:consultar",
         "gestor:produtos",
         "gestor:precificacao",
         "gestor:fornecedores",
@@ -136,15 +143,19 @@ describe("Gestão de Usuários - Domínio e Validações V1", () => {
       expect(flatIds).toEqual([
         "pedidos:criar",
         "pedidos:historico",
+        "loja:conferencia",
+        "loja:perdas",
         "compras:consolidado",
         "compras:custos",
         "compras:destinacao",
         "compras:fornecedores",
+        "perdas:consultar",
         "gestor:produtos",
         "gestor:precificacao",
         "gestor:fornecedores",
         "gestor:configuracoes",
         "gestor:usuarios",
+        "perdas:consultar",
       ]);
     });
   });
@@ -181,16 +192,28 @@ describe("Gestão de Usuários - Domínio e Validações V1", () => {
   });
 
   describe("Invariantes de Loja vs Permissões", () => {
-    it("exige loja quando possuir pedidos:criar ou pedidos:historico", () => {
+    it("exige loja quando possuir qualquer permissão de loja", () => {
       const validUuid = "11111111-1111-4111-8111-111111111111";
       expect(validateStoreUserInvariant(["pedidos:criar"], validUuid).valid).toBe(true);
       expect(validateStoreUserInvariant(["pedidos:historico"], validUuid).valid).toBe(true);
-      expect(validateStoreUserInvariant(["pedidos:criar", "pedidos:historico"], validUuid).valid).toBe(true);
+      expect(validateStoreUserInvariant(["loja:conferencia"], validUuid).valid).toBe(true);
+      expect(validateStoreUserInvariant(["loja:perdas"], validUuid).valid).toBe(true);
+      expect(validateStoreUserInvariant(["pedidos:criar", "pedidos:historico", "loja:conferencia", "loja:perdas"], validUuid).valid).toBe(true);
 
       const invalidNoStore = validateStoreUserInvariant(["pedidos:criar"], null);
       expect(invalidNoStore.valid).toBe(false);
       expect(invalidNoStore.reason).toMatch(/loja vinculada/);
       expect(() => assertStoreUserInvariant(["pedidos:criar"], null)).toThrow(UserValidationError);
+
+      const invalidNoStoreConf = validateStoreUserInvariant(["loja:conferencia"], null);
+      expect(invalidNoStoreConf.valid).toBe(false);
+      expect(invalidNoStoreConf.reason).toMatch(/loja vinculada/);
+      expect(() => assertStoreUserInvariant(["loja:conferencia"], null)).toThrow(UserValidationError);
+
+      const invalidNoStoreLoss = validateStoreUserInvariant(["loja:perdas"], null);
+      expect(invalidNoStoreLoss.valid).toBe(false);
+      expect(invalidNoStoreLoss.reason).toMatch(/loja vinculada/);
+      expect(() => assertStoreUserInvariant(["loja:perdas"], null)).toThrow(UserValidationError);
     });
 
     it("proíbe loja quando não possuir permissão de loja", () => {

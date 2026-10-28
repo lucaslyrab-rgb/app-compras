@@ -23,7 +23,15 @@ CREATE TABLE IF NOT EXISTS store_delivery_conferences (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT store_delivery_conferences_cycle_store_unique UNIQUE (purchase_cycle_date, store_id),
-  CONSTRAINT store_delivery_conferences_version_check CHECK (version > 0)
+  CONSTRAINT store_delivery_conferences_version_check CHECK (version > 0),
+  CONSTRAINT delivery_conf_items_count_check CHECK (
+    total_items >= 0 AND verified_items >= 0 AND verified_items <= total_items
+  ),
+  CONSTRAINT delivery_conf_finalized_coherence_check CHECK (
+    (status = 'FINALIZED' AND finalized_at IS NOT NULL AND finalized_by IS NOT NULL AND total_items = verified_items)
+    OR
+    (status = 'IN_PROGRESS' AND finalized_at IS NULL AND finalized_by IS NULL)
+  )
 );
 
 CREATE INDEX IF NOT EXISTS delivery_conferences_cycle_idx
@@ -46,8 +54,10 @@ CREATE TABLE IF NOT EXISTS store_delivery_conference_items (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT conference_items_unique UNIQUE (conference_id, product_id),
-  CONSTRAINT conference_items_weight_check CHECK (
-    received_weight_kg IS NULL OR received_weight_kg >= 0
+  CONSTRAINT conference_items_weight_coherence_check CHECK (
+    (is_unreceived = true AND received_weight_kg = 0)
+    OR
+    (is_unreceived = false AND (received_weight_kg IS NULL OR received_weight_kg > 0))
   )
 );
 
@@ -113,12 +123,18 @@ ALTER TABLE users ADD CONSTRAINT users_store_permission_check CHECK (
   (NOT (ARRAY['pedidos:criar', 'pedidos:historico', 'loja:conferencia', 'loja:perdas']::text[] && permissions) AND store_id IS NULL)
 );
 
--- Backfill seguro: adiciona novas permissões da Fase 5 aos usuários existentes
+-- Backfill seguro: adiciona cada permissão individualmente evitando duplicações ou omissões em estados parciais
 UPDATE users
-SET permissions = array_cat(permissions, ARRAY['loja:conferencia', 'loja:perdas']::text[])
+SET permissions = array_append(permissions, 'loja:conferencia')
 WHERE role = 'LOJA'
   AND store_id IS NOT NULL
   AND NOT ('loja:conferencia' = ANY(permissions));
+
+UPDATE users
+SET permissions = array_append(permissions, 'loja:perdas')
+WHERE role = 'LOJA'
+  AND store_id IS NOT NULL
+  AND NOT ('loja:perdas' = ANY(permissions));
 
 UPDATE users
 SET permissions = array_append(permissions, 'perdas:consultar')

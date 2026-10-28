@@ -522,7 +522,9 @@ export const storeDeliveryConferences = pgTable("store_delivery_conferences", {
   index("delivery_conferences_cycle_idx").on(table.purchaseCycleDate),
   index("delivery_conferences_store_cycle_idx").on(table.storeId, table.purchaseCycleDate),
   check("store_delivery_conferences_version_check", sql`${table.version} > 0`),
-  check("store_delivery_conferences_status_check", sql`${table.status} IN ('IN_PROGRESS', 'FINALIZED')`)
+  check("store_delivery_conferences_status_check", sql`${table.status} IN ('IN_PROGRESS', 'FINALIZED')`),
+  check("delivery_conf_items_count_check", sql`${table.totalItems} >= 0 AND ${table.verifiedItems} >= 0 AND ${table.verifiedItems} <= ${table.totalItems}`),
+  check("delivery_conf_finalized_coherence_check", sql`(${table.status} = 'FINALIZED' AND ${table.finalizedAt} IS NOT NULL AND ${table.finalizedBy} IS NOT NULL AND ${table.totalItems} = ${table.verifiedItems}) OR (${table.status} = 'IN_PROGRESS' AND ${table.finalizedAt} IS NULL AND ${table.finalizedBy} IS NULL)`)
 ]);
 
 export const storeDeliveryConferencesRelations = relations(storeDeliveryConferences, ({ one, many }) => ({
@@ -548,7 +550,7 @@ export const storeDeliveryConferenceItems = pgTable("store_delivery_conference_i
   uniqueIndex("conference_items_unique").on(table.conferenceId, table.productId),
   index("conference_items_product_idx").on(table.productId),
   index("conference_items_conf_idx").on(table.conferenceId),
-  check("conference_items_weight_check", sql`${table.receivedWeightKg} IS NULL OR ${table.receivedWeightKg} >= 0`)
+  check("conference_items_weight_coherence_check", sql`(${table.isUnreceived} = true AND ${table.receivedWeightKg} = 0) OR (${table.isUnreceived} = false AND (${table.receivedWeightKg} IS NULL OR ${table.receivedWeightKg} > 0))`)
 ]);
 
 export const storeDeliveryConferenceItemsRelations = relations(storeDeliveryConferenceItems, ({ one }) => ({

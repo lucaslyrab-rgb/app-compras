@@ -116,7 +116,7 @@ Este documento e os arquivos complementares na pasta `referencias_visuais/` cont
 |                                                           |
 | [ + Confirmar e Salvar Perda                            ] |
 +-----------------------------------------------------------+
-| Perdas de Hoje nesta Loja         3 lançamentos (22.8 KG) |
+| Perdas de Hoje nesta Loja    3 lançamentos (16.80 KG e 6 UND) |
 |-----------------------------------------------------------|
 | [🍅 FOTO] [305] Tomate Débora Extra             - 4.50 KG |
 |           Maduro / Passado • 15:40            [✕ Excluir] |
