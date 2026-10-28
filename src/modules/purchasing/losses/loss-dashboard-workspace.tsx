@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ProductPhoto } from "@/components/product-photo";
 import type { StoreLossRecord } from "./domain";
+import type { LossManagementKpis } from "./repository";
 
 export const DEFAULT_LOSS_PAGE_SIZE = 50;
 const LOAD_MORE_STEP = 50;
@@ -8,13 +9,6 @@ const LOAD_MORE_STEP = 50;
 type StoreOption = {
   id: string;
   name: string;
-};
-
-type LossDashboardKpis = {
-  totals: { kg: number; und: number; formatted: string };
-  topStoreByUnit: Record<"KG" | "UND", { storeName: string; total: number } | null>;
-  topProductByUnit: Record<"KG" | "UND", { productName: string; total: number } | null>;
-  totalRecords: number;
 };
 
 type LossFilters = {
@@ -49,7 +43,7 @@ export function LossDashboardWorkspace({
   basePath: string;
   stores: StoreOption[];
   losses: StoreLossRecord[];
-  kpis: LossDashboardKpis;
+  kpis: LossManagementKpis;
   totalMatching: number;
   pageSize: number;
   filters: LossFilters;

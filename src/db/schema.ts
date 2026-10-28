@@ -515,6 +515,8 @@ export const storeDeliveryConferences = pgTable("store_delivery_conferences", {
   finalizedAt: timestamp("finalized_at", { withTimezone: true }),
   finalizedBy: uuid("finalized_by").references(() => users.id, { onDelete: "set null" }),
   version: integer("version").notNull().default(1),
+  reconciledAt: timestamp("reconciled_at", { withTimezone: true }),
+  reconciledBy: uuid("reconciled_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 }, (table) => [
@@ -542,6 +544,7 @@ export const storeDeliveryConferenceItems = pgTable("store_delivery_conference_i
   orderedUnit: text("ordered_unit").notNull(),
   receivedWeightKg: numeric("received_weight_kg", { precision: 10, scale: 2 }),
   isUnreceived: boolean("is_unreceived").notNull().default(false),
+  removedFromOrder: boolean("removed_from_order").notNull().default(false),
   checkedAt: timestamp("checked_at", { withTimezone: true }),
   checkedBy: uuid("checked_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -550,6 +553,7 @@ export const storeDeliveryConferenceItems = pgTable("store_delivery_conference_i
   uniqueIndex("conference_items_unique").on(table.conferenceId, table.productId),
   index("conference_items_product_idx").on(table.productId),
   index("conference_items_conf_idx").on(table.conferenceId),
+  index("conference_items_removed_idx").on(table.conferenceId, table.removedFromOrder),
   check("conference_items_ordered_qty_positive", sql`${table.orderedQuantity} > 0 AND ${table.orderedQuantity} <> 'NaN'::numeric`),
   check("conference_items_weight_coherence_check", sql`(${table.isUnreceived} = true AND ${table.receivedWeightKg} IS NOT NULL AND ${table.receivedWeightKg} = 0) OR (${table.isUnreceived} = false AND (${table.receivedWeightKg} IS NULL OR (${table.receivedWeightKg} > 0 AND ${table.receivedWeightKg} <> 'NaN'::numeric)))`)
 ]);

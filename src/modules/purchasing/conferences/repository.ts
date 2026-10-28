@@ -85,6 +85,7 @@ export async function getStoreConference(
       INNER JOIN products p ON p.id = ci.product_id
       LEFT JOIN users u ON u.id = ci.checked_by
       WHERE ci.conference_id = ${existing.id}::uuid
+        AND ci.removed_from_order = false
       ORDER BY p.name ASC
     `;
 
@@ -288,9 +289,16 @@ export async function getStoreConference(
   }
 }
 
+/**
+ * Lista os ciclos que o seletor de /conferencia pode oferecer. TODA pendência
+ * (NOT_STARTED ou IN_PROGRESS) é sempre incluída, não importa a idade - uma
+ * conferência pendente antiga nunca deve desaparecer só porque ciclos novos já
+ * finalizados se acumularam. Só o histórico FINALIZADO é limitado/recente, como
+ * contexto; ele não representa trabalho pendente.
+ */
 export async function listStoreConferenceCycles(
   storeId: string,
-  limit = 14
+  finalizedHistoryLimit = 14
 ): Promise<ConferenceCycleOption[]> {
   const { sql } = database();
 
@@ -301,27 +309,37 @@ export async function listStoreConferenceCycles(
       UNION
       SELECT DISTINCT purchase_cycle_date FROM store_delivery_conferences
       WHERE store_id = ${storeId}::uuid
+    ),
+    joined AS (
+      SELECT
+        cd.purchase_cycle_date,
+        COALESCE(c.status, 'NOT_STARTED') AS status,
+        COALESCE(c.total_items, 0) AS total_items,
+        COALESCE(c.verified_items, 0) AS verified_items
+      FROM cycle_dates cd
+      LEFT JOIN store_delivery_conferences c
+        ON c.store_id = ${storeId}::uuid AND c.purchase_cycle_date = cd.purchase_cycle_date
+    ),
+    pending AS (
+      SELECT * FROM joined WHERE status <> 'FINALIZED'
+    ),
+    recent_finalized AS (
+      SELECT * FROM joined WHERE status = 'FINALIZED'
+      ORDER BY purchase_cycle_date DESC
+      LIMIT ${finalizedHistoryLimit}
     )
-    SELECT
-      cd.purchase_cycle_date::text AS cycle_date,
-      COALESCE(c.status, 'NOT_STARTED') AS status,
-      COALESCE(c.total_items, 0) AS total_items,
-      COALESCE(c.verified_items, 0) AS verified_items
-    FROM cycle_dates cd
-    LEFT JOIN store_delivery_conferences c
-      ON c.store_id = ${storeId}::uuid AND c.purchase_cycle_date = cd.purchase_cycle_date
-    ORDER BY cd.purchase_cycle_date DESC
-    LIMIT ${limit}
+    SELECT purchase_cycle_date::text AS cycle_date, status, total_items, verified_items FROM pending
+    UNION
+    SELECT purchase_cycle_date::text AS cycle_date, status, total_items, verified_items FROM recent_finalized
+    ORDER BY cycle_date ASC
   `;
 
-  return rows
-    .map((r) => ({
-      cycleDate: r.cycle_date as string,
-      status: r.status as ConferenceCycleOption["status"],
-      totalItems: r.total_items as number,
-      verifiedItems: r.verified_items as number,
-    }))
-    .reverse();
+  return rows.map((r) => ({
+    cycleDate: r.cycle_date as string,
+    status: r.status as ConferenceCycleOption["status"],
+    totalItems: r.total_items as number,
+    verifiedItems: r.verified_items as number,
+  }));
 }
 
 export async function listRecentConferences(
@@ -440,6 +458,7 @@ export async function saveConferenceDraft(params: {
       SELECT count(*)::int AS "verifiedCount"
       FROM store_delivery_conference_items
       WHERE conference_id = ${params.conferenceId}::uuid
+        AND removed_from_order = false
         AND (is_unreceived = true OR (received_weight_kg IS NOT NULL AND received_weight_kg > 0))
     `;
 
@@ -587,6 +606,7 @@ export async function finalizeConference(params: {
       FROM store_delivery_conference_items ci
       INNER JOIN products p ON p.id = ci.product_id
       WHERE ci.conference_id = ${params.conferenceId}::uuid
+        AND ci.removed_from_order = false
     `;
 
     assertCanFinalizeConference(
@@ -629,4 +649,168 @@ export async function finalizeConference(params: {
       )
     `;
   });
+}
+
+/**
+ * Reconcilia uma conferência em andamento com a revisão de pedido vigente da loja,
+ * quando a revisão que originou a conferência foi substituída ou cancelada
+ * (ConferenceHeader.orderOutOfSync). Não apaga nada: produtos que saíram da
+ * revisão vigente são marcados `removed_from_order`, preservando a pesagem e o
+ * histórico para auditoria; produtos novos entram como pendentes; produtos que
+ * continuam na revisão têm apenas `ordered_quantity`/`ordered_unit` atualizados,
+ * mantendo a pesagem já registrada (pesagem aproveitável).
+ */
+export async function reconcileConferenceWithCurrentOrder(params: {
+  conferenceId: string;
+  storeId: string;
+  userId: string;
+}): Promise<{ header: ConferenceHeader; items: ConferenceItem[] } | null> {
+  const { sql } = database();
+
+  const cycleDate = await sql.begin(async (tx) => {
+    const [conf] = await tx`
+      SELECT id, status, order_id, order_revision, purchase_cycle_date::text AS purchase_cycle_date
+      FROM store_delivery_conferences
+      WHERE id = ${params.conferenceId}::uuid
+        AND store_id = ${params.storeId}::uuid
+      FOR UPDATE
+    `;
+
+    if (!conf) {
+      throw new ConferenceValidationError("Conferência não encontrada para esta loja.");
+    }
+
+    if (conf.status === "FINALIZED") {
+      throw new ConferenceValidationError("Esta conferência já está finalizada e não pode ser reconciliada.");
+    }
+
+    const [currentOrder] = await tx`
+      SELECT id, revision
+      FROM orders
+      WHERE store_id = ${params.storeId}::uuid
+        AND purchase_cycle_date = ${conf.purchase_cycle_date}::date
+        AND cancelled_at IS NULL
+      ORDER BY revision DESC
+      LIMIT 1
+    `;
+
+    if (!currentOrder) {
+      throw new ConferenceValidationError(
+        "Não há pedido vigente desta loja para este ciclo (o pedido foi cancelado sem substituição). Não é possível reconciliar automaticamente; procure o comprador/gestor."
+      );
+    }
+
+    if (currentOrder.id === conf.order_id) {
+      // Já está sincronizada com a revisão vigente; nada a reconciliar.
+      return conf.purchase_cycle_date as string;
+    }
+
+    const newOrderItems = await tx`
+      SELECT oi.product_id, oi.quantity::float AS quantity, oi.snapshot_unit, p.purchase_format
+      FROM order_items oi
+      INNER JOIN products p ON p.id = oi.product_id
+      WHERE oi.order_id = ${currentOrder.id}::uuid
+        AND oi.quantity > 0
+    `;
+    const newProductIds = new Set(newOrderItems.map((it) => it.product_id as string));
+
+    const existingItems = await tx`
+      SELECT id, product_id, removed_from_order
+      FROM store_delivery_conference_items
+      WHERE conference_id = ${params.conferenceId}::uuid
+    `;
+    const existingByProduct = new Map(existingItems.map((it) => [it.product_id as string, it]));
+
+    let added = 0;
+    let removed = 0;
+    let updated = 0;
+
+    for (const item of newOrderItems) {
+      const unit = item.purchase_format || item.snapshot_unit || "CX";
+      const existingItem = existingByProduct.get(item.product_id as string);
+
+      if (!existingItem) {
+        await tx`
+          INSERT INTO store_delivery_conference_items (
+            conference_id, product_id, ordered_quantity, ordered_unit,
+            received_weight_kg, is_unreceived, removed_from_order
+          ) VALUES (
+            ${params.conferenceId}::uuid, ${item.product_id}::uuid, ${item.quantity}, ${unit},
+            NULL, false, false
+          )
+        `;
+        added += 1;
+      } else {
+        await tx`
+          UPDATE store_delivery_conference_items
+          SET ordered_quantity = ${item.quantity}, ordered_unit = ${unit}, removed_from_order = false, updated_at = now()
+          WHERE id = ${existingItem.id}::uuid
+        `;
+        if (existingItem.removed_from_order) updated += 1;
+      }
+    }
+
+    for (const existingItem of existingItems) {
+      if (!newProductIds.has(existingItem.product_id as string) && !existingItem.removed_from_order) {
+        await tx`
+          UPDATE store_delivery_conference_items
+          SET removed_from_order = true, updated_at = now()
+          WHERE id = ${existingItem.id}::uuid
+        `;
+        removed += 1;
+      }
+    }
+
+    const [{ totalCount, verifiedCount }] = await tx<{ totalCount: number; verifiedCount: number }[]>`
+      SELECT
+        count(*) FILTER (WHERE removed_from_order = false)::int AS "totalCount",
+        count(*) FILTER (
+          WHERE removed_from_order = false
+            AND (is_unreceived = true OR (received_weight_kg IS NOT NULL AND received_weight_kg > 0))
+        )::int AS "verifiedCount"
+      FROM store_delivery_conference_items
+      WHERE conference_id = ${params.conferenceId}::uuid
+    `;
+
+    await tx`
+      UPDATE store_delivery_conferences
+      SET
+        order_id = ${currentOrder.id}::uuid,
+        order_revision = ${currentOrder.revision},
+        total_items = ${totalCount},
+        verified_items = ${verifiedCount},
+        version = version + 1,
+        reconciled_at = now(),
+        reconciled_by = ${params.userId}::uuid,
+        updated_at = now()
+      WHERE id = ${params.conferenceId}::uuid
+    `;
+
+    await tx`
+      INSERT INTO audit_events (
+        id, actor_id, action, entity_type, entity_id, metadata, created_at
+      ) VALUES (
+        gen_random_uuid(),
+        ${params.userId}::uuid,
+        'store_delivery_conference.reconcile',
+        'store_delivery_conferences',
+        ${params.conferenceId},
+        ${JSON.stringify({
+          storeId: params.storeId,
+          previousOrderId: conf.order_id,
+          previousOrderRevision: conf.order_revision,
+          newOrderId: currentOrder.id,
+          newOrderRevision: currentOrder.revision,
+          itemsAdded: added,
+          itemsRemoved: removed,
+          itemsRestored: updated,
+        })}::jsonb,
+        now()
+      )
+    `;
+
+    return conf.purchase_cycle_date as string;
+  });
+
+  return getStoreConference(params.storeId, cycleDate);
 }

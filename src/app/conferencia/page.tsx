@@ -83,7 +83,11 @@ export default async function ConferencePage({
   }
 
   return (
+    // key pela identidade da conferência: trocar de ciclo deve reiniciar todo o
+    // estado do componente (itens, pesos em edição, versão, mensagens), nunca
+    // reaproveitar o estado em memória de uma conferência diferente.
     <ConferenceWorkspace
+      key={conferenceData.header.id}
       header={conferenceData.header}
       initialItems={conferenceData.items}
       cycles={cycleOptions}

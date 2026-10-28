@@ -2,8 +2,7 @@ import { redirect } from "next/navigation";
 import { requirePrincipal } from "@/modules/identity/session";
 import { hasPermission } from "@/modules/identity/domain";
 import { listActiveStores } from "@/modules/identity/repository";
-import { queryLossesForManagement } from "@/modules/purchasing/losses/repository";
-import { calculateLossDashboardKpis } from "@/modules/purchasing/losses/domain";
+import { queryLossesForManagement, countLossesForManagement, aggregateLossesForManagement } from "@/modules/purchasing/losses/repository";
 import { LossDashboardWorkspace, DEFAULT_LOSS_PAGE_SIZE } from "@/modules/purchasing/losses/loss-dashboard-workspace";
 
 export const dynamic = "force-dynamic";
@@ -29,13 +28,15 @@ export default async function CompradorLossesPage({
     search: params.search || undefined,
   };
 
-  // Consulta o período completo (sem limite de exibição) para que os filtros sejam
-  // sempre resolvidos no servidor e os totais/KPIs reflitam todo o período filtrado,
-  // não apenas a página atualmente exibida na tabela.
-  const allMatching = await queryLossesForManagement(filters);
-  const kpis = calculateLossDashboardKpis(allMatching);
   const pageSize = Number(params.limit) > 0 ? Number(params.limit) : DEFAULT_LOSS_PAGE_SIZE;
-  const losses = allMatching.slice(0, pageSize);
+
+  // KPIs e total são calculados no banco sobre TODO o período filtrado, nunca sobre
+  // a página exibida; a lista da tabela é paginada separadamente (LIMIT/OFFSET).
+  const [kpis, totalMatching, losses] = await Promise.all([
+    aggregateLossesForManagement(filters),
+    countLossesForManagement(filters),
+    queryLossesForManagement(filters, { limit: pageSize }),
+  ]);
 
   return (
     <LossDashboardWorkspace
@@ -43,7 +44,7 @@ export default async function CompradorLossesPage({
       stores={stores.map((s) => ({ id: s.id, name: s.name }))}
       losses={losses}
       kpis={kpis}
-      totalMatching={allMatching.length}
+      totalMatching={totalMatching}
       pageSize={pageSize}
       filters={filters}
     />

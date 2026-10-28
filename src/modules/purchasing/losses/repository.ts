@@ -1,6 +1,7 @@
 import { database } from "@/db/client";
 import {
   LossValidationError,
+  formatUnitTotals,
   type StoreLossRecord,
 } from "./domain";
 
@@ -204,26 +205,37 @@ export async function cancelStoreLoss(input: {
   });
 }
 
-// Teto de segurança apenas para evitar um resultado patologicamente grande;
-// não é o tamanho de página exibido na tela (ver paginação em loss-dashboard-workspace).
-// Os KPIs e a lista completa usada para os totais do período vêm desta mesma consulta,
-// nunca de um subconjunto já paginado.
-const MANAGEMENT_QUERY_SAFETY_CAP = 5000;
-
-export async function queryLossesForManagement(filters: {
+type LossManagementFilters = {
   storeId?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   search?: string | null;
-}): Promise<StoreLossRecord[]> {
-  const { sql } = database();
+};
 
-  const storeCondition = filters.storeId ? sql`AND sl.store_id = ${filters.storeId}::uuid` : sql``;
-  const startCondition = filters.startDate ? sql`AND sl.recorded_at::date >= ${filters.startDate}::date` : sql``;
-  const endCondition = filters.endDate ? sql`AND sl.recorded_at::date <= ${filters.endDate}::date` : sql``;
-  const searchCondition = filters.search
-    ? sql`AND (p.name ILIKE ${`%${filters.search}%`} OR p.erp_code::text ILIKE ${`%${filters.search}%`})`
-    : sql``;
+function buildLossManagementConditions(sql: ReturnType<typeof database>["sql"], filters: LossManagementFilters) {
+  return {
+    storeCondition: filters.storeId ? sql`AND sl.store_id = ${filters.storeId}::uuid` : sql``,
+    startCondition: filters.startDate ? sql`AND sl.recorded_at::date >= ${filters.startDate}::date` : sql``,
+    endCondition: filters.endDate ? sql`AND sl.recorded_at::date <= ${filters.endDate}::date` : sql``,
+    searchCondition: filters.search
+      ? sql`AND (p.name ILIKE ${`%${filters.search}%`} OR p.erp_code::text ILIKE ${`%${filters.search}%`})`
+      : sql``,
+  };
+}
+
+/**
+ * Lista a página de lançamentos exibida na tabela (ORDER BY + LIMIT/OFFSET reais
+ * no banco). Não usar o resultado desta função para calcular totais/rankings:
+ * uma página nunca representa o período completo filtrado — ver
+ * aggregateLossesForManagement.
+ */
+export async function queryLossesForManagement(
+  filters: LossManagementFilters,
+  pagination: { limit: number; offset?: number } = { limit: 50 }
+): Promise<StoreLossRecord[]> {
+  const { sql } = database();
+  const { storeCondition, startCondition, endCondition, searchCondition } = buildLossManagementConditions(sql, filters);
+  const offset = pagination.offset ?? 0;
 
   const rows = await sql`
     SELECT
@@ -252,7 +264,8 @@ export async function queryLossesForManagement(filters: {
       ${endCondition}
       ${searchCondition}
     ORDER BY sl.recorded_at DESC
-    LIMIT ${MANAGEMENT_QUERY_SAFETY_CAP}
+    LIMIT ${pagination.limit}
+    OFFSET ${offset}
   `;
 
   return rows.map((r) => ({
@@ -272,4 +285,118 @@ export async function queryLossesForManagement(filters: {
     recordedBy: r.recorded_by,
     recordedByName: r.recorded_by_name,
   }));
+}
+
+/**
+ * Conta o total de lançamentos que casam com o filtro, sem paginação - usado
+ * para "Exibindo N de TOTAL" e para decidir se existe próxima página.
+ */
+export async function countLossesForManagement(filters: LossManagementFilters): Promise<number> {
+  const { sql } = database();
+  const { storeCondition, startCondition, endCondition, searchCondition } = buildLossManagementConditions(sql, filters);
+
+  const [{ total }] = await sql<{ total: number }[]>`
+    SELECT count(*)::int AS total
+    FROM store_loss_records sl
+    INNER JOIN stores s ON s.id = sl.store_id
+    INNER JOIN products p ON p.id = sl.product_id
+    WHERE sl.cancelled_at IS NULL
+      ${storeCondition}
+      ${startCondition}
+      ${endCondition}
+      ${searchCondition}
+  `;
+  return total;
+}
+
+export type LossManagementKpis = {
+  totals: { kg: number; und: number; formatted: string };
+  topStoreByUnit: Record<"KG" | "UND", { storeName: string; total: number } | null>;
+  topProductByUnit: Record<"KG" | "UND", { productName: string; total: number } | null>;
+  totalRecords: number;
+};
+
+/**
+ * Calcula contagens, totais e rankings de loja/produto líder no banco, sobre
+ * TODO o período filtrado (sem limite de linhas) - nunca sobre a página exibida
+ * na tabela. Os rankings por loja/produto têm cardinalidade baixa (poucas lojas
+ * e produtos), então agrupar no banco e escolher o maior por unidade em memória
+ * é seguro e não reintroduz o problema de truncar o período.
+ */
+export async function aggregateLossesForManagement(filters: LossManagementFilters): Promise<LossManagementKpis> {
+  const { sql } = database();
+  const { storeCondition, startCondition, endCondition, searchCondition } = buildLossManagementConditions(sql, filters);
+
+  const [totalsRow] = await sql<{ kg_total: number; und_total: number; total_records: number }[]>`
+    SELECT
+      COALESCE(SUM(sl.quantity) FILTER (WHERE upper(sl.unit) NOT IN ('UND', 'UN', 'UNIDADE')), 0)::float AS kg_total,
+      COALESCE(SUM(sl.quantity) FILTER (WHERE upper(sl.unit) IN ('UND', 'UN', 'UNIDADE')), 0)::float AS und_total,
+      count(*)::int AS total_records
+    FROM store_loss_records sl
+    INNER JOIN stores s ON s.id = sl.store_id
+    INNER JOIN products p ON p.id = sl.product_id
+    WHERE sl.cancelled_at IS NULL
+      ${storeCondition}
+      ${startCondition}
+      ${endCondition}
+      ${searchCondition}
+  `;
+
+  const storeTotals = await sql<{ store_name: string; unit: "KG" | "UND"; total: number }[]>`
+    SELECT
+      s.name AS store_name,
+      CASE WHEN upper(sl.unit) IN ('UND', 'UN', 'UNIDADE') THEN 'UND' ELSE 'KG' END AS unit,
+      SUM(sl.quantity)::float AS total
+    FROM store_loss_records sl
+    INNER JOIN stores s ON s.id = sl.store_id
+    INNER JOIN products p ON p.id = sl.product_id
+    WHERE sl.cancelled_at IS NULL
+      ${storeCondition}
+      ${startCondition}
+      ${endCondition}
+      ${searchCondition}
+    GROUP BY s.name, unit
+  `;
+
+  const productTotals = await sql<{ product_name: string; unit: "KG" | "UND"; total: number }[]>`
+    SELECT
+      p.name AS product_name,
+      CASE WHEN upper(sl.unit) IN ('UND', 'UN', 'UNIDADE') THEN 'UND' ELSE 'KG' END AS unit,
+      SUM(sl.quantity)::float AS total
+    FROM store_loss_records sl
+    INNER JOIN stores s ON s.id = sl.store_id
+    INNER JOIN products p ON p.id = sl.product_id
+    WHERE sl.cancelled_at IS NULL
+      ${storeCondition}
+      ${startCondition}
+      ${endCondition}
+      ${searchCondition}
+    GROUP BY p.name, unit
+  `;
+
+  function topByUnit<TKey extends string, TRow extends { unit: "KG" | "UND"; total: number }>(
+    rows: TRow[],
+    nameKey: TKey,
+    pick: (row: TRow) => string
+  ): Record<"KG" | "UND", ({ total: number } & Record<TKey, string>) | null> {
+    const result = { KG: null, UND: null } as Record<"KG" | "UND", ({ total: number } & Record<TKey, string>) | null>;
+    for (const unit of ["KG", "UND"] as const) {
+      let best: TRow | null = null;
+      for (const row of rows) {
+        if (row.unit === unit && (!best || row.total > best.total)) best = row;
+      }
+      result[unit] = best ? ({ [nameKey]: pick(best), total: best.total } as { total: number } & Record<TKey, string>) : null;
+    }
+    return result;
+  }
+
+  const kg = Math.round((totalsRow?.kg_total ?? 0) * 100) / 100;
+  const und = Math.round((totalsRow?.und_total ?? 0) * 100) / 100;
+
+  return {
+    totals: { kg, und, formatted: formatUnitTotals({ kg, und }) },
+    topStoreByUnit: topByUnit(storeTotals, "storeName", (r) => r.store_name),
+    topProductByUnit: topByUnit(productTotals, "productName", (r) => r.product_name),
+    totalRecords: totalsRow?.total_records ?? 0,
+  };
 }

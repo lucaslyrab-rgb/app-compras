@@ -10,7 +10,13 @@ import {
   type ConferenceHeader,
   type ConferenceItem,
 } from "./domain";
-import { saveConferenceDraftAction, finalizeConferenceAction, type ConferenceActionState } from "./actions";
+import {
+  saveConferenceDraftAction,
+  finalizeConferenceAction,
+  reconcileConferenceAction,
+  type ConferenceActionState,
+  type ConferenceReconcileState,
+} from "./actions";
 
 type FilterType = "ALL" | "PENDING" | "VERIFIED";
 
@@ -42,6 +48,7 @@ export function ConferenceWorkspace({
 
   const [saveState, saveAction, isSaving] = useActionState(saveConferenceDraftAction, {});
   const [finalizeState, finalizeAction, isFinalizing] = useActionState(finalizeConferenceAction, {});
+  const [reconcileState, reconcileAction, isReconciling] = useActionState(reconcileConferenceAction, {});
 
   // Ratchet: só avança para uma versão mais nova após uma gravação confirmada pelo
   // servidor; nunca regride para a versão inicial do carregamento em caso de erro.
@@ -54,10 +61,34 @@ export function ConferenceWorkspace({
     }
   }
 
-  // Rastreia qual das duas ações (salvar parcial/finalizar) foi disparada mais
-  // recentemente, em vez de dar prioridade permanente a finalizeState sempre que
-  // ele tiver mensagem (o que esconderia o resultado de um Salvar Parcial seguinte).
-  const [feedback, setFeedback] = useState<ConferenceActionState>({});
+  // orderOutOfSync começa a partir do header carregado do servidor, mas depois de
+  // uma reconciliação bem-sucedida passa a ser controlado localmente (volta a
+  // false) sem exigir um recarregamento completo da página.
+  const [orderOutOfSync, setOrderOutOfSync] = useState(header.orderOutOfSync);
+
+  // Aplica o resultado da reconciliação: itens/pesagens e versão atualizados vêm
+  // do servidor; nada é recalculado no cliente para evitar divergência.
+  const [syncedReconcileState, setSyncedReconcileState] = useState(reconcileState);
+  if (reconcileState !== syncedReconcileState) {
+    setSyncedReconcileState(reconcileState);
+    if (reconcileState.status === "success" && reconcileState.header && reconcileState.items) {
+      setItems(reconcileState.items);
+      setEditingWeights(() => {
+        const map: Record<string, string> = {};
+        for (const it of reconcileState.items!) {
+          if (it.receivedWeightKg !== null) map[it.productId] = String(it.receivedWeightKg);
+        }
+        return map;
+      });
+      setVersion(reconcileState.header.version);
+      setOrderOutOfSync(reconcileState.header.orderOutOfSync);
+    }
+  }
+
+  // Rastreia qual das três ações (salvar parcial/finalizar/reconciliar) foi
+  // disparada mais recentemente, em vez de dar prioridade permanente a uma delas
+  // sempre que tiver mensagem (o que esconderia o resultado de uma ação seguinte).
+  const [feedback, setFeedback] = useState<ConferenceActionState | ConferenceReconcileState>({});
   const [syncedFeedbackSaveState, setSyncedFeedbackSaveState] = useState(saveState);
   if (saveState !== syncedFeedbackSaveState) {
     setSyncedFeedbackSaveState(saveState);
@@ -67,6 +98,11 @@ export function ConferenceWorkspace({
   if (finalizeState !== syncedFinalizeState) {
     setSyncedFinalizeState(finalizeState);
     setFeedback(finalizeState);
+  }
+  const [syncedFeedbackReconcileState, setSyncedFeedbackReconcileState] = useState(reconcileState);
+  if (reconcileState !== syncedFeedbackReconcileState) {
+    setSyncedFeedbackReconcileState(reconcileState);
+    setFeedback(reconcileState);
   }
 
   const isFinalized = header.status === "FINALIZED";
@@ -150,7 +186,7 @@ export function ConferenceWorkspace({
       <main style={{ maxWidth: 800, margin: "0 auto", padding: "16px 12px" }}>
         <ConferenceCycleSelector cycleDate={header.purchaseCycleDate} cycles={cycles} />
 
-        {header.orderOutOfSync && (
+        {orderOutOfSync && (
           <div
             role="alert"
             style={{
@@ -162,11 +198,31 @@ export function ConferenceWorkspace({
               background: "#fef3c7",
               color: "#92400e",
               border: "1px solid #f59e0b",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
             }}
           >
-            ⚠️ O pedido desta loja foi revisado ou cancelado depois que esta conferência foi
-            iniciada. Você ainda pode salvar o progresso de pesagem, mas a finalização fica
-            bloqueada até o comprador/gestor resolver a divergência.
+            <span>
+              ⚠️ O pedido desta loja foi revisado ou cancelado depois que esta conferência foi
+              iniciada. A finalização fica bloqueada até sincronizar com o pedido vigente.
+            </span>
+            <form action={reconcileAction}>
+              <input type="hidden" name="storeId" value={header.storeId} />
+              <input type="hidden" name="conferenceId" value={header.id} />
+              <button
+                type="submit"
+                disabled={isReconciling}
+                className="btn"
+                style={{ fontSize: 12, padding: "6px 14px", minHeight: 36, borderRadius: 6, fontWeight: 800, background: "#92400e", alignSelf: "flex-start" }}
+              >
+                {isReconciling ? "Sincronizando..." : "🔄 Sincronizar com pedido vigente"}
+              </button>
+            </form>
+            <span style={{ fontWeight: 500, fontSize: 12 }}>
+              Pesagens já registradas para produtos que continuam no pedido são preservadas;
+              produtos retirados ficam marcados no histórico, nunca apagados.
+            </span>
           </div>
         )}
 
@@ -468,20 +524,20 @@ export function ConferenceWorkspace({
               <input type="hidden" name="items" value={itemsJsonPayload} />
               <button
                 type="submit"
-                disabled={isSaving || isFinalizing || progress.pending > 0 || header.orderOutOfSync}
+                disabled={isSaving || isFinalizing || progress.pending > 0 || orderOutOfSync}
                 className="btn"
                 style={{
                   width: "100%",
                   minHeight: 44,
                   fontSize: 13,
                   fontWeight: 800,
-                  background: progress.pending > 0 || header.orderOutOfSync ? "#94a3b8" : "#004737",
-                  cursor: progress.pending > 0 || header.orderOutOfSync ? "not-allowed" : "pointer",
+                  background: progress.pending > 0 || orderOutOfSync ? "#94a3b8" : "#004737",
+                  cursor: progress.pending > 0 || orderOutOfSync ? "not-allowed" : "pointer",
                 }}
               >
                 {isFinalizing
                   ? "Finalizando..."
-                  : header.orderOutOfSync
+                  : orderOutOfSync
                   ? "Pedido desatualizado"
                   : progress.pending > 0
                   ? `Finalizar (${progress.pending} pendentes)`

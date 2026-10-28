@@ -7,6 +7,7 @@ import {
   getStoreConference,
   saveConferenceDraft,
   finalizeConference,
+  reconcileConferenceWithCurrentOrder,
 } from "../../src/modules/purchasing/conferences/repository";
 import {
   recordStoreLoss,
@@ -246,6 +247,146 @@ integration("Fase 5: Ações e Serviços de Conferência de Entrega e Perdas", (
           items: [{ productId: productId1, receivedWeightKg: 200, isUnreceived: false }],
         })
       ).rejects.toThrow("já está finalizada");
+    });
+  });
+
+  describe("Reconciliação de conferência com revisão vigente do pedido", () => {
+    const productId3 = "60000000-0000-0000-0000-000000000007";
+    const reconcileOrderId1 = "60000000-0000-0000-0000-000000000008";
+    const reconcileOrderId2 = "60000000-0000-0000-0000-000000000009";
+    const reconcileCycleDate = "2026-10-29";
+    let conferenceId: string;
+
+    beforeAll(async () => {
+      await db`
+        INSERT INTO products (id, erp_code, name, unit, purchase_format, markup, active)
+        VALUES (${productId3}, 8003, 'Cebola Roxa', 'KG', 'CX', 28.00, true)
+        ON CONFLICT (erp_code) DO NOTHING
+      `;
+
+      // Revisão 1: pedido original com productId1 e productId2
+      await db`
+        INSERT INTO orders (id, store_id, order_date, purchase_cycle_date, cutoff_at, revision, submitted_at, submitted_by)
+        VALUES (${reconcileOrderId1}, ${storeId2}, ${reconcileCycleDate}::date, ${reconcileCycleDate}::date, now(), 1, now(), ${userId2})
+      `;
+      await db`
+        INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+        VALUES
+          (${reconcileOrderId1}, ${productId1}, 2.00, 5.00, 8001, 'Tomate Débora Extra', 'CX'),
+          (${reconcileOrderId1}, ${productId2}, 1.00, 3.00, 8002, 'Alface Crespa Hidropônica', 'CX')
+      `;
+    });
+
+    it("inicializa a conferência a partir da revisão 1 e permite pesar um item", async () => {
+      const initial = await getStoreConference(storeId2, reconcileCycleDate);
+      expect(initial).not.toBeNull();
+      expect(initial!.header.orderOutOfSync).toBe(false);
+      expect(initial!.items.length).toBe(2);
+      conferenceId = initial!.header.id;
+
+      const progress = await saveConferenceDraft({
+        conferenceId,
+        storeId: storeId2,
+        userId: userId2,
+        expectedVersion: initial!.header.version,
+        items: [{ productId: productId1, receivedWeightKg: 5.1, isUnreceived: false }],
+      });
+      expect(progress.verified).toBe(1);
+    });
+
+    it("detecta divergência quando uma revisão 2 substitui o pedido original", async () => {
+      // Revisão 2: productId2 saiu, productId1 mudou de quantidade, productId3 é novo
+      await db`
+        INSERT INTO orders (id, store_id, order_date, purchase_cycle_date, cutoff_at, revision, submitted_at, submitted_by)
+        VALUES (${reconcileOrderId2}, ${storeId2}, ${reconcileCycleDate}::date, ${reconcileCycleDate}::date, now(), 2, now(), ${userId2})
+      `;
+      await db`
+        INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+        VALUES
+          (${reconcileOrderId2}, ${productId1}, 2.00, 7.00, 8001, 'Tomate Débora Extra', 'CX'),
+          (${reconcileOrderId2}, ${productId3}, 0.00, 4.00, 8003, 'Cebola Roxa', 'CX')
+      `;
+
+      const afterRevision = await getStoreConference(storeId2, reconcileCycleDate);
+      expect(afterRevision!.header.orderOutOfSync).toBe(true);
+      // A lista ativa ainda reflete a revisão antiga até a reconciliação explícita.
+      expect(afterRevision!.items.some((it) => it.productId === productId2)).toBe(true);
+    });
+
+    it("bloqueia finalização enquanto a conferência estiver desatualizada", async () => {
+      const stale = await getStoreConference(storeId2, reconcileCycleDate);
+      await expect(
+        finalizeConference({
+          conferenceId,
+          storeId: storeId2,
+          userId: userId2,
+          expectedVersion: stale!.header.version,
+          items: stale!.items.map((it) => ({
+            productId: it.productId,
+            receivedWeightKg: it.productId === productId1 ? 5.1 : 0,
+            isUnreceived: it.productId !== productId1,
+          })),
+        })
+      ).rejects.toThrow("revisado ou cancelado");
+    });
+
+    it("reconcilia preservando a pesagem aproveitável e marcando o item removido sem apagar histórico", async () => {
+      const reconciled = await reconcileConferenceWithCurrentOrder({
+        conferenceId,
+        storeId: storeId2,
+        userId: userId2,
+      });
+
+      expect(reconciled).not.toBeNull();
+      expect(reconciled!.header.orderOutOfSync).toBe(false);
+      expect(reconciled!.header.orderRevision).toBe(2);
+      expect(reconciled!.header.totalItems).toBe(2);
+      expect(reconciled!.header.verifiedItems).toBe(1);
+
+      const activeProductIds = reconciled!.items.map((it) => it.productId);
+      expect(activeProductIds).toContain(productId1);
+      expect(activeProductIds).toContain(productId3);
+      expect(activeProductIds).not.toContain(productId2);
+
+      // Pesagem já registrada para o item que permanece é preservada.
+      const tomate = reconciled!.items.find((it) => it.productId === productId1);
+      expect(tomate?.receivedWeightKg).toBe(5.1);
+      expect(Number(tomate?.orderedQuantity)).toBe(7);
+
+      // O item removido não foi apagado: continua no banco, apenas marcado.
+      const [removedRow] = await db<{ removed_from_order: boolean; received_weight_kg: string | null }[]>`
+        SELECT removed_from_order, received_weight_kg
+        FROM store_delivery_conference_items
+        WHERE conference_id = ${conferenceId}::uuid AND product_id = ${productId2}::uuid
+      `;
+      expect(removedRow).toBeDefined();
+      expect(removedRow.removed_from_order).toBe(true);
+
+      const [auditEvent] = await db<{ action: string }[]>`
+        SELECT action FROM audit_events
+        WHERE action = 'store_delivery_conference.reconcile' AND entity_id = ${conferenceId}::text
+      `;
+      expect(auditEvent).toBeDefined();
+    });
+
+    it("permite finalizar normalmente após a reconciliação", async () => {
+      const synced = await getStoreConference(storeId2, reconcileCycleDate);
+      expect(synced!.header.orderOutOfSync).toBe(false);
+
+      await finalizeConference({
+        conferenceId,
+        storeId: storeId2,
+        userId: userId2,
+        expectedVersion: synced!.header.version,
+        items: [
+          { productId: productId1, receivedWeightKg: 5.1, isUnreceived: false },
+          { productId: productId3, receivedWeightKg: 4, isUnreceived: false },
+        ],
+      });
+
+      const finalized = await getStoreConference(storeId2, reconcileCycleDate);
+      expect(finalized!.header.status).toBe("FINALIZED");
+      expect(finalized!.header.verifiedItems).toBe(2);
     });
   });
 
