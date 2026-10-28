@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 880" width="420" height="880" style="background:#0f172a; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <linearGradient id="headerGrad3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#004737"/>
+      <stop offset="100%" stop-color="#006b4f"/>
+    </linearGradient>
+    <filter id="shadow3" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Moldura do Celular -->
+  <rect x="15" y="15" width="390" height="850" rx="42" fill="#f8fafc" stroke="#334155" stroke-width="4"/>
+  <rect x="145" y="22" width="130" height="26" rx="13" fill="#1e293b"/>
+
+  <!-- Barra de Status Mobile -->
+  <text x="42" y="40" font-size="13" font-weight="700" fill="#0f172a">15:45</text>
+  <circle cx="340" cy="36" r="3" fill="#0f172a"/>
+  <circle cx="348" cy="36" r="3" fill="#0f172a"/>
+  <circle cx="356" cy="36" r="3" fill="#0f172a"/>
+  <rect x="366" y="30" width="18" height="11" rx="3" fill="none" stroke="#0f172a" stroke-width="1.5"/>
+  <rect x="368" y="32" width="12" height="7" rx="1.5" fill="#0f172a"/>
+
+  <!-- Topbar Base -->
+  <rect x="15" y="54" width="390" height="66" fill="url(#headerGrad3)"/>
+  <rect x="28" y="70" width="34" height="34" rx="8" fill="rgba(255,255,255,0.2)"/>
+  <text x="45" y="92" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">‹</text>
+  <text x="72" y="84" font-size="15" font-weight="800" fill="#ffffff">Lançamento de Perdas</text>
+  <text x="72" y="102" font-size="11" font-weight="500" fill="#a7f3d0">Ponta da Fruta • Expediente Diário</text>
+
+  <rect x="325" y="72" width="65" height="30" rx="8" fill="rgba(255,255,255,0.15)"/>
+  <text x="357" y="91" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">Menu ☰</text>
+
+  <!-- FORMULÁRIO DE LANÇAMENTO RÁPIDO COM MINIATURA -->
+  <g filter="url(#shadow3)">
+    <rect x="28" y="128" width="364" height="316" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+
+    <text x="44" y="152" font-size="13" font-weight="800" fill="#0f172a">Registrar Nova Perda / Descarte</text>
+
+    <!-- Campo 1: Seleção de Produto COM FOTO -->
+    <text x="44" y="174" font-size="11" font-weight="700" fill="#475569">PRODUTO SELECIONADO</text>
+    <rect x="44" y="180" width="332" height="44" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>
+    
+    <!-- Miniatura do produto selecionado no formulário -->
+    <rect x="50" y="184" width="36" height="36" rx="6" fill="#fee2e2" stroke="#fca5a5" stroke-width="1"/>
+    <text x="68" y="208" font-size="20" text-anchor="middle">🍅</text>
+
+    <text x="96" y="202" font-size="11" font-weight="800" fill="#b45309">ERP 305</text>
+    <text x="96" y="216" font-size="13" font-weight="800" fill="#0f172a">Tomate Débora Extra</text>
+    <text x="360" y="207" font-size="12" fill="#64748b" text-anchor="end">▾</text>
+
+    <!-- Campo 2: Quantidade e Unidade -->
+    <text x="44" y="244" font-size="11" font-weight="700" fill="#475569">QUANTIDADE PERDIDA</text>
+    <rect x="44" y="250" width="200" height="38" rx="8" fill="#f8fafc" stroke="#006b4f" stroke-width="1.5"/>
+    <text x="56" y="274" font-size="16" font-weight="800" fill="#006b4f">4.50</text>
+
+    <rect x="252" y="250" width="124" height="38" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="296" y="274" font-size="14" font-weight="700" fill="#0f172a">KG</text>
+    <text x="360" y="274" font-size="12" fill="#64748b" text-anchor="end">▾</text>
+
+    <!-- Campo 3: Motivo / Classificação Rápida -->
+    <text x="44" y="306" font-size="11" font-weight="700" fill="#475569">MOTIVO DA PERDA</text>
+    
+    <rect x="44" y="314" width="98" height="26" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+    <text x="93" y="331" font-size="10" font-weight="600" fill="#475569" text-anchor="middle">Avaria / Carga</text>
+
+    <rect x="148" y="314" width="120" height="26" rx="6" fill="#006b4f" stroke="#004737"/>
+    <text x="208" y="331" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">✓ Maduro / Passado</text>
+
+    <rect x="274" y="314" width="102" height="26" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+    <text x="325" y="331" font-size="10" font-weight="600" fill="#475569" text-anchor="middle">Quebra Interna</text>
+
+    <!-- Campo 4: Observações -->
+    <rect x="44" y="348" width="332" height="34" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="56" y="370" font-size="12" fill="#94a3b8">Observação (ex: amassado no fundo da caixa)</text>
+
+    <!-- Botão Salvar Perda -->
+    <rect x="44" y="392" width="332" height="40" rx="8" fill="#006b4f"/>
+    <text x="210" y="417" font-size="13" font-weight="800" fill="#ffffff" text-anchor="middle">+ Confirmar e Salvar Perda</text>
+  </g>
+
+  <!-- FEED / LISTAGEM DE HOJE COM MINIATURAS FOTOGRÁFICAS -->
+  <text x="28" y="468" font-size="13" font-weight="800" fill="#0f172a">Perdas de Hoje nesta Loja</text>
+  <text x="392" y="468" font-size="12" font-weight="700" fill="#006b4f" text-anchor="end">3 lançamentos (22.80 KG)</text>
+
+  <!-- CARD HISTÓRICO 1: TOMATE DÉBORA -->
+  <g filter="url(#shadow3)">
+    <rect x="28" y="480" width="364" height="78" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+    <rect x="28" y="480" width="5" height="78" rx="2" fill="#ef4444"/>
+
+    <!-- Miniatura Tomate -->
+    <rect x="40" y="490" width="42" height="42" rx="8" fill="#fee2e2" stroke="#fca5a5" stroke-width="1"/>
+    <text x="61" y="518" font-size="22" text-anchor="middle">🍅</text>
+
+    <text x="92" y="500" font-size="13" font-weight="800" fill="#0f172a">[305] Tomate Débora Extra</text>
+    <rect x="290" y="490" width="76" height="20" rx="6" fill="#fee2e2"/>
+    <text x="328" y="504" font-size="11" font-weight="800" fill="#991b1b" text-anchor="middle">- 4.50 KG</text>
+
+    <text x="92" y="518" font-size="11" font-weight="600" fill="#64748b">Motivo: <tspan fill="#0f172a">Maduro / Passado</tspan></text>
+    <text x="92" y="534" font-size="10" font-weight="500" fill="#94a3b8">15:40 por Marcos Silva</text>
+
+    <text x="376" y="532" font-size="11" font-weight="700" fill="#ef4444" text-anchor="end">✕ Excluir</text>
+  </g>
+
+  <!-- CARD HISTÓRICO 2: ALFACE CRESPA -->
+  <g filter="url(#shadow3)">
+    <rect x="28" y="566" width="364" height="78" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+    <rect x="28" y="566" width="5" height="78" rx="2" fill="#ef4444"/>
+
+    <!-- Miniatura Alface -->
+    <rect x="40" y="576" width="42" height="42" rx="8" fill="#dcfce7" stroke="#86efac" stroke-width="1"/>
+    <text x="61" y="604" font-size="22" text-anchor="middle">🥬</text>
+
+    <text x="92" y="586" font-size="13" font-weight="800" fill="#0f172a">[120] Alface Crespa Hidropônica</text>
+    <rect x="290" y="576" width="76" height="20" rx="6" fill="#fee2e2"/>
+    <text x="328" y="590" font-size="11" font-weight="800" fill="#991b1b" text-anchor="middle">- 6.00 UND</text>
+
+    <text x="92" y="604" font-size="11" font-weight="600" fill="#64748b">Motivo: <tspan fill="#0f172a">Avaria no Transporte</tspan></text>
+    <text x="92" y="620" font-size="10" font-weight="500" fill="#94a3b8">11:15 por Marcos Silva</text>
+
+    <text x="376" y="618" font-size="11" font-weight="700" fill="#ef4444" text-anchor="end">✕ Excluir</text>
+  </g>
+
+  <!-- CARD HISTÓRICO 3: BANANA PRATA -->
+  <g filter="url(#shadow3)">
+    <rect x="28" y="652" width="364" height="78" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+    <rect x="28" y="652" width="5" height="78" rx="2" fill="#ef4444"/>
+
+    <!-- Miniatura Banana -->
+    <rect x="40" y="662" width="42" height="42" rx="8" fill="#fef9c3" stroke="#fef08a" stroke-width="1"/>
+    <text x="61" y="690" font-size="22" text-anchor="middle">🍌</text>
+
+    <text x="92" y="672" font-size="13" font-weight="800" fill="#0f172a">[101] Banana Prata Especial</text>
+    <rect x="286" y="662" width="84" height="20" rx="6" fill="#fee2e2"/>
+    <text x="328" y="676" font-size="11" font-weight="800" fill="#991b1b" text-anchor="middle">- 12.30 KG</text>
+
+    <text x="92" y="690" font-size="11" font-weight="600" fill="#64748b">Motivo: <tspan fill="#0f172a">Triagem Matinal</tspan></text>
+    <text x="92" y="706" font-size="10" font-weight="500" fill="#94a3b8">09:20 por Marcos Silva</text>
+
+    <text x="376" y="704" font-size="11" font-weight="700" fill="#ef4444" text-anchor="end">✕ Excluir</text>
+  </g>
+
+  <!-- Totalizador do rodapé -->
+  <rect x="28" y="740" width="364" height="56" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="42" y="762" font-size="11" font-weight="700" fill="#475569">TOTAL DESPERDÍCIO HOJE</text>
+  <text x="42" y="782" font-size="15" font-weight="800" fill="#991b1b">22.80 KG e 6.00 UND descartados</text>
+  <text x="376" y="772" font-size="11" font-weight="600" fill="#64748b" text-anchor="end">Auditoria ativa ✓</text>
+
+  <!-- Legenda externa de apresentação -->
+  <text x="210" y="852" font-size="13" font-weight="700" fill="#94a3b8" text-anchor="middle">Fase 5 • Tela 03: Lançamento de Perdas com Fotos dos Produtos</text>
+</svg>

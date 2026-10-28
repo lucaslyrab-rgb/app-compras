@@ -503,3 +503,85 @@ export const purchaseCycleInvoiceItemsRelations = relations(purchaseCycleInvoice
   product: one(products, { fields: [purchaseCycleInvoiceItems.productId], references: [products.id] })
 }));
 
+export const storeDeliveryConferences = pgTable("store_delivery_conferences", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  purchaseCycleDate: date("purchase_cycle_date").notNull(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "restrict" }),
+  orderId: uuid("order_id").references(() => orders.id, { onDelete: "restrict" }),
+  orderRevision: integer("order_revision"),
+  status: text("status").notNull().default("IN_PROGRESS"),
+  totalItems: integer("total_items").notNull().default(0),
+  verifiedItems: integer("verified_items").notNull().default(0),
+  finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+  finalizedBy: uuid("finalized_by").references(() => users.id, { onDelete: "set null" }),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("store_delivery_conferences_cycle_store_unique").on(table.purchaseCycleDate, table.storeId),
+  index("delivery_conferences_cycle_idx").on(table.purchaseCycleDate),
+  index("delivery_conferences_store_cycle_idx").on(table.storeId, table.purchaseCycleDate),
+  check("store_delivery_conferences_version_check", sql`${table.version} > 0`),
+  check("store_delivery_conferences_status_check", sql`${table.status} IN ('IN_PROGRESS', 'FINALIZED')`)
+]);
+
+export const storeDeliveryConferencesRelations = relations(storeDeliveryConferences, ({ one, many }) => ({
+  store: one(stores, { fields: [storeDeliveryConferences.storeId], references: [stores.id] }),
+  order: one(orders, { fields: [storeDeliveryConferences.orderId], references: [orders.id] }),
+  finalizer: one(users, { fields: [storeDeliveryConferences.finalizedBy], references: [users.id] }),
+  items: many(storeDeliveryConferenceItems)
+}));
+
+export const storeDeliveryConferenceItems = pgTable("store_delivery_conference_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conferenceId: uuid("conference_id").notNull().references(() => storeDeliveryConferences.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  orderedQuantity: numeric("ordered_quantity", { precision: 10, scale: 2 }).notNull(),
+  orderedUnit: text("ordered_unit").notNull(),
+  receivedWeightKg: numeric("received_weight_kg", { precision: 10, scale: 2 }),
+  isUnreceived: boolean("is_unreceived").notNull().default(false),
+  checkedAt: timestamp("checked_at", { withTimezone: true }),
+  checkedBy: uuid("checked_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("conference_items_unique").on(table.conferenceId, table.productId),
+  index("conference_items_product_idx").on(table.productId),
+  index("conference_items_conf_idx").on(table.conferenceId),
+  check("conference_items_weight_check", sql`${table.receivedWeightKg} IS NULL OR ${table.receivedWeightKg} >= 0`)
+]);
+
+export const storeDeliveryConferenceItemsRelations = relations(storeDeliveryConferenceItems, ({ one }) => ({
+  conference: one(storeDeliveryConferences, { fields: [storeDeliveryConferenceItems.conferenceId], references: [storeDeliveryConferences.id] }),
+  product: one(products, { fields: [storeDeliveryConferenceItems.productId], references: [products.id] }),
+  checker: one(users, { fields: [storeDeliveryConferenceItems.checkedBy], references: [users.id] })
+}));
+
+export const storeLossRecords = pgTable("store_loss_records", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "restrict" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
+  unit: text("unit").notNull().default("KG"),
+  reason: text("reason"),
+  notes: text("notes"),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  recordedBy: uuid("recorded_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  cancelledBy: uuid("cancelled_by").references(() => users.id, { onDelete: "set null" }),
+  cancellationReason: text("cancellation_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  index("store_losses_store_date_idx").on(table.storeId, table.recordedAt),
+  index("store_losses_product_idx").on(table.productId),
+  index("store_losses_date_idx").on(table.recordedAt),
+  check("store_losses_quantity_positive", sql`${table.quantity} > 0`)
+]);
+
+export const storeLossRecordsRelations = relations(storeLossRecords, ({ one }) => ({
+  store: one(stores, { fields: [storeLossRecords.storeId], references: [stores.id] }),
+  product: one(products, { fields: [storeLossRecords.productId], references: [products.id] }),
+  recorder: one(users, { fields: [storeLossRecords.recordedBy], references: [users.id] }),
+  canceller: one(users, { fields: [storeLossRecords.cancelledBy], references: [users.id] })
+}));
+

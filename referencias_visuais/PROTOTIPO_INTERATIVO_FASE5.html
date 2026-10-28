@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MultiShow FLV — Protótipo Visual da Fase 5 (Com Fotos)</title>
+  <style>
+    :root {
+      --brand-900: #004737;
+      --brand-700: #006b4f;
+      --brand-600: #00865f;
+      --brand-100: #e3f6ee;
+      --ink-900: #10233f;
+      --ink-600: #516078;
+      --surface: #ffffff;
+      --canvas: #0f172a;
+      --border: #dbe3e9;
+      --danger: #c81e2b;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background: var(--canvas); color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+
+    /* Topbar do Protótipo */
+    .proto-header {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #334155;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .proto-title h1 { font-size: 20px; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 8px; }
+    .proto-title p { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+    .proto-tabs { display: flex; gap: 8px; background: #1e293b; padding: 4px; border-radius: 10px; flex-wrap: wrap; }
+    .proto-tab-btn {
+      background: transparent;
+      border: 0;
+      color: #94a3b8;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .proto-tab-btn:hover { color: #ffffff; background: rgba(255,255,255,0.05); }
+    .proto-tab-btn.active { background: #006b4f; color: #ffffff; }
+
+    /* Container de visualização */
+    .screen-container {
+      display: none;
+      width: 100%;
+      justify-content: center;
+      animation: fadeIn 0.25s ease-out;
+    }
+    .screen-container.active { display: flex; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* MOLDURA MOBILE */
+    .phone-mockup {
+      width: 390px;
+      height: 844px;
+      background: #f8fafc;
+      border: 12px solid #1e293b;
+      border-radius: 46px;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      color: #0f172a;
+    }
+    .phone-mockup::-webkit-scrollbar { width: 4px; }
+    .phone-mockup::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    .phone-status-bar {
+      height: 40px;
+      padding: 0 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      background: #004737;
+      color: white;
+    }
+    .phone-dynamic-island {
+      width: 110px;
+      height: 22px;
+      background: #0f172a;
+      border-radius: 12px;
+      margin: 0 auto;
+    }
+
+    /* MOLDURA DESKTOP */
+    .desktop-mockup {
+      width: 100%;
+      max-width: 1040px;
+      background: #f8fafc;
+      border: 8px solid #1e293b;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      color: #0f172a;
+    }
+
+    /* COMPONENTES COMPARTILHADOS */
+    .topbar {
+      background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
+      color: white;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar-title { font-size: 16px; font-weight: 800; }
+    .topbar-sub { font-size: 11px; color: #a7f3d0; margin-top: 2px; }
+    .topbar-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 0;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* MINIATURAS FOTOGRÁFICAS DOS PRODUTOS (ProductPhoto) */
+    .product-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 26px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .product-thumb-sm {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+
+    /* TELA 1: MODAL HUB */
+    .hub-backdrop {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .hub-card {
+      background: white;
+      border-radius: 20px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+    .hub-header { padding: 18px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    .hub-header h2 { font-size: 17px; font-weight: 800; color: #0f172a; }
+    .hub-header p { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .hub-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .hub-option {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      border-radius: 12px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: #ffffff;
+      text-decoration: none;
+    }
+    .hub-option--pedido { border-color: #10b981; background: #f0fdf4; }
+    .hub-option--conf { border-color: #f59e0b; background: #fffbeb; }
+    .hub-option--perdas { border-color: #94a3b8; background: #f8fafc; }
+    .hub-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      background: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+    }
+    .hub-info h3 { font-size: 15px; font-weight: 800; }
+    .hub-info p { font-size: 11px; color: #475569; margin: 2px 0 6px 0; }
+    .hub-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      display: inline-block;
+    }
+
+    /* TELA 2: CONFERÊNCIA */
+    .conf-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 90px; }
+    .progress-box {
+      background: white;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .progress-bar-bg { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+    .progress-bar-fill { height: 100%; width: 75%; background: #10b981; }
+
+    .filter-pills { display: flex; gap: 6px; }
+    .pill {
+      flex: 1;
+      padding: 8px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #f1f5f9;
+      text-align: center;
+      cursor: pointer;
+    }
+    .pill.active { background: #006b4f; color: white; border-color: #006b4f; }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: white;
+    }
+
+    .conf-item {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+    }
+    .conf-item--pending { border-left: 6px solid #f59e0b; }
+    .conf-item--received { border-left: 6px solid #10b981; background: #f0fdf4; border-color: #bbf7d0; }
+    .conf-item--unreceived { border-left: 6px solid #ef4444; background: #fef2f2; border-color: #fecaca; }
+
+    .conf-item-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .conf-product-info { display: flex; gap: 10px; align-items: center; }
+    .conf-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+
+    .conf-actions-row { display: flex; gap: 8px; align-items: center; }
+    .conf-kg-input {
+      width: 140px;
+      padding: 9px;
+      border: 1.5px solid #94a3b8;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 800;
+      text-align: center;
+      background: #f8fafc;
+    }
+    .conf-btn-zero {
+      flex: 1;
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+      padding: 9px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .sticky-footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+      padding: 12px;
+      display: flex;
+      gap: 8px;
+    }
+    .btn-salvar-parcial {
+      flex: 1;
+      background: white;
+      border: 1.5px solid #cbd5e1;
+      color: #334155;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 12px 6px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .btn-finalizar {
+      flex: 1.4;
+      background: #94a3b8;
+      color: white;
+      border: 0;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 12px 6px;
+      border-radius: 8px;
+      cursor: not-allowed;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-finalizar.ready { background: #006b4f; cursor: pointer; }
+
+    /* TELA 3: PERDAS */
+    .perdas-form {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #cbd5e1;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .form-group label { display: block; font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 4px; }
+    .select-input, .text-input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #94a3b8;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .product-select-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 6px 10px;
+    }
+    .reason-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .reason-btn {
+      border: 1px solid #cbd5e1;
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .reason-btn.active { background: #006b4f; color: white; border-color: #004737; }
+    .btn-salvar-perda {
+      background: #006b4f;
+      color: white;
+      border: 0;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .perda-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #ef4444;
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* TELA 4: GESTOR TABELA */
+    .gestor-container { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .gestor-filter-bar {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .gestor-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .kpi-card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; border-left: 4px solid #006b4f; }
+    .kpi-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .kpi-val { font-size: 24px; font-weight: 800; color: #991b1b; margin-top: 4px; }
+    .kpi-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+    .gestor-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #cbd5e1;
+      font-size: 12px;
+    }
+    .gestor-table th { background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 800; color: #475569; }
+    .gestor-table td { padding: 10px 12px; border-top: 1px solid #f1f5f9; }
+    .table-prod-cell { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+  </style>
+</head>
+<body>
+
+  <!-- TOPO DO PROTÓTIPO COM SELEÇÃO DE ABAS -->
+  <header class="proto-header">
+    <div class="proto-title">
+      <h1>MultiShow FLV • Protótipo Visual da Fase 5 (Com Fotos)</h1>
+      <p>Simulação interativa com suporte nativo a miniaturas fotográficas dos produtos para reconhecimento visual rápido.</p>
+    </div>
+    <nav class="proto-tabs">
+      <button class="proto-tab-btn active" onclick="switchScreen('screen-hub', this)">📱 1. Hub da Loja</button>
+      <button class="proto-tab-btn" onclick="switchScreen('screen-conf', this)">⚖️ 2. Conferência com Fotos</button>
+      <button class="proto-tab-btn" onclick="switchScreen('screen-perdas', this)">🗑️ 3. Perdas com Fotos</button>
+      <button class="proto-tab-btn" onclick="switchScreen('screen-gestor', this)">💻 4. Gestor com Fotos</button>
+    </nav>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- TELA 1: HUB DA LOJA (MODAL DE SELEÇÃO) -->
+  <!-- ========================================== -->
+  <main id="screen-hub" class="screen-container active">
+    <div class="phone-mockup">
+      <div class="phone-status-bar">
+        <span>09:41</span>
+        <div class="phone-dynamic-island"></div>
+        <span>5G 🔋</span>
+      </div>
+
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">MULTISHOW</div>
+          <div class="topbar-sub">FLV • Ponta da Fruta</div>
+        </div>
+        <button class="topbar-btn">Sair ↪</button>
+      </div>
+
+      <div class="hub-backdrop">
+        <div class="hub-card">
+          <div class="hub-header">
+            <h2>Acesso Operacional</h2>
+            <p>Selecione a atividade que deseja realizar:</p>
+          </div>
+          <div class="hub-body">
+            <!-- Opção Pedido -->
+            <div class="hub-option hub-option--pedido" onclick="alert('Redireciona para /produtos (Lançamento de Pedido)')">
+              <div class="hub-icon">📝</div>
+              <div class="hub-info">
+                <h3 style="color:#065f46;">Fazer Pedido</h3>
+                <p>Informar estoque e solicitar produtos</p>
+                <span class="hub-badge" style="background:#d1fae5; color:#047857;">✓ Ciclo 28/10 Aberto</span>
+              </div>
+              <span style="margin-left:auto; font-weight:800; color:#10b981;">❯</span>
+            </div>
+
+            <!-- Opção Conferência -->
+            <div class="hub-option hub-option--conf" onclick="switchScreen('screen-conf', document.querySelectorAll('.proto-tab-btn')[1])">
+              <div class="hub-icon">⚖️</div>
+              <div class="hub-info">
+                <h3 style="color:#92400e;">Conferência de Entrega</h3>
+                <p>Pesar mercadorias com fotos de apoio</p>
+                <span class="hub-badge" style="background:#fef3c7; color:#b45309;">⚠️ 1 Ciclo pendente de peso</span>
+              </div>
+              <span style="margin-left:auto; font-weight:800; color:#f59e0b;">❯</span>
+            </div>
+
+            <!-- Opção Perdas -->
+            <div class="hub-option hub-option--perdas" onclick="switchScreen('screen-perdas', document.querySelectorAll('.proto-tab-btn')[2])">
+              <div class="hub-icon">🗑️</div>
+              <div class="hub-info">
+                <h3 style="color:#1e3a8a;">Lançamento de Perdas</h3>
+                <p>Descartes com fotos no expediente</p>
+                <span class="hub-badge" style="background:#dbeafe; color:#1d4ed8;">📊 3 registros hoje</span>
+              </div>
+              <span style="margin-left:auto; font-weight:800; color:#94a3b8;">❯</span>
+            </div>
+          </div>
+          <div style="padding: 12px 16px; background:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
+            <span style="font-size:11px; color:#64748b;">Navegue entre os módulos a qualquer momento pelo menu.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================================== -->
+  <!-- TELA 2: CONFERÊNCIA FÍSICA DE RECEBIMENTO COM FOTOS -->
+  <!-- ========================================== -->
+  <main id="screen-conf" class="screen-container">
+    <div class="phone-mockup">
+      <div class="phone-status-bar">
+        <span>09:42</span>
+        <div class="phone-dynamic-island"></div>
+        <span>5G 🔋</span>
+      </div>
+
+      <div class="topbar">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="topbar-btn" onclick="switchScreen('screen-hub', document.querySelectorAll('.proto-tab-btn')[0])">‹ Menu</button>
+          <div>
+            <div class="topbar-title" style="font-size:14px;">Conferência de Entrega</div>
+            <div class="topbar-sub">Ponta da Fruta • Pedido #1084</div>
+          </div>
+        </div>
+        <button class="topbar-btn">Ajuda ❓</button>
+      </div>
+
+      <div class="conf-body">
+        <!-- Progresso -->
+        <div class="progress-box">
+          <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700;">
+            <span style="color:#64748b;">CICLO 27/10 • CHEGADA</span>
+            <span style="color:#006b4f;" id="progress-text">75% Concluído</span>
+          </div>
+          <div style="font-size:13px; font-weight:800; margin-top:4px;">
+            18 de 24 itens conferidos <span style="font-size:11px; color:#b45309;">(6 pendentes de peso)</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill"></div>
+          </div>
+        </div>
+
+        <!-- Filtros Rápidos -->
+        <div class="filter-pills">
+          <div class="pill" onclick="filterItems('all', this)">Todos (24)</div>
+          <div class="pill active" onclick="filterItems('pending', this)">⏳ Pendentes (6)</div>
+          <div class="pill" onclick="filterItems('done', this)">✓ Conferidos (18)</div>
+        </div>
+
+        <input type="search" class="search-input" placeholder="🔍 Buscar por nome ou código ERP...">
+
+        <!-- ITEM 1: PENDENTE (TOMATE DÉBORA COM FOTO) -->
+        <div class="conf-item conf-item--pending" data-status="pending">
+          <div class="conf-item-header">
+            <div class="conf-product-info">
+              <!-- FOTO DO PRODUTO (ProductPhoto) -->
+              <div class="product-thumb" style="background:#fee2e2; border-color:#fca5a5;">🍅</div>
+              <div>
+                <span style="font-size:10px; font-weight:800; color:#b45309;">ERP 305</span>
+                <div style="font-weight:800; font-size:14px;">Tomate Débora Extra</div>
+                <div style="font-size:11px; color:#64748b;">Pedido original: <strong style="color:#047857;">8 CX</strong></div>
+              </div>
+            </div>
+            <span class="conf-badge" style="background:#fef3c7; color:#b45309;">⏳ Pendente</span>
+          </div>
+          <div class="conf-actions-row">
+            <input type="number" step="0.01" class="conf-kg-input" placeholder="Peso em KG" id="input-tomate">
+            <button type="button" class="conf-btn-zero" onclick="markUnreceived('input-tomate', this)">✕ Não Recebido (0 KG)</button>
+          </div>
+        </div>
+
+        <!-- ITEM 2: PENDENTE (BATATA INGLESA COM FOTO) -->
+        <div class="conf-item conf-item--pending" data-status="pending">
+          <div class="conf-item-header">
+            <div class="conf-product-info">
+              <!-- FOTO DO PRODUTO -->
+              <div class="product-thumb" style="background:#fef3c7; border-color:#fde68a;">🥔</div>
+              <div>
+                <span style="font-size:10px; font-weight:800; color:#b45309;">ERP 412</span>
+                <div style="font-weight:800; font-size:14px;">Batata Inglesa Lisa</div>
+                <div style="font-size:11px; color:#64748b;">Pedido original: <strong style="color:#047857;">5 SC</strong></div>
+              </div>
+            </div>
+            <span class="conf-badge" style="background:#fef3c7; color:#b45309;">⏳ Pendente</span>
+          </div>
+          <div class="conf-actions-row">
+            <input type="number" step="0.01" class="conf-kg-input" placeholder="Peso em KG" id="input-batata">
+            <button type="button" class="conf-btn-zero" onclick="markUnreceived('input-batata', this)">✕ Não Recebido (0 KG)</button>
+          </div>
+        </div>
+
+        <!-- ITEM 3: JÁ CONFERIDO RECEBIDO (BANANA PRATA COM FOTO) -->
+        <div class="conf-item conf-item--received" data-status="done">
+          <div class="conf-item-header">
+            <div class="conf-product-info">
+              <!-- FOTO DO PRODUTO -->
+              <div class="product-thumb" style="background:#fef9c3; border-color:#fef08a;">🍌</div>
+              <div>
+                <span style="font-size:10px; font-weight:800; color:#047857;">ERP 101</span>
+                <div style="font-weight:800; font-size:14px; color:#065f46;">Banana Prata Especial</div>
+                <div style="font-size:11px; color:#475569;">Pedido: 10 CX • <strong>Recebido: 215.40 KG</strong></div>
+              </div>
+            </div>
+            <span class="conf-badge" style="background:#dcfce7; color:#166534;">✓ 215.40 KG</span>
+          </div>
+          <div style="font-size:11px; text-align:right; color:#006b4f; font-weight:700; cursor:pointer;">
+            ✏️ Alterar peso digitado
+          </div>
+        </div>
+
+        <!-- ITEM 4: JÁ CONFERIDO NÃO RECEBIDO (MELANCIA COM FOTO) -->
+        <div class="conf-item conf-item--unreceived" data-status="done">
+          <div class="conf-item-header">
+            <div class="conf-product-info">
+              <!-- FOTO DO PRODUTO -->
+              <div class="product-thumb" style="background:#fee2e2; border-color:#fca5a5;">🍉</div>
+              <div>
+                <span style="font-size:10px; font-weight:800; color:#991b1b;">ERP 204</span>
+                <div style="font-weight:800; font-size:14px; color:#7f1d1d;">Melancia Graúda</div>
+                <div style="font-size:11px; color:#64748b;">Pedido: 15 UND • Confirmado corte/falta</div>
+              </div>
+            </div>
+            <span class="conf-badge" style="background:#fee2e2; color:#b91c1c;">✕ Não Recebido (0 KG)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOTER FIXO DE AÇÃO -->
+      <footer class="sticky-footer">
+        <button class="btn-salvar-parcial" onclick="alert('Rascunho de conferência salvo no banco! Você pode continuar a pesar a qualquer momento.')">
+          💾 Salvar Parcial
+        </button>
+        <button class="btn-finalizar" id="btn-finalizar" onclick="alert('Validação do Servidor: Não é possível finalizar enquanto houver itens pendentes!')">
+          <span>✓ Finalizar Conferência</span>
+          <span style="font-size:10px; opacity:0.8;">Faltam 6 itens para pesar</span>
+        </button>
+      </footer>
+    </div>
+  </main>
+
+  <!-- ========================================== -->
+  <!-- TELA 3: LANÇAMENTO DE PERDAS PELA LOJA COM FOTOS -->
+  <!-- ========================================== -->
+  <main id="screen-perdas" class="screen-container">
+    <div class="phone-mockup">
+      <div class="phone-status-bar">
+        <span>15:45</span>
+        <div class="phone-dynamic-island"></div>
+        <span>5G 🔋</span>
+      </div>
+
+      <div class="topbar">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="topbar-btn" onclick="switchScreen('screen-hub', document.querySelectorAll('.proto-tab-btn')[0])">‹ Menu</button>
+          <div>
+            <div class="topbar-title" style="font-size:14px;">Lançamento de Perdas</div>
+            <div class="topbar-sub">Ponta da Fruta • Expediente</div>
+          </div>
+        </div>
+        <button class="topbar-btn">Histórico 📜</button>
+      </div>
+
+      <div style="padding: 12px; display:flex; flex-direction:column; gap:12px;">
+        <!-- Formulário Rápido com Foto -->
+        <div class="perdas-form">
+          <div style="font-weight:800; font-size:13px; color:#0f172a;">Registrar Quebra / Descarte</div>
+
+          <div class="form-group">
+            <label>PRODUTO SELECIONADO</label>
+            <div class="product-select-row">
+              <div class="product-thumb-sm" style="background:#fee2e2; border-color:#fca5a5;">🍅</div>
+              <div style="flex:1;">
+                <div style="font-size:10px; font-weight:800; color:#b45309;">ERP 305</div>
+                <div style="font-size:13px; font-weight:800;">Tomate Débora Extra</div>
+              </div>
+              <span style="font-size:12px; color:#64748b;">Alterar ▾</span>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px;">
+            <div class="form-group" style="flex:1.5;">
+              <label>QUANTIDADE PERDIDA</label>
+              <input type="number" step="0.01" class="text-input" placeholder="0.00" value="4.50" style="font-weight:800; color:#006b4f; font-size:16px;">
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label>UNIDADE</label>
+              <select class="select-input">
+                <option>KG</option>
+                <option>UND</option>
+                <option>CX</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>MOTIVO DA PERDA</label>
+            <div class="reason-pills">
+              <button class="reason-btn" type="button" onclick="selectReason(this)">Avaria / Carga</button>
+              <button class="reason-btn active" type="button" onclick="selectReason(this)">✓ Maduro / Passado</button>
+              <button class="reason-btn" type="button" onclick="selectReason(this)">Quebra Interna</button>
+              <button class="reason-btn" type="button" onclick="selectReason(this)">Outro</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <input type="text" class="text-input" placeholder="Observação opcional (ex: fundo da caixa amassado)">
+          </div>
+
+          <button class="btn-salvar-perda" onclick="alert('Perda registrada com sucesso no PostgreSQL!')">
+            + Confirmar e Salvar Perda
+          </button>
+        </div>
+
+        <!-- Lançamentos de Hoje com Foto -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+          <span style="font-size:13px; font-weight:800; color:#0f172a;">Lançamentos de Hoje</span>
+          <span style="font-size:11px; font-weight:700; color:#006b4f;">3 registros (22.80 KG)</span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div class="perda-card">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="product-thumb-sm" style="background:#fee2e2;">🍅</div>
+              <div>
+                <div style="font-weight:800; font-size:13px;">[305] Tomate Débora Extra</div>
+                <div style="font-size:11px; color:#64748b;">Maduro / Passado • 15:40</div>
+                <div style="font-size:10px; color:#94a3b8;">Por: Marcos Silva</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:13px; font-weight:800; color:#991b1b;">- 4.50 KG</div>
+              <span style="font-size:10px; color:#ef4444; font-weight:700; cursor:pointer;" onclick="confirm('Excluir este lançamento?')">✕ Excluir</span>
+            </div>
+          </div>
+
+          <div class="perda-card">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="product-thumb-sm" style="background:#dcfce7;">🥬</div>
+              <div>
+                <div style="font-weight:800; font-size:13px;">[120] Alface Crespa Hidropônica</div>
+                <div style="font-size:11px; color:#64748b;">Avaria no Transporte • 11:15</div>
+                <div style="font-size:10px; color:#94a3b8;">Por: Marcos Silva</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:13px; font-weight:800; color:#991b1b;">- 6.00 UND</div>
+              <span style="font-size:10px; color:#ef4444; font-weight:700; cursor:pointer;" onclick="confirm('Excluir este lançamento?')">✕ Excluir</span>
+            </div>
+          </div>
+
+          <div class="perda-card">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="product-thumb-sm" style="background:#fef9c3;">🍌</div>
+              <div>
+                <div style="font-weight:800; font-size:13px;">[101] Banana Prata Especial</div>
+                <div style="font-size:11px; color:#64748b;">Descarte Matinal • 09:20</div>
+                <div style="font-size:10px; color:#94a3b8;">Por: Marcos Silva</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:13px; font-weight:800; color:#991b1b;">- 12.30 KG</div>
+              <span style="font-size:10px; color:#ef4444; font-weight:700; cursor:pointer;" onclick="confirm('Excluir este lançamento?')">✕ Excluir</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================================== -->
+  <!-- TELA 4: CONSULTA DE PERDAS (GESTOR/COMPRADOR) COM FOTOS -->
+  <!-- ========================================== -->
+  <main id="screen-gestor" class="screen-container">
+    <div class="desktop-mockup">
+      <div class="topbar">
+        <div style="display:flex; align-items:center; gap:24px;">
+          <div>
+            <span style="font-size:18px; font-weight:800; letter-spacing:-0.3px;">MULTISHOW</span>
+            <span style="font-size:13px; color:#a7f3d0; margin-left:8px;">| Painel Integrado</span>
+          </div>
+          <div style="display:flex; gap:16px; font-size:13px; font-weight:600;">
+            <span style="color:#a7f3d0; cursor:pointer;">Consolidado</span>
+            <span style="color:#a7f3d0; cursor:pointer;">Custos</span>
+            <span style="color:#a7f3d0; cursor:pointer;">Destinação</span>
+            <span style="background:white; color:#004737; padding:4px 10px; border-radius:6px; font-weight:800;">🗑️ Perdas FLV</span>
+          </div>
+        </div>
+        <div style="font-size:12px; font-weight:600;">Gestor / Comprador 👤</div>
+      </div>
+
+      <div class="gestor-container">
+        <!-- Barra de Filtros -->
+        <div class="gestor-filter-bar">
+          <div class="form-group">
+            <label>LOJA</label>
+            <select class="select-input" style="width:180px;">
+              <option>Todas as Lojas (3)</option>
+              <option>MultiShow Ponta da Fruta</option>
+              <option>MultiShow Balneário</option>
+              <option>MultiShow Santa Mônica</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>PERÍODO</label>
+            <input type="text" class="text-input" value="20/10/2026 até 27/10/2026" style="width:200px;">
+          </div>
+
+          <div class="form-group" style="flex:1;">
+            <label>BUSCA DE PRODUTO</label>
+            <input type="search" class="text-input" placeholder="Filtrar por nome ou código ERP...">
+          </div>
+
+          <button class="btn-salvar-perda" style="padding:9px 18px;" onclick="alert('Filtros aplicados!')">
+            Aplicar Filtros
+          </button>
+        </div>
+
+        <!-- KPIs -->
+        <div class="gestor-kpis">
+          <div class="kpi-card" style="border-left-color:#ef4444;">
+            <div class="kpi-title">Total de Perdas no Período</div>
+            <div class="kpi-val">342.80 KG</div>
+            <div class="kpi-sub">+ 84 unidades avulsas</div>
+          </div>
+
+          <div class="kpi-card" style="border-left-color:#f59e0b;">
+            <div class="kpi-title">Loja com Maior Descarte</div>
+            <div class="kpi-val" style="color:#0f172a; font-size:20px;">Ponta da Fruta</div>
+            <div class="kpi-sub" style="color:#b45309; font-weight:700;">158.20 KG (46% do total)</div>
+          </div>
+
+          <div class="kpi-card" style="border-left-color:#3b82f6;">
+            <div class="kpi-title">Item mais Descartado</div>
+            <div class="kpi-val" style="color:#0f172a; font-size:20px;">Tomate Débora</div>
+            <div class="kpi-sub" style="color:#1d4ed8; font-weight:700;">62.50 KG acumulados</div>
+          </div>
+        </div>
+
+        <!-- Tabela com Miniaturas -->
+        <table class="gestor-table">
+          <thead>
+            <tr>
+              <th>DATA/HORA</th>
+              <th>LOJA</th>
+              <th>PRODUTO COM FOTO</th>
+              <th>QUANTIDADE</th>
+              <th>MOTIVO</th>
+              <th>RESPONSÁVEL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>27/10 15:40</td>
+              <td><strong>Ponta da Fruta</strong></td>
+              <td>
+                <div class="table-prod-cell">
+                  <div class="product-thumb-sm" style="background:#fee2e2;">🍅</div>
+                  <span>[305] Tomate Débora Extra</span>
+                </div>
+              </td>
+              <td style="color:#991b1b; font-weight:800;">4.50 KG</td>
+              <td><span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:4px; font-weight:700;">Maduro / Passado</span></td>
+              <td>Marcos Silva</td>
+            </tr>
+            <tr>
+              <td>27/10 14:15</td>
+              <td><strong>Balneário</strong></td>
+              <td>
+                <div class="table-prod-cell">
+                  <div class="product-thumb-sm" style="background:#fee2e2;">🍉</div>
+                  <span>[204] Melancia Graúda</span>
+                </div>
+              </td>
+              <td style="color:#991b1b; font-weight:800;">18.20 KG</td>
+              <td><span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:4px; font-weight:700;">Rachada / Avaria</span></td>
+              <td>Juliana Prado</td>
+            </tr>
+            <tr>
+              <td>27/10 11:15</td>
+              <td><strong>Ponta da Fruta</strong></td>
+              <td>
+                <div class="table-prod-cell">
+                  <div class="product-thumb-sm" style="background:#dcfce7;">🥬</div>
+                  <span>[120] Alface Crespa Hidropônica</span>
+                </div>
+              </td>
+              <td style="color:#991b1b; font-weight:800;">6.00 UND</td>
+              <td><span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:4px; font-weight:700;">Avaria Transporte</span></td>
+              <td>Marcos Silva</td>
+            </tr>
+            <tr>
+              <td>27/10 09:30</td>
+              <td><strong>Santa Mônica</strong></td>
+              <td>
+                <div class="table-prod-cell">
+                  <div class="product-thumb-sm" style="background:#fef3c7;">🥔</div>
+                  <span>[412] Batata Inglesa Lisa</span>
+                </div>
+              </td>
+              <td style="color:#991b1b; font-weight:800;">8.90 KG</td>
+              <td><span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:4px; font-weight:700;">Broto / Murcha</span></td>
+              <td>Carlos Eduardo</td>
+            </tr>
+            <tr>
+              <td>27/10 09:20</td>
+              <td><strong>Ponta da Fruta</strong></td>
+              <td>
+                <div class="table-prod-cell">
+                  <div class="product-thumb-sm" style="background:#fef9c3;">🍌</div>
+                  <span>[101] Banana Prata Especial</span>
+                </div>
+              </td>
+              <td style="color:#991b1b; font-weight:800;">12.30 KG</td>
+              <td><span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:4px; font-weight:700;">Triagem Matinal</span></td>
+              <td>Marcos Silva</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function switchScreen(screenId, btnElement) {
+      document.querySelectorAll('.screen-container').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.proto-tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+      if (btnElement) btnElement.classList.add('active');
+    }
+
+    function markUnreceived(inputId, buttonElement) {
+      const input = document.getElementById(inputId);
+      input.value = "0.00";
+      input.style.borderColor = "#ef4444";
+      input.style.color = "#991b1b";
+      buttonElement.textContent = "✓ Marcado 0 KG";
+      buttonElement.style.background = "#dcfce7";
+      buttonElement.style.color = "#166534";
+      buttonElement.style.borderColor = "#86efac";
+    }
+
+    function filterItems(type, pillElement) {
+      document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      pillElement.classList.add('active');
+      const items = document.querySelectorAll('.conf-item');
+      items.forEach(item => {
+        if (type === 'all') item.style.display = 'flex';
+        else if (type === 'pending') item.style.display = item.dataset.status === 'pending' ? 'flex' : 'none';
+        else if (type === 'done') item.style.display = item.dataset.status === 'done' ? 'flex' : 'none';
+      });
+    }
+
+    function selectReason(buttonElement) {
+      document.querySelectorAll('.reason-btn').forEach(btn => btn.classList.remove('active'));
+      buttonElement.classList.add('active');
+    }
+  </script>
+</body>
+</html>

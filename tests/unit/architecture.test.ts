@@ -22,11 +22,19 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0017", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0018", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 17 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 18 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
+  });
+
+  it("mantém a 0018 aditiva com conferência física e lançamento de perdas", async () => {
+    const migration = await readFile("migrations/0018_store_delivery_conferences_and_losses.sql", "utf8");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS store_delivery_conferences");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS store_delivery_conference_items");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS store_loss_records");
+    expect(migration).toContain("store_delivery_conferences_cycle_store_unique");
   });
 
   it("mantém a 0017 aditiva com registro e vinculação de notas fiscais às destinações", async () => {
