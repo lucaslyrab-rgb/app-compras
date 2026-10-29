@@ -134,11 +134,12 @@ describe("Gestão de Usuários - Domínio e Validações V1", () => {
         "gestor:fornecedores",
         "gestor:configuracoes",
         "gestor:usuarios",
+        "fechamento:consultar",
       ]);
     });
 
     it("agrupa permissões de forma compreensível para a interface", () => {
-      expect(PERMISSION_GROUPS.map((g) => g.group)).toEqual(["Loja", "Comprador", "Gestor"]);
+      expect(PERMISSION_GROUPS.map((g) => g.group)).toEqual(["Loja", "Comprador", "Gestor", "Controle"]);
       const flatIds = PERMISSION_GROUPS.flatMap((g) => g.permissions.map((p) => p.id));
       expect(flatIds).toEqual([
         "pedidos:criar",
@@ -156,6 +157,7 @@ describe("Gestão de Usuários - Domínio e Validações V1", () => {
         "gestor:configuracoes",
         "gestor:usuarios",
         "perdas:consultar",
+        "fechamento:consultar",
       ]);
     });
   });

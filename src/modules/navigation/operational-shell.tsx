@@ -25,6 +25,11 @@ const managerItems: (NavItem & { permission: Permission })[] = [
   { href: "/gestor/perdas", label: "Perdas FLV", icon: "🗑️", permission: "perdas:consultar" },
 ];
 
+// Fase 6: o Fechamento integrado aparece uma única vez, para Gestor e CPD.
+const controlItems: (NavItem & { permission: Permission })[] = [
+  { href: "/fechamento", label: "Fechamento integrado", icon: "📋", permission: "fechamento:consultar" },
+];
+
 function NavLink({ item, close }: { item: NavItem; close: () => void }) {
   const pathname = usePathname();
   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -50,14 +55,16 @@ export function OperationalShell({
 
   const visibleBuyerItems = buyerItems.filter((item) => permissions.includes(item.permission));
   const visibleManagerItems = managerItems.filter((item) => permissions.includes(item.permission));
+  const visibleControlItems = controlItems.filter((item) => permissions.includes(item.permission));
   const isManagerBadge = role === "GESTOR" || visibleManagerItems.length > 0;
+  const badge = isManagerBadge ? "Gestor" : visibleBuyerItems.length > 0 ? "Comprador" : visibleControlItems.length > 0 ? "Controle" : "Comprador";
 
   return (
     <div className="ops-shell">
       <header className="ops-mobile-header">
         <button type="button" className="ops-menu-button" aria-label="Abrir menu" aria-expanded={open} onClick={() => setOpen(true)}>☰</button>
         <Image src="/brand/MS-H.png" alt="MultiShow FLV" width={2000} height={503} priority />
-        <span>{isManagerBadge ? "Gestor" : "Comprador"}</span>
+        <span>{badge}</span>
       </header>
       {open ? <button type="button" className="ops-backdrop" aria-label="Fechar menu" onClick={close} /> : null}
       <aside className={`ops-sidebar${open ? " ops-sidebar--open" : ""}`} aria-label="Navegação principal">
@@ -77,6 +84,12 @@ export function OperationalShell({
             <details className="ops-nav-section" open>
               <summary>GESTOR</summary>
               {visibleManagerItems.map((item) => <NavLink item={item} close={close} key={item.href} />)}
+            </details>
+          ) : null}
+          {visibleControlItems.length > 0 ? (
+            <details className="ops-nav-section" open>
+              <summary>CONTROLE</summary>
+              {visibleControlItems.map((item) => <NavLink item={item} close={close} key={item.href} />)}
             </details>
           ) : null}
         </nav>

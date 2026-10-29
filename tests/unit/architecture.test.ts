@@ -22,11 +22,25 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0020", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0021", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 20 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 21 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
+  });
+
+  it("mantém a 0021 restrita à permissão do Fechamento integrado", async () => {
+    const migration = await readFile("migrations/0021_phase6_reconciliation_permission.sql", "utf8");
+    expect(migration).toContain("'fechamento:consultar'");
+    expect(migration).toContain("WHERE role = 'GESTOR'");
+    expect(migration).not.toMatch(/CREATE TABLE|DROP COLUMN|DROP TABLE|DELETE FROM/i);
+    const updates = migration.match(/^UPDATE\s+(\w+)/gim) ?? [];
+    expect(updates.map((u) => u.split(/\s+/)[1].toLowerCase())).toEqual(["users"]);
+  });
+
+  it("mantém o repository do Fechamento integrado somente leitura", async () => {
+    const source = await readFile("src/modules/purchasing/reconciliation/repository.ts", "utf8");
+    expect(source).not.toMatch(/\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM)\b/i);
   });
 
   it("mantém a 0020 aditiva com cancelamento auditado de conferência sem pedido substituto", async () => {
