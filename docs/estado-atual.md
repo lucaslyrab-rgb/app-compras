@@ -10,7 +10,7 @@
 - **Fases 4–6:** planejamento aprovado, **sem declaração de implementação**.
 - **Fase 4:** registro de nota (número + fotografia) na tela de destinação; uma nota por loja; bloqueio de fechamento por destinações positivas sem nota somente depois de implementar e validar a fase.
 - **Fase 5:** conferência do pedido original em KG, salvamento parcial e finalização após verificação de todos os produtos; perdas armazenadas no banco FLV.
-- **Fase 6:** confronto de pedido/destinação/conferência, divergências informativas e confirmação de notas físicas pelo CPD; relatórios detalhados serão definidos depois.
+- **Fase 6:** escopo refinado em 29/10/2026 — Fechamento integrado (`/fechamento`) com pedido (CX) × destinação (CX) × conferência (KG), peso esperado pela conversão cadastrada e faixas de cor da pesagem, apenas informativo; sem Área do CPD (fiscal e notas ficam no StarTwo). Implementação na branch `feat/phase6-fechamento-integrado`, aguardando homologação. Ver [OpenSpec](../openspec/changes/fase6-fechamento-integrado/proposal.md).
 
 **Atenção:** o quadro acima reflete o planejamento e o histórico operacional informado; não substitui auditoria técnica de código ou produção.
 

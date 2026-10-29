@@ -13,6 +13,7 @@ export const PERMISSIONS = [
   "compras:fornecedores",
   "compras:destinacao",
   "perdas:consultar",
+  "fechamento:consultar",
   "gestor:produtos",
   "gestor:precificacao",
   "gestor:fornecedores",
@@ -85,6 +86,17 @@ export function canToggleSupplierStatus(principal: Principal) {
   return principal.role === "GESTOR" && hasPermission(principal, "gestor:fornecedores");
 }
 
+/**
+ * Permissões que só podem ser atribuídas a usuários sem vínculo de loja (Fase 6).
+ * O Fechamento integrado mostra dados de todas as lojas e não pode ser combinado
+ * com as permissões operacionais de Loja.
+ */
+export const NON_STORE_ONLY_PERMISSIONS: readonly Permission[] = ["fechamento:consultar"] as const;
+
+export function canViewReconciliation(principal: Principal) {
+  return hasPermission(principal, "fechamento:consultar");
+}
+
 export function canManageGestor(principal: Principal) {
   return hasAnyPermission(principal, [
     "gestor:produtos",
@@ -120,6 +132,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "gestor:fornecedores",
     "gestor:configuracoes",
     "gestor:usuarios",
+    "fechamento:consultar",
   ],
 };
 
@@ -154,6 +167,12 @@ export const PERMISSION_GROUPS = [
       { id: "perdas:consultar", label: "Consulta de perdas" },
     ],
   },
+  {
+    group: "Controle",
+    permissions: [
+      { id: "fechamento:consultar", label: "Fechamento integrado" },
+    ],
+  },
 ] as const;
 
 export function resolveOperationalRoute(principal: Principal): string | null {
@@ -172,6 +191,7 @@ export function resolveOperationalRoute(principal: Principal): string | null {
   if (hasPermission(principal, "perdas:consultar")) {
     return principal.role === "COMPRADOR" ? "/comprador/perdas" : "/gestor/perdas";
   }
+  if (hasPermission(principal, "fechamento:consultar")) return "/fechamento";
   if (hasPermission(principal, "loja:conferencia") && Boolean(principal.storeId)) {
     return "/conferencia";
   }
@@ -236,6 +256,12 @@ export function validateStoreUserInvariant(
   const normalizedStoreId = normalizeStoreId(storeId);
 
   if (hasStorePerm) {
+    if (permissions.some((p) => NON_STORE_ONLY_PERMISSIONS.includes(p))) {
+      return {
+        valid: false,
+        reason: "A permissão Fechamento integrado não pode ser combinada com permissões de Loja.",
+      };
+    }
     if (!normalizedStoreId) {
       return {
         valid: false,

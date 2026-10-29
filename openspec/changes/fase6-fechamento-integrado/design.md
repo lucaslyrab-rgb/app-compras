@@ -102,15 +102,15 @@ Visual: `WEIGHT_OUT_OF_RANGE` e `NOT_RECEIVED` usam faixa lateral vermelha na li
 - **Cartões:** pesagens fora da faixa de 5%, não recebidos, fora da conferência, conferências pendentes.
 - **Tabela (desktop):** ciclo, loja, produto, pedido, destinado + situação, esperado, conferido, diferença, destaques.
 - **Mobile (390px):** um cartão por linha, sem rolagem horizontal.
-- Números em pt-BR (`1.234,50 kg`, `20,00 CX`), estado vazio com mensagem única, paginação de 50 linhas e KPIs calculados sobre todo o filtro.
+- Números em pt-BR (`1.234,50 kg`, `20,00 CX`), estado vazio com mensagem única, paginação de 50 linhas (“Carregar mais”) e KPIs calculados no servidor sobre todo o filtro de loja, período, fornecedor, produto e situação (sem o recorte de destaque, para os cartões continuarem úteis como atalhos). Os cartões funcionam como atalho para filtrar pelo destaque. Com um destaque escolhido, “somente com destaque” não esconde a conferência pendente.
 
 ### 8. Módulo
 
 ```
 src/modules/purchasing/reconciliation/
   domain.ts       // tipos, normalizeUnit, cutSituation, expectedWeight, classifyReconciliationLine, buildKpis
-  repository.ts   // somente SELECT, por período/loja/fornecedor/produto, paginação e KPIs
-  service.ts      // valida filtros e aplica o domínio
+  repository.ts   // somente SELECT das fontes do período/loja
+  service.ts      // valida filtros, aplica o domínio, filtros finos, KPIs e paginação
   reconciliation-workspace.tsx
 src/app/fechamento/page.tsx
 ```
@@ -121,7 +121,7 @@ Um teste arquitetural falha se `repository.ts` contiver `INSERT`, `UPDATE` ou `D
 
 - `fechamento:consultar`: backfill para `GESTOR`; incluída em `ROLE_DEFAULT_PERMISSIONS.GESTOR`; **não** incluída no padrão do Comprador; atribuível pela tela de Usuários a qualquer usuário sem permissão de loja, em um grupo “Controle”.
 - A gestão de usuários recusa a combinação de `fechamento:consultar` com permissões de loja.
-- Menu: grupo “Controle” com o item “Fechamento integrado”, exibido uma única vez para quem tiver a permissão. `/inicio` mostra o módulo para quem tiver a permissão.
+- Menu: grupo “Controle” com o item “Fechamento integrado”, exibido uma única vez para quem tiver a permissão. `resolveOperationalRoute` leva para `/fechamento` o usuário do CPD que só tem essa permissão (`/inicio` é exclusivo das lojas e não muda). `/fechamento` tem layout próprio com o menu, porque o usuário do CPD não passa pelos layouts de Comprador e Gestor.
 - A página verifica a permissão no servidor e redireciona para `/sem-acesso`.
 
 ### 10. Migration 0021

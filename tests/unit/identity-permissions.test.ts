@@ -20,11 +20,15 @@ import {
   normalizeStoreId,
   validateStoreUserInvariant,
   assertStoreUserInvariant,
+  ROLE_DEFAULT_PERMISSIONS,
+  PERMISSION_GROUPS,
+  NON_STORE_ONLY_PERMISSIONS,
+  canViewReconciliation,
   type Principal,
 } from "@/modules/identity/domain";
 
 describe("Fundação de Permissões V1", () => {
-  it("contém exatamente as 14 permissões oficiais", () => {
+  it("contém exatamente as 15 permissões oficiais", () => {
     expect(PERMISSIONS).toEqual([
       "pedidos:criar",
       "pedidos:historico",
@@ -35,6 +39,7 @@ describe("Fundação de Permissões V1", () => {
       "compras:fornecedores",
       "compras:destinacao",
       "perdas:consultar",
+      "fechamento:consultar",
       "gestor:produtos",
       "gestor:precificacao",
       "gestor:fornecedores",
@@ -316,5 +321,39 @@ describe("Fundação de Permissões V1", () => {
       expect(isValidUuid("3fa85f64-5717-4562-b3fc-2c963f66afa6g")).toBe(false); // caracter inválido
       expect(isValidUuid("")).toBe(false);
     });
+  });
+});
+
+describe("Permissão do Fechamento integrado (Fase 6)", () => {
+  it("é concedida por padrão somente ao Gestor", () => {
+    expect(ROLE_DEFAULT_PERMISSIONS.GESTOR).toContain("fechamento:consultar");
+    expect(ROLE_DEFAULT_PERMISSIONS.COMPRADOR).not.toContain("fechamento:consultar");
+    expect(ROLE_DEFAULT_PERMISSIONS.LOJA).not.toContain("fechamento:consultar");
+  });
+
+  it("aparece no grupo Controle da tela de Usuários", () => {
+    const group = PERMISSION_GROUPS.find((g) => g.group === "Controle");
+    expect(group?.permissions.map((p) => p.id)).toEqual(["fechamento:consultar"]);
+  });
+
+  it("não é permissão de loja e não pode ser combinada com permissões de loja", () => {
+    expect(STORE_PERMISSIONS).not.toContain("fechamento:consultar");
+    expect(NON_STORE_ONLY_PERMISSIONS).toEqual(["fechamento:consultar"]);
+    const result = validateStoreUserInvariant(
+      ["pedidos:criar", "fechamento:consultar"],
+      "11111111-1111-4111-8111-111111111111",
+    );
+    expect(result.valid).toBe(false);
+    expect(result.reason).toMatch(/Fechamento integrado/);
+  });
+
+  it("aceita usuário do CPD sem loja somente com a permissão", () => {
+    expect(validateStoreUserInvariant(["fechamento:consultar"], null)).toEqual({ valid: true });
+  });
+
+  it("canViewReconciliation depende apenas da permissão", () => {
+    const base = { userId: "u", storeId: null } as const;
+    expect(canViewReconciliation({ ...base, role: "COMPRADOR", permissions: ["fechamento:consultar"] })).toBe(true);
+    expect(canViewReconciliation({ ...base, role: "GESTOR", permissions: ["gestor:produtos"] })).toBe(false);
   });
 });

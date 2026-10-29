@@ -39,6 +39,17 @@ describe("Roteamento operacional e prevenção de loops", () => {
       expect(hasOperationalRoute(user)).toBe(true);
     });
 
+    it("retorna /fechamento para usuário do CPD somente com fechamento:consultar", () => {
+      const user: Principal = {
+        userId: "u-cpd",
+        role: "COMPRADOR",
+        storeId: null,
+        permissions: ["fechamento:consultar"],
+      };
+      expect(resolveOperationalRoute(user)).toBe("/fechamento");
+      expect(hasOperationalRoute(user)).toBe(true);
+    });
+
     it("retorna null para usuário com pedidos:criar sem storeId", () => {
       const user: Principal = {
         userId: "u-invalid-store",
