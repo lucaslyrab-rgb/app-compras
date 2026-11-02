@@ -6,4 +6,5 @@
 - [x] 4. Migration 0022, inclusão/retirada de item fora do pedido, preservação na sincronização e tela da conferência
 - [x] 5. Fechamento: quem destinou, perdas em 3 dias, destaque e cartão "Recebido fora do pedido", tabela sem corte
 - [x] 6. Testes unitários e de integração; atualização dos testes de permissões e arquitetura
-- [ ] 7. CI verde, homologação visual e merge com aprovação
+- [x] 7. CI verde no PR #10 (lint, typecheck, unitários com cobertura, migrations 0001–0022, integração, build)
+- [ ] 8. Homologação visual e merge com aprovação
