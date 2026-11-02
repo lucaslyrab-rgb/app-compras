@@ -1,17 +1,18 @@
 # Roadmap — Sistema de Compras MultiShow FLV
 
-**Referência oficial:** [Planejamento Geral Consolidado — Versão 2.0](PLANEJAMENTO.md), aprovado em 26/10/2026.
+**Referência oficial:** [Planejamento Geral Consolidado — Versão 2.0](PLANEJAMENTO.md), aprovado em 26/10/2026. **Versão 1.0 em produção desde 02/11/2026:** ver [versao-1.md](versao-1.md).
 
 Este roadmap resume a **sequência de fases de negócio**. O antigo roadmap técnico R0–R5 foi substituído como referência principal de prioridades; as decisões e evidências técnicas históricas permanecem nos demais documentos.
 
 | Ordem | Fase | Objetivo | Situação |
 |---|---|---|---|
-| 1 | Fundação e pedidos das lojas | Registrar estoque, pedidos, revisões e histórico por loja | Implementada |
-| 2 | Consolidação, custos e operação de compras | Consolidar solicitações, registrar custos e compras | Base implementada |
-| **3 — atual** | Destinação, fornecedores e fechamento operacional | Distribuir produtos comprados por loja/fornecedor e estabilizar regras de corte | Em estabilização |
-| 4 | Registro e vinculação de notas fiscais | Registrar número e foto da nota **na tela de destinação**, vinculando a produtos de uma única loja | Planejamento aprovado |
-| 5 | Conferência e perdas | Conferir o pedido original em KG e registrar perdas no PostgreSQL FLV | Planejamento aprovado |
-| 6 | Fechamento integrado e CPD | Confrontar pedido/destinação/conferência, mostrar divergências e confirmar chegada das notas | Regras principais aprovadas |
+| 1 | Fundação e pedidos das lojas | Registrar estoque, pedidos, revisões e histórico por loja | Em produção |
+| 2 | Consolidação, custos e operação de compras | Consolidar solicitações, registrar custos e compras | Em produção |
+| 3 | Destinação, fornecedores e fechamento operacional | Distribuir produtos comprados por loja/fornecedor e estabilizar regras de corte | Em produção |
+| 4 | Registro e vinculação de notas fiscais | Registrar número e foto da nota **na tela de destinação**, vinculando a produtos de uma única loja | Em produção |
+| 5 | Conferência e perdas | Conferir o pedido original em KG e registrar perdas no PostgreSQL FLV | Em produção |
+| 6 | Fechamento integrado | Confrontar pedido/destinação/conferência e mostrar divergências (informativo) | Em produção — sem Área do CPD (decisão de 29/10) |
+| **Próximo** | Operação da versão 1.0 | Ajustes do uso diário e, depois, relatórios gerenciais | Em andamento |
 
 ## Dependências e limites
 
@@ -23,4 +24,4 @@ Este roadmap resume a **sequência de fases de negócio**. O antigo roadmap téc
 
 ## Governança
 
-O planejamento v2.0 está aprovado **como documentação**. Nenhuma fase futura deve ser considerada implementada por constar neste roadmap. Código, banco, infraestrutura, migrações e produção requerem autorização e validação separadas.
+As seis fases estão em produção desde 02/11/2026. Mudanças de código, banco, infraestrutura e produção seguem passando por branch, CI e aprovação do responsável antes do merge.
