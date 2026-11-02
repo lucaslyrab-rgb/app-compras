@@ -1,0 +1,136 @@
+/* Cabeçalho das telas da loja: uma barra só, no padrão do sistema. */
+.store-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #064c3b;
+  color: #fff;
+  box-shadow: 0 3px 12px rgb(0 47 37 / 18%);
+}
+
+.store-header__bar {
+  max-width: 1200px;
+  height: 56px;
+  margin: 0 auto;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.store-header__logo {
+  flex: none;
+  width: 104px;
+  height: auto;
+  max-height: 30px;
+  object-fit: contain;
+}
+
+.store-header__home {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  padding: 0 12px 0 6px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 14%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.store-header__home:hover { background: rgb(255 255 255 / 24%); }
+.store-header__home:focus-visible,
+.store-header__account-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+.store-header__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.store-header__title strong {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.store-header__title > span {
+  overflow: hidden;
+  color: #bfe0d7;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.store-header__account { position: relative; flex: none; }
+
+.store-header__account-btn {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.store-header__account-btn:hover,
+.store-header__account-btn[aria-expanded="true"] { background: rgb(255 255 255 / 14%); }
+
+.store-header__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-900);
+  box-shadow: 0 12px 28px rgb(15 31 46 / 18%);
+}
+
+.store-header__menu-store {
+  padding: 8px 10px 6px;
+  color: var(--ink-600);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.store-header__menu a,
+.store-header__menu button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-900);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.store-header__menu a:hover,
+.store-header__menu button:hover { background: var(--canvas); }
+.store-header__menu form { margin: 0; }
+.store-header__menu button { color: var(--status-total-fg); }
