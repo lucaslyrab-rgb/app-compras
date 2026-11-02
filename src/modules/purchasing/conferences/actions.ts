@@ -9,6 +9,8 @@ import {
   finalizeConference,
   reconcileConferenceWithCurrentOrder,
   cancelConferenceWithoutReplacementOrder,
+  addOutsideOrderItem,
+  removeOutsideOrderItem,
 } from "./repository";
 
 export type ConferenceActionState = {
@@ -233,5 +235,94 @@ export async function cancelConferenceAction(
       status: "error",
       message: error instanceof Error ? error.message : "Erro ao cancelar a conferência.",
     };
+  }
+}
+
+export type OutsideOrderItemState = {
+  status?: "success" | "error";
+  message?: string;
+  /** Item adicionado (somente na inclusão). */
+  item?: ConferenceItem;
+  /** Produto retirado (somente na retirada). */
+  removedProductId?: string;
+  version?: number;
+};
+
+function assertStoreConferenceAccess(principal: Awaited<ReturnType<typeof requirePrincipal>>, storeId: string) {
+  assertPermission(principal, "loja:conferencia", "Você não tem permissão para conferência de entrega.");
+  if (!principal.storeId || principal.storeId !== storeId) {
+    throw new AuthorizationError("Operação permitida apenas para a sua loja vinculada.");
+  }
+}
+
+/** Lança na conferência um item recebido que não constava no pedido da loja. */
+export async function addOutsideOrderItemAction(
+  _prevState: OutsideOrderItemState,
+  formData: FormData
+): Promise<OutsideOrderItemState> {
+  try {
+    const principal = await requirePrincipal();
+    const storeId = String(formData.get("storeId") ?? "");
+    assertStoreConferenceAccess(principal, storeId);
+
+    const conferenceId = String(formData.get("conferenceId") ?? "");
+    const productId = String(formData.get("productId") ?? "");
+    if (!conferenceId) throw new ConferenceValidationError("Identificador de conferência não informado.");
+    if (!productId) throw new ConferenceValidationError("Selecione o produto recebido fora do pedido.");
+
+    const weight = parseWeightInput(String(formData.get("receivedWeightKg") ?? ""));
+    if (weight === null || weight <= 0) {
+      throw new ConferenceValidationError("Informe o peso recebido (maior que zero) do item fora do pedido.");
+    }
+
+    const result = await addOutsideOrderItem({
+      conferenceId,
+      storeId,
+      userId: principal.userId,
+      expectedVersion: parseExpectedVersion(formData),
+      productId,
+      receivedWeightKg: weight,
+    });
+
+    revalidatePath("/conferencia");
+    revalidatePath("/fechamento");
+    return {
+      status: "success",
+      message: `${result.item.productName} lançado como recebido fora do pedido (${weight.toFixed(2)} KG).`,
+      item: result.item,
+      version: result.version,
+    };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Erro ao lançar item fora do pedido." };
+  }
+}
+
+/** Retira um item lançado fora do pedido por engano (fica no histórico). */
+export async function removeOutsideOrderItemAction(
+  _prevState: OutsideOrderItemState,
+  formData: FormData
+): Promise<OutsideOrderItemState> {
+  try {
+    const principal = await requirePrincipal();
+    const storeId = String(formData.get("storeId") ?? "");
+    assertStoreConferenceAccess(principal, storeId);
+
+    const conferenceId = String(formData.get("conferenceId") ?? "");
+    const productId = String(formData.get("productId") ?? "");
+    if (!conferenceId || !productId) throw new ConferenceValidationError("Item da conferência não informado.");
+
+    const result = await removeOutsideOrderItem({
+      conferenceId,
+      storeId,
+      userId: principal.userId,
+      expectedVersion: parseExpectedVersion(formData),
+      productId,
+    });
+
+    revalidatePath("/conferencia");
+    revalidatePath("/fechamento");
+    return { status: "success", message: "Item fora do pedido retirado da conferência.", removedProductId: productId, version: result.version };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Erro ao retirar item." };
   }
 }

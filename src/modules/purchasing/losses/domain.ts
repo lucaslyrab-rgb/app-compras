@@ -32,6 +32,34 @@ export type StoreLossRecord = {
   cancellationReason?: string | null;
 };
 
+/** Janela em que um lançamento idêntico é tratado como possível duplicado. */
+export const DUPLICATE_LOSS_WINDOW_SECONDS = 120;
+
+/** Lançamento igual (loja, produto, quantidade, unidade e motivo) feito há pouco. */
+export class DuplicateLossError extends Error {
+  readonly recordedAt: string;
+  constructor(recordedAt: string) {
+    super(
+      `Esta perda já foi registrada às ${recordedAt} (mesmo produto, quantidade e motivo). ` +
+        "Se for realmente outra perda igual, toque em “É outra perda: registrar mesmo assim”."
+    );
+    this.name = "DuplicateLossError";
+    this.recordedAt = recordedAt;
+  }
+}
+
+/** Motivo obrigatório para a exclusão feita pelo Gestor. */
+export function parseManagerCancellationReason(raw: unknown): string {
+  const reason = typeof raw === "string" ? raw.trim() : "";
+  if (reason.length < 3) {
+    throw new LossValidationError("Informe o motivo da exclusão (mínimo de 3 caracteres).");
+  }
+  if (reason.length > 300) {
+    throw new LossValidationError("O motivo da exclusão pode ter no máximo 300 caracteres.");
+  }
+  return reason;
+}
+
 export class LossValidationError extends Error {
   constructor(message: string) {
     super(message);

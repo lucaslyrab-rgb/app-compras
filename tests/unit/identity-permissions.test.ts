@@ -28,7 +28,7 @@ import {
 } from "@/modules/identity/domain";
 
 describe("Fundação de Permissões V1", () => {
-  it("contém exatamente as 15 permissões oficiais", () => {
+  it("contém exatamente as 16 permissões oficiais", () => {
     expect(PERMISSIONS).toEqual([
       "pedidos:criar",
       "pedidos:historico",
@@ -39,6 +39,7 @@ describe("Fundação de Permissões V1", () => {
       "compras:fornecedores",
       "compras:destinacao",
       "perdas:consultar",
+      "perdas:excluir",
       "fechamento:consultar",
       "gestor:produtos",
       "gestor:precificacao",
@@ -338,7 +339,7 @@ describe("Permissão do Fechamento integrado (Fase 6)", () => {
 
   it("não é permissão de loja e não pode ser combinada com permissões de loja", () => {
     expect(STORE_PERMISSIONS).not.toContain("fechamento:consultar");
-    expect(NON_STORE_ONLY_PERMISSIONS).toEqual(["fechamento:consultar"]);
+    expect(NON_STORE_ONLY_PERMISSIONS).toEqual(["fechamento:consultar", "perdas:excluir"]);
     const result = validateStoreUserInvariant(
       ["pedidos:criar", "fechamento:consultar"],
       "11111111-1111-4111-8111-111111111111",
@@ -355,5 +356,17 @@ describe("Permissão do Fechamento integrado (Fase 6)", () => {
     const base = { userId: "u", storeId: null } as const;
     expect(canViewReconciliation({ ...base, role: "COMPRADOR", permissions: ["fechamento:consultar"] })).toBe(true);
     expect(canViewReconciliation({ ...base, role: "GESTOR", permissions: ["gestor:produtos"] })).toBe(false);
+  });
+});
+
+describe("Permissão de exclusão de perdas pelo Gestor", () => {
+  it("é concedida por padrão somente ao Gestor e não combina com loja", () => {
+    expect(ROLE_DEFAULT_PERMISSIONS.GESTOR).toContain("perdas:excluir");
+    expect(ROLE_DEFAULT_PERMISSIONS.COMPRADOR).not.toContain("perdas:excluir");
+    expect(ROLE_DEFAULT_PERMISSIONS.LOJA).not.toContain("perdas:excluir");
+    expect(
+      validateStoreUserInvariant(["loja:perdas", "perdas:excluir"], "11111111-1111-4111-8111-111111111111").valid,
+    ).toBe(false);
+    expect(validateStoreUserInvariant(["perdas:excluir"], null)).toEqual({ valid: true });
   });
 });

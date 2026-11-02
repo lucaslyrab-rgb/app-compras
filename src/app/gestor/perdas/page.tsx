@@ -47,6 +47,7 @@ export default async function GestorLossesPage({
       totalMatching={totalMatching}
       pageSize={pageSize}
       filters={filters}
+      canCancel={hasPermission(principal, "perdas:excluir")}
     />
   );
 }

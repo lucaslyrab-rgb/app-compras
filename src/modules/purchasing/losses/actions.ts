@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { requirePrincipal } from "@/modules/identity/session";
 import { assertPermission, AuthorizationError } from "@/modules/identity/domain";
-import { parseLossQuantity, LossValidationError } from "./domain";
-import { recordStoreLoss, cancelStoreLoss } from "./repository";
+import { DuplicateLossError, parseLossQuantity, parseManagerCancellationReason, LossValidationError } from "./domain";
+import { recordStoreLoss, cancelStoreLoss, cancelStoreLossAsManager } from "./repository";
 
 export type LossActionState = {
-  status?: "success" | "error";
+  /** duplicate: lançamento igual feito há pouco; a loja pode confirmar e registrar mesmo assim. */
+  status?: "success" | "error" | "duplicate";
   message?: string;
   lossId?: string;
 };
@@ -49,6 +50,7 @@ export async function recordStoreLossAction(
       reason,
       notes: notes || null,
       userId: principal.userId,
+      confirmDuplicate: formData.get("confirmDuplicate") === "1",
     });
 
     revalidatePath("/perdas");
@@ -61,6 +63,9 @@ export async function recordStoreLossAction(
       lossId: record.id,
     };
   } catch (error) {
+    if (error instanceof DuplicateLossError) {
+      return { status: "duplicate", message: error.message };
+    }
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Erro ao registrar perda.",
@@ -103,6 +108,37 @@ export async function cancelStoreLossAction(
       status: "success",
       message: "Registro de perda excluído com sucesso.",
     };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Erro ao excluir registro de perda.",
+    };
+  }
+}
+
+/** Exclusão de lançamento de perda pelo Gestor (qualquer loja e data, motivo obrigatório). */
+export async function cancelStoreLossAsManagerAction(
+  _prevState: LossActionState,
+  formData: FormData
+): Promise<LossActionState> {
+  try {
+    const principal = await requirePrincipal();
+    assertPermission(principal, "perdas:excluir", "Você não tem permissão para excluir lançamentos de perda.");
+
+    const lossId = String(formData.get("lossId") ?? "");
+    if (!lossId) {
+      throw new LossValidationError("Identificador do registro de perda não informado.");
+    }
+    const reason = parseManagerCancellationReason(formData.get("reason"));
+
+    await cancelStoreLossAsManager({ lossId, userId: principal.userId, reason });
+
+    revalidatePath("/perdas");
+    revalidatePath("/gestor/perdas");
+    revalidatePath("/comprador/perdas");
+    revalidatePath("/fechamento");
+
+    return { status: "success", message: "Lançamento de perda excluído. O histórico foi preservado.", lossId };
   } catch (error) {
     return {
       status: "error",

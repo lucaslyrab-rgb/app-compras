@@ -1,9 +1,11 @@
 import { database } from "@/db/client";
+import { LOSS_WINDOW_DAYS, shiftIsoDate } from "./domain";
 import type {
   ReconciliationSources,
   SourceAllocation,
   SourceConference,
   SourceConferenceItem,
+  SourceLoss,
   SourceNotPurchased,
   SourceOrderItem,
   SourceProduct,
@@ -120,6 +122,7 @@ async function loadAllocations(sql: Sql, q: ReconciliationQuery): Promise<Source
     purchase_format: string;
     is_additional_purchase: boolean;
     conversion_factor_kg: string | null;
+    destined_by: string | null;
   }[]>`
     SELECT
       a.purchase_cycle_date::text AS cycle_date,
@@ -130,9 +133,11 @@ async function loadAllocations(sql: Sql, q: ReconciliationQuery): Promise<Source
       a.destined_quantity::text AS destined_quantity,
       a.purchase_format,
       a.is_additional_purchase,
-      a.conversion_factor_kg::text AS conversion_factor_kg
+      a.conversion_factor_kg::text AS conversion_factor_kg,
+      u.name AS destined_by
     FROM purchase_cycle_product_allocations a
     INNER JOIN suppliers s ON s.id = a.supplier_id
+    LEFT JOIN users u ON u.id = COALESCE(a.updated_by, a.created_by)
     WHERE a.purchase_cycle_date BETWEEN ${q.startDate}::date AND ${q.endDate}::date
       ${storeCondition}
   `;
@@ -146,6 +151,7 @@ async function loadAllocations(sql: Sql, q: ReconciliationQuery): Promise<Source
     purchaseFormat: r.purchase_format,
     isAdditionalPurchase: r.is_additional_purchase,
     conversionFactorKg: numOrNull(r.conversion_factor_kg),
+    destinedBy: r.destined_by,
   }));
 }
 
@@ -187,10 +193,13 @@ async function loadConferences(
     received_weight_kg: string | null;
     is_unreceived: boolean;
     removed_from_order: boolean;
+    added_outside_order: boolean;
+    added_by_name: string | null;
   }[]>`
     SELECT ci.conference_id, ci.product_id, ci.received_weight_kg::text AS received_weight_kg,
-           ci.is_unreceived, ci.removed_from_order
+           ci.is_unreceived, ci.removed_from_order, ci.added_outside_order, ua.name AS added_by_name
     FROM store_delivery_conference_items ci
+    LEFT JOIN users ua ON ua.id = ci.added_by
     WHERE ci.conference_id = ANY(${headers.map((h) => h.id)}::uuid[])
   `;
 
@@ -210,9 +219,33 @@ async function loadConferences(
         receivedWeightKg: numOrNull(r.received_weight_kg),
         isUnreceived: r.is_unreceived,
         removedFromOrder: r.removed_from_order,
+        addedOutsideOrder: r.added_outside_order,
+        addedByName: r.added_by_name,
       };
     }),
   };
+}
+
+/** Perdas não canceladas do período (até LOSS_WINDOW_DAYS depois do último ciclo). */
+async function loadLosses(sql: Sql, q: ReconciliationQuery): Promise<SourceLoss[]> {
+  const storeCondition = q.storeId ? sql`AND sl.store_id = ${q.storeId}::uuid` : sql``;
+  const until = shiftIsoDate(q.endDate, LOSS_WINDOW_DAYS);
+  const rows = await sql<{ store_id: string; product_id: string; loss_date: string; quantity: string; unit: string }[]>`
+    SELECT sl.store_id, sl.product_id,
+           (sl.recorded_at AT TIME ZONE 'America/Sao_Paulo')::date::text AS loss_date,
+           sl.quantity::text AS quantity, sl.unit
+    FROM store_loss_records sl
+    WHERE sl.cancelled_at IS NULL
+      AND (sl.recorded_at AT TIME ZONE 'America/Sao_Paulo')::date BETWEEN ${q.startDate}::date AND ${until}::date
+      ${storeCondition}
+  `;
+  return rows.map((r) => ({
+    storeId: r.store_id,
+    productId: r.product_id,
+    date: r.loss_date,
+    quantity: num(r.quantity),
+    unit: r.unit,
+  }));
 }
 
 async function loadProducts(sql: Sql, productIds: string[]): Promise<SourceProduct[]> {
@@ -245,12 +278,13 @@ async function loadProducts(sql: Sql, productIds: string[]): Promise<SourceProdu
 export async function loadReconciliationSources(q: ReconciliationQuery): Promise<ReconciliationSources> {
   const { sql } = database();
 
-  const [stores, referenceOrders, allocations, notPurchased, conf] = await Promise.all([
+  const [stores, referenceOrders, allocations, notPurchased, conf, losses] = await Promise.all([
     loadStores(sql),
     loadReferenceOrders(sql, q),
     loadAllocations(sql, q),
     loadNotPurchased(sql, q),
     loadConferences(sql, q),
+    loadLosses(sql, q),
   ]);
   const orderItems = await loadOrderItems(sql, referenceOrders);
 
@@ -272,5 +306,6 @@ export async function loadReconciliationSources(q: ReconciliationQuery): Promise
     notPurchased,
     conferences: conf.conferences,
     conferenceItems: conf.items,
+    losses,
   };
 }

@@ -9,6 +9,8 @@ import { getStoreConference, listStoreConferenceCycles } from "@/modules/purchas
 import { ConferenceWorkspace } from "@/modules/purchasing/conferences/conference-workspace";
 import { ConferenceCycleSelector } from "@/modules/purchasing/conferences/conference-cycle-selector";
 import { StoreNavigation } from "@/components/store-navigation";
+import { listActiveProducts } from "@/modules/catalog/repository";
+import { toIsoDateString } from "@/modules/catalog/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +84,19 @@ export default async function ConferencePage({
     );
   }
 
+  // Catálogo ativo para lançar itens recebidos fora do pedido (somente com a conferência aberta).
+  const products =
+    conferenceData.header.status === "IN_PROGRESS"
+      ? (await listActiveProducts()).map((p) => ({
+          id: p.id,
+          erpCode: p.erpCode,
+          name: p.name,
+          purchaseFormat: p.purchaseFormat,
+          photoKey: p.photoKey,
+          photoUpdatedAt: toIsoDateString(p.photoUpdatedAt),
+        }))
+      : [];
+
   return (
     // key pela identidade da conferência: trocar de ciclo deve reiniciar todo o
     // estado do componente (itens, pesos em edição, versão, mensagens), nunca
@@ -93,6 +108,7 @@ export default async function ConferencePage({
       cycles={cycleOptions}
       hasOrderPermission={hasOrderPermission}
       hasLossPermission={hasLossPermission}
+      products={products}
     />
   );
 }

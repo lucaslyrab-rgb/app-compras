@@ -1,5 +1,7 @@
 import { database } from "@/db/client";
 import {
+  DUPLICATE_LOSS_WINDOW_SECONDS,
+  DuplicateLossError,
   LossValidationError,
   formatUnitTotals,
   type StoreLossRecord,
@@ -64,10 +66,33 @@ export async function recordStoreLoss(input: {
   reason: string;
   notes?: string | null;
   userId: string;
+  /** true quando a loja confirmou que é outra perda igual registrada há pouco. */
+  confirmDuplicate?: boolean;
 }): Promise<StoreLossRecord> {
   const { sql } = database();
 
   return await sql.begin(async (tx) => {
+    // 0. Proteção contra lançamento duplicado (toque duplo ou reenvio por engano).
+    // O lock por loja × produto serializa envios simultâneos: o segundo espera o
+    // primeiro gravar e então enxerga o lançamento igual recém-criado.
+    await tx`SELECT pg_advisory_xact_lock(hashtext(${`store_loss:${input.storeId}:${input.productId}`}))`;
+    if (!input.confirmDuplicate) {
+      const [recent] = await tx<{ recorded_at: string }[]>`
+        SELECT to_char(recorded_at AT TIME ZONE 'America/Sao_Paulo', 'HH24:MI') AS recorded_at
+        FROM store_loss_records
+        WHERE store_id = ${input.storeId}::uuid
+          AND product_id = ${input.productId}::uuid
+          AND quantity = ${input.quantity}
+          AND unit = ${input.unit}
+          AND reason = ${input.reason}
+          AND cancelled_at IS NULL
+          AND recorded_at >= now() - make_interval(secs => ${DUPLICATE_LOSS_WINDOW_SECONDS})
+        ORDER BY recorded_at DESC
+        LIMIT 1
+      `;
+      if (recent) throw new DuplicateLossError(recent.recorded_at);
+    }
+
     // 1. Verifica produto
     const [product] = await tx`
       SELECT id, erp_code, name, photo_key, photo_updated_at::text AS photo_updated_at
@@ -198,6 +223,64 @@ export async function cancelStoreLoss(input: {
           storeId: input.storeId,
           quantity: loss.quantity,
           unit: loss.unit,
+        })}::jsonb,
+        now()
+      )
+    `;
+  });
+}
+
+/**
+ * Exclusão feita pelo Gestor na Consulta de Perdas: vale para qualquer loja e
+ * data, exige motivo e não apaga nada (cancelamento lógico auditado, igual ao
+ * da loja). O lançamento sai dos totais e o histórico fica preservado.
+ */
+export async function cancelStoreLossAsManager(input: {
+  lossId: string;
+  userId: string;
+  reason: string;
+}): Promise<void> {
+  const { sql } = database();
+
+  await sql.begin(async (tx) => {
+    const [loss] = await tx`
+      SELECT id, store_id, product_id, quantity::float AS quantity, unit, cancelled_at
+      FROM store_loss_records
+      WHERE id = ${input.lossId}::uuid
+      FOR UPDATE
+    `;
+
+    if (!loss) {
+      throw new LossValidationError("Lançamento de perda não encontrado.");
+    }
+    if (loss.cancelled_at) {
+      throw new LossValidationError("Este lançamento de perda já foi excluído.");
+    }
+
+    await tx`
+      UPDATE store_loss_records
+      SET
+        cancelled_at = now(),
+        cancelled_by = ${input.userId}::uuid,
+        cancellation_reason = ${input.reason}
+      WHERE id = ${input.lossId}::uuid
+    `;
+
+    await tx`
+      INSERT INTO audit_events (
+        id, actor_id, action, entity_type, entity_id, metadata, created_at
+      ) VALUES (
+        gen_random_uuid(),
+        ${input.userId}::uuid,
+        'store_loss.cancel_by_manager',
+        'store_loss_records',
+        ${input.lossId},
+        ${JSON.stringify({
+          storeId: loss.store_id,
+          productId: loss.product_id,
+          quantity: loss.quantity,
+          unit: loss.unit,
+          reason: input.reason,
         })}::jsonb,
         now()
       )

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ProductPhoto } from "@/components/product-photo";
+import { ManagerLossCancel } from "./manager-loss-cancel";
 import type { StoreLossRecord } from "./domain";
 import type { LossManagementKpis } from "./repository";
 
@@ -39,7 +40,9 @@ export function LossDashboardWorkspace({
   totalMatching,
   pageSize,
   filters,
+  canCancel = false,
 }: {
+  canCancel?: boolean;
   basePath: string;
   stores: StoreOption[];
   losses: StoreLossRecord[];
@@ -212,12 +215,13 @@ export function LossDashboardWorkspace({
                 <th style={{ padding: "12px 14px", fontWeight: 700, color: "#475569" }}>MOTIVO</th>
                 <th style={{ padding: "12px 14px", fontWeight: 700, color: "#475569" }}>OBSERVAÇÃO</th>
                 <th style={{ padding: "12px 14px", fontWeight: 700, color: "#475569" }}>RESPONSÁVEL</th>
+                {canCancel ? <th style={{ padding: "12px 14px", fontWeight: 700, color: "#475569" }}>AÇÕES</th> : null}
               </tr>
             </thead>
             <tbody>
               {losses.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#64748b" }}>
+                  <td colSpan={canCancel ? 8 : 7} style={{ padding: 32, textAlign: "center", color: "#64748b" }}>
                     Nenhum registro de perda encontrado para os filtros selecionados.
                   </td>
                 </tr>
@@ -247,6 +251,11 @@ export function LossDashboardWorkspace({
                     </td>
                     <td style={{ padding: "10px 14px", color: "#64748b", fontSize: 12, maxWidth: 200 }}>{loss.notes || "—"}</td>
                     <td style={{ padding: "10px 14px", color: "#334155", whiteSpace: "nowrap" }}>{loss.recordedByName || "Operador"}</td>
+                    {canCancel ? (
+                      <td style={{ padding: "10px 14px" }}>
+                        <ManagerLossCancel lossId={loss.id} productName={loss.productName} />
+                      </td>
+                    ) : null}
                   </tr>
                 ))
               )}

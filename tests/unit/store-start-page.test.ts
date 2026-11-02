@@ -24,7 +24,7 @@ vi.mock("@/modules/identity/session", () => ({ requirePrincipal: vi.fn() }));
 vi.mock("@/modules/ordering/repository", () => ({ getStoreName: vi.fn() }));
 
 import StartPage from "@/app/inicio/page";
-import { StoreNavigation } from "@/components/store-navigation";
+import { StoreNavigation, currentStoreModule } from "@/components/store-navigation";
 import { requirePrincipal } from "@/modules/identity/session";
 import { getStoreName } from "@/modules/ordering/repository";
 
@@ -114,5 +114,31 @@ describe("Entrada operacional após o login", () => {
       storeName: "Ponta da Fruta", hasOrderPermission: true, hasConferencePermission: true, hasLossPermission: true,
     })));
     expect(container.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it("não mostra atalhos de módulos no topo, apenas o indicador da tela atual", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => root?.render(React.createElement(StoreNavigation, {
+      storeName: "Ponta da Fruta", hasOrderPermission: true, hasConferencePermission: true, hasLossPermission: true,
+    })));
+    const header = container.querySelector("header")!;
+    const headerLinks = Array.from(header.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+    expect(headerLinks).not.toContain("/conferencia");
+    expect(headerLinks).not.toContain("/perdas");
+    expect(header.textContent).toContain("Tela atual:");
+    expect(header.textContent).toContain("Escolha um módulo");
+  });
+
+  it.each([
+    ["/", "Pedido da Loja"],
+    ["/pedidos/abc/detalhes", "Pedido da Loja"],
+    ["/conferencia", "Conferência de Entrega"],
+    ["/perdas", "Lançamento de Perdas"],
+    ["/historico", "Histórico de Pedidos"],
+    ["/inicio", "Escolha um módulo"],
+  ])("identifica %s como %s", (pathname, label) => {
+    expect(currentStoreModule(pathname).label).toBe(label);
   });
 });

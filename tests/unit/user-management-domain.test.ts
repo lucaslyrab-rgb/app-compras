@@ -135,6 +135,7 @@ describe("Gestão de Usuários - Domínio e Validações V1", () => {
         "gestor:configuracoes",
         "gestor:usuarios",
         "fechamento:consultar",
+        "perdas:excluir",
       ]);
     });
 
@@ -157,6 +158,7 @@ describe("Gestão de Usuários - Domínio e Validações V1", () => {
         "gestor:configuracoes",
         "gestor:usuarios",
         "perdas:consultar",
+        "perdas:excluir",
         "fechamento:consultar",
       ]);
     });

@@ -60,6 +60,12 @@ export function StoreLossWorkspace({
   if (recordState !== syncedRecordState) {
     setSyncedRecordState(recordState);
     setFeedback(recordState);
+    // Depois de salvar, limpa quantidade e observação: um novo toque não reenvia
+    // a mesma perda por engano.
+    if (recordState.status === "success") {
+      setQuantity("");
+      setNotes("");
+    }
   }
   const [syncedCancelState, setSyncedCancelState] = useState(cancelState);
   if (cancelState !== syncedCancelState) {
@@ -124,11 +130,17 @@ export function StoreLossWorkspace({
               marginBottom: 14,
               fontSize: 13,
               fontWeight: 600,
-              background: feedback.status === "error" ? "#fee2e2" : "#dcfce7",
-              color: feedback.status === "error" ? "#991b1b" : "#166534",
-              border: feedback.status === "error" ? "1px solid #f87171" : "1px solid #86efac",
+              background: feedback.status === "error" ? "#fee2e2" : feedback.status === "duplicate" ? "#fef3c7" : "#dcfce7",
+              color: feedback.status === "error" ? "#991b1b" : feedback.status === "duplicate" ? "#92400e" : "#166534",
+              border:
+                feedback.status === "error"
+                  ? "1px solid #f87171"
+                  : feedback.status === "duplicate"
+                    ? "1px solid #f59e0b"
+                    : "1px solid #86efac",
             }}
           >
+            {feedback.status === "duplicate" ? "⚠️ " : null}
             {feedback.message}
           </div>
         )}
@@ -349,6 +361,28 @@ export function StoreLossWorkspace({
             >
               {isRecording ? "Registrando perda..." : "+ Confirmar e Salvar Perda"}
             </button>
+
+            {/* Lançamento igual feito há pouco: só grava de novo se a loja confirmar. */}
+            {feedback.status === "duplicate" && (
+              <button
+                type="submit"
+                name="confirmDuplicate"
+                value="1"
+                disabled={isRecording || !quantity.trim()}
+                className="btn btn--secondary"
+                style={{
+                  width: "100%",
+                  minHeight: 42,
+                  marginTop: 8,
+                  fontSize: 13,
+                  fontWeight: 800,
+                  color: "#92400e",
+                  borderColor: "#f59e0b",
+                }}
+              >
+                É outra perda: registrar mesmo assim
+              </button>
+            )}
           </form>
         </div>
 

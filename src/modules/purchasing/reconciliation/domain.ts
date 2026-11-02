@@ -14,6 +14,8 @@ export const MAX_RANGE_DAYS = 31;
 /** Período padrão: hoje e os 6 dias anteriores. */
 export const DEFAULT_RANGE_DAYS = 7;
 export const DEFAULT_PAGE_SIZE = 50;
+/** Perdas do produto na loja contadas do dia do ciclo até N dias depois. */
+export const LOSS_WINDOW_DAYS = 3;
 export const MAX_PAGE_SIZE = 1000;
 
 export type CutSituation = "INTEGRAL" | "PARTIAL_CUT" | "TOTAL_CUT" | "ADDITIONAL" | "NOT_COMPARABLE" | "NONE";
@@ -36,6 +38,7 @@ export type Highlight =
   | "NOT_RECEIVED"
   | "RECEIVED_NOT_DESTINED"
   | "DESTINED_OUT_OF_CONFERENCE"
+  | "RECEIVED_OUTSIDE_ORDER"
   | "CONFERENCE_PENDING";
 
 export const HIGHLIGHTS: readonly Highlight[] = [
@@ -43,6 +46,7 @@ export const HIGHLIGHTS: readonly Highlight[] = [
   "NOT_RECEIVED",
   "RECEIVED_NOT_DESTINED",
   "DESTINED_OUT_OF_CONFERENCE",
+  "RECEIVED_OUTSIDE_ORDER",
   "CONFERENCE_PENDING",
 ] as const;
 
@@ -52,6 +56,7 @@ export const ATTENTION_HIGHLIGHTS: readonly Highlight[] = [
   "NOT_RECEIVED",
   "RECEIVED_NOT_DESTINED",
   "DESTINED_OUT_OF_CONFERENCE",
+  "RECEIVED_OUTSIDE_ORDER",
 ] as const;
 
 export const HIGHLIGHT_LABELS: Record<Highlight, string> = {
@@ -59,6 +64,7 @@ export const HIGHLIGHT_LABELS: Record<Highlight, string> = {
   NOT_RECEIVED: "Não recebido",
   RECEIVED_NOT_DESTINED: "Recebido sem destinação",
   DESTINED_OUT_OF_CONFERENCE: "Fora da conferência",
+  RECEIVED_OUTSIDE_ORDER: "Recebido fora do pedido",
   CONFERENCE_PENDING: "Conferência pendente",
 };
 
@@ -98,6 +104,8 @@ export type SourceAllocation = {
   purchaseFormat: string;
   isAdditionalPurchase: boolean;
   conversionFactorKg: number | null;
+  /** Nome de quem fez (ou alterou por último) a destinação. */
+  destinedBy?: string | null;
 };
 
 export type SourceNotPurchased = { cycleDate: string; storeId: string; productId: string };
@@ -116,7 +124,13 @@ export type SourceConferenceItem = {
   receivedWeightKg: number | null;
   isUnreceived: boolean;
   removedFromOrder: boolean;
+  /** Item lançado pela loja como recebido fora do pedido. */
+  addedOutsideOrder?: boolean;
+  addedByName?: string | null;
 };
+
+/** Perda não cancelada, com a data local (São Paulo) do lançamento. */
+export type SourceLoss = { storeId: string; productId: string; date: string; quantity: number; unit: string };
 
 export type ReconciliationSources = {
   stores: SourceStore[];
@@ -127,13 +141,21 @@ export type ReconciliationSources = {
   notPurchased: SourceNotPurchased[];
   conferences: SourceConference[];
   conferenceItems: SourceConferenceItem[];
+  losses?: SourceLoss[];
 };
 
 // ---------------------------------------------------------------------------
 // Linha do confronto
 // ---------------------------------------------------------------------------
 
-export type DestinationGroup = { unit: string; quantity: number; suppliers: string[]; supplierIds: string[] };
+export type DestinationGroup = {
+  unit: string;
+  quantity: number;
+  suppliers: string[];
+  supplierIds: string[];
+  /** Quem destinou (comprador), sem repetição. */
+  destinedBy: string[];
+};
 
 export type ExpectedWeight =
   | { kg: number; source: "DESTINATION_FACTOR" | "CURRENT_PRODUCT" | "DESTINED_IN_KG" }
@@ -166,8 +188,16 @@ export type ReconciliationLine = {
     state: ConferenceState;
     revision: number | null;
     revisionDiffers: boolean;
-    item: { weightKg: number | null; isUnreceived: boolean; removedFromOrder: boolean } | null;
+    item: {
+      weightKg: number | null;
+      isUnreceived: boolean;
+      removedFromOrder: boolean;
+      addedOutsideOrder: boolean;
+      addedByName: string | null;
+    } | null;
   };
+  /** Perdas do produto na loja do dia do ciclo até LOSS_WINDOW_DAYS depois. */
+  lossesAfter: { kg: number; und: number; untilDate: string } | null;
   weight: { differenceKg: number; differencePercent: number; range: WeightRange } | null;
   highlights: Highlight[];
 };
@@ -211,7 +241,8 @@ export function groupDestinations(allocations: readonly SourceAllocation[]): Des
   for (const alloc of allocations) {
     if (!(alloc.destinedQuantity > 0)) continue;
     const unit = normalizeUnit(alloc.purchaseFormat);
-    const group = groups.get(unit) ?? { unit, quantity: 0, suppliers: [], supplierIds: [] };
+    const group = groups.get(unit) ?? { unit, quantity: 0, suppliers: [], supplierIds: [], destinedBy: [] };
+    if (alloc.destinedBy && !group.destinedBy.includes(alloc.destinedBy)) group.destinedBy.push(alloc.destinedBy);
     group.quantity = round2(group.quantity + alloc.destinedQuantity);
     if (!group.supplierIds.includes(alloc.supplierId)) {
       group.supplierIds.push(alloc.supplierId);
@@ -318,7 +349,7 @@ export function weightRange(expectedKg: number, receivedKg: number): {
   return { differenceKg, differencePercent, range };
 }
 
-export function classifyReconciliationLine(line: Omit<ReconciliationLine, "highlights" | "weight">): {
+export function classifyReconciliationLine(line: Omit<ReconciliationLine, "highlights" | "weight" | "lossesAfter">): {
   weight: ReconciliationLine["weight"];
   highlights: Highlight[];
 } {
@@ -344,6 +375,7 @@ export function classifyReconciliationLine(line: Omit<ReconciliationLine, "highl
   if (item && !item.isUnreceived && (item.weightKg ?? 0) > 0 && !line.destinedPositive) {
     highlights.push("RECEIVED_NOT_DESTINED");
   }
+  if (item?.addedOutsideOrder) highlights.push("RECEIVED_OUTSIDE_ORDER");
   if (line.destinedPositive && activeConference && !item) highlights.push("DESTINED_OUT_OF_CONFERENCE");
   if (line.destinedPositive && state !== "FINALIZED") highlights.push("CONFERENCE_PENDING");
 
@@ -366,6 +398,24 @@ function lineKey(cycleDate: string, storeId: string, productId: string) {
   return `${cycleDate}|${storeId}|${productId}`;
 }
 
+/** Soma as perdas do produto na loja do dia do ciclo até LOSS_WINDOW_DAYS depois. */
+export function sumLossesAfter(
+  losses: readonly SourceLoss[] | undefined,
+  cycleDate: string,
+): ReconciliationLine["lossesAfter"] {
+  if (!losses || losses.length === 0) return null;
+  const untilDate = shiftIsoDate(cycleDate, LOSS_WINDOW_DAYS);
+  let kg = 0;
+  let und = 0;
+  for (const loss of losses) {
+    if (loss.date < cycleDate || loss.date > untilDate) continue;
+    if (normalizeUnit(loss.unit) === "UN") und += loss.quantity;
+    else kg += loss.quantity;
+  }
+  if (kg === 0 && und === 0) return null;
+  return { kg: round2(kg), und: round2(und), untilDate };
+}
+
 export function buildReconciliationLines(sources: ReconciliationSources): ReconciliationLine[] {
   const storeNames = new Map(sources.stores.map((s) => [s.id, s.name]));
   const products = new Map(sources.products.map((p) => [p.id, p]));
@@ -384,6 +434,13 @@ export function buildReconciliationLines(sources: ReconciliationSources): Reconc
     allocations.set(key, list);
   }
   const notPurchased = new Set(sources.notPurchased.map((d) => lineKey(d.cycleDate, d.storeId, d.productId)));
+  const lossesByPair = new Map<string, SourceLoss[]>();
+  for (const loss of sources.losses ?? []) {
+    const key = `${loss.storeId}|${loss.productId}`;
+    const list = lossesByPair.get(key) ?? [];
+    list.push(loss);
+    lossesByPair.set(key, list);
+  }
   const confItems = new Map(
     sources.conferenceItems.map((i) => [lineKey(i.cycleDate, i.storeId, i.productId), i]),
   );
@@ -434,6 +491,8 @@ export function buildReconciliationLines(sources: ReconciliationSources): Reconc
             weightKg: rawItem.receivedWeightKg,
             isUnreceived: rawItem.isUnreceived,
             removedFromOrder: rawItem.removedFromOrder,
+            addedOutsideOrder: Boolean(rawItem.addedOutsideOrder),
+            addedByName: rawItem.addedByName ?? null,
           }
         : null,
     };
@@ -455,7 +514,7 @@ export function buildReconciliationLines(sources: ReconciliationSources): Reconc
       conference,
     };
     const { weight, highlights } = classifyReconciliationLine(base);
-    lines.push({ ...base, weight, highlights });
+    lines.push({ ...base, weight, highlights, lossesAfter: sumLossesAfter(lossesByPair.get(`${storeId}|${productId}`), cycleDate) });
   }
 
   return lines.sort(
@@ -586,6 +645,7 @@ export type ReconciliationKpis = {
   notReceived: number;
   receivedNotDestined: number;
   outOfConference: number;
+  receivedOutsideOrder: number;
   /** Pares ciclo × loja com destinação e conferência não finalizada. */
   pendingConferences: number;
 };
@@ -601,6 +661,7 @@ export function buildKpis(lines: readonly ReconciliationLine[]): ReconciliationK
     notReceived: 0,
     receivedNotDestined: 0,
     outOfConference: 0,
+    receivedOutsideOrder: 0,
     pendingConferences: 0,
   };
   for (const line of lines) {
@@ -611,6 +672,7 @@ export function buildKpis(lines: readonly ReconciliationLine[]): ReconciliationK
     if (line.highlights.includes("NOT_RECEIVED")) kpis.notReceived += 1;
     if (line.highlights.includes("RECEIVED_NOT_DESTINED")) kpis.receivedNotDestined += 1;
     if (line.highlights.includes("DESTINED_OUT_OF_CONFERENCE")) kpis.outOfConference += 1;
+    if (line.highlights.includes("RECEIVED_OUTSIDE_ORDER")) kpis.receivedOutsideOrder += 1;
     if (line.highlights.includes("CONFERENCE_PENDING")) pendingPairs.add(pairKey(line.cycleDate, line.storeId));
   }
   kpis.pendingConferences = pendingPairs.size;
