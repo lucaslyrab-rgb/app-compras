@@ -12,20 +12,22 @@ export const dynamic = "force-dynamic";
 export default async function BuyerDestinacaoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ciclo?: string; loja?: string; fornecedor?: string }>;
+  searchParams: Promise<{ ciclo?: string; loja?: string; fornecedor?: string; fechados?: string }>;
 }) {
   const principal = await requirePrincipal();
   if (!canManageDestinations(principal)) redirect("/");
 
-  const { ciclo, loja, fornecedor } = await searchParams;
+  const { ciclo, loja, fornecedor, fechados } = await searchParams;
+  const showClosedCycles = fechados === "1";
   if (ciclo && !isCycleDate(ciclo)) notFound();
 
-  const data = await readBuyerAllocationWorkspace(principal, ciclo, fornecedor, loja);
+  const data = await readBuyerAllocationWorkspace(principal, ciclo, fornecedor, loja, { showClosedCycles });
 
   return (
     <BuyerAllocationWorkspace
       data={data}
       hasExplicitStoreSelection={Boolean(loja)}
+      showClosedCycles={showClosedCycles}
       key={`${data.cycleDate}:${data.selectedStoreId ?? "none"}:${data.selectedSupplierId ?? "none"}`}
     />
   );

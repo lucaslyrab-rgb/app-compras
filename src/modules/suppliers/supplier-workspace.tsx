@@ -15,6 +15,7 @@ import {
   formatTaxId,
   normalizePhone,
   normalizeTaxId,
+  resolveTradeName,
   TAX_ID_TYPE_LABELS,
   TAX_INVOICE_RULE_LABELS,
   type Supplier,
@@ -688,7 +689,7 @@ export function SupplierWorkspace({
 
                 <div className="suppliers-form-grid">
                   <div className="suppliers-form-group">
-                    <label htmlFor="create-tradeName">Nome Fantasia</label>
+                    <label htmlFor="create-tradeName">Nome Fantasia *</label>
                     <input
                       id="create-tradeName"
                       type="text"
@@ -698,6 +699,9 @@ export function SupplierWorkspace({
                         setCreateForm((prev) => ({ ...prev, tradeName: e.target.value }))
                       }
                     />
+                    <small className="suppliers-hint" style={{ fontSize: 11, color: "#64748b" }}>
+                      Obrigatório. Se ficar em branco, usamos “{resolveTradeName("", createForm.corporateName) || "os 15 primeiros caracteres da razão social"}”.
+                    </small>
                   </div>
 
                   <div className="suppliers-form-group">
@@ -855,7 +859,7 @@ export function SupplierWorkspace({
 
                 <div className="suppliers-form-grid">
                   <div className="suppliers-form-group">
-                    <label htmlFor="edit-tradeName">Nome Fantasia</label>
+                    <label htmlFor="edit-tradeName">Nome Fantasia *</label>
                     <input
                       id="edit-tradeName"
                       type="text"
@@ -864,6 +868,9 @@ export function SupplierWorkspace({
                         setEditForm((prev) => ({ ...prev, tradeName: e.target.value }))
                       }
                     />
+                    <small className="suppliers-hint" style={{ fontSize: 11, color: "#64748b" }}>
+                      Obrigatório. Se ficar em branco, usamos “{resolveTradeName("", editForm.corporateName) || "os 15 primeiros caracteres da razão social"}”.
+                    </small>
                   </div>
 
                   <div className="suppliers-form-group">

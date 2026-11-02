@@ -22,11 +22,21 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0022", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0023", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 22 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 23 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
+  });
+
+  it("mantém a 0023 aditiva: nome fantasia preenchido e registro de ciclos encerrados", async () => {
+    const migration = await readFile("migrations/0023_supplier_trade_name_and_cycle_archives.sql", "utf8");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_archives");
+    expect(migration).toContain("left(btrim(corporate_name), 15)");
+    expect(migration).toContain("WHERE trade_name IS NULL OR btrim(trade_name) = ''");
+    expect(migration).not.toMatch(/DROP COLUMN|DROP TABLE|DELETE FROM/i);
+    const updates = migration.match(/^UPDATE\s+(\w+)/gim) ?? [];
+    expect(updates.map((u) => u.split(/\s+/)[1].toLowerCase())).toEqual(["suppliers"]);
   });
 
   it("mantém a 0022 aditiva: permissão de exclusão de perdas e itens fora do pedido", async () => {

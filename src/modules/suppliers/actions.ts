@@ -10,6 +10,7 @@ import { currentPrincipal } from "@/modules/identity/session";
 import { log } from "@/shared/logging";
 import {
   createSupplierInputSchema,
+  resolveTradeName,
   toggleSupplierActiveInputSchema,
   updateSupplierInputSchema,
   SupplierConflictError,
@@ -41,6 +42,7 @@ export async function createSupplierAction(raw: unknown) {
   try {
     const supplier = await createSupplier({
       ...parsed.data,
+      tradeName: resolveTradeName(parsed.data.tradeName, parsed.data.corporateName),
       actorId: principal.userId,
     });
 
@@ -97,6 +99,7 @@ export async function updateSupplierAction(raw: unknown) {
   try {
     const supplier = await updateSupplier({
       ...parsed.data,
+      tradeName: resolveTradeName(parsed.data.tradeName, parsed.data.corporateName),
       actorId: principal.userId,
     });
 

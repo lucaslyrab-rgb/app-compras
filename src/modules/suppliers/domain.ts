@@ -171,6 +171,24 @@ export function formatPhone(phone?: string | null): string {
   return normalized;
 }
 
+/** Tamanho do nome fantasia gerado automaticamente a partir da razão social. */
+export const AUTO_TRADE_NAME_LENGTH = 15;
+
+/**
+ * Nome fantasia é obrigatório. Se vier vazio, usa os 15 primeiros caracteres da
+ * razão social (mesma regra aplicada aos fornecedores antigos pela migration 0023).
+ */
+export function resolveTradeName(tradeName: string | null | undefined, corporateName: string): string {
+  const informed = (tradeName ?? "").trim();
+  if (informed) return informed;
+  return corporateName.trim().slice(0, AUTO_TRADE_NAME_LENGTH).trim();
+}
+
+/** Nome exibido nas listas: fantasia, ou o gerado pela razão social. */
+export function supplierDisplayName(supplier: { tradeName: string | null; corporateName: string }): string {
+  return resolveTradeName(supplier.tradeName, supplier.corporateName);
+}
+
 export const createSupplierInputSchema = z.object({
   corporateName: z
     .string()

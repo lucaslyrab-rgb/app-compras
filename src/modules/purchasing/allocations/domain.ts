@@ -188,6 +188,8 @@ export type SupplierSummaryOption = {
   id: string;
   corporateName: string;
   tradeName: string | null;
+  /** Nome fantasia (ou os 15 primeiros caracteres da razão social, se não houver). */
+  displayName: string;
   taxId: string | null;
   active: boolean;
   hasAllocationsInCycle: boolean;
@@ -360,7 +362,10 @@ export type BuyerAllocationWorkspaceData = {
   suppliers: SupplierSummaryOption[];
   stores: StoreInfo[];
   destinationData: SupplierDestinationData | null;
+  /** Comprados, pedidos pela loja selecionada e ainda sem destinação para ela. */
   unassignedPurchasedProducts: Array<{ id: string; erpCode: number; name: string; purchaseFormat: string }>;
+  /** Comprados que nenhuma loja pediu e que ainda não têm destinação em nenhuma loja. */
+  unassignedOpportunityProducts?: Array<{ id: string; erpCode: number; name: string; purchaseFormat: string }>;
   catalogSearchList: CatalogSearchItem[];
   cycleStoreOrders: Record<string, Record<string, string>>;
   storeSummary: Record<string, StoreSummaryData>;
