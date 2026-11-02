@@ -27,17 +27,17 @@ async function summarizeCycles(sql: Sql, cycleDates: string[]): Promise<OpenCycl
     sql<{ cycle_date: string; status: string }[]>`
       SELECT purchase_cycle_date::text AS cycle_date, status
       FROM purchase_cycle_buyer_closures
-      WHERE purchase_cycle_date = ANY(${cycleDates}::date[])
+      WHERE purchase_cycle_date::text = ANY(${cycleDates}::text[])
     `,
     sql<{ cycle_date: string; store_id: string }[]>`
       SELECT DISTINCT purchase_cycle_date::text AS cycle_date, store_id
       FROM orders
-      WHERE cancelled_at IS NULL AND purchase_cycle_date = ANY(${cycleDates}::date[])
+      WHERE cancelled_at IS NULL AND purchase_cycle_date::text = ANY(${cycleDates}::text[])
     `,
     sql<{ cycle_date: string; store_id: string; status: ConferenceSituation; verified_items: number; total_items: number }[]>`
       SELECT purchase_cycle_date::text AS cycle_date, store_id, status, verified_items, total_items
       FROM store_delivery_conferences
-      WHERE purchase_cycle_date = ANY(${cycleDates}::date[])
+      WHERE purchase_cycle_date::text = ANY(${cycleDates}::text[])
     `,
   ]);
 
