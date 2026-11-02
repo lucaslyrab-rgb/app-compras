@@ -52,9 +52,12 @@ type PendingAllocationConflict = {
 export function BuyerAllocationWorkspace({
   data,
   hasExplicitStoreSelection = true,
+  showClosedCycles = false,
 }: {
   data: BuyerAllocationWorkspaceData;
   hasExplicitStoreSelection?: boolean;
+  /** Seletor de ciclos inclui os fechados (pelo comprador ou encerrados pelo Gestor). */
+  showClosedCycles?: boolean;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -71,6 +74,7 @@ export function BuyerAllocationWorkspace({
     stores,
     destinationData,
     unassignedPurchasedProducts,
+    unassignedOpportunityProducts = [],
     catalogSearchList,
     cycleStoreOrders,
     storeSummary,
@@ -89,6 +93,8 @@ export function BuyerAllocationWorkspace({
       name: "Loja",
     };
   const activeStoreId = activeStore.id;
+  // Loja à qual se refere o aviso "itens sem fornecedor" (calculado por loja no servidor).
+  const unassignedStoreLabel = activeStore.id === "unknown" ? "" : activeStore.name.replace("MultiShow ", "");
 
   // Status de finalização das lojas
   const activeStoreSummary = storeSummary[activeStoreId];
@@ -372,7 +378,7 @@ export function BuyerAllocationWorkspace({
     }
     navigationContextRef.current = nextContext;
     router.push(
-      `/comprador/destinacao?ciclo=${nextContext.cycleDate}&loja=${nextContext.storeId}&fornecedor=${nextContext.supplierId}`,
+      `/comprador/destinacao?ciclo=${nextContext.cycleDate}&loja=${nextContext.storeId}&fornecedor=${nextContext.supplierId}${showClosedCycles ? "&fechados=1" : ""}`,
     );
   };
 
@@ -1148,6 +1154,13 @@ export function BuyerAllocationWorkspace({
               </option>
             ))}
           </select>
+          <Link
+            href={`/comprador/destinacao?ciclo=${cycleDate}${showClosedCycles ? "" : "&fechados=1"}`}
+            className="alloc-closed-cycles-toggle"
+            style={{ fontSize: "12px", fontWeight: 600, color: "#0369a1", whiteSpace: "nowrap" }}
+          >
+            {showClosedCycles ? "Ocultar ciclos fechados" : "Ver ciclos fechados"}
+          </Link>
 
           {isClosed ? (
             <button
@@ -1210,7 +1223,7 @@ export function BuyerAllocationWorkspace({
               </p>
             </div>
           </div>
-          {unassignedPurchasedProducts.length > 0 ? (
+          {unassignedPurchasedProducts.length > 0 || unassignedOpportunityProducts.length > 0 ? (
             <button
               type="button"
               className="btn btn--secondary"
@@ -1218,10 +1231,12 @@ export function BuyerAllocationWorkspace({
               onClick={() => setShowUnassignedModal(true)}
             >
               ⚠️ {unassignedPurchasedProducts.length} itens sem fornecedor
+              {unassignedStoreLabel ? ` — ${unassignedStoreLabel}` : ""}
+              {unassignedOpportunityProducts.length > 0 ? ` (+${unassignedOpportunityProducts.length} sem pedido)` : ""}
             </button>
           ) : (
             <span style={{ fontSize: "13px", fontWeight: "600", color: "#15803d" }}>
-              ✓ Todos os itens comprados possuem destinação
+              ✓ Todos os itens comprados {unassignedStoreLabel ? `de ${unassignedStoreLabel} ` : ""}possuem destinação
             </span>
           )}
         </div>
@@ -1349,7 +1364,7 @@ export function BuyerAllocationWorkspace({
                 const isRev = s.reviewedByStore?.[activeStoreId];
                 return (
                   <option key={s.id} value={s.id}>
-                    {isRev ? "✓ " : ""}{s.corporateName} {s.tradeName ? `(${s.tradeName})` : ""} — {storeVol} CX {isRev ? "(Conferido)" : ""}
+                    {isRev ? "✓ " : ""}{s.displayName}{s.active ? "" : " (inativo)"} — {storeVol} CX {isRev ? "(Conferido)" : ""}
                   </option>
                 );
               })}
@@ -1359,7 +1374,7 @@ export function BuyerAllocationWorkspace({
               <button
                 type="button"
                 className="btn btn--secondary alloc-btn-next-supplier"
-                title={`Alternar para ${nextSupplier.corporateName} mantendo ${activeStore.name}`}
+                title={`Alternar para ${nextSupplier.displayName} mantendo ${activeStore.name}`}
                 onClick={() => handleSelectSupplier(nextSupplier.id)}
               >
                 Trocar Fornecedor ❯
@@ -1373,11 +1388,11 @@ export function BuyerAllocationWorkspace({
             <div className="alloc-supplier-info-row">
               <div>
                 <strong className="alloc-supplier-name">
-                  {selectedSupplier.corporateName}
+                  {selectedSupplier.displayName}
                 </strong>
-                {selectedSupplier.tradeName ? (
+                {selectedSupplier.displayName !== selectedSupplier.corporateName ? (
                   <span className="alloc-supplier-trade">
-                    ({selectedSupplier.tradeName})
+                    ({selectedSupplier.corporateName})
                   </span>
                 ) : null}
               </div>
@@ -2310,7 +2325,9 @@ export function BuyerAllocationWorkspace({
         <div className="alloc-modal-backdrop" role="dialog" aria-modal="true">
           <div className="alloc-modal">
             <header className="alloc-modal__header">
-              <h2>Produtos Comprados sem Fornecedor ({unassignedPurchasedProducts.length})</h2>
+              <h2>
+                Produtos Comprados sem Fornecedor{unassignedStoreLabel ? ` — ${unassignedStoreLabel}` : ""} ({unassignedPurchasedProducts.length})
+              </h2>
               <button
                 type="button"
                 className="btn btn--secondary"
@@ -2322,16 +2339,34 @@ export function BuyerAllocationWorkspace({
             </header>
             <div className="alloc-modal__body">
               <p>
-                Os seguintes itens estão marcados como comprados na tela de custos do comprador,
-                porém ainda não foram atribuídos a nenhum fornecedor neste ciclo:
+                Itens pedidos por <strong>{unassignedStoreLabel || "esta loja"}</strong> e marcados como comprados
+                nos custos, mas ainda sem destinação para esta loja (nem marcados como “Não comprado”):
               </p>
-              <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "13px" }}>
-                {unassignedPurchasedProducts.map((p) => (
-                  <li key={p.id} style={{ marginBottom: "6px" }}>
-                    <strong>[{p.erpCode}] {p.name}</strong> ({p.purchaseFormat})
-                  </li>
-                ))}
-              </ul>
+              {unassignedPurchasedProducts.length === 0 ? (
+                <p style={{ fontSize: "13px", color: "#15803d", fontWeight: 600 }}>✓ Nenhum item pendente nesta loja.</p>
+              ) : (
+                <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "13px" }}>
+                  {unassignedPurchasedProducts.map((p) => (
+                    <li key={p.id} style={{ marginBottom: "6px" }}>
+                      <strong>[{p.erpCode}] {p.name}</strong> ({p.purchaseFormat})
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {unassignedOpportunityProducts.length > 0 ? (
+                <>
+                  <p style={{ marginTop: "16px" }}>
+                    Comprados que <strong>nenhuma loja pediu</strong> e ainda sem destinação em nenhuma loja:
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "13px" }}>
+                    {unassignedOpportunityProducts.map((p) => (
+                      <li key={p.id} style={{ marginBottom: "6px" }}>
+                        <strong>[{p.erpCode}] {p.name}</strong> ({p.purchaseFormat})
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
             </div>
             <footer className="alloc-modal__footer">
               <button

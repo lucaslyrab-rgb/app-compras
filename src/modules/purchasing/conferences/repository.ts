@@ -328,11 +328,15 @@ export async function listStoreConferenceCycles(
 
   const rows = await sql`
     WITH cycle_dates AS (
-      SELECT DISTINCT purchase_cycle_date FROM orders
-      WHERE store_id = ${storeId}::uuid AND cancelled_at IS NULL
-      UNION
-      SELECT DISTINCT purchase_cycle_date FROM store_delivery_conferences
-      WHERE store_id = ${storeId}::uuid
+      SELECT purchase_cycle_date FROM (
+        SELECT DISTINCT purchase_cycle_date FROM orders
+        WHERE store_id = ${storeId}::uuid AND cancelled_at IS NULL
+        UNION
+        SELECT DISTINCT purchase_cycle_date FROM store_delivery_conferences
+        WHERE store_id = ${storeId}::uuid
+      ) all_cycles
+      -- Ciclos encerrados pelo Gestor ("Encerrar ciclo") não aparecem mais para a loja.
+      WHERE purchase_cycle_date NOT IN (SELECT purchase_cycle_date FROM purchase_cycle_archives)
     ),
     joined AS (
       SELECT

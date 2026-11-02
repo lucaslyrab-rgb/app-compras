@@ -355,6 +355,7 @@ export async function readBuyerAllocationWorkspace(
   requestedCycle?: string,
   selectedSupplierId?: string | null,
   selectedStoreId?: string | null,
+  options: { showClosedCycles?: boolean } = {},
 ): Promise<BuyerAllocationWorkspaceData> {
   assertPermission(principal, "compras:destinacao");
 
@@ -376,9 +377,19 @@ export async function readBuyerAllocationWorkspace(
   `;
 
   const todayStr = new Date().toISOString().split("T")[0];
+
+  // Por padrão o seletor mostra só ciclos abertos; os fechados (pelo comprador ou
+  // encerrados pelo Gestor) aparecem quando o usuário pede "ver ciclos fechados".
+  const closedCycleRows = options.showClosedCycles
+    ? []
+    : await sql<{ date: string }[]>`
+        SELECT purchase_cycle_date::text AS date FROM purchase_cycle_buyer_closures WHERE status = 'CLOSED'
+      `;
+  const closedCycles = new Set(closedCycleRows.map((r) => r.date));
+
   const cycles = [
     ...new Set([
-      ...availableCycleRows.map((r) => r.date),
+      ...availableCycleRows.map((r) => r.date).filter((d) => !closedCycles.has(d)),
       ...(requestedCycle ? [requestedCycle] : []),
       todayStr,
     ]),
@@ -772,6 +783,7 @@ export async function readBuyerAllocationWorkspace(
       id: string;
       corporate_name: string;
       trade_name: string | null;
+      display_name: string;
       tax_id: string | null;
       tax_invoice_rule: string;
       active: boolean;
@@ -781,14 +793,21 @@ export async function readBuyerAllocationWorkspace(
       id,
       corporate_name,
       trade_name,
+      COALESCE(NULLIF(btrim(trade_name), ''), btrim(left(btrim(corporate_name), 15))) AS display_name,
       tax_id,
       tax_invoice_rule,
       active
     FROM suppliers
-    ORDER BY active DESC, corporate_name ASC
+    ORDER BY active DESC, display_name ASC
   `;
 
-  const supplierOptions: SupplierSummaryOption[] = allSuppliers.map((s) => {
+  // Fornecedores inativos não aparecem para escolha. Exceção: inativo que já tem
+  // destinação neste ciclo continua visível, para não esconder um lançamento feito.
+  const visibleSuppliers = allSuppliers.filter(
+    (s) => s.active || (supplierTotalDestinedMap.get(s.id) ?? []).length > 0,
+  );
+
+  const supplierOptions: SupplierSummaryOption[] = visibleSuppliers.map((s) => {
     const destinedQuantities = supplierTotalDestinedMap.get(s.id) ?? [];
     const hasAllocations = destinedQuantities.length > 0;
     const totalDestinedQuantity = sumQuantities(destinedQuantities);
@@ -805,6 +824,7 @@ export async function readBuyerAllocationWorkspace(
       id: s.id,
       corporateName: s.corporate_name,
       tradeName: s.trade_name,
+      displayName: s.display_name,
       taxId: s.tax_id,
       active: s.active,
       hasAllocationsInCycle: hasAllocations,
@@ -1096,22 +1116,55 @@ export async function readBuyerAllocationWorkspace(
     };
   }
 
-  // 8. Identifica produtos comprados que não foram alocados
-  const unassignedPurchasedProducts: Array<{ id: string; erpCode: number; name: string; purchaseFormat: string }> = [];
-
-  for (const pid of purchasedProductIds) {
-    if (!globallyAllocatedProductIds.has(pid)) {
-      const prod = catalogMap.get(pid);
-      if (prod) {
-        unassignedPurchasedProducts.push({
-          id: prod.id,
-          erpCode: prod.erp_code,
-          name: prod.name,
-          purchaseFormat: prod.purchase_format,
-        });
-      }
+  // 8. Produtos comprados sem destinação, calculados POR LOJA (loja selecionada):
+  // pedidos pela loja, marcados como comprados, sem destinação positiva para ela e
+  // sem decisão "Não comprado" para ela. Antes o cálculo era global e um produto
+  // destinado a qualquer loja deixava de aparecer como pendente nas demais.
+  type UnassignedProduct = { id: string; erpCode: number; name: string; purchaseFormat: string };
+  const toUnassigned = (pid: string): UnassignedProduct | null => {
+    const prod = catalogMap.get(pid);
+    return prod ? { id: prod.id, erpCode: prod.erp_code, name: prod.name, purchaseFormat: prod.purchase_format } : null;
+  };
+  const purchasedSet = new Set(purchasedProductIds);
+  const unassignedPurchasedProducts: UnassignedProduct[] = [];
+  if (currentSelectedStoreId) {
+    const orderedByStore = new Set(
+      orderItemRows
+        .filter((oi) => oi.store_id === currentSelectedStoreId && parseQuantity(oi.quantity) > 0)
+        .map((oi) => oi.product_id),
+    );
+    const destinedToStore = new Set(
+      allocationRows
+        .filter((a) => a.store_id === currentSelectedStoreId && parseQuantity(a.destined_quantity) > 0)
+        .map((a) => a.product_id),
+    );
+    const notPurchasedForStore = new Set(
+      decisionRows
+        .filter((d) => d.store_id === currentSelectedStoreId && d.decision === "NOT_PURCHASED")
+        .map((d) => d.product_id),
+    );
+    for (const pid of orderedByStore) {
+      if (!purchasedSet.has(pid) || destinedToStore.has(pid) || notPurchasedForStore.has(pid)) continue;
+      const item = toUnassigned(pid);
+      if (item) unassignedPurchasedProducts.push(item);
     }
   }
+
+  // Comprados que nenhuma loja pediu e que não têm destinação em nenhuma loja
+  // (compra de oportunidade ainda não distribuída): mostrados à parte, pois não
+  // pertencem a uma loja específica.
+  const orderedByAnyStore = new Set(
+    orderItemRows.filter((oi) => parseQuantity(oi.quantity) > 0).map((oi) => oi.product_id),
+  );
+  const unassignedOpportunityProducts: UnassignedProduct[] = [];
+  for (const pid of purchasedProductIds) {
+    if (orderedByAnyStore.has(pid) || globallyAllocatedProductIds.has(pid)) continue;
+    const item = toUnassigned(pid);
+    if (item) unassignedOpportunityProducts.push(item);
+  }
+  const byName = (a: UnassignedProduct, b: UnassignedProduct) => a.name.localeCompare(b.name, "pt-BR");
+  unassignedPurchasedProducts.sort(byName);
+  unassignedOpportunityProducts.sort(byName);
 
   // 10. Se um fornecedor específico foi selecionado (ou se há fornecedores disponíveis), constrói a visão de destinação dele
   const resolvedSupplierId =
@@ -1370,6 +1423,7 @@ export async function readBuyerAllocationWorkspace(
     stores,
     destinationData,
     unassignedPurchasedProducts,
+    unassignedOpportunityProducts,
     catalogSearchList,
     cycleStoreOrders,
     storeSummary,

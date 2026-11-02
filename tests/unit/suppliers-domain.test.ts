@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   createSupplierInputSchema,
+  resolveTradeName,
+  supplierDisplayName,
   formatPhone,
   formatTaxId,
   isValidCnpj,
@@ -270,5 +272,23 @@ describe("Fornecedores - Domínio e Validações", () => {
       expect(TAX_INVOICE_RULE_LABELS.AFTER_WEIGHING).toBe("Após pesagem (banana)");
       expect(TAX_INVOICE_RULE_LABELS.SPECIAL_REGIME).toBe("Regime especial / produtor rural");
     });
+  });
+});
+
+describe("nome fantasia obrigatório", () => {
+  it("usa o nome fantasia informado", () => {
+    expect(resolveTradeName("  Ademar ", "Ademar Kerckhoff Comercio ME")).toBe("Ademar");
+  });
+
+  it("sem nome fantasia, usa os 15 primeiros caracteres da razão social", () => {
+    expect(resolveTradeName("", "Ademar Kerckhoff Comercio ME")).toBe("Ademar Kerckhof");
+    expect(resolveTradeName(null, "  Copperfruti Ltda  ")).toBe("Copperfruti Ltd");
+    expect(resolveTradeName(undefined, "JEB")).toBe("JEB");
+    expect(resolveTradeName(null, "Hortifruti Sul ABC")).toBe("Hortifruti Sul");
+  });
+
+  it("nome exibido nas listas segue a mesma regra", () => {
+    expect(supplierDisplayName({ tradeName: null, corporateName: "Fornecedor Antigo Ltda" })).toBe("Fornecedor Anti");
+    expect(supplierDisplayName({ tradeName: "Antigo", corporateName: "Fornecedor Antigo Ltda" })).toBe("Antigo");
   });
 });
