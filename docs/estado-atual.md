@@ -1,18 +1,13 @@
 # Estado atual — índice e registro histórico
 
-**Atualização documental: 26/10/2026.** O planejamento oficial aprovado está em [docs/PLANEJAMENTO.md](PLANEJAMENTO.md), e a sequência resumida em [docs/roadmap.md](roadmap.md).
+**Atualização documental: 02/11/2026.** A primeira versão completa está em produção; o resumo está em [docs/versao-1.md](versao-1.md). O planejamento de referência continua em [docs/PLANEJAMENTO.md](PLANEJAMENTO.md).
 
 ## Situação funcional conhecida
 
-- **Fase 1:** fundação e pedidos das lojas — implementada.
-- **Fase 2:** consolidação, custos e operação de compras — base implementada.
-- **Fase 3:** destinação, fornecedores e fechamento operacional — em estabilização, incluindo validação dos casos Maçã Fuji e Batata Bolinha.
-- **Fases 4–6:** planejamento aprovado, **sem declaração de implementação**.
-- **Fase 4:** registro de nota (número + fotografia) na tela de destinação; uma nota por loja; bloqueio de fechamento por destinações positivas sem nota somente depois de implementar e validar a fase.
-- **Fase 5:** conferência do pedido original em KG, salvamento parcial e finalização após verificação de todos os produtos; perdas armazenadas no banco FLV.
-- **Fase 6:** escopo refinado em 29/10/2026 — Fechamento integrado (`/fechamento`) com pedido (CX) × destinação (CX) × conferência (KG), peso esperado pela conversão cadastrada e faixas de cor da pesagem, apenas informativo; sem Área do CPD (fiscal e notas ficam no StarTwo). Implementação na branch `feat/phase6-fechamento-integrado`, aguardando homologação. Ver [OpenSpec](../openspec/changes/fase6-fechamento-integrado/proposal.md).
-
-**Atenção:** o quadro acima reflete o planejamento e o histórico operacional informado; não substitui auditoria técnica de código ou produção.
+- **Fases 1 a 6:** em produção (pedidos, consolidação, custos, destinação, notas fiscais, conferência, perdas e Fechamento integrado).
+- **Fase 6:** confronto pedido (CX) × destinação (CX) × conferência (KG) apenas informativo, visível a Gestor e CPD; sem Área do CPD (fiscal e notas no StarTwo).
+- **Interface:** identidade visual única e telas mobile-first para Destinação, Custos, Consolidado e telas da loja (Início, Perdas com fotos, cabeçalho único).
+- **Pendências operacionais:** encerrar ciclos antigos ainda abertos; acompanhar o uso da Destinação e de Custos no celular.
 
 ## Evidências técnicas históricas (20/09/2026)
 
@@ -30,4 +25,4 @@ Os registros a seguir são um **retrato datado** da validação técnica de 20/0
 
 Este documento não contém credenciais, chaves privadas, senhas nem valores de secrets. Para operações e diagnósticos, consultar os runbooks atualizados e verificar diretamente o estado do ambiente antes de qualquer ação.
 
-**Próximo passo de produto:** estabilizar a Fase 3. A aprovação documental v2.0 **não autoriza** alterações de código, banco, migrações, CI/CD ou produção.
+**Próximo passo de produto:** acompanhar a operação da versão 1.0 e corrigir o que surgir no uso diário; relatórios gerenciais depois de observar a operação.

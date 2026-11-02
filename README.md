@@ -2,23 +2,23 @@
 
 Sistema web/PWA para o fluxo de FLV das três lojas MultiShow: pedidos, consolidação, custos, destinação, documentação fiscal, conferência e registro de perdas.
 
-> **Planejamento oficial:** [Planejamento Geral Consolidado — Versão 2.0](docs/PLANEJAMENTO.md), aprovado em 26/10/2026. As fases 4 e 5 estão em produção; a Fase 6 está implementada em branch e aguarda homologação.
+> **Versão 1.0 em produção desde 02/11/2026.** Resumo do que está no ar e das decisões tomadas: [docs/versao-1.md](docs/versao-1.md). As regras de negócio de referência continuam no [Planejamento v2.0](docs/PLANEJAMENTO.md).
 
 ## Situação das fases
 
 | Fase | Escopo | Situação |
 |---|---|---|
-| 1 | Fundação e pedidos das lojas | Implementada |
-| 2 | Consolidação, custos e operação de compras | Base implementada |
-| 3 | Destinação, fornecedores e fechamento operacional | Em estabilização |
-| 4 | Registro e vinculação de notas fiscais às destinações | Implementada (exigência de nota no fechamento controlada por `REQUIRE_INVOICES_FOR_CLOSURE`) |
-| 5 | Conferência de mercadorias e lançamento de perdas | Implementada (PR #8) |
-| 6 | Fechamento integrado e confronto pedido × destinação × conferência | Implementada em branch, aguardando homologação ([OpenSpec](openspec/changes/fase6-fechamento-integrado/proposal.md)) |
-
-As situações das fases implementadas são o histórico conhecido do projeto, não uma auditoria recente de produção.
+| 1 | Fundação e pedidos das lojas | Em produção |
+| 2 | Consolidação, custos e operação de compras | Em produção |
+| 3 | Destinação, fornecedores e fechamento operacional | Em produção |
+| 4 | Registro e vinculação de notas fiscais às destinações | Em produção (exigência de nota no fechamento controlada por `REQUIRE_INVOICES_FOR_CLOSURE`) |
+| 5 | Conferência de mercadorias e lançamento de perdas | Em produção |
+| 6 | Fechamento integrado: pedido × destinação × conferência | Em produção (informativo, sem Área do CPD) |
+| — | Nova interface (mobile-first) e ajustes de operação | Em produção (PRs #10–#18) |
 
 ## Documentação
 
+- **[Versão 1.0](docs/versao-1.md)** — o que está em produção, decisões registradas e histórico de entregas.
 - **[Planejamento aprovado v2.0](docs/PLANEJAMENTO.md)** — fonte principal das regras de negócio e da sequência das seis fases.
 - [Roadmap](docs/roadmap.md) — resumo da sequência de execução.
 - [Estado atual](docs/estado-atual.md) — registro técnico/histórico; distinguir evidências datadas de situação atual.
@@ -32,7 +32,7 @@ As situações das fases implementadas são o histórico conhecido do projeto, n
 
 ## Fluxo de desenvolvimento
 
-A implementação de cada fase requer planejamento técnico, desenvolvimento, testes e aprovação específicos. **A aprovação do planejamento v2.0 autoriza somente atualização documental:** não autoriza alteração de código, migrações, deploy ou ativação antecipada de bloqueios.
+Cada mudança é feita em uma branch, passa pelo CI (lint, tipos, testes unitários e de integração, build e auditoria) e só entra na `main` com aprovação do responsável (Lucas). O deploy é automático ao entrar na `main` (GHCR → Portainer). Ajustes pequenos podem ser acumulados em um único PR e publicados juntos.
 
 O repositório preserva a baseline Wittemberg em `.harness/` e os artefatos OpenSpec. Para detalhes técnicos, consultar os documentos operacionais e o código vigente.
 
