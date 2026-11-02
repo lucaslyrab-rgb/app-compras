@@ -153,7 +153,7 @@
   font-weight: 700;
   color: var(--ink-900);
   outline: none;
-  max-width: 150px;
+  max-width: 130px;
 }
 
 .dst-link {
@@ -932,4 +932,16 @@
   .dst-cycle-actions { flex-direction: row; }
   .dst-actions-card { flex-direction: row; align-items: center; justify-content: space-between; }
   .dst-actions-card .btn { width: auto; white-space: nowrap; }
+}
+
+/* Botões principais no verde da marca (padrão novo) */
+.dst .btn--primary {
+  background: var(--brand-700);
+  border-color: var(--brand-700);
+  color: #fff;
+}
+
+.dst .btn--primary:hover:not(:disabled) {
+  background: var(--brand-900);
+  border-color: var(--brand-900);
 }

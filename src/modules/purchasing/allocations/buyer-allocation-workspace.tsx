@@ -179,6 +179,8 @@ export function BuyerAllocationWorkspace({
   const [supplierQuery, setSupplierQuery] = useState("");
   const [expandedProductIds, setExpandedProductIds] = useState<Set<string>>(() => new Set());
   const [showFulfilledCuts, setShowFulfilledCuts] = useState(false);
+  // Texto digitado no campo de quantidade enquanto ele está em foco (fora do foco mostra "5" em vez de "5.00").
+  const [qtyDraft, setQtyDraft] = useState<{ productId: string; text: string } | null>(null);
 
   // Modais de fechamento / reabertura do ciclo geral
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -1293,7 +1295,7 @@ export function BuyerAllocationWorkspace({
                 >
                   {cycles.map((c) => (
                     <option key={c} value={c}>
-                      Compra {new Date(c + "T12:00:00").toLocaleDateString("pt-BR")}
+                      {new Date(c + "T12:00:00").toLocaleDateString("pt-BR")}
                     </option>
                   ))}
                 </select>
@@ -1387,7 +1389,7 @@ export function BuyerAllocationWorkspace({
               })}
             </div>
 
-            {unassignedPurchasedProducts.length > 0 || unassignedOpportunityProducts.length > 0 ? (
+            {hasExplicitStoreSelection && (unassignedPurchasedProducts.length > 0 || unassignedOpportunityProducts.length > 0) ? (
               <button
                 type="button"
                 className="dst-callout dst-callout--danger dst-callout--button"
@@ -1803,9 +1805,22 @@ export function BuyerAllocationWorkspace({
                                   className="alloc-stepper-input dst-stepper__input"
                                   aria-label={`Quantidade destinada de ${prod.productName}`}
                                   disabled={isClosed || (isUnpurchasedWithOrders && !hasDestinedInActiveStore)}
-                                  value={storeData.destinedQuantity}
-                                  onFocus={(e) => e.currentTarget.select()}
-                                  onChange={(e) => handleQuantityChange(prod.productId, e.target.value)}
+                                  value={
+                                    qtyDraft?.productId === prod.productId
+                                      ? qtyDraft.text
+                                      : formatQty(storeData.destinedQuantity)
+                                  }
+                                  onFocus={(e) => {
+                                    const current = formatQty(storeData.destinedQuantity);
+                                    setQtyDraft({ productId: prod.productId, text: current === "0" ? "" : current });
+                                    const input = e.currentTarget;
+                                    requestAnimationFrame(() => input.select());
+                                  }}
+                                  onBlur={() => setQtyDraft(null)}
+                                  onChange={(e) => {
+                                    setQtyDraft({ productId: prod.productId, text: e.target.value });
+                                    handleQuantityChange(prod.productId, e.target.value);
+                                  }}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
