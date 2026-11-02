@@ -15,6 +15,10 @@ export type ConferenceItem = {
   checkedAt: string | null;
   checkedBy: string | null;
   checkerName?: string | null;
+  /** Item que chegou sem constar no pedido e foi lançado pela loja na conferência. */
+  addedOutsideOrder?: boolean;
+  addedAt?: string | null;
+  addedByName?: string | null;
 };
 
 /**

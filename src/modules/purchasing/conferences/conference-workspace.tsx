@@ -16,9 +16,33 @@ import {
   finalizeConferenceAction,
   reconcileConferenceAction,
   cancelConferenceAction,
+  addOutsideOrderItemAction,
+  removeOutsideOrderItemAction,
   type ConferenceActionState,
   type ConferenceReconcileState,
+  type OutsideOrderItemState,
 } from "./actions";
+
+export type ConferenceProductOption = {
+  id: string;
+  erpCode: number;
+  name: string;
+  purchaseFormat?: string | null;
+  photoKey?: string | null;
+  photoUpdatedAt?: string | null;
+};
+
+type SavedEntry = { productId: string; receivedWeightKg: number | null; isUnreceived: boolean };
+
+function appendSavedEntry(payload: string, entry: SavedEntry): string {
+  const parsed = JSON.parse(payload) as SavedEntry[];
+  return JSON.stringify([...parsed, entry]);
+}
+
+function removeSavedEntry(payload: string, productId: string): string {
+  const parsed = JSON.parse(payload) as SavedEntry[];
+  return JSON.stringify(parsed.filter((entry) => entry.productId !== productId));
+}
 
 type FilterType = "ALL" | "PENDING" | "VERIFIED";
 
@@ -46,12 +70,15 @@ export function ConferenceWorkspace({
   cycles,
   hasOrderPermission,
   hasLossPermission,
+  products = [],
 }: {
   header: ConferenceHeader;
   initialItems: ConferenceItem[];
   cycles: string[];
   hasOrderPermission: boolean;
   hasLossPermission: boolean;
+  /** Catálogo ativo, para lançar itens recebidos fora do pedido. */
+  products?: ConferenceProductOption[];
 }) {
   const [items, setItems] = useState<ConferenceItem[]>(initialItems);
   const [filter, setFilter] = useState<FilterType>("ALL");
@@ -85,6 +112,20 @@ export function ConferenceWorkspace({
   const [finalizeState, finalizeAction, isFinalizing] = useActionState(finalizeConferenceAction, {});
   const [reconcileState, reconcileAction, isReconciling] = useActionState(reconcileConferenceAction, {});
   const [cancelState, cancelAction, isCancelling] = useActionState(cancelConferenceAction, {});
+  const [addOutsideState, addOutsideAction, isAddingOutside] = useActionState<OutsideOrderItemState, FormData>(
+    addOutsideOrderItemAction,
+    {}
+  );
+  const [removeOutsideState, removeOutsideAction, isRemovingOutside] = useActionState<OutsideOrderItemState, FormData>(
+    removeOutsideOrderItemAction,
+    {}
+  );
+
+  // Painel "+ Item recebido fora do pedido"
+  const [outsideOpen, setOutsideOpen] = useState(false);
+  const [outsideSearch, setOutsideSearch] = useState("");
+  const [outsideProductId, setOutsideProductId] = useState("");
+  const [outsideWeight, setOutsideWeight] = useState("");
 
   // Ratchet: só avança para uma versão mais nova após uma gravação confirmada pelo
   // servidor; nunca regride para a versão inicial do carregamento em caso de erro.
@@ -143,10 +184,44 @@ export function ConferenceWorkspace({
     }
   }
 
-  // Rastreia qual das quatro ações foi disparada mais recentemente, em vez de
+  // Inclusão/retirada de item fora do pedido: aplica só a mudança daquele item,
+  // preservando pesagens digitadas e ainda não salvas dos demais.
+  const [syncedAddOutsideState, setSyncedAddOutsideState] = useState(addOutsideState);
+  if (addOutsideState !== syncedAddOutsideState) {
+    setSyncedAddOutsideState(addOutsideState);
+    const added = addOutsideState.item;
+    if (addOutsideState.status === "success" && added && typeof addOutsideState.version === "number") {
+      setItems((prev) => [...prev.filter((it) => it.productId !== added.productId), added]);
+      setEditingWeights((prev) => ({ ...prev, [added.productId]: String(added.receivedWeightKg ?? "") }));
+      setVersion(addOutsideState.version);
+      setLastSavedPayload((prev) =>
+        appendSavedEntry(removeSavedEntry(prev, added.productId), {
+          productId: added.productId,
+          receivedWeightKg: added.receivedWeightKg,
+          isUnreceived: false,
+        })
+      );
+      setOutsideOpen(false);
+      setOutsideSearch("");
+      setOutsideProductId("");
+      setOutsideWeight("");
+    }
+  }
+  const [syncedRemoveOutsideState, setSyncedRemoveOutsideState] = useState(removeOutsideState);
+  if (removeOutsideState !== syncedRemoveOutsideState) {
+    setSyncedRemoveOutsideState(removeOutsideState);
+    const removedId = removeOutsideState.removedProductId;
+    if (removeOutsideState.status === "success" && removedId && typeof removeOutsideState.version === "number") {
+      setItems((prev) => prev.filter((it) => it.productId !== removedId));
+      setVersion(removeOutsideState.version);
+      setLastSavedPayload((prev) => removeSavedEntry(prev, removedId));
+    }
+  }
+
+  // Rastreia qual das ações foi disparada mais recentemente, em vez de
   // dar prioridade permanente a uma delas sempre que tiver mensagem (o que
   // esconderia o resultado de uma ação seguinte).
-  const [feedback, setFeedback] = useState<ConferenceActionState | ConferenceReconcileState>({});
+  const [feedback, setFeedback] = useState<ConferenceActionState | ConferenceReconcileState | OutsideOrderItemState>({});
   const [syncedFeedbackSaveState, setSyncedFeedbackSaveState] = useState(saveState);
   if (saveState !== syncedFeedbackSaveState) {
     setSyncedFeedbackSaveState(saveState);
@@ -167,9 +242,29 @@ export function ConferenceWorkspace({
     setSyncedFeedbackCancelState(cancelState);
     setFeedback(cancelState);
   }
+  const [syncedFeedbackAddState, setSyncedFeedbackAddState] = useState(addOutsideState);
+  if (addOutsideState !== syncedFeedbackAddState) {
+    setSyncedFeedbackAddState(addOutsideState);
+    setFeedback(addOutsideState);
+  }
+  const [syncedFeedbackRemoveState, setSyncedFeedbackRemoveState] = useState(removeOutsideState);
+  if (removeOutsideState !== syncedFeedbackRemoveState) {
+    setSyncedFeedbackRemoveState(removeOutsideState);
+    setFeedback(removeOutsideState);
+  }
 
   const isClosed = header.status === "FINALIZED" || header.status === "CANCELLED";
-  const isSyncing = isReconciling || isCancelling;
+  const isSyncing = isReconciling || isCancelling || isAddingOutside || isRemovingOutside;
+
+  // Produtos que podem ser lançados fora do pedido: os que ainda não estão na conferência.
+  const outsideCandidates = useMemo(() => {
+    const present = new Set(items.map((it) => it.productId));
+    const q = outsideSearch.trim().toLowerCase();
+    return products
+      .filter((p) => !present.has(p.id))
+      .filter((p) => !q || p.name.toLowerCase().includes(q) || String(p.erpCode).includes(q))
+      .slice(0, 30);
+  }, [products, items, outsideSearch]);
 
   // Progresso em tempo real
   const progress = useMemo(() => {
@@ -453,6 +548,110 @@ export function ConferenceWorkspace({
           />
         </div>
 
+        {/* Item recebido fora do pedido */}
+        {!isClosed && products.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            {!outsideOpen ? (
+              <button
+                type="button"
+                onClick={() => setOutsideOpen(true)}
+                disabled={isSyncing}
+                className="btn btn--secondary"
+                style={{ width: "100%", minHeight: 42, fontSize: 13, fontWeight: 800, color: "#075985", borderColor: "#7dd3fc", borderStyle: "dashed" }}
+              >
+                + Item recebido fora do pedido
+              </button>
+            ) : (
+              <form
+                action={addOutsideAction}
+                style={{ background: "#f0f9ff", border: "1px solid #7dd3fc", borderRadius: 10, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                <div>
+                  <strong style={{ fontSize: 14, color: "#075985" }}>Item recebido fora do pedido</strong>
+                  <p style={{ fontSize: 12, color: "#475569", margin: "2px 0 0" }}>
+                    Use quando chegar um produto que a loja não pediu. Ele fica registrado com o seu nome e aparece para o Gestor.
+                  </p>
+                </div>
+                <input type="hidden" name="storeId" value={header.storeId} />
+                <input type="hidden" name="conferenceId" value={header.id} />
+                <input type="hidden" name="version" value={version} />
+                <input type="hidden" name="productId" value={outsideProductId} />
+                <input
+                  type="search"
+                  value={outsideSearch}
+                  onChange={(e) => {
+                    setOutsideSearch(e.target.value);
+                    setOutsideProductId("");
+                  }}
+                  placeholder="🔍 Buscar produto por nome ou ERP..."
+                  aria-label="Buscar produto recebido fora do pedido"
+                  style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14, background: "#fff" }}
+                />
+                <div role="listbox" aria-label="Produtos" style={{ maxHeight: 200, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+                  {outsideCandidates.length === 0 ? (
+                    <span style={{ fontSize: 12, color: "#64748b" }}>Nenhum produto encontrado fora desta conferência.</span>
+                  ) : (
+                    outsideCandidates.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        role="option"
+                        aria-selected={outsideProductId === p.id}
+                        onClick={() => setOutsideProductId(p.id)}
+                        style={{
+                          textAlign: "left",
+                          padding: "8px 10px",
+                          borderRadius: 6,
+                          fontSize: 13,
+                          cursor: "pointer",
+                          background: outsideProductId === p.id ? "#004737" : "#fff",
+                          color: outsideProductId === p.id ? "#fff" : "#0f172a",
+                          border: outsideProductId === p.id ? "1px solid #004737" : "1px solid #e2e8f0",
+                          fontWeight: outsideProductId === p.id ? 800 : 600,
+                        }}
+                      >
+                        [{p.erpCode}] {p.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    name="receivedWeightKg"
+                    value={outsideWeight}
+                    onChange={(e) => setOutsideWeight(e.target.value)}
+                    placeholder="Peso recebido..."
+                    aria-label="Peso recebido em KG"
+                    style={{ width: 140, padding: "8px 10px", fontSize: 14, fontWeight: 700, borderRadius: 6, border: "1px solid #cbd5e1", textAlign: "right" }}
+                  />
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>KG</span>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="submit"
+                    disabled={isSyncing || !outsideProductId || !(Number(outsideWeight.replace(",", ".")) > 0)}
+                    className="btn"
+                    style={{ flex: 1, minHeight: 42, fontSize: 13, fontWeight: 800, background: "#075985" }}
+                  >
+                    {isAddingOutside ? "Lançando..." : "Lançar item fora do pedido"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOutsideOpen(false)}
+                    disabled={isAddingOutside}
+                    className="btn btn--secondary"
+                    style={{ minHeight: 42, fontSize: 13 }}
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+
         {/* Lista de Itens para Conferência */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {visibleItems.length === 0 ? (
@@ -518,9 +717,18 @@ export function ConferenceWorkspace({
                         )}
                       </div>
 
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                        Pedido original: <strong>{Number(item.orderedQuantity).toFixed(2)} {item.orderedUnit}</strong>
-                      </div>
+                      {item.addedOutsideOrder ? (
+                        <div style={{ fontSize: 12, color: "#075985", marginTop: 2 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, background: "#e0f2fe", padding: "2px 6px", borderRadius: 4 }}>
+                            Recebido fora do pedido
+                          </span>{" "}
+                          {item.addedByName ? <>lançado por <strong>{item.addedByName}</strong></> : null}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                          Pedido original: <strong>{Number(item.orderedQuantity).toFixed(2)} {item.orderedUnit}</strong>
+                        </div>
+                      )}
 
                       {/* Controles de Pesagem / Ações */}
                       {!isClosed && (
@@ -547,7 +755,22 @@ export function ConferenceWorkspace({
                             <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>KG</span>
                           </div>
 
-                          {!item.isUnreceived ? (
+                          {item.addedOutsideOrder ? (
+                            <form action={removeOutsideAction}>
+                              <input type="hidden" name="storeId" value={header.storeId} />
+                              <input type="hidden" name="conferenceId" value={header.id} />
+                              <input type="hidden" name="version" value={version} />
+                              <input type="hidden" name="productId" value={item.productId} />
+                              <button
+                                type="submit"
+                                disabled={isSyncing}
+                                className="btn btn--secondary"
+                                style={{ fontSize: 11, padding: "6px 10px", minHeight: 34, borderRadius: 6, fontWeight: 700, color: "#b91c1c", borderColor: "#fca5a5" }}
+                              >
+                                {isRemovingOutside ? "Retirando..." : "✕ Lançado por engano"}
+                              </button>
+                            </form>
+                          ) : !item.isUnreceived ? (
                             <button
                               type="button"
                               onClick={() => handleMarkUnreceived(item.productId)}

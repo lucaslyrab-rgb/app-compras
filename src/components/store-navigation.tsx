@@ -14,6 +14,16 @@ export type StoreNavProps = {
   showHubOnMount?: boolean;
 };
 
+/** Nome da tela atual da loja, exibido no topo de forma informativa. */
+export function currentStoreModule(pathname: string): { icon: string; label: string } {
+  if (pathname.startsWith("/conferencia")) return { icon: "⚖️", label: "Conferência de Entrega" };
+  if (pathname.startsWith("/perdas")) return { icon: "🗑️", label: "Lançamento de Perdas" };
+  if (pathname.startsWith("/historico")) return { icon: "📚", label: "Histórico de Pedidos" };
+  if (pathname.startsWith("/inicio")) return { icon: "☰", label: "Escolha um módulo" };
+  if (pathname.startsWith("/minha-senha")) return { icon: "🔑", label: "Minha Senha" };
+  return { icon: "📝", label: "Pedido da Loja" };
+}
+
 export function StoreNavigation({
   storeName,
   hasOrderPermission,
@@ -22,6 +32,7 @@ export function StoreNavigation({
   showHubOnMount = false,
 }: StoreNavProps) {
   const pathname = usePathname() ?? "";
+  const currentModule = currentStoreModule(pathname);
   const [hubOpen, setHubOpen] = useState(showHubOnMount);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -81,71 +92,34 @@ export function StoreNavigation({
             >
               ☰ Módulos
             </button>
+
+            {/* Indicador informativo (não clicável) da tela atual */}
+            <p
+              style={{
+                margin: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 13,
+                fontWeight: 800,
+                color: "#004737",
+                background: "#ecfdf5",
+                border: "1px solid #a7f3d0",
+                borderRadius: 999,
+                padding: "4px 12px",
+              }}
+            >
+              <span aria-hidden="true">{currentModule.icon}</span>
+              <span>
+                <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Tela atual: </span>
+                {currentModule.label}
+              </span>
+            </p>
           </div>
 
-          {/* Abas Rápidas no Topo */}
-          <nav style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }} aria-label="Navegação da loja">
-            {hasOrderPermission && (
-              <Link
-                href="/"
-                className="btn"
-                style={{
-                  fontSize: 12,
-                  padding: "6px 12px",
-                  minHeight: 34,
-                  borderRadius: 6,
-                  fontWeight: pathname === "/" ? 800 : 600,
-                  background: pathname === "/" ? "#004737" : "#f1f5f9",
-                  color: pathname === "/" ? "#ffffff" : "#334155",
-                  border: pathname === "/" ? "none" : "1px solid #cbd5e1",
-                  textDecoration: "none",
-                }}
-              >
-                📝 Pedido
-              </Link>
-            )}
-
-            {hasConferencePermission && (
-              <Link
-                href="/conferencia"
-                className="btn"
-                style={{
-                  fontSize: 12,
-                  padding: "6px 12px",
-                  minHeight: 34,
-                  borderRadius: 6,
-                  fontWeight: pathname.startsWith("/conferencia") ? 800 : 600,
-                  background: pathname.startsWith("/conferencia") ? "#004737" : "#f1f5f9",
-                  color: pathname.startsWith("/conferencia") ? "#ffffff" : "#334155",
-                  border: pathname.startsWith("/conferencia") ? "none" : "1px solid #cbd5e1",
-                  textDecoration: "none",
-                }}
-              >
-                ⚖️ Conferência
-              </Link>
-            )}
-
-            {hasLossPermission && (
-              <Link
-                href="/perdas"
-                className="btn"
-                style={{
-                  fontSize: 12,
-                  padding: "6px 12px",
-                  minHeight: 34,
-                  borderRadius: 6,
-                  fontWeight: pathname.startsWith("/perdas") ? 800 : 600,
-                  background: pathname.startsWith("/perdas") ? "#004737" : "#f1f5f9",
-                  color: pathname.startsWith("/perdas") ? "#ffffff" : "#334155",
-                  border: pathname.startsWith("/perdas") ? "none" : "1px solid #cbd5e1",
-                  textDecoration: "none",
-                }}
-              >
-                🗑️ Perdas
-              </Link>
-            )}
-
-            <div style={{ marginLeft: 8, display: "flex", gap: 6 }}>
+          {/* A troca de tela é feita somente pelo botão Módulos; aqui fica só o acesso a Senha e Sair. */}
+          <nav style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }} aria-label="Conta">
+            <div style={{ display: "flex", gap: 6 }}>
               <Link
                 href="/minha-senha"
                 className="btn btn--secondary"
@@ -300,7 +274,7 @@ export function StoreNavigation({
             </div>
 
             <p style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", margin: "4px 0 0" }}>
-              Navegue entre os módulos a qualquer momento pelo menu superior.
+              Para trocar de tela, use o botão “☰ Módulos” no topo.
             </p>
           </div>
         </div>

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   LossValidationError,
+  DuplicateLossError,
+  DUPLICATE_LOSS_WINDOW_SECONDS,
+  parseManagerCancellationReason,
   parseLossQuantity,
   aggregateLossTotals,
   calculateLossDashboardKpis,
@@ -189,5 +192,23 @@ describe("Domínio de Registro e Consulta de Perdas (Fase 5)", () => {
         "Outro",
       ]);
     });
+  });
+});
+
+describe("ajustes pós-Fase 6: duplicidade e exclusão pelo Gestor", () => {
+  it("mensagem de lançamento duplicado informa o horário e como confirmar", () => {
+    const error = new DuplicateLossError("18:57");
+    expect(error).toBeInstanceOf(Error);
+    expect(error.message).toContain("18:57");
+    expect(error.message).toContain("É outra perda: registrar mesmo assim");
+    expect(DUPLICATE_LOSS_WINDOW_SECONDS).toBe(120);
+  });
+
+  it("exige motivo de 3 a 300 caracteres para a exclusão pelo Gestor", () => {
+    expect(parseManagerCancellationReason("  lançamento duplicado  ")).toBe("lançamento duplicado");
+    expect(() => parseManagerCancellationReason("")).toThrow(LossValidationError);
+    expect(() => parseManagerCancellationReason("ab")).toThrow(LossValidationError);
+    expect(() => parseManagerCancellationReason(null)).toThrow(LossValidationError);
+    expect(() => parseManagerCancellationReason("x".repeat(301))).toThrow(LossValidationError);
   });
 });

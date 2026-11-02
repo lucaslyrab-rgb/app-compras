@@ -47,6 +47,7 @@ export default async function CompradorLossesPage({
       totalMatching={totalMatching}
       pageSize={pageSize}
       filters={filters}
+      canCancel={hasPermission(principal, "perdas:excluir")}
     />
   );
 }

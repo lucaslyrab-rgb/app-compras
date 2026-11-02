@@ -11,6 +11,7 @@ import {
   hasAttention,
   normalizeUnit,
   resolveFilters,
+  sumLossesAfter,
   weightMessage,
   weightRange,
   type ReconciliationSources,
@@ -102,8 +103,8 @@ describe("situação pedido × destinação", () => {
       alloc({ supplierId: "c", supplierName: "C", destinedQuantity: 1, purchaseFormat: "cx" }),
     ]);
     expect(groups).toEqual([
-      { unit: "CX", quantity: 3, suppliers: ["A", "C"], supplierIds: ["a", "c"] },
-      { unit: "KG", quantity: 30, suppliers: ["B"], supplierIds: ["b"] },
+      { unit: "CX", quantity: 3, suppliers: ["A", "C"], supplierIds: ["a", "c"], destinedBy: [] },
+      { unit: "KG", quantity: 30, suppliers: ["B"], supplierIds: ["b"], destinedBy: [] },
     ]);
     expect(cutSituation(3, "CX", groups).situation).toBe("NOT_COMPARABLE");
   });
@@ -330,6 +331,7 @@ describe("filtros, indicadores e período", () => {
       notReceived: 0,
       receivedNotDestined: 0,
       outOfConference: 1,
+      receivedOutsideOrder: 0,
       pendingConferences: 0,
     });
   });
@@ -355,5 +357,63 @@ describe("filtros, indicadores e período", () => {
     const filters = resolveFilters({ situation: "XPTO", highlight: "NOPE" }, "2026-10-29");
     expect(filters.situation).toBeUndefined();
     expect(filters.highlight).toBeUndefined();
+  });
+});
+
+describe("ajustes pós-Fase 6: fora do pedido, quem destinou e perdas seguintes", () => {
+  it("item lançado fora do pedido sem destinação: recebido fora do pedido e sem destinação", () => {
+    const [line] = buildReconciliationLines(
+      sources({
+        conferenceItems: [
+          {
+            cycleDate: CYCLE, storeId: STORE, productId: "p-gengibre", receivedWeightKg: 12, isUnreceived: false,
+            removedFromOrder: false, addedOutsideOrder: true, addedByName: "Loja Balneário",
+          },
+        ],
+      }),
+    );
+    expect(line.order).toBeNull();
+    expect(line.conference.item).toMatchObject({ addedOutsideOrder: true, addedByName: "Loja Balneário" });
+    expect(line.highlights).toEqual(["RECEIVED_NOT_DESTINED", "RECEIVED_OUTSIDE_ORDER"]);
+    expect(buildKpis([line]).receivedOutsideOrder).toBe(1);
+  });
+
+  it("adicional do comprador lançado pela loja: compara o peso e mostra quem destinou", () => {
+    const [line] = buildReconciliationLines(
+      sources({
+        allocations: [alloc({ productId: "p-gengibre", destinedQuantity: 2, conversionFactorKg: 18, destinedBy: "Christian" })],
+        conferenceItems: [
+          {
+            cycleDate: CYCLE, storeId: STORE, productId: "p-gengibre", receivedWeightKg: 36, isUnreceived: false,
+            removedFromOrder: false, addedOutsideOrder: true, addedByName: "Loja",
+          },
+        ],
+      }),
+    );
+    expect(line.cut.situation).toBe("ADDITIONAL");
+    expect(line.destinations[0].destinedBy).toEqual(["Christian"]);
+    expect(line.weight?.range).toBe("OK");
+    expect(line.highlights).toEqual(["RECEIVED_OUTSIDE_ORDER"]);
+  });
+
+  it("soma as perdas do produto na loja do dia do ciclo até 3 dias depois", () => {
+    const losses = [
+      { storeId: STORE, productId: "p-gengibre", date: "2026-10-26", quantity: 9, unit: "KG" },
+      { storeId: STORE, productId: "p-gengibre", date: "2026-10-27", quantity: 5, unit: "KG" },
+      { storeId: STORE, productId: "p-gengibre", date: "2026-10-30", quantity: 15, unit: "KG" },
+      { storeId: STORE, productId: "p-gengibre", date: "2026-10-31", quantity: 7, unit: "KG" },
+      { storeId: STORE, productId: "p-gengibre", date: "2026-10-28", quantity: 2, unit: "UND" },
+    ];
+    expect(sumLossesAfter(losses, CYCLE)).toEqual({ kg: 20, und: 2, untilDate: "2026-10-30" });
+    expect(sumLossesAfter([], CYCLE)).toBeNull();
+    expect(sumLossesAfter([losses[0]], CYCLE)).toBeNull();
+
+    const [line] = buildReconciliationLines(
+      sources({
+        allocations: [alloc({ productId: "p-gengibre", destinedQuantity: 1 })],
+        losses: [...losses, { storeId: STORE_B, productId: "p-gengibre", date: "2026-10-28", quantity: 99, unit: "KG" }],
+      }),
+    );
+    expect(line.lossesAfter).toEqual({ kg: 20, und: 2, untilDate: "2026-10-30" });
   });
 });

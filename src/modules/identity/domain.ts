@@ -13,6 +13,7 @@ export const PERMISSIONS = [
   "compras:fornecedores",
   "compras:destinacao",
   "perdas:consultar",
+  "perdas:excluir",
   "fechamento:consultar",
   "gestor:produtos",
   "gestor:precificacao",
@@ -87,11 +88,11 @@ export function canToggleSupplierStatus(principal: Principal) {
 }
 
 /**
- * Permissões que só podem ser atribuídas a usuários sem vínculo de loja (Fase 6).
- * O Fechamento integrado mostra dados de todas as lojas e não pode ser combinado
- * com as permissões operacionais de Loja.
+ * Permissões que só podem ser atribuídas a usuários sem vínculo de loja.
+ * Fechamento integrado e exclusão de perdas pelo Gestor atuam sobre todas as
+ * lojas e não podem ser combinados com as permissões operacionais de Loja.
  */
-export const NON_STORE_ONLY_PERMISSIONS: readonly Permission[] = ["fechamento:consultar"] as const;
+export const NON_STORE_ONLY_PERMISSIONS: readonly Permission[] = ["fechamento:consultar", "perdas:excluir"] as const;
 
 export function canViewReconciliation(principal: Principal) {
   return hasPermission(principal, "fechamento:consultar");
@@ -133,6 +134,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "gestor:configuracoes",
     "gestor:usuarios",
     "fechamento:consultar",
+    "perdas:excluir",
   ],
 };
 
@@ -165,6 +167,7 @@ export const PERMISSION_GROUPS = [
       { id: "gestor:configuracoes", label: "Configurações" },
       { id: "gestor:usuarios", label: "Usuários" },
       { id: "perdas:consultar", label: "Consulta de perdas" },
+      { id: "perdas:excluir", label: "Excluir lançamentos de perda" },
     ],
   },
   {
@@ -259,7 +262,7 @@ export function validateStoreUserInvariant(
     if (permissions.some((p) => NON_STORE_ONLY_PERMISSIONS.includes(p))) {
       return {
         valid: false,
-        reason: "A permissão Fechamento integrado não pode ser combinada com permissões de Loja.",
+        reason: "As permissões Fechamento integrado e Excluir lançamentos de perda não podem ser combinadas com permissões de Loja.",
       };
     }
     if (!normalizedStoreId) {

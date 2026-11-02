@@ -4,6 +4,7 @@ import {
   CUT_SITUATION_LABELS,
   HIGHLIGHTS,
   HIGHLIGHT_LABELS,
+  LOSS_WINDOW_DAYS,
   WEIGHT_RANGE_PERCENT,
   hasAttention,
   weightMessage,
@@ -62,6 +63,7 @@ const HIGHLIGHT_CLASS: Record<Highlight, string> = {
   NOT_RECEIVED: "rec-tag--red",
   RECEIVED_NOT_DESTINED: "rec-tag--blue",
   DESTINED_OUT_OF_CONFERENCE: "rec-tag--blue",
+  RECEIVED_OUTSIDE_ORDER: "rec-tag--blue",
   CONFERENCE_PENDING: "rec-tag--gray",
 };
 
@@ -94,6 +96,7 @@ function DestinationCell({ line }: { line: ReconciliationLine }) {
         <div key={d.unit}>
           {qty(d.quantity)} {d.unit}
           <span className="rec-note">{d.suppliers.join(", ")}</span>
+          {d.destinedBy.length > 0 ? <span className="rec-note">por {d.destinedBy.join(", ")}</span> : null}
         </div>
       ))}
     </>
@@ -138,7 +141,10 @@ function ConferenceCell({ line }: { line: ReconciliationLine }) {
   return (
     <>
       <span className={`rec-weight${line.weight ? ` rec-weight--${line.weight.range}` : ""}`}>{qty(item.weightKg)} kg</span>
-      {item.removedFromOrder ? <span className="rec-note">removido do pedido vigente</span> : null}
+      {item.addedOutsideOrder ? (
+        <span className="rec-note">lançado pela loja fora do pedido{item.addedByName ? ` (${item.addedByName})` : ""}</span>
+      ) : null}
+      {item.removedFromOrder && !item.addedOutsideOrder ? <span className="rec-note">removido do pedido vigente</span> : null}
       {revisionNote}
     </>
   );
@@ -153,6 +159,18 @@ function DifferenceCell({ line }: { line: ReconciliationLine }) {
         {signed(line.weight.differenceKg)} kg ({pct(line.weight.differencePercent)})
       </span>
       {message ? <span className="rec-message">{message}</span> : null}
+    </>
+  );
+}
+
+function LossesCell({ line }: { line: ReconciliationLine }) {
+  const l = line.lossesAfter;
+  if (!l) return <span className="rec-muted">—</span>;
+  const parts = [l.kg > 0 ? `${qty(l.kg)} kg` : null, l.und > 0 ? `${qty(l.und)} und` : null].filter(Boolean);
+  return (
+    <>
+      <span className="rec-weight rec-weight--OUT_OF_RANGE">{parts.join(" + ")}</span>
+      <span className="rec-note">até {cycleLabel(l.untilDate)}</span>
     </>
   );
 }
@@ -288,6 +306,7 @@ export function ReconciliationWorkspace({
             <Kpi label="Pesagem fora da faixa" value={kpis.weightOutOfRange} hint={`Mais de ${WEIGHT_RANGE_PERCENT}% acima ou abaixo`} tone="red" href={highlightHref("WEIGHT_OUT_OF_RANGE")} active={filters.highlight === "WEIGHT_OUT_OF_RANGE"} />
             <Kpi label="Não recebidos" value={kpis.notReceived} hint="Destinados e marcados como não recebidos" tone="red" href={highlightHref("NOT_RECEIVED")} active={filters.highlight === "NOT_RECEIVED"} />
             <Kpi label="Fora da conferência" value={kpis.outOfConference} hint="Destinados sem item para pesar" tone="blue" href={highlightHref("DESTINED_OUT_OF_CONFERENCE")} active={filters.highlight === "DESTINED_OUT_OF_CONFERENCE"} />
+            <Kpi label="Recebidos fora do pedido" value={kpis.receivedOutsideOrder} hint="Lançados pela loja na conferência" tone="blue" href={highlightHref("RECEIVED_OUTSIDE_ORDER")} active={filters.highlight === "RECEIVED_OUTSIDE_ORDER"} />
             <Kpi label="Recebidos sem destinação" value={kpis.receivedNotDestined} hint="Pesados sem destinação no ciclo" tone="blue" href={highlightHref("RECEIVED_NOT_DESTINED")} active={filters.highlight === "RECEIVED_NOT_DESTINED"} />
             <Kpi label="Conferências pendentes" value={kpis.pendingConferences} hint="Loja × ciclo ainda não finalizados" tone="gray" href={highlightHref("CONFERENCE_PENDING")} active={filters.highlight === "CONFERENCE_PENDING"} />
           </section>
@@ -322,6 +341,7 @@ export function ReconciliationWorkspace({
                     <th className="num">Esperado</th>
                     <th className="num">Conferido</th>
                     <th className="num">Diferença</th>
+                    <th className="num">Perdas</th>
                     <th>Destaques</th>
                   </tr>
                 </thead>
@@ -341,6 +361,7 @@ export function ReconciliationWorkspace({
                         <td className="num"><ExpectedCell line={line} /></td>
                         <td className="num"><ConferenceCell line={line} /></td>
                         <td className="num"><DifferenceCell line={line} /></td>
+                        <td className="num"><LossesCell line={line} /></td>
                         <td><HighlightTags line={line} /></td>
                       </tr>
                     );
@@ -363,7 +384,8 @@ export function ReconciliationWorkspace({
                         <div><dt>Destinado</dt><dd><DestinationCell line={line} /></dd></div>
                         <div><dt>Esperado</dt><dd><ExpectedCell line={line} /></dd></div>
                         <div><dt>Conferido</dt><dd><ConferenceCell line={line} /></dd></div>
-                        <div style={{ gridColumn: "1 / -1" }}><dt>Diferença</dt><dd><DifferenceCell line={line} /></dd></div>
+                        <div><dt>Diferença</dt><dd><DifferenceCell line={line} /></dd></div>
+                        <div><dt>Perdas em {LOSS_WINDOW_DAYS} dias</dt><dd><LossesCell line={line} /></dd></div>
                       </dl>
                       {line.highlights.some((h) => h !== "WEIGHT_OUT_OF_RANGE") ? (
                         <div style={{ marginTop: 8 }}><HighlightTags line={line} /></div>

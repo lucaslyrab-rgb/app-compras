@@ -22,11 +22,21 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0021", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0022", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 21 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 22 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
+  });
+
+  it("mantém a 0022 aditiva: permissão de exclusão de perdas e itens fora do pedido", async () => {
+    const migration = await readFile("migrations/0022_losses_manager_cancel_and_conference_outside_items.sql", "utf8");
+    expect(migration).toContain("'perdas:excluir'");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS added_outside_order");
+    expect(migration).toContain("WHERE role = 'GESTOR'");
+    expect(migration).not.toMatch(/CREATE TABLE|DROP COLUMN|DROP TABLE|DELETE FROM/i);
+    const updates = migration.match(/^UPDATE\s+(\w+)/gim) ?? [];
+    expect(updates.map((u) => u.split(/\s+/)[1].toLowerCase())).toEqual(["users"]);
   });
 
   it("mantém a 0021 restrita à permissão do Fechamento integrado", async () => {

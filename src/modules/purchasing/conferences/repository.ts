@@ -1,3 +1,4 @@
+import type postgres from "postgres";
 import { database } from "@/db/client";
 import {
   ConferenceValidationError,
@@ -87,10 +88,14 @@ export async function getStoreConference(
         ci.is_unreceived,
         ci.checked_at::text AS checked_at,
         ci.checked_by,
-        u.name AS checker_name
+        u.name AS checker_name,
+        ci.added_outside_order,
+        ci.added_at::text AS added_at,
+        ua.name AS added_by_name
       FROM store_delivery_conference_items ci
       INNER JOIN products p ON p.id = ci.product_id
       LEFT JOIN users u ON u.id = ci.checked_by
+      LEFT JOIN users ua ON ua.id = ci.added_by
       WHERE ci.conference_id = ${existing.id}::uuid
         AND ci.removed_from_order = false
       ORDER BY p.name ASC
@@ -133,6 +138,9 @@ export async function getStoreConference(
         checkedAt: it.checked_at,
         checkedBy: it.checked_by,
         checkerName: it.checker_name,
+        addedOutsideOrder: Boolean(it.added_outside_order),
+        addedAt: it.added_at ?? null,
+        addedByName: it.added_by_name ?? null,
       })),
     };
   }
@@ -263,6 +271,9 @@ export async function getStoreConference(
         checkedAt: ci.checked_at,
         checkedBy: ci.checked_by,
         checkerName: null,
+        addedOutsideOrder: false,
+        addedAt: null,
+        addedByName: null,
       });
     }
 
@@ -745,7 +756,7 @@ export async function reconcileConferenceWithCurrentOrder(params: {
     const newProductIds = new Set(newOrderItems.map((it) => it.product_id as string));
 
     const existingItems = await tx`
-      SELECT id, product_id, removed_from_order
+      SELECT id, product_id, removed_from_order, added_outside_order
       FROM store_delivery_conference_items
       WHERE conference_id = ${params.conferenceId}::uuid
     `;
@@ -773,7 +784,11 @@ export async function reconcileConferenceWithCurrentOrder(params: {
       } else {
         await tx`
           UPDATE store_delivery_conference_items
-          SET ordered_quantity = ${item.quantity}, ordered_unit = ${unit}, removed_from_order = false, updated_at = now()
+          SET ordered_quantity = ${item.quantity}, ordered_unit = ${unit}, removed_from_order = false,
+              -- Item lançado fora do pedido que passou a constar na revisão vigente
+              -- vira item do pedido (added_by é mantido como histórico).
+              added_outside_order = false, added_at = NULL,
+              updated_at = now()
           WHERE id = ${existingItem.id}::uuid
         `;
         if (existingItem.removed_from_order) updated += 1;
@@ -781,6 +796,8 @@ export async function reconcileConferenceWithCurrentOrder(params: {
     }
 
     for (const existingItem of existingItems) {
+      // Itens recebidos fora do pedido não dependem do pedido: a sincronização os preserva.
+      if (existingItem.added_outside_order) continue;
       if (!newProductIds.has(existingItem.product_id as string) && !existingItem.removed_from_order) {
         await tx`
           UPDATE store_delivery_conference_items
@@ -931,4 +948,213 @@ export async function cancelConferenceWithoutReplacementOrder(params: {
   });
 
   return getStoreConference(params.storeId, cycleDate);
+}
+
+async function lockOpenConference(
+  tx: postgres.TransactionSql,
+  params: { conferenceId: string; storeId: string; expectedVersion: number },
+) {
+  const [conf] = await tx`
+    SELECT id, status, version, purchase_cycle_date::text AS purchase_cycle_date
+    FROM store_delivery_conferences
+    WHERE id = ${params.conferenceId}::uuid
+      AND store_id = ${params.storeId}::uuid
+    FOR UPDATE
+  `;
+  if (!conf) throw new ConferenceValidationError("Conferência não encontrada para esta loja.");
+  if (conf.status !== "IN_PROGRESS") {
+    throw new ConferenceValidationError(
+      conf.status === "CANCELLED"
+        ? "Esta conferência foi cancelada e não permite alterações."
+        : "Esta conferência já está finalizada e não permite alterações."
+    );
+  }
+  if (conf.version !== params.expectedVersion) {
+    throw new ConferenceValidationError(
+      "Esta conferência foi atualizada por outra sessão desde o seu último carregamento. Atualize a página antes de continuar."
+    );
+  }
+  return conf as { id: string; status: string; version: number; purchase_cycle_date: string };
+}
+
+async function refreshConferenceCounters(
+  tx: postgres.TransactionSql,
+  conferenceId: string,
+): Promise<number> {
+  const [{ totalCount, verifiedCount }] = await tx<{ totalCount: number; verifiedCount: number }[]>`
+    SELECT
+      count(*) FILTER (WHERE removed_from_order = false)::int AS "totalCount",
+      count(*) FILTER (
+        WHERE removed_from_order = false
+          AND (is_unreceived = true OR (received_weight_kg IS NOT NULL AND received_weight_kg > 0))
+      )::int AS "verifiedCount"
+    FROM store_delivery_conference_items
+    WHERE conference_id = ${conferenceId}::uuid
+  `;
+  const [{ version }] = await tx<{ version: number }[]>`
+    UPDATE store_delivery_conferences
+    SET total_items = ${totalCount}, verified_items = ${verifiedCount}, version = version + 1, updated_at = now()
+    WHERE id = ${conferenceId}::uuid
+    RETURNING version
+  `;
+  return version;
+}
+
+/**
+ * Lança na conferência um produto que chegou sem constar no pedido da loja
+ * (enviado pelo comprador por conta própria ou por erro do fornecedor). O item
+ * entra já pesado, com quantidade pedida 0 e marcado com quem lançou e quando.
+ */
+export async function addOutsideOrderItem(params: {
+  conferenceId: string;
+  storeId: string;
+  userId: string;
+  expectedVersion: number;
+  productId: string;
+  receivedWeightKg: number;
+}): Promise<{ item: ConferenceItem; version: number }> {
+  const { sql } = database();
+  if (!(params.receivedWeightKg > 0)) {
+    throw new ConferenceValidationError("Informe o peso recebido (maior que zero) do item fora do pedido.");
+  }
+  validateReceivedWeight(params.receivedWeightKg);
+
+  return await sql.begin(async (tx) => {
+    await lockOpenConference(tx, params);
+
+    const [product] = await tx`
+      SELECT id, erp_code, name, purchase_format, unit, photo_key, photo_updated_at::text AS photo_updated_at
+      FROM products
+      WHERE id = ${params.productId}::uuid AND active = true
+    `;
+    if (!product) throw new ConferenceValidationError("Produto não encontrado no catálogo ativo.");
+
+    const [existing] = await tx`
+      SELECT id, removed_from_order
+      FROM store_delivery_conference_items
+      WHERE conference_id = ${params.conferenceId}::uuid AND product_id = ${params.productId}::uuid
+    `;
+    if (existing && !existing.removed_from_order) {
+      throw new ConferenceValidationError(
+        `${product.name} já está nesta conferência. Pese o item na lista em vez de lançá-lo de novo.`
+      );
+    }
+
+    const unit = product.purchase_format || product.unit || "CX";
+    const [row] = existing
+      ? await tx`
+          UPDATE store_delivery_conference_items
+          SET ordered_quantity = 0, ordered_unit = ${unit}, removed_from_order = false,
+              added_outside_order = true, added_by = ${params.userId}::uuid, added_at = now(),
+              received_weight_kg = ${params.receivedWeightKg}, is_unreceived = false,
+              checked_at = now(), checked_by = ${params.userId}::uuid, updated_at = now()
+          WHERE id = ${existing.id}::uuid
+          RETURNING id, added_at::text AS added_at, checked_at::text AS checked_at
+        `
+      : await tx`
+          INSERT INTO store_delivery_conference_items (
+            conference_id, product_id, ordered_quantity, ordered_unit, received_weight_kg, is_unreceived,
+            checked_at, checked_by, added_outside_order, added_by, added_at
+          ) VALUES (
+            ${params.conferenceId}::uuid, ${params.productId}::uuid, 0, ${unit}, ${params.receivedWeightKg}, false,
+            now(), ${params.userId}::uuid, true, ${params.userId}::uuid, now()
+          )
+          RETURNING id, added_at::text AS added_at, checked_at::text AS checked_at
+        `;
+
+    const version = await refreshConferenceCounters(tx, params.conferenceId);
+
+    const [user] = await tx`SELECT name FROM users WHERE id = ${params.userId}::uuid`;
+
+    await tx`
+      INSERT INTO audit_events (id, actor_id, action, entity_type, entity_id, metadata, created_at)
+      VALUES (
+        gen_random_uuid(), ${params.userId}::uuid, 'store_delivery_conference.add_outside_order_item',
+        'store_delivery_conferences', ${params.conferenceId},
+        ${JSON.stringify({
+          storeId: params.storeId,
+          productId: params.productId,
+          erpCode: product.erp_code,
+          productName: product.name,
+          receivedWeightKg: params.receivedWeightKg,
+        })}::jsonb,
+        now()
+      )
+    `;
+
+    return {
+      version,
+      item: {
+        id: row.id,
+        conferenceId: params.conferenceId,
+        productId: params.productId,
+        erpCode: product.erp_code,
+        productName: product.name,
+        photoKey: product.photo_key,
+        photoUpdatedAt: product.photo_updated_at,
+        orderedQuantity: 0,
+        orderedUnit: unit,
+        receivedWeightKg: params.receivedWeightKg,
+        isUnreceived: false,
+        checkedAt: row.checked_at,
+        checkedBy: params.userId,
+        checkerName: user?.name ?? null,
+        addedOutsideOrder: true,
+        addedAt: row.added_at,
+        addedByName: user?.name ?? null,
+      },
+    };
+  });
+}
+
+/**
+ * Retira da conferência um item lançado fora do pedido por engano. Não apaga o
+ * registro: ele fica marcado como retirado, com auditoria.
+ */
+export async function removeOutsideOrderItem(params: {
+  conferenceId: string;
+  storeId: string;
+  userId: string;
+  expectedVersion: number;
+  productId: string;
+}): Promise<{ version: number }> {
+  const { sql } = database();
+
+  return await sql.begin(async (tx) => {
+    await lockOpenConference(tx, params);
+
+    const [item] = await tx`
+      SELECT id, added_outside_order, removed_from_order
+      FROM store_delivery_conference_items
+      WHERE conference_id = ${params.conferenceId}::uuid AND product_id = ${params.productId}::uuid
+    `;
+    if (!item || item.removed_from_order) {
+      throw new ConferenceValidationError("Item não encontrado nesta conferência.");
+    }
+    if (!item.added_outside_order) {
+      throw new ConferenceValidationError(
+        "Somente itens lançados fora do pedido podem ser retirados. Para itens do pedido, use “Não recebido”."
+      );
+    }
+
+    await tx`
+      UPDATE store_delivery_conference_items
+      SET removed_from_order = true, updated_at = now()
+      WHERE id = ${item.id}::uuid
+    `;
+
+    const version = await refreshConferenceCounters(tx, params.conferenceId);
+
+    await tx`
+      INSERT INTO audit_events (id, actor_id, action, entity_type, entity_id, metadata, created_at)
+      VALUES (
+        gen_random_uuid(), ${params.userId}::uuid, 'store_delivery_conference.remove_outside_order_item',
+        'store_delivery_conferences', ${params.conferenceId},
+        ${JSON.stringify({ storeId: params.storeId, productId: params.productId })}::jsonb,
+        now()
+      )
+    `;
+
+    return { version };
+  });
 }
