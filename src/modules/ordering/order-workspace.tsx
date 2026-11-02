@@ -206,7 +206,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
           {activeValidationBanner ? <div className="sticky-actions__validation-error" role="alert">{activeValidationBanner}</div> : null}
           <div className="sticky-actions__inner">
             <button className="btn btn--secondary" type="button" onClick={() => { setValues({}); setValidationBanner(null); }}>Limpar</button>
-            <button className="btn" type="submit" disabled={pending || submitting} onClick={handleValidateBeforeAction}>{pending ? "Salvando…" : "Salvar rascunho"}</button>
+            <button className="btn btn--outline" type="submit" disabled={pending || submitting} onClick={handleValidateBeforeAction}>{pending ? "Salvando…" : "Salvar rascunho"}</button>
             <button className="btn" formAction={submitAction} disabled={pending || submitting} onClick={handleValidateBeforeAction}>{submitting ? "Enviando…" : "Enviar pedido"}</button>
           </div>
         </footer>

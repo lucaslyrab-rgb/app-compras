@@ -335,7 +335,7 @@ export function ConferenceWorkspace({
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", paddingBottom: 100 }}>
+    <div style={{ minHeight: "100vh", background: "#f4f6f8", paddingBottom: 100 }}>
       <StoreNavigation
         storeName={header.storeName}
         hasOrderPermission={hasOrderPermission}
@@ -355,9 +355,9 @@ export function ConferenceWorkspace({
               marginBottom: 14,
               fontSize: 13,
               fontWeight: 700,
-              background: "#fef3c7",
-              color: "#92400e",
-              border: "1px solid #f59e0b",
+              background: "#fff1dc",
+              color: "#8a3b00",
+              border: "1px solid #ea8a0b",
               display: "flex",
               flexDirection: "column",
               gap: 8,
@@ -375,7 +375,7 @@ export function ConferenceWorkspace({
                 disabled={isSyncing}
                 onClick={confirmDiscardIfDirty}
                 className="btn"
-                style={{ fontSize: 12, padding: "6px 14px", minHeight: 36, borderRadius: 6, fontWeight: 800, background: "#92400e", alignSelf: "flex-start" }}
+                style={{ fontSize: 12, padding: "6px 14px", minHeight: 36, borderRadius: 6, fontWeight: 800, background: "#8a3b00", alignSelf: "flex-start" }}
               >
                 {isReconciling ? "Sincronizando..." : "🔄 Sincronizar com pedido vigente"}
               </button>
@@ -397,9 +397,9 @@ export function ConferenceWorkspace({
               marginBottom: 14,
               fontSize: 13,
               fontWeight: 700,
-              background: "#fee2e2",
-              color: "#991b1b",
-              border: "1px solid #f87171",
+              background: "#fdecee",
+              color: "#a30d25",
+              border: "1px solid #c8102e",
               display: "flex",
               flexDirection: "column",
               gap: 8,
@@ -417,7 +417,7 @@ export function ConferenceWorkspace({
                 disabled={isSyncing}
                 onClick={confirmDiscardIfDirty}
                 className="btn"
-                style={{ fontSize: 12, padding: "6px 14px", minHeight: 36, borderRadius: 6, fontWeight: 800, background: "#991b1b", alignSelf: "flex-start" }}
+                style={{ fontSize: 12, padding: "6px 14px", minHeight: 36, borderRadius: 6, fontWeight: 800, background: "#a30d25", alignSelf: "flex-start" }}
               >
                 {isCancelling ? "Cancelando..." : "✕ Cancelar esta conferência"}
               </button>
@@ -435,7 +435,7 @@ export function ConferenceWorkspace({
             background: "#ffffff",
             borderRadius: 12,
             padding: 16,
-            border: "1px solid #e2e8f0",
+            border: "1px solid #dce3ea",
             marginBottom: 14,
             boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
           }}
@@ -448,34 +448,34 @@ export function ConferenceWorkspace({
                   fontWeight: 800,
                   padding: "3px 8px",
                   borderRadius: 4,
-                  background: header.status === "FINALIZED" ? "#dcfce7" : header.status === "CANCELLED" ? "#fee2e2" : "#e0f2fe",
-                  color: header.status === "FINALIZED" ? "#166534" : header.status === "CANCELLED" ? "#991b1b" : "#0369a1",
+                  background: header.status === "FINALIZED" ? "#dcfce7" : header.status === "CANCELLED" ? "#fdecee" : "#e7f0fb",
+                  color: header.status === "FINALIZED" ? "#14532d" : header.status === "CANCELLED" ? "#a30d25" : "#0b4a8b",
                   letterSpacing: "0.5px",
                 }}
               >
                 {header.status === "FINALIZED" ? "CONFERÊNCIA FINALIZADA" : header.status === "CANCELLED" ? "CONFERÊNCIA CANCELADA" : "EM ANDAMENTO"}
               </span>
-              <h2 style={{ fontSize: 18, fontWeight: 800, margin: "6px 0 2px", color: "#0f172a" }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, margin: "6px 0 2px", color: "#0f1f2e" }}>
                 Ciclo {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(new Date(`${header.purchaseCycleDate}T12:00:00`))} • Chegada
               </h2>
-              <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+              <p style={{ fontSize: 12, color: "#4b5b6b", margin: 0 }}>
                 {progress.verified} de {progress.total} itens conferidos ({progress.pending} pendentes de peso)
               </p>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 24, fontWeight: 900, color: progress.percent === 100 ? "#006b4f" : "#0284c7" }}>
+              <div style={{ fontSize: 24, fontWeight: 900, color: progress.percent === 100 ? "#006b4f" : "#006b4f" }}>
                 {progress.percent}%
               </div>
             </div>
           </div>
 
           {/* Barra de Progresso */}
-          <div style={{ height: 8, background: "#f1f5f9", borderRadius: 4, overflow: "hidden", marginTop: 12 }}>
+          <div style={{ height: 8, background: "#eef2f5", borderRadius: 4, overflow: "hidden", marginTop: 12 }}>
             <div
               style={{
                 width: `${progress.percent}%`,
                 height: "100%",
-                background: progress.percent === 100 ? "#006b4f" : "#0284c7",
+                background: progress.percent === 100 ? "#006b4f" : "#006b4f",
                 transition: "width 0.3s ease",
               }}
             />
@@ -492,9 +492,9 @@ export function ConferenceWorkspace({
               marginBottom: 14,
               fontSize: 13,
               fontWeight: 600,
-              background: feedback.status === "error" ? "#fee2e2" : "#dcfce7",
-              color: feedback.status === "error" ? "#991b1b" : "#166534",
-              border: feedback.status === "error" ? "1px solid #f87171" : "1px solid #86efac",
+              background: feedback.status === "error" ? "#fdecee" : "#dcfce7",
+              color: feedback.status === "error" ? "#a30d25" : "#14532d",
+              border: feedback.status === "error" ? "1px solid #c8102e" : "1px solid #b7ebc8",
             }}
           >
             {feedback.message}
@@ -507,23 +507,26 @@ export function ConferenceWorkspace({
             {(
               [
                 { id: "ALL", label: `Todos (${items.length})` },
-                { id: "PENDING", label: `⏳ Pendentes (${progress.pending})` },
-                { id: "VERIFIED", label: `✓ Conferidos (${progress.verified})` },
+                { id: "PENDING", label: `Pendentes (${progress.pending})` },
+                { id: "VERIFIED", label: `Conferidos (${progress.verified})` },
               ] as const
             ).map((f) => (
               <button
                 key={f.id}
                 type="button"
                 onClick={() => setFilter(f.id)}
+                aria-pressed={filter === f.id}
                 style={{
                   flex: 1,
-                  padding: "8px 6px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: filter === f.id ? 800 : 600,
-                  background: filter === f.id ? "#004737" : "#ffffff",
-                  color: filter === f.id ? "#ffffff" : "#475569",
-                  border: filter === f.id ? "1px solid #004737" : "1px solid #cbd5e1",
+                  minHeight: 38,
+                  padding: "6px",
+                  borderRadius: 999,
+                  fontSize: 13,
+                  fontFamily: "inherit",
+                  fontWeight: filter === f.id ? 700 : 600,
+                  background: filter === f.id ? "#0f1f2e" : "#ffffff",
+                  color: filter === f.id ? "#ffffff" : "#0f1f2e",
+                  border: filter === f.id ? "1px solid #0f1f2e" : "1px solid #c3cfd9",
                   cursor: "pointer",
                 }}
               >
@@ -540,7 +543,7 @@ export function ConferenceWorkspace({
             style={{
               padding: "10px 14px",
               borderRadius: 8,
-              border: "1px solid #cbd5e1",
+              border: "1px solid #c3cfd9",
               fontSize: 14,
               width: "100%",
               background: "#ffffff",
@@ -557,18 +560,18 @@ export function ConferenceWorkspace({
                 onClick={() => setOutsideOpen(true)}
                 disabled={isSyncing}
                 className="btn btn--secondary"
-                style={{ width: "100%", minHeight: 42, fontSize: 13, fontWeight: 800, color: "#075985", borderColor: "#7dd3fc", borderStyle: "dashed" }}
+                style={{ width: "100%", minHeight: 42, fontSize: 13, fontWeight: 800, color: "#0b4a8b", borderColor: "#2f7bd3", borderStyle: "dashed" }}
               >
                 + Item recebido fora do pedido
               </button>
             ) : (
               <form
                 action={addOutsideAction}
-                style={{ background: "#f0f9ff", border: "1px solid #7dd3fc", borderRadius: 10, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
+                style={{ background: "#e7f0fb", border: "1px solid #2f7bd3", borderRadius: 10, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
               >
                 <div>
-                  <strong style={{ fontSize: 14, color: "#075985" }}>Item recebido fora do pedido</strong>
-                  <p style={{ fontSize: 12, color: "#475569", margin: "2px 0 0" }}>
+                  <strong style={{ fontSize: 14, color: "#0b4a8b" }}>Item recebido fora do pedido</strong>
+                  <p style={{ fontSize: 12, color: "#4b5b6b", margin: "2px 0 0" }}>
                     Use quando chegar um produto que a loja não pediu. Ele fica registrado com o seu nome e aparece para o Gestor.
                   </p>
                 </div>
@@ -585,11 +588,11 @@ export function ConferenceWorkspace({
                   }}
                   placeholder="🔍 Buscar produto por nome ou ERP..."
                   aria-label="Buscar produto recebido fora do pedido"
-                  style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14, background: "#fff" }}
+                  style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #c3cfd9", fontSize: 14, background: "#fff" }}
                 />
                 <div role="listbox" aria-label="Produtos" style={{ maxHeight: 200, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
                   {outsideCandidates.length === 0 ? (
-                    <span style={{ fontSize: 12, color: "#64748b" }}>Nenhum produto encontrado fora desta conferência.</span>
+                    <span style={{ fontSize: 12, color: "#4b5b6b" }}>Nenhum produto encontrado fora desta conferência.</span>
                   ) : (
                     outsideCandidates.map((p) => (
                       <button
@@ -605,8 +608,8 @@ export function ConferenceWorkspace({
                           fontSize: 13,
                           cursor: "pointer",
                           background: outsideProductId === p.id ? "#004737" : "#fff",
-                          color: outsideProductId === p.id ? "#fff" : "#0f172a",
-                          border: outsideProductId === p.id ? "1px solid #004737" : "1px solid #e2e8f0",
+                          color: outsideProductId === p.id ? "#fff" : "#0f1f2e",
+                          border: outsideProductId === p.id ? "1px solid #004737" : "1px solid #dce3ea",
                           fontWeight: outsideProductId === p.id ? 800 : 600,
                         }}
                       >
@@ -624,16 +627,16 @@ export function ConferenceWorkspace({
                     onChange={(e) => setOutsideWeight(e.target.value)}
                     placeholder="Peso recebido..."
                     aria-label="Peso recebido em KG"
-                    style={{ width: 140, padding: "8px 10px", fontSize: 14, fontWeight: 700, borderRadius: 6, border: "1px solid #cbd5e1", textAlign: "right" }}
+                    style={{ width: 140, padding: "8px 10px", fontSize: 14, fontWeight: 700, borderRadius: 6, border: "1px solid #c3cfd9", textAlign: "right" }}
                   />
-                  <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>KG</span>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#4b5b6b" }}>KG</span>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     type="submit"
                     disabled={isSyncing || !outsideProductId || !(Number(outsideWeight.replace(",", ".")) > 0)}
                     className="btn"
-                    style={{ flex: 1, minHeight: 42, fontSize: 13, fontWeight: 800, background: "#075985" }}
+                    style={{ flex: 1, minHeight: 42, fontSize: 13, fontWeight: 800, background: "#0b4a8b" }}
                   >
                     {isAddingOutside ? "Lançando..." : "Lançar item fora do pedido"}
                   </button>
@@ -655,7 +658,7 @@ export function ConferenceWorkspace({
         {/* Lista de Itens para Conferência */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {visibleItems.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 32, color: "#64748b", background: "#ffffff", borderRadius: 10 }}>
+            <div style={{ textAlign: "center", padding: 32, color: "#4b5b6b", background: "#ffffff", borderRadius: 10 }}>
               Nenhum item corresponde ao filtro ou busca selecionada.
             </div>
           ) : (
@@ -670,12 +673,12 @@ export function ConferenceWorkspace({
                     background: "#ffffff",
                     borderRadius: 10,
                     padding: "12px 14px",
-                    border: isChecked ? "1px solid #86efac" : "1px solid #e2e8f0",
+                    border: isChecked ? "1px solid #b7ebc8" : "1px solid #dce3ea",
                     borderLeft: isChecked
                       ? status === "RECEIVED"
                         ? "5px solid #006b4f"
-                        : "5px solid #64748b"
-                      : "5px solid #f59e0b",
+                        : "5px solid #4b5b6b"
+                      : "5px solid #ea8a0b",
                     boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
                   }}
                 >
@@ -691,41 +694,41 @@ export function ConferenceWorkspace({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 }}>
                         <div>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#4b5b6b" }}>
                             [{item.erpCode}]
                           </span>{" "}
-                          <span style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: "#0f1f2e" }}>
                             {item.productName}
                           </span>
                         </div>
 
                         {/* Badge de Status do Item */}
                         {status === "PENDING" && (
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#d97706", background: "#fef3c7", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#8a3b00", background: "#fff1dc", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>
                             ⏳ Pendente
                           </span>
                         )}
                         {status === "RECEIVED" && (
-                          <span style={{ fontSize: 11, fontWeight: 800, color: "#166534", background: "#dcfce7", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: "#14532d", background: "#dcfce7", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>
                             ✓ {Number(item.receivedWeightKg).toFixed(2)} KG
                           </span>
                         )}
                         {status === "UNRECEIVED" && (
-                          <span style={{ fontSize: 11, fontWeight: 800, color: "#475569", background: "#f1f5f9", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: "#4b5b6b", background: "#eef2f5", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>
                             ✕ Não Recebido (0)
                           </span>
                         )}
                       </div>
 
                       {item.addedOutsideOrder ? (
-                        <div style={{ fontSize: 12, color: "#075985", marginTop: 2 }}>
-                          <span style={{ fontSize: 11, fontWeight: 800, background: "#e0f2fe", padding: "2px 6px", borderRadius: 4 }}>
+                        <div style={{ fontSize: 12, color: "#0b4a8b", marginTop: 2 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, background: "#e7f0fb", padding: "2px 6px", borderRadius: 4 }}>
                             Recebido fora do pedido
                           </span>{" "}
                           {item.addedByName ? <>lançado por <strong>{item.addedByName}</strong></> : null}
                         </div>
                       ) : (
-                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: "#4b5b6b", marginTop: 2 }}>
                           Pedido original: <strong>{Number(item.orderedQuantity).toFixed(2)} {item.orderedUnit}</strong>
                         </div>
                       )}
@@ -747,12 +750,12 @@ export function ConferenceWorkspace({
                                 fontSize: 14,
                                 fontWeight: 700,
                                 borderRadius: 6,
-                                border: "1px solid #cbd5e1",
+                                border: "1px solid #c3cfd9",
                                 textAlign: "right",
-                                background: item.isUnreceived ? "#f1f5f9" : "#ffffff",
+                                background: item.isUnreceived ? "#eef2f5" : "#ffffff",
                               }}
                             />
-                            <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>KG</span>
+                            <span style={{ fontSize: 12, fontWeight: 800, color: "#4b5b6b" }}>KG</span>
                           </div>
 
                           {item.addedOutsideOrder ? (
@@ -765,7 +768,7 @@ export function ConferenceWorkspace({
                                 type="submit"
                                 disabled={isSyncing}
                                 className="btn btn--secondary"
-                                style={{ fontSize: 11, padding: "6px 10px", minHeight: 34, borderRadius: 6, fontWeight: 700, color: "#b91c1c", borderColor: "#fca5a5" }}
+                                style={{ fontSize: 11, padding: "6px 10px", minHeight: 34, borderRadius: 6, fontWeight: 700, color: "#a30d25", borderColor: "#f5c2ca" }}
                               >
                                 {isRemovingOutside ? "Retirando..." : "✕ Lançado por engano"}
                               </button>
@@ -781,8 +784,8 @@ export function ConferenceWorkspace({
                                 padding: "6px 10px",
                                 minHeight: 34,
                                 borderRadius: 6,
-                                color: "#dc2626",
-                                borderColor: "#fca5a5",
+                                color: "#c8102e",
+                                borderColor: "#f5c2ca",
                                 background: "#fff",
                                 fontWeight: 700,
                               }}
@@ -826,7 +829,7 @@ export function ConferenceWorkspace({
             left: 0,
             right: 0,
             background: "#ffffff",
-            borderTop: "1px solid #cbd5e1",
+            borderTop: "1px solid #c3cfd9",
             padding: "10px 16px",
             boxShadow: "0 -4px 6px -1px rgba(0, 0, 0, 0.05)",
             zIndex: 100,
@@ -864,7 +867,7 @@ export function ConferenceWorkspace({
                   minHeight: 44,
                   fontSize: 13,
                   fontWeight: 800,
-                  background: progress.pending > 0 || orderSyncStatus !== "SYNCED" ? "#94a3b8" : "#004737",
+                  background: progress.pending > 0 || orderSyncStatus !== "SYNCED" ? "#8696a6" : "#004737",
                   cursor: progress.pending > 0 || orderSyncStatus !== "SYNCED" ? "not-allowed" : "pointer",
                 }}
               >
