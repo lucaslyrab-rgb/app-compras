@@ -35,7 +35,7 @@ for (const [width, height] of [
     ).toBeVisible();
     const mobile = width <= 700;
     const rows = page.locator(
-      mobile ? ".buyer-card" : ".buyer-table tbody > tr",
+      mobile ? ".buyer-mobile-row:not(.buyer-mobile-row--head)" : ".buyer-table tbody > tr",
     );
     await expect(rows).toHaveCount(74);
     await expect(
@@ -46,7 +46,7 @@ for (const [width, height] of [
       /^74 produtos • Atualizado às \d{2}:\d{2}$/,
     );
     const storeNames = mobile
-      ? await rows.first().locator("tbody th").allTextContents()
+      ? await page.locator(".buyer-mobile-store--head").evaluateAll((els) => els.map((el) => el.getAttribute("title")))
       : await page.locator(".buyer-table .store-heading").allTextContents();
     expect(storeNames).toEqual(["Ponta da Fruta", "Balneário", "Santa Mônica"]);
     expect(
@@ -54,7 +54,7 @@ for (const [width, height] of [
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    await expect(page.locator("input:not([type=search]):visible")).toHaveCount(
+    await expect(page.locator("input:not([type=search]):not([type=checkbox]):visible")).toHaveCount(
       0,
     );
     const search = page.getByPlaceholder("Buscar produto (nome ou código)…");
@@ -116,10 +116,8 @@ for (const [width, height] of [
       }
       const first = rows.first();
       await first.scrollIntoViewIfNeeded();
-      await expect(first.locator("tbody tr")).toHaveCount(3);
-      await expect(
-        first.getByRole("columnheader", { name: "Est.", exact: true }),
-      ).toBeVisible();
+      await expect(first.locator(".buyer-mobile-store")).toHaveCount(3);
+      await expect(page.locator(".buyer-mobile-store--head")).toHaveText(["PF", "BA", "SM"]);
       expect(
         await rows.evaluateAll((elements) =>
           elements.every((el) => el.scrollWidth <= el.clientWidth),

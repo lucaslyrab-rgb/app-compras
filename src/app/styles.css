@@ -1,21 +1,37 @@
 :root {
+  /* Identidade visual MultiShow FLV (nov/2026) */
   --brand-900: #004737;
   --brand-700: #006b4f;
   --brand-600: #00865f;
-  --brand-100: #e3f6ee;
-  --ink-900: #10233f;
-  --ink-600: #516078;
+  --brand-100: #e6f4ee;
+  --ink-900: #0f1f2e;
+  --ink-600: #4b5b6b;
+  --ink-400: #767676;
   --surface: #ffffff;
-  --canvas: #f4f7f9;
-  --border: #dbe3e9;
-  --danger: #c81e2b;
-  --radius: 14px;
-  --shadow: 0 4px 18px rgb(16 35 63 / 8%);
+  --canvas: #f4f6f8;
+  --border: #dce3ea;
+  --border-strong: #c3cfd9;
+  --danger: #c8102e;
+  --danger-100: #fdecee;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgb(15 31 46 / 6%);
+  --font-sans: var(--font-inter), "Segoe UI", Roboto, Arial, Helvetica, sans-serif;
+  /* Situações (mesmas cores em todo o sistema) */
+  --status-integral-bg: #dcfce7; --status-integral-fg: #14532d; --status-integral-dot: #16a34a;
+  --status-partial-bg: #fff1dc; --status-partial-fg: #8a3b00; --status-partial-dot: #ea8a0b;
+  --status-total-bg: #fdecee; --status-total-fg: #a30d25; --status-total-dot: #c8102e;
+  --status-additional-bg: #e7f0fb; --status-additional-fg: #0b4a8b; --status-additional-dot: #2f7bd3;
+  --status-pending-bg: #eef2f5; --status-pending-fg: #3a4856; --status-pending-dot: #8696a6;
+  /* Lojas */
+  --store-blue: #2f6fc0; --store-blue-100: #eaf2fd;
+  --store-green: #1e7a45; --store-green-100: #e8f6ee;
+  --store-orange: #b4570a; --store-orange-100: #fff3e4;
   color-scheme: light;
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; background: var(--canvas); color: var(--ink-900); font-family: Arial, Helvetica, sans-serif; }
+html, body { margin: 0; min-height: 100%; background: var(--canvas); color: var(--ink-900); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+.tabular { font-variant-numeric: tabular-nums; }
 body { overflow-x: hidden; }
 button, input { font: inherit; }
 button, a, input { min-height: 44px; }
@@ -36,9 +52,25 @@ button, a, input { min-height: 44px; }
 .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .field { display: grid; gap: 6px; }
 .field label { font-weight: 700; }
-.field input, .search { width: 100%; border: 1px solid #afbdc9; border-radius: 10px; padding: 10px 12px; background: white; color: var(--ink-900); }
-.btn { border: 0; border-radius: 10px; padding: 10px 18px; background: var(--brand-700); color: white; font-weight: 800; cursor: pointer; }
-.btn--secondary { background: white; color: var(--ink-900); border: 1px solid #afbdc9; }
+.field input, .search { width: 100%; border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 12px; background: white; color: var(--ink-900); font-size: 16px; }
+.btn { border: 0; border-radius: 10px; padding: 10px 18px; background: var(--brand-700); color: white; font-weight: 700; cursor: pointer; font-family: inherit; }
+.btn:hover:not(:disabled) { background: var(--brand-900); }
+.btn--secondary { background: white; color: var(--ink-900); border: 1px solid var(--border-strong); font-weight: 600; }
+.btn--secondary:hover:not(:disabled) { background: #f4f6f8; }
+
+/* Etiquetas de situação padronizadas (ponto colorido + texto) */
+.status-tag { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.status-tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.status-tag--integral { background: var(--status-integral-bg); color: var(--status-integral-fg); }
+.status-tag--integral::before { background: var(--status-integral-dot); }
+.status-tag--partial { background: var(--status-partial-bg); color: var(--status-partial-fg); }
+.status-tag--partial::before { background: var(--status-partial-dot); }
+.status-tag--total { background: var(--status-total-bg); color: var(--status-total-fg); }
+.status-tag--total::before { background: var(--status-total-dot); }
+.status-tag--additional { background: var(--status-additional-bg); color: var(--status-additional-fg); }
+.status-tag--additional::before { background: var(--status-additional-dot); }
+.status-tag--pending { background: var(--status-pending-bg); color: var(--status-pending-fg); }
+.status-tag--pending::before { background: var(--status-pending-dot); }
 .filters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .filter { border: 1px solid var(--border); border-radius: 10px; background: #eef2f5; color: var(--ink-900); padding: 8px; font-weight: 700; cursor: pointer; }
 .filter[aria-pressed="true"] { background: var(--brand-700); color: white; border-color: var(--brand-700); }
