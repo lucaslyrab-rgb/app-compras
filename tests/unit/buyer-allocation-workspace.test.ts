@@ -199,7 +199,7 @@ describe("BuyerAllocationWorkspace — contexto Loja → Fornecedor → Produtos
 
     expect(container.textContent).toContain("Pedido da loja: 5 CX");
     const quantityInput = container.querySelector<HTMLInputElement>(".alloc-stepper-input");
-    expect(quantityInput?.value).toBe("5.00");
+    expect(quantityInput?.value).toBe("5");
     const saveButton = Array.from(container.querySelectorAll("button")).find(
       (button) => button.textContent?.trim() === "Salvar",
     );
