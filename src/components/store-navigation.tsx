@@ -4,14 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import "./store-navigation.css";
 import { logoutAction } from "@/app/login/actions";
 
 export type StoreNavProps = {
   storeName: string;
-  hasOrderPermission: boolean;
-  hasConferencePermission: boolean;
-  hasLossPermission: boolean;
-  showHubOnMount?: boolean;
+  /** Mantidos por compatibilidade: a escolha da atividade agora fica no Início. */
+  hasOrderPermission?: boolean;
+  hasConferencePermission?: boolean;
+  hasLossPermission?: boolean;
 };
 
 /** Nome da tela atual da loja, exibido no topo de forma informativa. */
@@ -24,261 +25,84 @@ export function currentStoreModule(pathname: string): { icon: string; label: str
   return { icon: "📝", label: "Pedido da Loja" };
 }
 
-export function StoreNavigation({
-  storeName,
-  hasOrderPermission,
-  hasConferencePermission,
-  hasLossPermission,
-  showHubOnMount = false,
-}: StoreNavProps) {
+export function StoreNavigation({ storeName }: StoreNavProps) {
   const pathname = usePathname() ?? "";
   const currentModule = currentStoreModule(pathname);
-  const [hubOpen, setHubOpen] = useState(showHubOnMount);
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const isHome = pathname.startsWith("/inicio");
+  const shortName = storeName.replace(/^MultiShow\s+/i, "");
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!hubOpen) return;
-    const previousFocus = document.activeElement;
-    const dialog = dialogRef.current;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    dialog?.focus();
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setHubOpen(false);
-      }
-      if (event.key !== "Tab" || !dialog) return;
-      const controls = dialog.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)');
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog)) {
-        event.preventDefault();
-        first?.focus();
-      }
+    if (!accountOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (accountRef.current && !accountRef.current.contains(event.target as Node)) setAccountOpen(false);
     };
-
-    document.addEventListener("keydown", handleKeyDown);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAccountOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
     };
-  }, [hubOpen]);
+  }, [accountOpen]);
 
   return (
-    <>
-      <header className="topbar no-print" style={{ borderBottom: "1px solid #cbd5e1", background: "#ffffff" }}>
-        <div className="topbar__inner" style={{ maxWidth: 1200, margin: "0 auto", padding: "8px 16px", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
-            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-              <Image src="/brand/MS-H.png" alt="MultiShow FLV" width={140} height={35} priority style={{ objectFit: "contain" }} />
-              <div>
-                <h1 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: "#004737", lineHeight: 1.1 }}>MultiShow FLV</h1>
-                <p style={{ fontSize: 11, color: "#64748b", margin: 0 }}>{storeName}</p>
-              </div>
-            </Link>
+    <header className="store-header no-print">
+      <div className="store-header__bar">
+        {isHome ? (
+          <Image
+            src="/brand/MS-H.png"
+            alt="MultiShow"
+            width={104}
+            height={26}
+            priority
+            className="store-header__logo"
+          />
+        ) : (
+          <Link href="/inicio" className="store-header__home" aria-label="Voltar ao Início">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            <span>Início</span>
+          </Link>
+        )}
 
-            <button
-              type="button"
-              onClick={() => setHubOpen(true)}
-              className="btn btn--secondary"
-              style={{ fontSize: 12, padding: "4px 10px", minHeight: 32, borderRadius: 6, fontWeight: 700 }}
-              title="Abrir Menu de Atividades da Loja"
-            >
-              ☰ Módulos
-            </button>
+        <p className="store-header__title">
+          <strong>
+            <span className="visually-hidden">Tela atual: </span>
+            {currentModule.label}
+          </strong>
+          <span>{shortName}</span>
+        </p>
 
-            {/* Indicador informativo (não clicável) da tela atual */}
-            <p
-              style={{
-                margin: 0,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 13,
-                fontWeight: 800,
-                color: "#004737",
-                background: "#ecfdf5",
-                border: "1px solid #a7f3d0",
-                borderRadius: 999,
-                padding: "4px 12px",
-              }}
-            >
-              <span aria-hidden="true">{currentModule.icon}</span>
-              <span>
-                <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Tela atual: </span>
-                {currentModule.label}
-              </span>
-            </p>
-          </div>
-
-          {/* A troca de tela é feita somente pelo botão Módulos; aqui fica só o acesso a Senha e Sair. */}
-          <nav style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }} aria-label="Conta">
-            <div style={{ display: "flex", gap: 6 }}>
-              <Link
-                href="/minha-senha"
-                className="btn btn--secondary"
-                style={{ fontSize: 11, padding: "4px 8px", minHeight: 32, borderRadius: 6 }}
-              >
-                Senha
-              </Link>
+        <div className="store-header__account" ref={accountRef}>
+          <button
+            type="button"
+            className="store-header__account-btn"
+            aria-label="Conta"
+            aria-haspopup="true"
+            aria-expanded={accountOpen}
+            onClick={() => setAccountOpen((open) => !open)}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" />
+            </svg>
+          </button>
+          {accountOpen ? (
+            <div className="store-header__menu">
+              <span className="store-header__menu-store">{storeName}</span>
+              <Link href="/minha-senha" onClick={() => setAccountOpen(false)}>Minha senha</Link>
               <form action={logoutAction}>
-                <button
-                  type="submit"
-                  className="btn btn--secondary"
-                  style={{ fontSize: 11, padding: "4px 8px", minHeight: 32, borderRadius: 6 }}
-                >
-                  Sair
-                </button>
+                <button type="submit">Sair</button>
               </form>
             </div>
-          </nav>
+          ) : null}
         </div>
-      </header>
-
-      {/* Modal / Hub Operacional das Lojas (Seção 7.2) */}
-      {hubOpen && (
-        <div
-          role="presentation"
-          onClick={() => setHubOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.65)",
-            backdropFilter: "blur(2px)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <div
-            ref={dialogRef}
-            role="dialog"
-            tabIndex={-1}
-            aria-modal="true"
-            aria-labelledby="hub-title"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "#ffffff",
-              borderRadius: 14,
-              maxWidth: 420,
-              width: "100%",
-              maxHeight: "calc(100dvh - 32px)",
-              overflowY: "auto",
-              padding: 24,
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <h2 id="hub-title" style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#0f172a" }}>
-                  Acesso Operacional
-                </h2>
-                <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0" }}>{storeName}</p>
-              </div>
-              <button
-                type="button"
-                aria-label="Fechar menu de módulos"
-                onClick={() => setHubOpen(false)}
-                style={{ background: "transparent", border: "none", fontSize: 20, cursor: "pointer", color: "#94a3b8" }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {hasOrderPermission && (
-                <Link
-                  href="/"
-                  onClick={() => setHubOpen(false)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "14px 16px",
-                    borderRadius: 10,
-                    background: pathname === "/" ? "#ecfdf5" : "#f8fafc",
-                    border: pathname === "/" ? "2px solid #006b4f" : "1px solid #e2e8f0",
-                    textDecoration: "none",
-                    color: "inherit",
-                  }}
-                >
-                  <div style={{ fontSize: 26 }}>📝</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a" }}>Fazer Pedido</div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>Lançar estoque e pedidos para o ciclo</div>
-                  </div>
-                  <div style={{ fontSize: 18, color: "#006b4f" }}>❯</div>
-                </Link>
-              )}
-
-              {hasConferencePermission && (
-                <Link
-                  href="/conferencia"
-                  onClick={() => setHubOpen(false)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "14px 16px",
-                    borderRadius: 10,
-                    background: pathname.startsWith("/conferencia") ? "#ecfdf5" : "#f8fafc",
-                    border: pathname.startsWith("/conferencia") ? "2px solid #006b4f" : "1px solid #e2e8f0",
-                    textDecoration: "none",
-                    color: "inherit",
-                  }}
-                >
-                  <div style={{ fontSize: 26 }}>⚖️</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a" }}>Conferência de Entrega</div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>Pesar mercadorias do caminhão (em KG)</div>
-                  </div>
-                  <div style={{ fontSize: 18, color: "#006b4f" }}>❯</div>
-                </Link>
-              )}
-
-              {hasLossPermission && (
-                <Link
-                  href="/perdas"
-                  onClick={() => setHubOpen(false)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "14px 16px",
-                    borderRadius: 10,
-                    background: pathname.startsWith("/perdas") ? "#ecfdf5" : "#f8fafc",
-                    border: pathname.startsWith("/perdas") ? "2px solid #006b4f" : "1px solid #e2e8f0",
-                    textDecoration: "none",
-                    color: "inherit",
-                  }}
-                >
-                  <div style={{ fontSize: 26 }}>🗑️</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a" }}>Lançamento de Perdas</div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>Registrar quebras e descartes no expediente</div>
-                  </div>
-                  <div style={{ fontSize: 18, color: "#006b4f" }}>❯</div>
-                </Link>
-              )}
-            </div>
-
-            <p style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", margin: "4px 0 0" }}>
-              Para trocar de tela, use o botão “☰ Módulos” no topo.
-            </p>
-          </div>
-        </div>
-      )}
-    </>
+      </div>
+    </header>
   );
 }

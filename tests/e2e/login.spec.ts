@@ -42,8 +42,8 @@ test("Loja salva, recupera e envia pedido móvel", async ({ page }, testInfo) =>
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("dialog", { name: "Acesso Operacional" })).toBeVisible();
-  await page.getByRole("dialog").getByRole("link", { name: /Fazer Pedido/ }).click();
+  await expect(page.getByRole("heading", { name: "O que vamos fazer?" })).toBeVisible();
+  await page.getByRole("link", { name: /Pedido de hoje/ }).click();
   await expect(page.getByRole("heading", { name: "Pedido de hoje" })).toBeVisible();
   const card = page.locator(".product-card").first();
   const productName = await card.locator("h2").textContent();

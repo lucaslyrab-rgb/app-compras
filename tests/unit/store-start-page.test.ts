@@ -116,39 +116,29 @@ describe("Entrada operacional após o login", () => {
     expect(getStoreName).not.toHaveBeenCalled();
   });
 
-  it("mantém o foco no modal e permite fechar e reabrir pelo teclado e botão Módulos", async () => {
+  it("não tem mais o menu de módulos: o topo leva de volta ao Início", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
-    await act(async () => root?.render(React.createElement(StoreNavigation, {
-      storeName: "Ponta da Fruta", hasOrderPermission: true, hasConferencePermission: true, hasLossPermission: true,
-      showHubOnMount: true,
-    })));
-    const dialog = container.querySelector('[role="dialog"]')!;
-    const controls = dialog.querySelectorAll<HTMLElement>("button, a");
-    controls[controls.length - 1].focus();
-    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
-    await act(async () => document.dispatchEvent(tab));
-    expect(tab.defaultPrevented).toBe(true);
-    expect(document.activeElement).toBe(controls[0]);
-    await act(async () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    await act(async () => root?.render(React.createElement(StoreNavigation, { storeName: "MultiShow Ponta da Fruta" })));
     expect(container.querySelector('[role="dialog"]')).toBeNull();
-    const menu = container.querySelector<HTMLButtonElement>('button[title="Abrir Menu de Atividades da Loja"]')!;
-    menu.focus();
-    await act(async () => menu.click());
-    expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1);
-    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Fechar menu de módulos"]')!.click());
-    expect(document.activeElement).toBe(menu);
+    expect(container.textContent).not.toContain("Módulos");
+    expect(container.textContent).toContain("Ponta da Fruta");
   });
 
-  it("nos módulos o menu continua fechado até o usuário pedir para abri-lo", async () => {
+  it("abre o menu da conta com Minha senha e Sair", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
-    await act(async () => root?.render(React.createElement(StoreNavigation, {
-      storeName: "Ponta da Fruta", hasOrderPermission: true, hasConferencePermission: true, hasLossPermission: true,
-    })));
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    await act(async () => root?.render(React.createElement(StoreNavigation, { storeName: "MultiShow Ponta da Fruta" })));
+    const account = container.querySelector<HTMLButtonElement>('button[aria-label="Conta"]')!;
+    expect(account.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => account.click());
+    expect(account.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelector('a[href="/minha-senha"]')).not.toBeNull();
+    expect(container.textContent).toContain("Sair");
+    await act(async () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(account.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("não mostra atalhos de módulos no topo, apenas o indicador da tela atual", async () => {
