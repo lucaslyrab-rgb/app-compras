@@ -5,4 +5,5 @@
 - [x] 3. Encerrar ciclo (Destinação + conferências), filtros dos seletores e "Ver ciclos fechados"
 - [x] 4. "Sem fornecedor" calculado por loja, com seção de compras sem pedido
 - [x] 5. Testes unitários e de integração
-- [ ] 6. CI verde e merge com aprovação
+- [x] 6. CI verde no PR #11
+- [ ] 7. Merge com aprovação
