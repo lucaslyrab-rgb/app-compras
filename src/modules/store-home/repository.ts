@@ -46,7 +46,12 @@ export async function readStoreHomeSummary(input: {
     SELECT c.purchase_cycle_date::text AS cycle_date, c.status, c.total_items, c.verified_items
     FROM store_delivery_conferences c
     WHERE c.store_id = ${input.storeId}::uuid
-    ORDER BY c.purchase_cycle_date DESC
+      AND c.purchase_cycle_date NOT IN (SELECT purchase_cycle_date FROM purchase_cycle_archives)
+    -- Uma conferência ainda em andamento tem prioridade (a mais antiga primeiro,
+    -- como na tela de Conferência); sem pendência, mostra a mais recente.
+    ORDER BY (c.status = 'IN_PROGRESS') DESC,
+             CASE WHEN c.status = 'IN_PROGRESS' THEN c.purchase_cycle_date END ASC,
+             c.purchase_cycle_date DESC
     LIMIT 1
   `;
 

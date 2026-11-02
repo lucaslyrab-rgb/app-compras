@@ -114,8 +114,23 @@ integration("Início da loja e atalho de produtos recebidos", () => {
       cutoffAt: new Date("2026-11-02T23:00:00.000Z"),
     });
     expect(summary.order).toMatchObject({ submittedAt: null, draftItems: 2, cycleDate: "2026-11-03" });
-    expect(summary.conference).toEqual({ cycleDate: "2026-10-31", status: "IN_PROGRESS", totalItems: 2, verifiedItems: 1 });
+    // A de 29/10 ainda está em andamento e vem antes da de 31/10.
+    expect(summary.conference).toEqual({ cycleDate: "2026-10-29", status: "IN_PROGRESS", totalItems: 1, verifiedItems: 0 });
     expect(summary.losses).toEqual({ count: 2, kg: 2.5, und: 3 });
+  });
+
+  it("ignora conferências de ciclos encerrados pelo Gestor", async () => {
+    await db`
+      INSERT INTO purchase_cycle_archives (purchase_cycle_date, reason, archived_by)
+      VALUES ('2026-10-29', 'Ciclo antigo', ${userId})
+    `;
+    const summary = await readStoreHomeSummary({
+      storeId,
+      orderDate: "2026-11-02",
+      cycleDate: "2026-11-03",
+      cutoffAt: new Date("2026-11-02T23:00:00.000Z"),
+    });
+    expect(summary.conference?.cycleDate).toBe("2026-10-31");
   });
 
   it("lista só o que chegou na conferência mais recente", async () => {
