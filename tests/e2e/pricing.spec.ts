@@ -330,7 +330,7 @@ test("Gestor digita e persiste nome na criação e edição com recarregamento e
 
   await page.goto("/comprador/consolidado?ciclo=2097-09-24");
   const historicalContainer = testInfo.project.name === "mobile"
-    ? page.locator(".buyer-card").filter({ hasText: "BANANA TESTE" })
+    ? page.locator(".buyer-mobile-row").filter({ hasText: "BANANA TESTE" })
     : page.locator(".buyer-table tbody tr").filter({ hasText: "BANANA TESTE" });
   await expect(historicalContainer.first()).toBeVisible();
 });

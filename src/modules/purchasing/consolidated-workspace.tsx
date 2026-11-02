@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductPhoto } from "@/components/product-photo";
@@ -13,6 +13,7 @@ import {
   type ConsolidatedStore,
   type OrderFilter,
 } from "./domain";
+import { storeInitials } from "./reports/consolidated-print/domain";
 
 const quantityFormat = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 2,
@@ -101,6 +102,7 @@ export function ConsolidatedWorkspace({ data }: { data: ConsolidatedData }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<OrderFilter>("all");
   const [refreshing, startRefresh] = useTransition();
+  const [showStock, setShowStock] = useState(true);
   const visible = useMemo(
     () => filterConsolidatedProducts(data.products, query, filter),
     [data.products, query, filter],
@@ -282,6 +284,18 @@ export function ConsolidatedWorkspace({ data }: { data: ConsolidatedData }) {
         >
           {refreshing ? "Atualizando…" : "Atualizar"}
         </button>
+        <Link
+          className="btn btn--secondary buyer-print-link"
+          href={`/relatorios/consolidado?ciclo=${data.cycleDate}`}
+          target="_blank"
+          rel="noopener"
+        >
+          Imprimir A4
+        </Link>
+        <label className="buyer-stock-toggle">
+          <input type="checkbox" checked={showStock} onChange={(event) => setShowStock(event.target.checked)} />
+          Mostrar estoque
+        </label>
       </div>
       <p className="buyer-updated" role="status">
         {visible.length} produtos • Atualizado às{" "}
@@ -388,67 +402,57 @@ export function ConsolidatedWorkspace({ data }: { data: ConsolidatedData }) {
               ))}
             </tbody>
           </table>
-          <div className="buyer-mobile-list">
+          {/* Celular: uma linha por produto, colunas por loja (PF · BA · SM) como a
+              folha de compra em papel; pedido em destaque e estoque opcional. */}
+          <div
+            className="buyer-mobile-list"
+            role="table"
+            aria-label={`Pedidos por loja — compra de ${dateLabel(data.cycleDate)}`}
+            data-show-stock={showStock ? "true" : "false"}
+            style={{ "--store-count": data.stores.length } as CSSProperties}
+          >
+            <div className="buyer-mobile-row buyer-mobile-row--head" role="row">
+              <span role="columnheader">Produto</span>
+              {data.stores.map((store) => (
+                <span
+                  key={store.id}
+                  role="columnheader"
+                  className={`buyer-mobile-store buyer-mobile-store--head store-${storeColor(store.slug)}`}
+                  title={shortStoreName(store.name)}
+                >
+                  {storeInitials(store.name)}
+                </span>
+              ))}
+              <span role="columnheader" className="buyer-mobile-total">Total</span>
+            </div>
             {visible.map((product) => (
-              <article
-                className="buyer-card"
-                key={product.id}
-                aria-label={product.name}
-              >
-                <header>
-                  <Thumbnail product={product} />
-                  <div>
-                    <small>
-                      {product.erpCode}
-                      {!product.active ? " · Inativo" : ""}
-                    </small>
-                    <h2>{product.name}</h2>
-                  </div>
-                  <strong>{product.purchaseFormat}</strong>
-                </header>
-                <table>
-                  <caption className="visually-hidden">
-                    Estoque e pedido de {product.name} por loja
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Loja</th>
-                      <th scope="col">Est.</th>
-                      <th scope="col">Pedido</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.stores.map((store) => (
-                      <tr
-                        key={store.id}
-                        className={`store-${storeColor(store.slug)}`}
-                      >
-                        <th scope="row">{shortStoreName(store.name)}</th>
-                        <td>
-                          <Value
-                            product={product}
-                            store={store}
-                            field="stock"
-                          />
-                        </td>
-                        <td>
-                          <Value
-                            product={product}
-                            store={store}
-                            field="quantity"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <footer>
-                  <span>Total pedido</span>
-                  <strong>
-                    {quantity(product.total)} {product.purchaseFormat}
-                  </strong>
-                </footer>
-              </article>
+              <div className="buyer-mobile-row" role="row" key={product.id} aria-label={product.name}>
+                <span className="buyer-mobile-name" role="rowheader">
+                  <strong>{product.name}</strong>
+                  <small>
+                    {product.purchaseFormat} · {product.erpCode}
+                    {!product.active ? " · Inativo" : ""}
+                  </small>
+                </span>
+                {data.stores.map((store) => {
+                  const value = product.stores[store.id];
+                  const ordered = value ? Number(value.quantity) : 0;
+                  return (
+                    <span
+                      key={store.id}
+                      role="cell"
+                      className={`buyer-mobile-store store-${storeColor(store.slug)}`}
+                      aria-label={`${shortStoreName(store.name)}: pedido ${value ? quantity(value.quantity) : "não informado"}${value ? `, estoque ${quantity(value.stock)}` : ""}`}
+                    >
+                      <strong className={ordered > 0 ? "" : "is-zero"}>{ordered > 0 ? quantity(value!.quantity) : "–"}</strong>
+                      {value ? <small className="buyer-mobile-stock">est {quantity(value.stock)}</small> : null}
+                    </span>
+                  );
+                })}
+                <strong className="buyer-mobile-total" role="cell">
+                  {quantity(product.total)}
+                </strong>
+              </div>
             ))}
           </div>
         </>
