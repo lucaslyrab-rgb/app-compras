@@ -328,7 +328,7 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(thumbHtml).not.toContain("product-photo-img--preview");
   });
 
-  it("compacta a tabela de lançamento de custos no desktop preservando integralmente o layout mobile", async () => {
+  it("compacta a tabela de lançamento de custos no desktop e mantém o cartão compacto no celular", async () => {
     const costStyles = await readFile("src/app/comprador/custos/styles.css", "utf8");
 
     // 1. Regras compactas delimitadas exclusivamente ao desktop (min-width: 901px)
@@ -351,10 +351,13 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(mobileMatch).not.toBeNull();
     const mobileCss = mobileMatch![0];
 
-    expect(mobileCss).toMatch(/\.cost-card-summary\s*>\s*\.cost-thumbnail[\s\S]*?width:\s*58px/);
-    expect(mobileCss).toMatch(/\.cost-card-summary\s*>\s*\.cost-thumbnail[\s\S]*?height:\s*58px/);
-    expect(mobileCss).toMatch(/\.cost-card-fields\s+\.cost-input[\s\S]*?font-size:\s*16px/);
-    expect(mobileCss).toMatch(/\.cost-card-fields\s+\.cost-basis-toggle--mobile[\s\S]*?min-height:\s*44px/);
-    expect(mobileCss).toMatch(/\.cost-card-fields\s+\.purchase-toggle[\s\S]*?min-height:\s*44px/);
+    // Layout compacto aprovado em 02/11/2026: máximo de produtos por tela no celular.
+    expect(mobileCss).toMatch(/\.cost-metrics\s*\{\s*display:\s*none/);
+    expect(mobileCss).toMatch(/\.cost-card\s*\{[\s\S]*?grid-template-areas/);
+    expect(mobileCss).toMatch(/\.cost-card-summary\s*>\s*\.cost-thumbnail[\s\S]*?width:\s*46px/);
+    expect(mobileCss).toMatch(/\.cost-card-summary\s*>\s*\.cost-thumbnail[\s\S]*?height:\s*46px/);
+    // Campo de custo com fonte >= 16px (evita zoom automático no iPhone).
+    expect(mobileCss).toMatch(/\.cost-card-fields\s+\.cost-input\s*\{[\s\S]*?font-size:\s*18px/);
+    expect(mobileCss).toMatch(/\.cost-card-fields\s+\.purchase-toggle\s*\{[\s\S]*?width:\s*100%/);
   });
 });

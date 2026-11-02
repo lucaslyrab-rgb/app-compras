@@ -10,6 +10,8 @@ import {
   type StoreLossRecord,
 } from "./domain";
 import { recordStoreLossAction, cancelStoreLossAction, type LossActionState } from "./actions";
+import { LossProductPicker } from "./loss-product-picker";
+import "./loss-product-picker.css";
 
 type ProductOption = {
   id: string;
@@ -25,6 +27,7 @@ export function StoreLossWorkspace({
   storeId,
   storeName,
   products,
+  recentProductIds = [],
   initialLosses,
   hasOrderPermission,
   hasConferencePermission,
@@ -32,6 +35,8 @@ export function StoreLossWorkspace({
   storeId: string;
   storeName: string;
   products: ProductOption[];
+  /** Produtos da conferência mais recente da loja: atalho na escolha. */
+  recentProductIds?: string[];
   initialLosses: StoreLossRecord[];
   hasOrderPermission: boolean;
   hasConferencePermission: boolean;
@@ -43,8 +48,8 @@ export function StoreLossWorkspace({
     setLosses(initialLosses);
   }
 
-  const [selectedProductId, setSelectedProductId] = useState<string>(products[0]?.id ?? "");
-  const [productSearch, setProductSearch] = useState("");
+  // Começa sem produto: a loja escolhe de propósito (antes vinha o primeiro da lista).
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState<"KG" | "UND">("KG");
   const [reason, setReason] = useState<LossReason>("Maduro / Passado");
@@ -83,22 +88,6 @@ export function StoreLossWorkspace({
     return products.find((p) => p.id === selectedProductId) ?? null;
   }, [products, selectedProductId]);
 
-  // Produtos filtrados na busca
-  const filteredProducts = useMemo(() => {
-    const q = productSearch.trim().toLowerCase();
-    if (!q) return products.slice(0, 50);
-    return products
-      .filter((p) => p.name.toLowerCase().includes(q) || String(p.erpCode).includes(q))
-      .slice(0, 50);
-  }, [products, productSearch]);
-
-  const [syncedFilteredProducts, setSyncedFilteredProducts] = useState(filteredProducts);
-  if (filteredProducts !== syncedFilteredProducts) {
-    setSyncedFilteredProducts(filteredProducts);
-    if (!filteredProducts.some((p) => p.id === selectedProductId)) {
-      setSelectedProductId(filteredProducts[0]?.id ?? "");
-    }
-  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", paddingBottom: 60 }}>
@@ -168,77 +157,16 @@ export function StoreLossWorkspace({
 
             {/* Seleção do Produto com Foto */}
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+              <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#4b5b6b", marginBottom: 6 }}>
                 PRODUTO:
-              </label>
+              </span>
 
-              {/* Pré-visualização do produto selecionado */}
-              {selectedProduct && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "8px 12px",
-                    background: "#f1f5f9",
-                    borderRadius: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <ProductPhoto
-                    productId={selectedProduct.id}
-                    name={selectedProduct.name}
-                    photoKey={selectedProduct.photoKey}
-                    photoUpdatedAt={selectedProduct.photoUpdatedAt}
-                    size="md"
-                  />
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a" }}>
-                      [{selectedProduct.erpCode}] {selectedProduct.name}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>
-                      Padrão de compra: {selectedProduct.purchaseFormat || selectedProduct.unit}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Busca instantânea por ERP/Nome */}
-              <input
-                type="search"
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="🔍 Buscar produto por nome ou código ERP..."
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  fontSize: 13,
-                  marginBottom: 6,
-                }}
+              <LossProductPicker
+                products={products}
+                recentProductIds={recentProductIds}
+                selectedProduct={selectedProduct}
+                onSelect={setSelectedProductId}
               />
-
-              {/* Seletor dropdown */}
-              <select
-                value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  background: "#ffffff",
-                }}
-              >
-                {filteredProducts.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    [{p.erpCode}] {p.name} ({p.unit})
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* Quantidade e Unidade */}
@@ -348,7 +276,7 @@ export function StoreLossWorkspace({
             {/* Botão de Gravar */}
             <button
               type="submit"
-              disabled={isRecording || !quantity.trim()}
+              disabled={isRecording || !quantity.trim() || !selectedProductId}
               className="btn"
               style={{
                 width: "100%",
@@ -368,7 +296,7 @@ export function StoreLossWorkspace({
                 type="submit"
                 name="confirmDuplicate"
                 value="1"
-                disabled={isRecording || !quantity.trim()}
+                disabled={isRecording || !quantity.trim() || !selectedProductId}
                 className="btn btn--secondary"
                 style={{
                   width: "100%",

@@ -1,0 +1,197 @@
+/* Escolha do produto da perda (folha que sobe de baixo). */
+.loss-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-900);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.loss-picker-trigger--selected {
+  border: 2px solid var(--brand-700);
+  background: var(--brand-100);
+}
+
+.loss-picker-trigger > svg { flex: none; color: var(--brand-900); }
+
+.loss-picker-trigger__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.loss-picker-trigger__text strong { font-size: 16px; }
+.loss-picker-trigger__text span { color: var(--ink-600); font-size: 13px; }
+
+.loss-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(15 31 46 / 55%);
+}
+
+.loss-picker-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 560px;
+  height: min(88vh, 780px);
+  box-sizing: border-box;
+  padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -10px 30px rgb(15 31 46 / 20%);
+  animation: loss-picker-in 0.18s ease-out;
+}
+
+@keyframes loss-picker-in {
+  from { transform: translateY(24px); opacity: 0.6; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loss-picker-sheet { animation: none; }
+}
+
+.loss-picker-sheet__grip {
+  align-self: center;
+  width: 40px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border-strong);
+}
+
+.loss-picker-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.loss-picker-sheet__head h2 { margin: 0; color: var(--ink-900); font-size: 20px; font-weight: 800; }
+.loss-picker-sheet__head span { color: var(--ink-600); font-size: 14px; }
+
+.loss-picker-close {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: var(--canvas);
+  color: var(--ink-900);
+  cursor: pointer;
+}
+
+.loss-picker-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 12px;
+  border: 2px solid var(--brand-700);
+  border-radius: 12px;
+  color: var(--ink-600);
+}
+
+.loss-picker-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink-900);
+  font-family: inherit;
+  font-size: 16px;
+}
+
+.loss-picker-sheet__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.loss-picker-sheet__scroll h3 {
+  margin: 4px 0 8px;
+  color: var(--ink-600);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.loss-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.loss-picker-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-900);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.loss-picker-tile--selected { border: 2px solid var(--brand-700); background: var(--brand-100); }
+
+.loss-picker-tile strong {
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.loss-picker-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.loss-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 6px 4px;
+  border: 0;
+  border-bottom: 1px solid #eef2f5;
+  background: transparent;
+  color: var(--ink-900);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.loss-picker-row--selected { background: var(--brand-100); }
+
+.loss-picker-row > span { display: flex; flex-direction: column; min-width: 0; }
+.loss-picker-row strong { font-size: 15px; }
+.loss-picker-row small { color: var(--ink-600); font-size: 12px; }
+
+.loss-picker-empty { color: var(--ink-600); font-size: 14px; }

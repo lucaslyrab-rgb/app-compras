@@ -370,7 +370,14 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
           }
         />
         <span>
-          {layout === "mobile" ? "Custo unitário" : "Custo informado é unitário"}
+          {layout === "mobile" ? (
+            <>
+              <span aria-hidden="true">unit.</span>
+              <span className="visually-hidden">Custo unitário</span>
+            </>
+          ) : (
+            "Custo informado é unitário"
+          )}
         </span>
       </label>
     );
@@ -468,21 +475,32 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
           />
         </label>
         <div className="filters" aria-label="Filtrar por estado da compra">
-          {(["all", "pending", "purchased"] as const).map((value) => (
-            <button
-              type="button"
-              className="filter"
-              key={value}
-              aria-pressed={filter === value}
-              onClick={() => setFilter(value)}
-            >
-              {value === "all"
-                ? "Todos"
+          {(["all", "pending", "purchased"] as const).map((value) => {
+            const label =
+              value === "all" ? "Todos" : value === "pending" ? "Faltam comprar" : "Comprados";
+            const count =
+              value === "all"
+                ? products.length
                 : value === "pending"
-                  ? "Faltam comprar"
-                  : "Comprados"}
-            </button>
-          ))}
+                  ? products.length - purchasedCount
+                  : purchasedCount;
+            return (
+              <button
+                type="button"
+                className={`filter filter--${value}`}
+                key={value}
+                aria-label={label}
+                aria-pressed={filter === value}
+                onClick={() => setFilter(value)}
+              >
+                <span className="filter__long">{label}</span>
+                <span className="filter__short" aria-hidden="true">
+                  {value === "pending" ? "Faltam" : label}
+                </span>
+                <span className="filter__count" aria-hidden="true">{count}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
       <div className="cost-list-status" aria-live="polite">
@@ -569,9 +587,12 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
 
           <div className="cost-mobile-list">
             {visible.map((product) => (
-              <article className="cost-card" key={product.id}>
+              <article
+                className={`cost-card ${rows[product.id].purchased ? "cost-card--purchased" : "cost-card--pending"}`}
+                key={product.id}
+              >
                 <div className="cost-card-summary">
-                  <Thumbnail product={product} size={58} />
+                  <Thumbnail product={product} size={46} />
                   <div className="cost-card-info">
                     <header className="cost-card-product">
                       <div className="cost-product-meta">
@@ -616,7 +637,7 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
                     {renderPurchaseToggle(product)}
                   </div>
                   <div className="cost-current-field">
-                    <span>Atual</span>
+                    <span className="visually-hidden">Atual</span>
                     {renderCostInput(product, "mobile")}
                   </div>
                 </div>

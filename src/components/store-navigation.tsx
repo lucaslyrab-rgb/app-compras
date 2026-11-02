@@ -19,7 +19,7 @@ export function currentStoreModule(pathname: string): { icon: string; label: str
   if (pathname.startsWith("/conferencia")) return { icon: "⚖️", label: "Conferência de Entrega" };
   if (pathname.startsWith("/perdas")) return { icon: "🗑️", label: "Lançamento de Perdas" };
   if (pathname.startsWith("/historico")) return { icon: "📚", label: "Histórico de Pedidos" };
-  if (pathname.startsWith("/inicio")) return { icon: "☰", label: "Escolha um módulo" };
+  if (pathname.startsWith("/inicio")) return { icon: "☰", label: "Início" };
   if (pathname.startsWith("/minha-senha")) return { icon: "🔑", label: "Minha Senha" };
   return { icon: "📝", label: "Pedido da Loja" };
 }

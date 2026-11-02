@@ -22,11 +22,20 @@ vi.mock("next/image", () => ({
 vi.mock("@/app/login/actions", () => ({ logoutAction: vi.fn() }));
 vi.mock("@/modules/identity/session", () => ({ requirePrincipal: vi.fn() }));
 vi.mock("@/modules/ordering/repository", () => ({ getStoreName: vi.fn() }));
+vi.mock("@/modules/ordering/calendar/service", () => ({
+  currentPurchaseCycle: vi.fn(async () => ({
+    localDate: "2026-11-02",
+    cycleDate: "2026-11-03",
+    cutoffAt: new Date("2099-11-02T23:00:00.000Z"),
+  })),
+}));
+vi.mock("@/modules/store-home/repository", () => ({ readStoreHomeSummary: vi.fn() }));
 
 import StartPage from "@/app/inicio/page";
 import { StoreNavigation, currentStoreModule } from "@/components/store-navigation";
 import { requirePrincipal } from "@/modules/identity/session";
 import { getStoreName } from "@/modules/ordering/repository";
+import { readStoreHomeSummary } from "@/modules/store-home/repository";
 
 describe("Entrada operacional após o login", () => {
   let root: Root | undefined;
@@ -39,6 +48,17 @@ describe("Entrada operacional após o login", () => {
     vi.clearAllMocks();
     vi.mocked(requirePrincipal).mockResolvedValue(principal);
     vi.mocked(getStoreName).mockResolvedValue("Ponta da Fruta");
+    vi.mocked(readStoreHomeSummary).mockResolvedValue({
+      order: {
+        submittedAt: null,
+        submittedItems: 0,
+        draftItems: 12,
+        cutoffAt: "2099-11-02T23:00:00.000Z",
+        cycleDate: "2026-11-03",
+      },
+      conference: { cycleDate: "2026-10-31", status: "IN_PROGRESS", totalItems: 34, verifiedItems: 21 },
+      losses: { count: 3, kg: 4.5, und: 0 },
+    });
   });
   afterEach(async () => {
     if (root) await act(async () => root?.unmount());
@@ -55,23 +75,32 @@ describe("Entrada operacional após o login", () => {
     return container;
   }
 
-  it("abre um único modal com as três atividades antes de montar o formulário de pedido", async () => {
+  function cardLinks(container: HTMLElement) {
+    return Array.from(container.querySelectorAll<HTMLAnchorElement>("main a")).map((link) => link.getAttribute("href"));
+  }
+
+  it("mostra os cartões das atividades com a situação do dia, sem abrir o menu", async () => {
     const container = await renderPage();
-    const dialog = container.querySelector('[role="dialog"]')!;
-    expect(container.querySelectorAll('[role="dialog"]')).toHaveLength(1);
-    expect(Array.from(dialog.querySelectorAll("a")).map((link) => link.getAttribute("href")))
-      .toEqual(["/", "/conferencia", "/perdas"]);
-    expect(document.activeElement).toBe(dialog);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(cardLinks(container)).toEqual(["/", "/conferencia", "/perdas"]);
+    expect(container.textContent).toContain("Rascunho · 12 produtos");
+    expect(container.textContent).toContain("13 para pesar");
+    expect(container.textContent).toContain("4,5 kg");
+    expect(container.textContent).toContain("A chegada de 31/10 ainda tem 13 itens para pesar.");
     expect(container.querySelector(".order-workspace")).toBeNull();
     expect(getStoreName).toHaveBeenCalledWith("store-1");
   });
 
   it("mostra somente os módulos autorizados para a loja autenticada", async () => {
-    vi.mocked(requirePrincipal).mockResolvedValue({ ...principal, permissions: ["loja:perdas"] });
+    vi.mocked(requirePrincipal).mockResolvedValue({ ...principal, permissions: ["loja:perdas", "pedidos:historico"] });
     const container = await renderPage();
-    const dialog = container.querySelector('[role="dialog"]')!;
-    expect(Array.from(dialog.querySelectorAll("a")).map((link) => link.getAttribute("href")))
-      .toEqual(["/perdas"]);
+    expect(cardLinks(container)).toEqual(["/perdas", "/historico"]);
+  });
+
+  it("continua mostrando os atalhos se a situação do dia não puder ser lida", async () => {
+    vi.mocked(readStoreHomeSummary).mockRejectedValue(new Error("falha"));
+    const container = await renderPage();
+    expect(cardLinks(container)).toEqual(["/", "/conferencia", "/perdas"]);
   });
 
   it.each([
@@ -88,7 +117,13 @@ describe("Entrada operacional após o login", () => {
   });
 
   it("mantém o foco no modal e permite fechar e reabrir pelo teclado e botão Módulos", async () => {
-    const container = await renderPage();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => root?.render(React.createElement(StoreNavigation, {
+      storeName: "Ponta da Fruta", hasOrderPermission: true, hasConferencePermission: true, hasLossPermission: true,
+      showHubOnMount: true,
+    })));
     const dialog = container.querySelector('[role="dialog"]')!;
     const controls = dialog.querySelectorAll<HTMLElement>("button, a");
     controls[controls.length - 1].focus();
@@ -128,7 +163,7 @@ describe("Entrada operacional após o login", () => {
     expect(headerLinks).not.toContain("/conferencia");
     expect(headerLinks).not.toContain("/perdas");
     expect(header.textContent).toContain("Tela atual:");
-    expect(header.textContent).toContain("Escolha um módulo");
+    expect(header.textContent).toContain("Início");
   });
 
   it.each([
@@ -137,7 +172,7 @@ describe("Entrada operacional após o login", () => {
     ["/conferencia", "Conferência de Entrega"],
     ["/perdas", "Lançamento de Perdas"],
     ["/historico", "Histórico de Pedidos"],
-    ["/inicio", "Escolha um módulo"],
+    ["/inicio", "Início"],
   ])("identifica %s como %s", (pathname, label) => {
     expect(currentStoreModule(pathname).label).toBe(label);
   });
