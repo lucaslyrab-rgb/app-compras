@@ -6,6 +6,7 @@ import { toIsoDateString } from "@/modules/catalog/domain";
 import { getStoreName } from "@/modules/ordering/repository";
 import { listTodayLossesForStore } from "@/modules/purchasing/losses/repository";
 import { StoreLossWorkspace } from "@/modules/purchasing/losses/store-loss-workspace";
+import { listRecentlyReceivedProductIds } from "@/modules/store-home/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -29,12 +30,15 @@ export default async function StoreLossPage() {
   }));
 
   const initialLosses = await listTodayLossesForStore(principal.storeId);
+  // Atalho opcional: se a leitura falhar, a escolha continua pela busca e pela lista.
+  const recentProductIds = await listRecentlyReceivedProductIds(principal.storeId).catch(() => []);
 
   return (
     <StoreLossWorkspace
       storeId={principal.storeId}
       storeName={storeName}
       products={products}
+      recentProductIds={recentProductIds}
       initialLosses={initialLosses}
       hasOrderPermission={hasPermission(principal, "pedidos:criar")}
       hasConferencePermission={hasPermission(principal, "loja:conferencia")}
