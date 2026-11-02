@@ -33,7 +33,51 @@ import {
   type ProductAllocationItem,
   type StoreAllocationData,
 } from "./domain";
+import {
+  closureItemTag,
+  filterSuppliers,
+  formatQty,
+  isProductPending,
+  productStoreStatus,
+  sortSuppliersForPicker,
+  splitClosureItems,
+  storeProgress,
+  supplierInitials,
+} from "./destination-view";
+import { shortStoreName, storeColor } from "@/modules/purchasing/domain";
 import "./styles.css";
+import "./destination-mobile.css";
+
+function SvgIcon({ children, size = 20 }: { children: React.ReactNode; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {children}
+    </svg>
+  );
+}
+const IconChevronLeft = () => <SvgIcon size={22}><path d="M15 18l-6-6 6-6" /></SvgIcon>;
+const IconChevronRight = () => <SvgIcon size={18}><path d="M9 6l6 6-6 6" /></SvgIcon>;
+const IconSearch = () => <SvgIcon size={18}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></SvgIcon>;
+const IconCheck = () => <SvgIcon size={18}><path d="M5 12l5 5L20 7" /></SvgIcon>;
+const IconClose = () => <SvgIcon><path d="M6 6l12 12M18 6L6 18" /></SvgIcon>;
+const IconCalendar = () => <SvgIcon size={16}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></SvgIcon>;
+const IconAlert = () => (
+  <SvgIcon>
+    <path d="M12 9v4M12 17h.01" />
+    <path d="M10.3 3.9L2.4 18a2 2 0 001.7 3h15.8a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
+  </SvgIcon>
+);
 
 type PendingNavigationAction = {
   type: "store" | "supplier" | "cycle";
@@ -128,6 +172,13 @@ export function BuyerAllocationWorkspace({
 
   // Filtro de busca na lista de produtos
   const [searchQuery, setSearchQuery] = useState("");
+  // Apresentação mobile: filtro (null = automático), busca, seletor de fornecedor
+  const [listFilter, setListFilter] = useState<"pending" | "all" | null>(null);
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [showSupplierPicker, setShowSupplierPicker] = useState(false);
+  const [supplierQuery, setSupplierQuery] = useState("");
+  const [expandedProductIds, setExpandedProductIds] = useState<Set<string>>(() => new Set());
+  const [showFulfilledCuts, setShowFulfilledCuts] = useState(false);
 
   // Modais de fechamento / reabertura do ciclo geral
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -1128,854 +1179,943 @@ export function BuyerAllocationWorkspace({
   );
   const activeConflict = pendingConflict?.conflicts[0] ?? null;
 
+
+  // ---------------------------------------------------------------------------
+  // Apresentação mobile-first (redesenho da Destinação). Somente leitura dos
+  // dados já calculados acima; nenhuma regra de gravação muda aqui.
+  // ---------------------------------------------------------------------------
+  const shortActiveStoreName = activeStore.name.replace("MultiShow ", "");
+  const cycleLabel = new Date(cycleDate + "T12:00:00").toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+
+  const productViews = products.map((prod) => {
+    const storeData: StoreAllocationData = prod.stores[activeStoreId] ?? {
+      storeId: activeStoreId,
+      storeName: activeStore.name,
+      storeSlug: activeStore.slug,
+      orderedQuantity: "0.00",
+      destinedQuantity: "0.00",
+      persistedDestinedQuantity: null,
+      difference: "0.00",
+      isAdditionalPurchase: false,
+    };
+    const hasOrder = parseQuantity(storeData.orderedQuantity) > 0;
+    const isUnpurchasedWithOrders = !prod.purchasedInCosts && parseQuantity(prod.totalOrdered) > 0;
+    const hasDestinedInActiveStore = parseQuantity(storeData.destinedQuantity) > 0;
+    const notPurchased = prod.supplierDecision === "NOT_PURCHASED";
+    const status = productStoreStatus({
+      store: storeData,
+      unit: prod.purchaseFormat,
+      notPurchased,
+      blockedByCosts: isUnpurchasedWithOrders,
+    });
+    const pending = isProductPending({
+      store: storeData,
+      notPurchased,
+      blockedByCosts: isUnpurchasedWithOrders,
+      hasDestinedInStore: hasDestinedInActiveStore,
+    });
+    const hasUnsavedChange = hasPendingStoreAllocation(storeData);
+    // Item resolvido e salvo: vira uma linha compacta (toque em "Editar" para abrir).
+    const isSettled =
+      !hasUnsavedChange &&
+      !isUnpurchasedWithOrders &&
+      ((status.kind === "integral" && storeData.persistedDestinedQuantity !== null) || notPurchased);
+    return {
+      prod,
+      storeData,
+      hasOrder,
+      isUnpurchasedWithOrders,
+      hasDestinedInActiveStore,
+      notPurchased,
+      status,
+      pending,
+      hasUnsavedChange,
+      isSettled,
+    };
+  });
+  const pendingViewCount = productViews.filter((view) => view.pending).length;
+  const effectiveListFilter = listFilter ?? (pendingViewCount > 0 ? "pending" : "all");
+  const visibleProductIds = new Set(filteredProducts.map((p) => p.productId));
+  const visibleProductViews = productViews.filter(
+    (view) =>
+      visibleProductIds.has(view.prod.productId) &&
+      (effectiveListFilter === "all" || view.pending || view.hasUnsavedChange),
+  );
+  const orderedProductCount = productViews.filter((view) => view.hasOrder).length;
+  const decidedProductCount = Math.max(0, orderedProductCount - pendingViewCount);
+
+  const supplierPosition = selectedSupplierId ? currentSupplierIndex + 1 : 0;
+  const pickerSuppliers = filterSuppliers(
+    sortSuppliersForPicker(suppliers, selectedSupplierId, activeStoreId),
+    supplierQuery,
+  );
+  const reviewedSupplierCount = suppliers.filter((s) => s.reviewedByStore?.[activeStoreId]).length;
+
+  const nfStatus: { tone: "integral" | "partial"; label: string } | null =
+    destinedProductsForSupplierAndStore.length === 0
+      ? null
+      : unlinkedDestinedProducts.length === 0
+        ? { tone: "integral", label: "Notas OK" }
+        : currentSupplierInvoices.length > 0
+          ? { tone: "partial", label: `${unlinkedDestinedProducts.length} sem nota` }
+          : { tone: "partial", label: "Sem nota" };
+
+  const toggleExpanded = (productId: string) =>
+    setExpandedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  const closureItems = splitClosureItems(targetStoreClosure?.cuts ?? []);
+
   return (
-    <div className="alloc-workspace">
-      {/* BARRA SUPERIOR: TÍTULO, SELEÇÃO DE CICLO */}
-      <div className="alloc-topbar">
-        <div className="alloc-topbar__title">
-          <h1>Destinação de Compras (Pós-Embarque)</h1>
-          <p>
-            Fluxo operacional: <strong>Loja → Fornecedor → Produtos</strong>
-          </p>
-        </div>
-        <div className="alloc-topbar__controls">
-          <label htmlFor="cycle-picker" className="visually-hidden">
-            Ciclo de compras:
-          </label>
-          <select
-            id="cycle-picker"
-            className="alloc-select"
-            value={cycleDate}
-            onChange={(e) => handleSelectCycle(e.target.value)}
-          >
-            {cycles.map((c) => (
-              <option key={c} value={c}>
-                Compra de {new Date(c + "T12:00:00").toLocaleDateString("pt-BR")}
-              </option>
-            ))}
-          </select>
-          <Link
-            href={`/comprador/destinacao?ciclo=${cycleDate}${showClosedCycles ? "" : "&fechados=1"}`}
-            className="alloc-closed-cycles-toggle"
-            style={{ fontSize: "12px", fontWeight: 600, color: "#0369a1", whiteSpace: "nowrap" }}
-          >
-            {showClosedCycles ? "Ocultar ciclos fechados" : "Ver ciclos fechados"}
-          </Link>
-
-          {isClosed ? (
-            <button
-              type="button"
-              className="btn btn--secondary"
-              onClick={() => setShowReopenModal(true)}
-            >
-              🔓 Reabrir Ciclo Geral
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={`btn ${allStoresFinalized ? "btn--success" : "btn--secondary"}`}
-              onClick={() => setShowCloseModal(true)}
-              title={
-                allStoresFinalized
-                  ? "Todas as lojas estão finalizadas. Pronto para fechar o ciclo."
-                  : `Aguardando finalização das lojas: ${unclosedStores.map((s) => s.name).join(", ")}`
-              }
-            >
-              🔒 Fechar Ciclo Geral {allStoresFinalized ? "(3/3 Lojas Finalizadas)" : `(${stores.length - unclosedStores.length}/3 Finalizadas)`}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* BANNER DE STATUS GERAL DO CICLO */}
-      {isClosed ? (
-        <div className="alloc-banner alloc-banner--closed" role="status">
-          <div className="alloc-banner__content">
-            <span className="alloc-banner__icon">🔒</span>
-            <div className="alloc-banner__text">
-              <h3>Ciclo Operacional Fechado</h3>
-              <p>
-                Fechado por {closure.closedByName ?? "Comprador"} em{" "}
-                {closure.closedAt
-                  ? new Date(closure.closedAt).toLocaleString("pt-BR")
-                  : "—"}
-                . As destinações estão em modo somente leitura.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn btn--secondary"
-            onClick={() => setShowReopenModal(true)}
-          >
-            Reabrir Ciclo
-          </button>
-        </div>
-      ) : (
-        <div className="alloc-banner alloc-banner--open">
-          <div className="alloc-banner__content">
-            <span className="alloc-banner__icon">🚚</span>
-            <div className="alloc-banner__text">
-              <h3>Ciclo Aberto para Destinação</h3>
-              <p>
-                {closure.totalAllocatedProducts} produtos com destinação •{" "}
-                {closure.totalPurchasedInCosts} produtos marcados como comprados
-              </p>
-            </div>
-          </div>
-          {unassignedPurchasedProducts.length > 0 || unassignedOpportunityProducts.length > 0 ? (
-            <button
-              type="button"
-              className="btn btn--secondary"
-              style={{ color: "#b45309", borderColor: "#fde68a" }}
-              onClick={() => setShowUnassignedModal(true)}
-            >
-              ⚠️ {unassignedPurchasedProducts.length} itens sem fornecedor
-              {unassignedStoreLabel ? ` — ${unassignedStoreLabel}` : ""}
-              {unassignedOpportunityProducts.length > 0 ? ` (+${unassignedOpportunityProducts.length} sem pedido)` : ""}
-            </button>
-          ) : (
-            <span style={{ fontSize: "13px", fontWeight: "600", color: "#15803d" }}>
-              ✓ Todos os itens comprados {unassignedStoreLabel ? `de ${unassignedStoreLabel} ` : ""}possuem destinação
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* NÍVEL 1: LOJA EM CONFERÊNCIA (FOCO NA LOJA ATIVA COM BOTÃO PARA TROCAR) */}
-      <section className="alloc-active-store-card" aria-label="Loja em Conferência">
-        <div className="alloc-active-store-card__header">
-          <div className="alloc-active-store-card__main">
-            <span className="alloc-step-indicator">1. LOJA ATIVA:</span>
-            <div className="alloc-active-store-card__title-row">
-              <h2 className="alloc-active-store-card__title">
-                🏪 {activeStore.name}
-              </h2>
-              {activeStoreSummary?.closureStatus === "CLOSED" && !activeStoreSummary?.isStale ? (
-                <span className="alloc-status-pill alloc-status-pill--closed">
-                  ✓ Finalizada
-                </span>
-              ) : activeStoreSummary?.closureStatus === "CLOSED" && activeStoreSummary?.isStale ? (
-                <span
-                  className="alloc-status-pill alloc-status-pill--stale"
-                  title={activeStoreSummary.staleReason ?? "Reconferir"}
-                >
-                  ⚠️ Reconferir
-                </span>
-              ) : (
-                <span className="alloc-status-pill alloc-status-pill--open">
-                  ⏳ Aberta
-                </span>
-              )}
-            </div>
-            <div className="alloc-active-store-card__metrics">
-              <span className="alloc-metric-chip">
-                Itens pedidos: <strong>{activeStoreSummary?.totalOrderedProducts ?? 0}</strong>
-              </span>
-              <span className="alloc-metric-chip">
-                Conferidos: <strong>{activeStoreSummary?.totalReviewedProducts ?? 0}</strong>
-              </span>
-              <span
-                className={`alloc-metric-chip ${
-                  activeStoreSummary?.totalPendingProducts
-                    ? "alloc-metric-chip--pending"
-                    : "alloc-metric-chip--success"
-                }`}
-              >
-                Pendências:{" "}
-                <strong>{activeStoreSummary?.totalPendingProducts ?? 0}</strong>
-              </span>
-              <span className="alloc-metric-chip alloc-metric-chip--destined">
-                Total destinado:{" "}
-                <strong>{activeStoreSummary?.totalDestinedQuantity ?? "0.00"} CX</strong>
-              </span>
-            </div>
-          </div>
-
-          <div className="alloc-active-store-card__actions">
-            <button
-              type="button"
-              className="btn btn--secondary"
-              style={{ fontSize: "13px", minHeight: "36px", padding: "6px 14px", fontWeight: "700" }}
-              onClick={() => setShowStoreSelectModal(true)}
-              title="Abrir modal para selecionar outra loja"
-            >
-              🔄 Trocar Loja
-            </button>
-            {activeStoreSummary?.closureStatus === "CLOSED" ? (
-              <button
-                type="button"
-                className="btn btn--secondary"
-                style={{ fontSize: "12px", minHeight: "36px", padding: "6px 12px" }}
-                onClick={() => handleOpenStoreClosure(activeStoreId)}
-              >
-                📋 Ver Cortes da Loja
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn btn--primary"
-                style={{
-                  fontSize: "12px",
-                  minHeight: "36px",
-                  padding: "6px 12px",
-                  backgroundColor: "#0284c7",
-                }}
-                onClick={() => handleOpenStoreClosure(activeStoreId)}
-              >
-                🏁 Conferir Cortes e Finalizar Loja
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* NÍVEL 2: SELEÇÃO DO FORNECEDOR (LOGO ABAIXO DA LOJA) */}
-      <section className="alloc-supplier-section" aria-label="Seleção do Fornecedor">
-        <div className="alloc-supplier-section__header">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
-            <div className="alloc-step-indicator">
-              2. FORNECEDOR (PARA {activeStore.name.toUpperCase()}):
-            </div>
-            {selectedSupplier ? (
-              selectedSupplier.reviewedByStore?.[activeStoreId] ? (
-                <span className="alloc-supplier-review-badge alloc-supplier-review-badge--reviewed">
-                  ✓ Fornecedor conferido nesta loja
-                </span>
-              ) : (
-                <span className="alloc-supplier-review-badge alloc-supplier-review-badge--pending">
-                  ⏳ Conferência pendente nesta loja
-                </span>
-              )
-            ) : null}
-          </div>
-          <div className="alloc-supplier-select-row">
-            <select
-              id="supplier-selector"
-              className="alloc-select alloc-select--supplier"
-              value={selectedSupplierId ?? ""}
-              onChange={(e) => handleSelectSupplier(e.target.value)}
-            >
-              <option value="" disabled>
-                -- Selecione o fornecedor para esta loja --
-              </option>
-              {suppliers.map((s) => {
-                const storeVol = s.destinedByStore[activeStoreId] ?? "0.00";
-                const isRev = s.reviewedByStore?.[activeStoreId];
-                return (
-                  <option key={s.id} value={s.id}>
-                    {isRev ? "✓ " : ""}{s.displayName}{s.active ? "" : " (inativo)"} — {storeVol} CX {isRev ? "(Conferido)" : ""}
-                  </option>
-                );
-              })}
-            </select>
-
-            {nextSupplier ? (
-              <button
-                type="button"
-                className="btn btn--secondary alloc-btn-next-supplier"
-                title={`Alternar para ${nextSupplier.displayName} mantendo ${activeStore.name}`}
-                onClick={() => handleSelectSupplier(nextSupplier.id)}
-              >
-                Trocar Fornecedor ❯
-              </button>
-            ) : null}
-          </div>
-        </div>
-
-        {selectedSupplier ? (
-          <div className="alloc-supplier-info-card">
-            <div className="alloc-supplier-info-row">
-              <div>
-                <strong className="alloc-supplier-name">
-                  {selectedSupplier.displayName}
-                </strong>
-                {selectedSupplier.displayName !== selectedSupplier.corporateName ? (
-                  <span className="alloc-supplier-trade">
-                    ({selectedSupplier.corporateName})
-                  </span>
-                ) : null}
+    <div className="alloc-workspace dst">
+      {showStoreSelectModal ? (
+        /* TELA 1: ESCOLHER LOJA (entrada da Destinação ou troca de loja) */
+        <section className="dst-screen" aria-labelledby="store-select-modal-title">
+          <header className="dst-head">
+            <div className="dst-head__row dst-head__row--end">
+              <div className="dst-head__titles">
+                <h1 id="store-select-modal-title" className="dst-title dst-title--xl">Destinação</h1>
+                <span className="dst-subtle">Escolha a loja para começar</span>
               </div>
-              <div className="alloc-supplier-actions" style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                {currentSupplierInvoices.length > 0 ? (
-                  <button
-                    type="button"
-                    className="btn btn--secondary btn--sm"
-                    style={{
-                      fontSize: "12px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      backgroundColor: "#f0fdf4",
-                      color: "#166534",
-                      borderColor: "#86efac",
-                      fontWeight: 600,
-                    }}
-                    onClick={() => setShowViewInvoicesModal(true)}
-                    title="Clique para visualizar as fotos das notas registradas"
-                  >
-                    📄 {currentSupplierInvoices.length === 1 ? `NF ${currentSupplierInvoices[0].invoiceNumber}` : `${currentSupplierInvoices.length} Notas`} (Ver fotos)
-                  </button>
-                ) : null}
-
-                {destinedProductsForSupplierAndStore.length > 0 ? (
-                  unlinkedDestinedProducts.length > 0 ? (
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        backgroundColor: "#fef3c7",
-                        color: "#92400e",
-                        padding: "4px 8px",
-                        borderRadius: "6px",
-                        border: "1px solid #fde68a",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                      title="Existem produtos destinados deste fornecedor nesta loja sem nota fiscal vinculada"
-                    >
-                      ⚠️ {currentSupplierInvoices.length > 0 ? `${unlinkedDestinedProducts.length} item(ns) sem nota` : `Sem Nota (${destinedProductsForSupplierAndStore.length})`}
-                    </span>
-                  ) : (
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        backgroundColor: "#f0fdf4",
-                        color: "#166534",
-                        padding: "4px 8px",
-                        borderRadius: "6px",
-                        border: "1px solid #bbf7d0",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                      title="Todos os produtos destinados deste fornecedor nesta loja possuem nota fiscal vinculada"
-                    >
-                      ✓ 100% com nota
-                    </span>
-                  )
-                ) : null}
-
-                {!isClosed ? (
-                  <button
-                    type="button"
-                    className="btn btn--secondary btn--sm"
-                    style={{ fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                    onClick={handleOpenRegisterInvoice}
-                  >
-                    {currentSupplierInvoices.length > 0 ? "+ Adicionar NF" : "📄 Registrar Nota"}
-                  </button>
-                ) : null}
-
-                <Link
-                  href={`/comprador/fornecedores/${selectedSupplier.id}/faturamento`}
-                  className="alloc-billing-link"
-                  target="_blank"
+              <label className="dst-cycle-select">
+                <IconCalendar />
+                <span className="visually-hidden">Ciclo de compras</span>
+                <select
+                  id="cycle-picker"
+                  value={cycleDate}
+                  onChange={(e) => handleSelectCycle(e.target.value)}
                 >
-                  📄 Faturamento deste Fornecedor ↗
-                </Link>
+                  {cycles.map((c) => (
+                    <option key={c} value={c}>
+                      Compra {new Date(c + "T12:00:00").toLocaleDateString("pt-BR")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <Link
+              href={`/comprador/destinacao?ciclo=${cycleDate}${showClosedCycles ? "" : "&fechados=1"}`}
+              className="dst-link dst-link--small"
+            >
+              {showClosedCycles ? "Ocultar ciclos fechados" : "Ver ciclos fechados"}
+            </Link>
+          </header>
+
+          <div className="dst-body">
+            <div className="dst-kpis">
+              <div className="dst-kpi">
+                <span>Comprados</span>
+                <strong>{closure.totalPurchasedInCosts}</strong>
+              </div>
+              <div className="dst-kpi">
+                <span>Destinados</span>
+                <strong>{closure.totalAllocatedProducts}</strong>
+              </div>
+              <div className={`dst-kpi ${unclosedStores.length > 0 ? "dst-kpi--warn" : "dst-kpi--ok"}`}>
+                <span>Lojas abertas</span>
+                <strong>{unclosedStores.length}</strong>
               </div>
             </div>
 
-            <div className="alloc-supplier-meta-row">
-              {selectedSupplier.taxId ? (
-                <span className="alloc-meta-item">
-                  <strong>CNPJ:</strong> {formatTaxId(selectedSupplier.taxId)}
-                </span>
-              ) : null}
-              {activeSupplierReview ? (
-                <span className="alloc-meta-item" style={{ color: "#166534", backgroundColor: "#dcfce7", padding: "2px 8px", borderRadius: "9999px", fontWeight: 600 }}>
-                  ✓ Conferência concluída para {activeStore.name.replace("MultiShow ", "")}
-                </span>
-              ) : null}
-              {destinedProductsForSupplierAndStore.length > 0 ? (
-                currentSupplierInvoices.length > 0 ? (
-                  unlinkedDestinedProducts.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowViewInvoicesModal(true)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 0,
-                      }}
-                    >
-                      <span
-                        className="alloc-meta-item"
-                        style={{
-                          color: "#b45309",
-                          backgroundColor: "#fef3c7",
-                          padding: "2px 8px",
-                          borderRadius: "9999px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        ⚠️ {unlinkedDestinedProducts.length} de {destinedProductsForSupplierAndStore.length} item(ns) sem nota
-                      </span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowViewInvoicesModal(true)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 0,
-                      }}
-                    >
-                      <span
-                        className="alloc-meta-item"
-                        style={{
-                          color: "#15803d",
-                          backgroundColor: "#dcfce7",
-                          padding: "2px 8px",
-                          borderRadius: "9999px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        ✓ Todas destinações com nota
-                      </span>
-                    </button>
-                  )
-                ) : (
-                  <span
-                    className="alloc-meta-item"
-                    style={{
-                      color: "#b45309",
-                      backgroundColor: "#fef3c7",
-                      padding: "2px 8px",
-                      borderRadius: "9999px",
-                      fontWeight: 600,
+            {isClosed ? (
+              <div className="dst-callout dst-callout--info" role="status">
+                <div>
+                  <strong>Ciclo fechado</strong>
+                  <span>
+                    Por {closure.closedByName ?? "Comprador"} em{" "}
+                    {closure.closedAt ? new Date(closure.closedAt).toLocaleString("pt-BR") : "—"}. Somente leitura.
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
+            <h2 className="dst-section-title">Lojas do ciclo</h2>
+
+            <div className="dst-store-list">
+              {stores.map((store) => {
+                const progress = storeProgress(storeSummary[store.id]);
+                const isCurrentActive = store.id === activeStoreId && hasExplicitStoreSelection;
+                const closureInfo = storeClosures[store.id];
+                return (
+                  <button
+                    key={store.id}
+                    type="button"
+                    className={`dst-store-card store-${storeColor(store.slug)}${isCurrentActive ? " dst-store-card--active" : ""}`}
+                    onClick={() => {
+                      setShowStoreSelectModal(false);
+                      handleSelectStore(store.id, true);
                     }}
                   >
-                    ⚠️ Destinação sem nota fiscal vinculada
-                  </span>
-                )
-              ) : null}
-              <span className="alloc-meta-item alloc-meta-item--highlight">
-                <strong>Destinado em {activeStore.name.replace("MultiShow ", "")}:</strong>{" "}
-                {activeStoreTotalDestined} CX
-              </span>
-              <span className="alloc-meta-item" style={{ color: "#64748b" }}>
-                Total ciclo (todas as lojas): {selectedSupplier.totalDestinedQuantity} CX
-              </span>
-            </div>
-          </div>
-        ) : null}
-      </section>
-
-      {/* MENSAGENS DE FEEDBACK */}
-      {saveMessage ? (
-        <div className="alloc-banner alloc-banner--closed" style={{ marginBottom: "12px" }}>
-          <span>✓ {saveMessage}</span>
-        </div>
-      ) : null}
-
-      {errorMessage ? (
-        <div className="alloc-banner alloc-banner--warning" style={{ marginBottom: "12px" }}>
-          <span>⚠️ {errorMessage}</span>
-        </div>
-      ) : null}
-
-      {/* NÍVEL 3: LISTA DE PRODUTOS (SOMENTE DA LOJA ATIVA) */}
-      {selectedSupplierId ? (
-        <section aria-label="Produtos para destinação da loja ativa">
-          <div className="alloc-products-toolbar">
-            <input
-              type="search"
-              className="alloc-search-input"
-              placeholder={`Buscar produto para ${activeStore.name.replace("MultiShow ", "")}...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-
-            {!isClosed ? (
-              <button
-                type="button"
-                className="btn btn--secondary"
-                onClick={() => setShowAddProductModal(true)}
-              >
-                + Adicionar Outro Produto
-              </button>
-            ) : null}
-          </div>
-
-          {filteredProducts.length > 0 ? (
-            <div className="alloc-products-list">
-              {filteredProducts.map((prod) => {
-                const storeData = prod.stores[activeStoreId] ?? {
-                  storeId: activeStoreId,
-                  storeName: activeStore.name,
-                  storeSlug: activeStore.slug,
-                  orderedQuantity: "0.00",
-                  destinedQuantity: "0.00",
-                  persistedDestinedQuantity: null,
-                  difference: "0.00",
-                  isAdditionalPurchase: false,
-                };
-
-                const diff = storeData.difference;
-                const isSurplus = diff.startsWith("+") && diff !== "+0.00";
-                const isCut = diff.startsWith("-");
-                const hasOrder = parseQuantity(storeData.orderedQuantity) > 0;
-                const isDifferentFromOrder =
-                  hasOrder && storeData.destinedQuantity !== storeData.orderedQuantity;
-                const isUnpurchasedWithOrders =
-                  !prod.purchasedInCosts && parseQuantity(prod.totalOrdered) > 0;
-                const hasDestinedInActiveStore =
-                  parseQuantity(storeData.destinedQuantity) > 0;
-
-                // Soma das outras lojas para referência rápida
-                const otherStoresDestined = sumQuantities(
-                  stores
-                    .filter((s) => s.id !== activeStoreId)
-                    .map((s) => prod.stores[s.id]?.destinedQuantity ?? "0.00"),
-                );
-
-                return (
-                  <article key={prod.productId} className="alloc-product-card">
-                    <header className="alloc-product-header">
-                      <div className="alloc-product-info">
-                        <div className="alloc-product-title">
-                          <span className="alloc-product-erp">{prod.erpCode}</span>
-                          <strong className="alloc-product-name">
-                            {prod.productName}
-                          </strong>
-                          <span className="alloc-product-format">
-                            ({prod.purchaseFormat})
-                          </span>
-                        </div>
-                        <div className="alloc-badges">
-                          {hasDestinedInActiveStore ? (
-                            coveredProductIds.has(prod.productId) ? (
-                              <span
-                                className="alloc-badge"
-                                style={{
-                                  backgroundColor: "#dcfce7",
-                                  color: "#166534",
-                                  border: "1px solid #86efac",
-                                  fontWeight: "600",
-                                }}
-                                title="Produto com nota fiscal vinculada"
-                              >
-                                ✓ Com Nota
-                              </span>
-                            ) : (
-                              <span
-                                className="alloc-badge"
-                                style={{
-                                  backgroundColor: "#fef3c7",
-                                  color: "#92400e",
-                                  border: "1px solid #fde68a",
-                                  fontWeight: "600",
-                                }}
-                                title="Destinação positiva sem nota fiscal vinculada"
-                              >
-                                ⚠️ Sem Nota
-                              </span>
-                            )
-                          ) : null}
-                          {isUnpurchasedWithOrders ? (
-                            <span
-                              className="alloc-badge"
-                              style={{ backgroundColor: "#fee2e2", color: "#b91c1c", fontWeight: "700" }}
-                            >
-                              ⚠️ Não Comprado nos Custos
-                            </span>
-                          ) : null}
-                          {prod.isExclusive ? (
-                            <span className="alloc-badge alloc-badge--exclusive">
-                              Exclusivo JEB
-                            </span>
-                          ) : null}
-                          {storeData.isAdditionalPurchase || prod.isAdditionalPurchase ? (
-                            <span className="alloc-badge alloc-badge--additional">
-                              Sem Pedido / Oportunidade
-                            </span>
-                          ) : null}
-                          {!prod.hasOfficialCost ? (
-                            <span className="alloc-badge alloc-badge--no-cost">
-                              Sem custo oficial
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </header>
-
-                    {/* BANNER DE ALERTA: PRODUTO COM PEDIDO NÃO COMPRADO NOS CUSTOS (BUG 03) */}
-                    {isUnpurchasedWithOrders ? (
-                      <div className="alloc-unpurchased-alert-banner">
-                        <div className="alloc-unpurchased-alert-header">
-                          <span role="img" aria-label="Alerta">⚠️</span>
-                          <span>PRODUTO NÃO COMPRADO NOS CUSTOS</span>
-                        </div>
-                        <p className="alloc-unpurchased-alert-text">
-                          Este produto possui pedido das lojas ({prod.totalOrdered} {prod.purchaseFormat}), mas não foi marcado como comprado na tela de custos. Para destiná-lo, marque-o como comprado nos custos primeiro.
-                        </p>
-                        {hasDestinedInActiveStore ? (
-                          <div className="alloc-unpurchased-alert-action-row">
-                            <span className="alloc-unpurchased-alert-destined-warning">
-                              Destinação indevida nesta loja: <strong>{storeData.destinedQuantity} {prod.purchaseFormat}</strong>
-                            </span>
-                            <button
-                              type="button"
-                              className="btn btn--danger alloc-btn-zero"
-                              onClick={() => handleQuantityChange(prod.productId, "0.00")}
-                              title="Zerar destinação indevida"
-                            >
-                              Zerar Destinação
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="alloc-unpurchased-alert-cleared">
-                            ✓ Destinação zerada nesta loja.
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
-
-                    {/* ÁREA DE EDIÇÃO EXCLUSIVA DA LOJA ATIVA */}
-                    <div className="alloc-single-store-panel">
-                      <div className="alloc-single-store-panel__info">
-                        <div className="alloc-single-store-name">
-                          <span className="alloc-store-icon">🏪</span>
-                          <strong>{activeStore.name}</strong>
-                        </div>
-                        <div className="alloc-single-store-order">
-                          {hasOrder ? (
-                            <span className="alloc-order-tag">
-                              Pedido da loja: <strong>{storeData.orderedQuantity} {prod.purchaseFormat}</strong>
-                            </span>
-                          ) : (
-                            <span className="alloc-no-order-tag">
-                              Sem pedido registrado para esta loja
-                            </span>
-                          )}
-                          {prod.storeTotalDestinedAcrossSuppliers && parseQuantity(prod.storeTotalDestinedAcrossSuppliers) > 0 ? (
-                            <span style={{ fontSize: "11px", color: "#0369a1", display: "block", marginTop: "3px" }}>
-                              Total destinado somando fornecedores: <strong>{prod.storeTotalDestinedAcrossSuppliers} {prod.purchaseFormat}</strong>
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      {/* Decisão explícita de Não Comprado */}
-                      {prod.supplierDecision === "NOT_PURCHASED" ? (
-                        <div className="alloc-not-purchased-banner">
-                          <span className="alloc-not-purchased-banner__text">
-                            🚫 Não comprado deste fornecedor nesta loja
-                          </span>
-                          {!isClosed ? (
-                            <button
-                              type="button"
-                              className="alloc-btn-revert"
-                              onClick={() => handleRevertNotPurchased(prod.productId)}
-                              title="Reverter decisão e permitir nova compra ou destinação"
-                            >
-                              Desfazer Decisão
-                            </button>
-                          ) : null}
-                        </div>
-                      ) : null}
-
-                      <div className="alloc-single-store-controls">
-                        <div className="alloc-stepper">
-                          <button
-                            type="button"
-                            className="alloc-stepper-btn"
-                            disabled={isClosed}
-                            aria-label={`Diminuir quantidade`}
-                            onClick={() => handleStepQuantity(prod.productId, -1)}
-                          >
-                            −
-                          </button>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            className="alloc-stepper-input"
-                            disabled={isClosed || (isUnpurchasedWithOrders && !hasDestinedInActiveStore)}
-                            value={storeData.destinedQuantity}
-                            onChange={(e) =>
-                              handleQuantityChange(prod.productId, e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                const inputs = Array.from(document.querySelectorAll<HTMLInputElement>(".alloc-stepper-input"));
-                                const currentIndex = inputs.indexOf(e.currentTarget);
-                                if (currentIndex >= 0 && currentIndex < inputs.length - 1) {
-                                  inputs[currentIndex + 1]?.focus();
-                                  inputs[currentIndex + 1]?.select();
-                                }
-                              }
-                            }}
-                          />
-                          <button
-                            type="button"
-                            className="alloc-stepper-btn"
-                            disabled={isClosed || isUnpurchasedWithOrders}
-                            aria-label={`Aumentar quantidade`}
-                            onClick={() => handleStepQuantity(prod.productId, 1)}
-                            title={isUnpurchasedWithOrders ? "Bloqueado: marque como comprado nos custos" : undefined}
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        {/* Botão Individual: NÃO COMPREI DESTE FORNECEDOR */}
-                        {prod.supplierDecision !== "NOT_PURCHASED" && !isClosed ? (
-                          <button
-                            type="button"
-                            className="alloc-btn-not-purchased"
-                            title="Registrar decisão de não comprar deste fornecedor para esta loja"
-                            onClick={() => handleSetNotPurchased(prod.productId)}
-                          >
-                            Não comprei deste fornecedor
-                          </button>
-                        ) : null}
-
-                        {/* Botão de Sugestão Tátil de Pedido */}
-                        {isDifferentFromOrder && !isClosed && !isUnpurchasedWithOrders ? (
-                          <button
-                            type="button"
-                            className="alloc-suggest-btn"
-                            title="Igualar destinação ao pedido da loja"
-                            onClick={() => handleSuggestOrder(prod.productId)}
-                          >
-                            Sugerir Pedido ({storeData.orderedQuantity})
-                          </button>
-                        ) : null}
-
-                        {/* Indicador de Diferença */}
-                        <span
-                          className={`alloc-diff-pill ${
-                            isCut
-                              ? "alloc-diff-pill--cut"
-                              : isSurplus
-                              ? "alloc-diff-pill--surplus"
-                              : "alloc-diff-pill--neutral"
-                          }`}
-                        >
-                          {diff} {isCut ? "(Corte)" : isSurplus ? "(Adicional)" : "(Atendido)"}
+                    <span className="dst-store-card__top">
+                      <strong className="dst-store-card__name">{shortStoreName(store.name)}</strong>
+                      <span className={`status-tag status-tag--${progress.tone}`}>{progress.label}</span>
+                    </span>
+                    <span className="dst-progress" aria-hidden="true">
+                      <span
+                        className={`dst-progress__bar${progress.state === "finalized" ? " dst-progress__bar--done" : ""}`}
+                        style={{ width: `${progress.percent}%` }}
+                      />
+                    </span>
+                    <span className="dst-store-card__meta">
+                      {progress.state === "finalized" ? (
+                        <span>
+                          <strong>{progress.done} de {progress.total}</strong> itens
+                          {closureInfo?.closedAt
+                            ? ` · finalizada às ${new Date(closureInfo.closedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+                            : ""}
+                          {closureInfo?.closedByName ? ` por ${closureInfo.closedByName}` : ""}
                         </span>
-                      </div>
-                    </div>
-
-                    {/* RODAPÉ COMPACTO: REFERÊNCIA DAS OUTRAS UNIDADES */}
-                    <footer className="alloc-product-card-footer">
-                      <span className="alloc-other-stores-hint">
-                        Outras lojas somadas: <strong>{otherStoresDestined} {prod.purchaseFormat}</strong>
-                      </span>
-                      <span className="alloc-cycle-total-hint">
-                        Total ciclo: <strong>{prod.totalDestined} {prod.purchaseFormat}</strong>
-                      </span>
-                    </footer>
-                  </article>
+                      ) : (
+                        <>
+                          <span>
+                            <strong>{progress.done} de {progress.total}</strong> itens atendidos
+                          </span>
+                          {progress.pending > 0 ? (
+                            <span className="dst-text-danger">{progress.pending} pendentes</span>
+                          ) : null}
+                        </>
+                      )}
+                    </span>
+                  </button>
                 );
               })}
             </div>
-          ) : (
-            <div className="alloc-empty-state">
-              <p>Nenhum produto cadastrado para este fornecedor.</p>
-              {!isClosed ? (
+
+            {unassignedPurchasedProducts.length > 0 || unassignedOpportunityProducts.length > 0 ? (
+              <button
+                type="button"
+                className="dst-callout dst-callout--danger dst-callout--button"
+                onClick={() => setShowUnassignedModal(true)}
+              >
+                <IconAlert />
+                <span>
+                  {unassignedPurchasedProducts.length} comprados sem fornecedor
+                  {unassignedStoreLabel ? ` — ${unassignedStoreLabel}` : ""}
+                  {unassignedOpportunityProducts.length > 0 ? ` (+${unassignedOpportunityProducts.length} sem pedido)` : ""}
+                </span>
+              </button>
+            ) : null}
+
+            <div className="dst-cycle-actions">
+              {isClosed ? (
+                <button type="button" className="btn btn--secondary" onClick={() => setShowReopenModal(true)}>
+                  Reabrir ciclo
+                </button>
+              ) : (
                 <button
                   type="button"
-                  className="btn btn--primary"
-                  style={{ marginTop: "12px" }}
-                  onClick={() => setShowAddProductModal(true)}
+                  className={`btn ${allStoresFinalized ? "btn--success" : "btn--secondary"}`}
+                  onClick={() => setShowCloseModal(true)}
+                  title={
+                    allStoresFinalized
+                      ? "Todas as lojas estão finalizadas. Pronto para fechar o ciclo."
+                      : `Aguardando finalização das lojas: ${unclosedStores.map((s) => s.name).join(", ")}`
+                  }
                 >
-                  + Adicionar Produto Comprado
+                  Fechar ciclo geral ({stores.length - unclosedStores.length}/{stores.length} lojas finalizadas)
                 </button>
-              ) : null}
-            </div>
-          )}
-
-          {/* AÇÃO EM LOTE DO FORNECEDOR */}
-          {!isClosed && selectedSupplierId && filteredProducts.length > 0 ? (
-            <div className="alloc-batch-conclude-card">
-              <div className="alloc-batch-conclude-card__info">
-                <h4>Concluir Conferência deste Fornecedor</h4>
-                <p>
-                  Marca os produtos sem destinação nesta loja como &quot;Não comprado deste fornecedor&quot; e conclui a conferência de <strong>{selectedSupplier?.corporateName}</strong> para <strong>{activeStore.name}</strong>.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn btn--secondary"
-                style={{ fontWeight: "700", whiteSpace: "nowrap" }}
-                onClick={handleOpenBatchConcludeSupplier}
-              >
-                Concluir Conferência deste Fornecedor ❯
-              </button>
-            </div>
-          ) : null}
-
-          {/* BARRA FIXA DE SALVAR DA LOJA ATIVA */}
-          {!isClosed ? (
-            <div className="alloc-sticky-bar">
-              <div className="alloc-sticky-info">
-                <div className="alloc-sticky-store">
-                  🏪 <strong>{activeStore.name.replace("MultiShow ", "")}</strong> •{" "}
-                  <span>{activeStoreTotalDestined} CX</span>
-                </div>
-                <span className="alloc-sticky-status">
-                  {isDirty && canSave ? (
-                    <strong style={{ color: "#d97706" }}>⚠️ Alterações não salvas</strong>
-                  ) : hasUnconfirmedSuggestions ? (
-                    <strong style={{ color: "#d97706" }}>⚠️ Sugestões aguardando confirmação</strong>
-                  ) : (
-                    <span style={{ color: "#16a34a" }}>✓ Todas as alterações salvas</span>
-                  )}
-                </span>
-              </div>
-
-              <div className="alloc-sticky-buttons">
+              )}
+              {hasExplicitStoreSelection ? (
                 <button
                   type="button"
                   className="btn btn--secondary"
-                  style={{ fontWeight: "700" }}
-                  onClick={() => handleOpenStoreClosure(activeStoreId)}
+                  onClick={() => setShowStoreSelectModal(false)}
                 >
-                  Conferir Cortes da Loja
+                  Continuar em {shortActiveStoreName}
                 </button>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : (
+        /* TELA 2: PRODUTOS DO FORNECEDOR NA LOJA ATIVA */
+        <section className="dst-screen" aria-label={`Destinação de ${shortActiveStoreName}`}>
+          <header className="dst-head dst-head--sticky">
+            <div className="dst-head__row">
+              <button
+                type="button"
+                className="dst-icon-btn"
+                aria-label="Trocar loja"
+                title="Voltar para a lista de lojas"
+                onClick={() => setShowStoreSelectModal(true)}
+              >
+                <IconChevronLeft />
+              </button>
+              <div className="dst-head__titles">
+                <span className="dst-eyebrow">Compra {cycleLabel}</span>
+                <h1 className={`dst-title dst-store-name store-${storeColor(activeStore.slug)}`}>
+                  {shortActiveStoreName}
+                </h1>
+              </div>
+              {activeStoreSummary?.closureStatus === "CLOSED" && !activeStoreSummary.isStale ? (
+                <span className="status-tag status-tag--integral">Finalizada</span>
+              ) : activeStoreSummary?.closureStatus === "CLOSED" && activeStoreSummary.isStale ? (
+                <span className="status-tag status-tag--partial" title={activeStoreSummary.staleReason ?? "Reconferir"}>
+                  Reconferir
+                </span>
+              ) : (activeStoreSummary?.totalPendingProducts ?? 0) > 0 ? (
+                <span className="dst-head__pending">{activeStoreSummary?.totalPendingProducts} pendentes</span>
+              ) : null}
+            </div>
 
+            <button
+              type="button"
+              className="dst-supplier-btn"
+              onClick={() => {
+                setSupplierQuery("");
+                setShowSupplierPicker(true);
+              }}
+              aria-haspopup="dialog"
+            >
+              {selectedSupplier ? (
+                <>
+                  <span
+                    className={`dst-avatar ${selectedSupplier.reviewedByStore?.[activeStoreId] ? "dst-avatar--done" : "dst-avatar--current"}`}
+                    aria-hidden="true"
+                  >
+                    {selectedSupplier.reviewedByStore?.[activeStoreId] ? <IconCheck /> : supplierInitials(selectedSupplier.displayName)}
+                  </span>
+                  <span className="dst-supplier-btn__text">
+                    <strong>{selectedSupplier.displayName}</strong>
+                    <span>
+                      Fornecedor {supplierPosition} de {suppliers.length}
+                      {orderedProductCount > 0 ? ` · ${decidedProductCount} de ${orderedProductCount} itens decididos` : ""}
+                      {selectedSupplier.reviewedByStore?.[activeStoreId] ? " · conferido" : ""}
+                    </span>
+                  </span>
+                  <span className="dst-supplier-btn__action">Trocar</span>
+                </>
+              ) : (
+                <>
+                  <span className="dst-avatar" aria-hidden="true">?</span>
+                  <span className="dst-supplier-btn__text">
+                    <strong>Escolher fornecedor</strong>
+                    <span>{suppliers.length} fornecedores no ciclo</span>
+                  </span>
+                  <span className="dst-supplier-btn__action">Abrir</span>
+                </>
+              )}
+            </button>
+
+            {selectedSupplierId ? (
+              <div className="dst-filter-row">
                 <button
                   type="button"
-                  className="btn btn--primary alloc-save-btn"
+                  className={`dst-chip${effectiveListFilter === "pending" ? " dst-chip--active" : ""}`}
+                  aria-pressed={effectiveListFilter === "pending"}
+                  onClick={() => setListFilter("pending")}
+                >
+                  Pendentes {pendingViewCount}
+                </button>
+                <button
+                  type="button"
+                  className={`dst-chip${effectiveListFilter === "all" ? " dst-chip--active" : ""}`}
+                  aria-pressed={effectiveListFilter === "all"}
+                  onClick={() => setListFilter("all")}
+                >
+                  Todos {products.length}
+                </button>
+                <button
+                  type="button"
+                  className={`dst-chip dst-chip--icon${showProductSearch || searchQuery ? " dst-chip--active" : ""}`}
+                  aria-label="Buscar produto"
+                  aria-expanded={showProductSearch}
+                  onClick={() => setShowProductSearch((open) => !open)}
+                >
+                  <IconSearch />
+                </button>
+              </div>
+            ) : null}
+
+            {selectedSupplierId && (showProductSearch || searchQuery) ? (
+              <label className="dst-search">
+                <IconSearch />
+                <input
+                  type="search"
+                  placeholder={`Buscar produto para ${shortActiveStoreName}`}
+                  aria-label="Buscar produto"
+                  value={searchQuery}
+                  autoFocus
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </label>
+            ) : null}
+          </header>
+
+          <div className="dst-body">
+            {isClosed ? (
+              <div className="dst-callout dst-callout--info" role="status">
+                <div>
+                  <strong>Ciclo fechado — somente leitura</strong>
+                  <span>
+                    Por {closure.closedByName ?? "Comprador"} em{" "}
+                    {closure.closedAt ? new Date(closure.closedAt).toLocaleString("pt-BR") : "—"}.
+                  </span>
+                </div>
+                <button type="button" className="btn btn--secondary btn--sm" onClick={() => setShowReopenModal(true)}>
+                  Reabrir
+                </button>
+              </div>
+            ) : null}
+
+            {unassignedPurchasedProducts.length > 0 || unassignedOpportunityProducts.length > 0 ? (
+              <button
+                type="button"
+                className="dst-callout dst-callout--danger dst-callout--button"
+                onClick={() => setShowUnassignedModal(true)}
+              >
+                <IconAlert />
+                <span>
+                  {unassignedPurchasedProducts.length} comprados sem fornecedor
+                  {unassignedStoreLabel ? ` em ${unassignedStoreLabel}` : ""}
+                  {unassignedOpportunityProducts.length > 0 ? ` (+${unassignedOpportunityProducts.length} sem pedido)` : ""}
+                </span>
+              </button>
+            ) : null}
+
+            {/* MENSAGENS DE FEEDBACK */}
+            {saveMessage ? (
+              <div className="alloc-banner alloc-banner--closed dst-feedback" role="status">
+                <span>✓ {saveMessage}</span>
+              </div>
+            ) : null}
+            {errorMessage ? (
+              <div className="alloc-banner alloc-banner--warning dst-feedback" role="alert">
+                <span>⚠️ {errorMessage}</span>
+              </div>
+            ) : null}
+
+            {selectedSupplier ? (
+              <details className="dst-details">
+                <summary>
+                  <span>Notas fiscais e detalhes</span>
+                  {nfStatus ? (
+                    <span className={`status-tag status-tag--${nfStatus.tone}`}>{nfStatus.label}</span>
+                  ) : null}
+                </summary>
+                <div className="dst-details__body">
+                  {selectedSupplier.displayName !== selectedSupplier.corporateName ? (
+                    <p className="dst-subtle">{selectedSupplier.corporateName}</p>
+                  ) : null}
+                  {selectedSupplier.taxId ? (
+                    <p className="dst-subtle">CNPJ {formatTaxId(selectedSupplier.taxId)}</p>
+                  ) : null}
+                  {activeSupplierReview ? (
+                    <p className="dst-text-ok">✓ Conferência concluída para {shortActiveStoreName}</p>
+                  ) : null}
+                  <dl className="dst-facts">
+                    <div>
+                      <dt>Destinado em {shortActiveStoreName}</dt>
+                      <dd>{formatQty(activeStoreTotalDestined)} CX</dd>
+                    </div>
+                    <div>
+                      <dt>Total do ciclo (todas as lojas)</dt>
+                      <dd>{formatQty(selectedSupplier.totalDestinedQuantity)} CX</dd>
+                    </div>
+                  </dl>
+                  {destinedProductsForSupplierAndStore.length > 0 ? (
+                    <p className={unlinkedDestinedProducts.length > 0 ? "dst-text-warn" : "dst-text-ok"}>
+                      {unlinkedDestinedProducts.length > 0
+                        ? currentSupplierInvoices.length > 0
+                          ? `${unlinkedDestinedProducts.length} de ${destinedProductsForSupplierAndStore.length} item(ns) sem nota`
+                          : "Destinação sem nota fiscal vinculada"
+                        : "✓ Todas as destinações com nota"}
+                    </p>
+                  ) : null}
+                  <div className="dst-details__actions">
+                    {currentSupplierInvoices.length > 0 ? (
+                      <button type="button" className="btn btn--secondary" onClick={() => setShowViewInvoicesModal(true)}>
+                        {currentSupplierInvoices.length === 1
+                          ? `Ver NF ${currentSupplierInvoices[0].invoiceNumber}`
+                          : `Ver ${currentSupplierInvoices.length} notas`}
+                      </button>
+                    ) : null}
+                    {!isClosed ? (
+                      <button type="button" className="btn btn--secondary" onClick={handleOpenRegisterInvoice}>
+                        {currentSupplierInvoices.length > 0 ? "+ Adicionar NF" : "Registrar nota"}
+                      </button>
+                    ) : null}
+                    <Link
+                      href={`/comprador/fornecedores/${selectedSupplier.id}/faturamento`}
+                      className="dst-link"
+                      target="_blank"
+                    >
+                      Faturamento deste fornecedor ↗
+                    </Link>
+                  </div>
+                </div>
+              </details>
+            ) : null}
+
+            {/* LISTA DE PRODUTOS (SOMENTE DA LOJA ATIVA) */}
+            {selectedSupplierId ? (
+              <>
+                {filteredProducts.length > 0 ? (
+                  visibleProductViews.length > 0 ? (
+                    <section className="dst-product-list" aria-label="Produtos para destinação da loja ativa">
+                      {visibleProductViews.map((view) => {
+                        const { prod, storeData, hasOrder, isUnpurchasedWithOrders, hasDestinedInActiveStore, status } = view;
+                        const isDifferentFromOrder =
+                          hasOrder && storeData.destinedQuantity !== storeData.orderedQuantity;
+                        const otherStoresDestined = sumQuantities(
+                          stores
+                            .filter((s) => s.id !== activeStoreId)
+                            .map((s) => prod.stores[s.id]?.destinedQuantity ?? "0.00"),
+                        );
+                        const showCompact = view.isSettled && !expandedProductIds.has(prod.productId);
+
+                        if (showCompact) {
+                          return (
+                            <article key={prod.productId} className="alloc-product-card dst-card dst-card--compact">
+                              <div className="dst-card__info">
+                                <strong className="dst-card__name">{prod.productName}</strong>
+                                <span className="dst-card__line">
+                                  {view.notPurchased ? (
+                                    "Não comprado deste fornecedor nesta loja"
+                                  ) : (
+                                    <>
+                                      Pedido {formatQty(storeData.orderedQuantity)} · destinado{" "}
+                                      <strong>
+                                        {formatQty(storeData.destinedQuantity)} {prod.purchaseFormat}
+                                      </strong>
+                                    </>
+                                  )}
+                                </span>
+                              </div>
+                              <span className={`status-tag status-tag--${status.tone}`}>{status.label}</span>
+                              {!isClosed ? (
+                                <button
+                                  type="button"
+                                  className="dst-link dst-link--button"
+                                  onClick={() => toggleExpanded(prod.productId)}
+                                  aria-label={`Editar ${prod.productName}`}
+                                >
+                                  Editar
+                                </button>
+                              ) : null}
+                            </article>
+                          );
+                        }
+
+                        return (
+                          <article
+                            key={prod.productId}
+                            className={`alloc-product-card dst-card${view.hasUnsavedChange ? " dst-card--dirty" : ""}`}
+                          >
+                            <header className="dst-card__head">
+                              <div className="dst-card__info">
+                                <span className="dst-card__erp">ERP {prod.erpCode} · {prod.purchaseFormat}</span>
+                                <strong className="dst-card__name">{prod.productName}</strong>
+                                {hasOrder ? (
+                                  <span className="dst-card__line">
+                                    Pedido da loja: <strong>{formatQty(storeData.orderedQuantity)} {prod.purchaseFormat}</strong>
+                                  </span>
+                                ) : (
+                                  <span className="dst-card__line">Sem pedido desta loja</span>
+                                )}
+                              </div>
+                              <span className={`status-tag status-tag--${status.tone}`}>{status.label}</span>
+                            </header>
+
+                            {hasDestinedInActiveStore ||
+                            prod.isExclusive ||
+                            storeData.isAdditionalPurchase ||
+                            prod.isAdditionalPurchase ||
+                            !prod.hasOfficialCost ? (
+                              <div className="dst-tags">
+                                {hasDestinedInActiveStore ? (
+                                  coveredProductIds.has(prod.productId) ? (
+                                    <span className="dst-tag dst-tag--ok" title="Produto com nota fiscal vinculada">Com nota</span>
+                                  ) : (
+                                    <span className="dst-tag dst-tag--warn" title="Destinação positiva sem nota fiscal vinculada">Sem nota</span>
+                                  )
+                                ) : null}
+                                {prod.isExclusive ? <span className="dst-tag">Exclusivo JEB</span> : null}
+                                {storeData.isAdditionalPurchase || prod.isAdditionalPurchase ? (
+                                  <span className="dst-tag dst-tag--info">Sem pedido / oportunidade</span>
+                                ) : null}
+                                {!prod.hasOfficialCost ? <span className="dst-tag">Sem custo oficial</span> : null}
+                              </div>
+                            ) : null}
+
+                            {/* ALERTA: PRODUTO COM PEDIDO NÃO COMPRADO NOS CUSTOS (BUG 03) */}
+                            {isUnpurchasedWithOrders ? (
+                              <div className="dst-alert" role="alert">
+                                <strong>Não marcado como comprado nos custos</strong>
+                                <span>
+                                  As lojas pediram {formatQty(prod.totalOrdered)} {prod.purchaseFormat}. Marque-o como
+                                  comprado na tela de custos antes de destinar.
+                                </span>
+                                {hasDestinedInActiveStore ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn--danger"
+                                    onClick={() => handleQuantityChange(prod.productId, "0.00")}
+                                    title="Zerar destinação indevida"
+                                  >
+                                    Zerar destinação ({formatQty(storeData.destinedQuantity)} {prod.purchaseFormat})
+                                  </button>
+                                ) : (
+                                  <span className="dst-text-ok">✓ Destinação zerada nesta loja.</span>
+                                )}
+                              </div>
+                            ) : null}
+
+                            {/* Decisão explícita de Não Comprado */}
+                            {view.notPurchased ? (
+                              <div className="alloc-not-purchased-banner dst-not-purchased">
+                                <span className="alloc-not-purchased-banner__text">
+                                  Não comprado deste fornecedor nesta loja
+                                </span>
+                                {!isClosed ? (
+                                  <button
+                                    type="button"
+                                    className="alloc-btn-revert"
+                                    onClick={() => handleRevertNotPurchased(prod.productId)}
+                                    title="Reverter decisão e permitir nova compra ou destinação"
+                                  >
+                                    Desfazer
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : null}
+
+                            <div className="dst-card__controls">
+                              <div className={`dst-stepper${hasDestinedInActiveStore ? " dst-stepper--filled" : ""}`}>
+                                <button
+                                  type="button"
+                                  className="dst-stepper__btn"
+                                  disabled={isClosed}
+                                  aria-label={`Diminuir ${prod.productName}`}
+                                  onClick={() => handleStepQuantity(prod.productId, -1)}
+                                >
+                                  −
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  className="alloc-stepper-input dst-stepper__input"
+                                  aria-label={`Quantidade destinada de ${prod.productName}`}
+                                  disabled={isClosed || (isUnpurchasedWithOrders && !hasDestinedInActiveStore)}
+                                  value={storeData.destinedQuantity}
+                                  onFocus={(e) => e.currentTarget.select()}
+                                  onChange={(e) => handleQuantityChange(prod.productId, e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      const inputs = Array.from(
+                                        document.querySelectorAll<HTMLInputElement>(".alloc-stepper-input"),
+                                      );
+                                      const currentIndex = inputs.indexOf(e.currentTarget);
+                                      if (currentIndex >= 0 && currentIndex < inputs.length - 1) {
+                                        inputs[currentIndex + 1]?.focus();
+                                        inputs[currentIndex + 1]?.select();
+                                      }
+                                    }
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  className="dst-stepper__btn"
+                                  disabled={isClosed || isUnpurchasedWithOrders}
+                                  aria-label={`Aumentar ${prod.productName}`}
+                                  onClick={() => handleStepQuantity(prod.productId, 1)}
+                                  title={isUnpurchasedWithOrders ? "Bloqueado: marque como comprado nos custos" : undefined}
+                                >
+                                  +
+                                </button>
+                              </div>
+
+                              {isDifferentFromOrder && !isClosed && !isUnpurchasedWithOrders ? (
+                                <button
+                                  type="button"
+                                  className="dst-use-order"
+                                  title="Igualar destinação ao pedido da loja"
+                                  onClick={() => handleSuggestOrder(prod.productId)}
+                                >
+                                  Usar pedido · {formatQty(storeData.orderedQuantity)}
+                                </button>
+                              ) : (
+                                <span className="dst-card__totals">
+                                  Outras lojas: <strong>{formatQty(otherStoresDestined)} {prod.purchaseFormat}</strong>
+                                  <br />
+                                  Total do ciclo: <strong>{formatQty(prod.totalDestined)} {prod.purchaseFormat}</strong>
+                                </span>
+                              )}
+                            </div>
+
+                            {prod.storeTotalDestinedAcrossSuppliers &&
+                            parseQuantity(prod.storeTotalDestinedAcrossSuppliers) > 0 ? (
+                              <span className="dst-card__hint">
+                                Somando todos os fornecedores nesta loja:{" "}
+                                <strong>{formatQty(prod.storeTotalDestinedAcrossSuppliers)} {prod.purchaseFormat}</strong>
+                              </span>
+                            ) : null}
+
+                            <div className="dst-card__foot">
+                              {!view.notPurchased && !isClosed ? (
+                                <button
+                                  type="button"
+                                  className="dst-link dst-link--danger dst-link--button"
+                                  title="Registrar decisão de não comprar deste fornecedor para esta loja"
+                                  onClick={() => handleSetNotPurchased(prod.productId)}
+                                >
+                                  Não comprei deste fornecedor
+                                </button>
+                              ) : (
+                                <span />
+                              )}
+                              {expandedProductIds.has(prod.productId) ? (
+                                <button
+                                  type="button"
+                                  className="dst-link dst-link--button"
+                                  onClick={() => toggleExpanded(prod.productId)}
+                                >
+                                  Recolher
+                                </button>
+                              ) : null}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </section>
+                  ) : (
+                    <div className="dst-empty">
+                      <span className="dst-empty__icon"><IconCheck /></span>
+                      <strong>
+                        {searchQuery ? "Nenhum produto pendente encontrado" : "Tudo decidido neste fornecedor"}
+                      </strong>
+                      <button type="button" className="dst-link dst-link--button" onClick={() => setListFilter("all")}>
+                        Ver todos os {products.length} produtos
+                      </button>
+                    </div>
+                  )
+                ) : products.length > 0 ? (
+                  <div className="dst-empty">
+                    <strong>Nenhum produto encontrado para “{searchQuery}”.</strong>
+                    <button type="button" className="dst-link dst-link--button" onClick={() => setSearchQuery("")}>
+                      Limpar busca
+                    </button>
+                  </div>
+                ) : (
+                  <div className="dst-empty">
+                    <strong>Nenhum produto cadastrado para este fornecedor.</strong>
+                    {!isClosed ? (
+                      <button
+                        type="button"
+                        className="btn btn--primary"
+                        onClick={() => setShowAddProductModal(true)}
+                      >
+                        + Adicionar Produto Comprado
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+
+                {!isClosed && products.length > 0 ? (
+                  <button
+                    type="button"
+                    className="dst-add-product"
+                    onClick={() => setShowAddProductModal(true)}
+                  >
+                    + Adicionar outro produto deste fornecedor
+                  </button>
+                ) : null}
+
+                {/* AÇÕES DO FORNECEDOR E DA LOJA */}
+                {!isClosed && filteredProducts.length > 0 ? (
+                  <div className="dst-actions-card">
+                    <div>
+                      <strong>Concluir conferência deste fornecedor</strong>
+                      <p>
+                        Marca os produtos sem destinação em {shortActiveStoreName} como “não comprado deste
+                        fornecedor” e conclui <strong>{selectedSupplier?.displayName}</strong>.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn--secondary"
+                      onClick={handleOpenBatchConcludeSupplier}
+                    >
+                      Concluir Conferência deste Fornecedor
+                    </button>
+                  </div>
+                ) : null}
+
+                <div className="dst-actions-card">
+                  <div>
+                    <strong>
+                      {activeStoreSummary?.closureStatus === "CLOSED" ? "Cortes da loja" : "Terminou a loja?"}
+                    </strong>
+                    <p>
+                      {activeStoreSummary?.closureStatus === "CLOSED"
+                        ? `Veja os cortes enviados para ${shortActiveStoreName}.`
+                        : `Confira os cortes de ${shortActiveStoreName} somando todos os fornecedores e finalize.`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`btn ${activeStoreSummary?.closureStatus === "CLOSED" ? "btn--secondary" : "btn--primary"}`}
+                    onClick={() => handleOpenStoreClosure(activeStoreId)}
+                  >
+                    {activeStoreSummary?.closureStatus === "CLOSED"
+                      ? "Ver cortes da loja"
+                      : "Conferir Cortes e Finalizar Loja"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="dst-empty">
+                <strong>Escolha um fornecedor para começar</strong>
+                <span className="dst-subtle">
+                  Você verá só os pedidos de {shortActiveStoreName} e poderá ajustar as quantidades com um toque.
+                </span>
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  onClick={() => {
+                    setSupplierQuery("");
+                    setShowSupplierPicker(true);
+                  }}
+                >
+                  Escolher fornecedor
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* RODAPÉ FIXO: SALVAR E PRÓXIMO FORNECEDOR */}
+          {!isClosed && selectedSupplierId ? (
+            <footer className="dst-footer">
+              <span className="alloc-sticky-status dst-footer__status">
+                {isDirty && canSave ? (
+                  <span className="dst-text-warn">
+                    <span className="dst-dot dst-dot--warn" aria-hidden="true" />
+                    {pendingProducts.length === 1 ? "1 alteração não salva" : `${pendingProducts.length} alterações não salvas`}
+                    <span className="visually-hidden"> — Alterações não salvas</span>
+                  </span>
+                ) : hasUnconfirmedSuggestions ? (
+                  <span className="dst-text-warn">
+                    <span className="dst-dot dst-dot--warn" aria-hidden="true" />
+                    Sugestões aguardando confirmação
+                  </span>
+                ) : (
+                  <span className="dst-text-ok">✓ Tudo salvo · {formatQty(activeStoreTotalDestined)} CX nesta loja</span>
+                )}
+              </span>
+              <div className="dst-footer__buttons">
+                <button
+                  type="button"
+                  className="dst-btn dst-btn--primary"
                   disabled={saving || !canSave}
                   onClick={() => handleSaveAllocations()}
                 >
-                  {saving ? "Salvando..." : `Salvar Destinações desta Loja`}
+                  {saving ? "Salvando..." : "Salvar"}
                 </button>
-
                 {nextSupplier ? (
                   <button
                     type="button"
-                    className="btn btn--secondary alloc-quick-next-btn"
+                    className="dst-btn dst-btn--secondary"
                     onClick={() => handleSelectSupplier(nextSupplier.id)}
-                    title={`Salvar ou alternar para ${nextSupplier.corporateName}`}
+                    title={`Ir para ${nextSupplier.displayName}`}
                   >
-                    Próximo Fornecedor →
+                    Próximo <IconChevronRight />
                   </button>
                 ) : null}
               </div>
-            </div>
+            </footer>
           ) : null}
         </section>
-      ) : (
-        <div className="alloc-empty-state">
-          <span style={{ fontSize: "36px" }}>🚚</span>
-          <h2>Selecione um fornecedor para iniciar a destinação</h2>
-          <p>
-            Você visualizará somente os pedidos de <strong>{activeStore.name}</strong> e poderá
-            ajustar as quantidades de forma ágil no celular.
-          </p>
-        </div>
       )}
+
+      {/* FOLHA: ESCOLHER FORNECEDOR */}
+      {showSupplierPicker ? (
+        <div
+          className="dst-sheet-backdrop"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowSupplierPicker(false);
+          }}
+        >
+          <section className="dst-sheet" role="dialog" aria-modal="true" aria-labelledby="supplier-picker-title">
+            <span className="dst-sheet__grip" aria-hidden="true" />
+            <div className="dst-sheet__head">
+              <div>
+                <h2 id="supplier-picker-title">Fornecedores</h2>
+                <span className="dst-subtle">
+                  {shortActiveStoreName} · {reviewedSupplierCount} de {suppliers.length} conferidos
+                </span>
+              </div>
+              <button
+                type="button"
+                className="dst-icon-btn dst-icon-btn--muted"
+                aria-label="Fechar"
+                onClick={() => setShowSupplierPicker(false)}
+              >
+                <IconClose />
+              </button>
+            </div>
+            <label className="dst-search">
+              <IconSearch />
+              <input
+                type="search"
+                placeholder="Buscar fornecedor"
+                aria-label="Buscar fornecedor"
+                value={supplierQuery}
+                onChange={(e) => setSupplierQuery(e.target.value)}
+              />
+            </label>
+            <div className="dst-sheet__list">
+              {pickerSuppliers.map((s) => {
+                const isCurrent = s.id === selectedSupplierId;
+                const isReviewed = Boolean(s.reviewedByStore?.[activeStoreId]);
+                const storeVolume = s.destinedByStore[activeStoreId] ?? "0.00";
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={`dst-supplier-row${isCurrent ? " dst-supplier-row--current" : ""}`}
+                    onClick={() => {
+                      setShowSupplierPicker(false);
+                      handleSelectSupplier(s.id);
+                    }}
+                  >
+                    <span
+                      className={`dst-avatar ${isReviewed ? "dst-avatar--done" : isCurrent ? "dst-avatar--current" : "dst-avatar--pending"}`}
+                      aria-hidden="true"
+                    >
+                      {isReviewed ? <IconCheck /> : supplierInitials(s.displayName)}
+                    </span>
+                    <span className="dst-supplier-row__text">
+                      <strong>
+                        {s.displayName}
+                        {s.active ? "" : " (inativo)"}
+                      </strong>
+                      <span className={isReviewed ? "" : "dst-text-warn"}>
+                        {isCurrent ? "Atual · " : ""}
+                        {isReviewed ? "Conferido nesta loja" : "Conferência pendente"}
+                      </span>
+                    </span>
+                    <strong className="dst-supplier-row__qty">{formatQty(storeVolume)} CX</strong>
+                  </button>
+                );
+              })}
+              {pickerSuppliers.length === 0 ? (
+                <p className="dst-subtle">Nenhum fornecedor encontrado.</p>
+              ) : null}
+            </div>
+            <p className="dst-subtle dst-sheet__note">
+              Ordem: atual, depois pendentes. Fornecedores inativos não aparecem.
+            </p>
+          </section>
+        </div>
+      ) : null}
 
       {/* MODAL: DESTINAÇÃO POSITIVA JÁ EXISTENTE EM OUTRO FORNECEDOR */}
       {activeConflict ? (
@@ -2813,182 +2953,177 @@ export function BuyerAllocationWorkspace({
         </div>
       ) : null}
 
-      {/* MODAL: CONFERÊNCIA CONJUNTA DOS CORTES DA LOJA */}
+      {/* TELA: CONFERIR CORTES E FINALIZAR LOJA */}
       {showStoreClosureModal ? (
-        <div className="alloc-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="alloc-modal" style={{ maxWidth: "800px", width: "95%" }}>
-            <header className="alloc-modal__header">
-              <div>
-                <h2 style={{ margin: 0 }}>
-                  Conferência Conjunta dos Cortes — {targetStore.name}
-                </h2>
-                <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
-                  {targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale ? (
-                    <span style={{ color: "#15803d", fontWeight: "700" }}>
-                      ✓ Loja Finalizada em {targetStoreClosure.closedAt ? new Date(targetStoreClosure.closedAt).toLocaleString("pt-BR") : ""} por {targetStoreClosure.closedByName ?? "Comprador"}
-                    </span>
-                  ) : targetStoreClosure?.status === "CLOSED" && targetStoreClosure.isStale ? (
-                    <span style={{ color: "#b91c1c", fontWeight: "700" }}>
-                      ⚠️ Conferência Desatualizada: {targetStoreClosure.staleReason ?? "Houve alterações posteriores"}. Necessário reconfirmar.
-                    </span>
-                  ) : (
-                    <span style={{ color: "#0284c7", fontWeight: "600" }}>
-                      Conferência pendente de finalização
-                    </span>
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn btn--secondary"
-                style={{ minHeight: "32px", padding: "4px 8px" }}
-                onClick={() => {
-                  setShowStoreClosureModal(false);
-                  setStoreCloseError(null);
-                }}
-              >
-                ✕
-              </button>
-            </header>
-
-            <div className="alloc-modal__body" style={{ maxHeight: "65vh", overflowY: "auto" }}>
-              {/* Cards de Resumo */}
-              <div className="alloc-summary-grid">
-                <div className="alloc-summary-card">
-                  <div className="alloc-summary-card__label">Itens Pedidos</div>
-                  <div className="alloc-summary-card__value">
-                    {targetStoreClosure?.totalOrderedItems ?? 0}
-                  </div>
-                </div>
-                <div className="alloc-summary-card">
-                  <div className="alloc-summary-card__label">Itens Destinados</div>
-                  <div className="alloc-summary-card__value" style={{ color: "#15803d" }}>
-                    {targetStoreClosure?.totalDestinedItems ?? 0}
-                  </div>
-                </div>
-                <div className="alloc-summary-card">
-                  <div className="alloc-summary-card__label">Cortes (Totais / Parciais)</div>
-                  <div className="alloc-summary-card__value" style={{ color: (targetStoreClosure?.totalCutItems ?? 0) > 0 ? "#b91c1c" : "#64748b" }}>
-                    {targetStoreClosure?.totalCutItems ?? 0}
-                  </div>
-                </div>
-              </div>
-
-              {/* Nota Explicativa das Regras 5 e 6 */}
-              <div style={{ margin: "12px 0", padding: "10px", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px", color: "#475569" }}>
-                <strong>Regra de Conferência:</strong> A destinação abaixo soma todos os fornecedores para esta loja. Ao confirmar a finalização, é gerado um snapshot imutável auditável vinculado à revisão do pedido. Se pedidos ou destinações forem alterados posteriormente, a conferência será invalidada automaticamente para exigir nova revisão.
-              </div>
-
-              {/* Tabela de Cortes */}
-              <div style={{ overflowX: "auto" }}>
-                <table className="alloc-cuts-table" style={{ width: "100%", textAlign: "left" }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: "40%" }}>Produto</th>
-                      <th style={{ textAlign: "right" }}>Qtd Pedida</th>
-                      <th style={{ textAlign: "right" }}>Qtd Destinada</th>
-                      <th style={{ textAlign: "center" }}>Situação / Corte</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(targetStoreClosure?.cuts ?? []).length > 0 ? (
-                      targetStoreClosure!.cuts.map((cut) => {
-                        let badgeClass = "alloc-cut-pill--fulfilled";
-                        let badgeLabel = `Integral (${cut.destinedQuantity} ${cut.purchaseFormat})`;
-
-                        if (cut.status === "TOTAL_CUT") {
-                          badgeClass = "alloc-cut-pill--total";
-                          badgeLabel = `Corte Total (-${cut.cutQuantity} ${cut.purchaseFormat})`;
-                        } else if (cut.status === "PARTIAL_CUT") {
-                          badgeClass = "alloc-cut-pill--partial";
-                          badgeLabel = `Corte Parcial (-${cut.cutQuantity} ${cut.purchaseFormat})`;
-                        } else if (cut.status === "ADDITIONAL") {
-                          badgeClass = "alloc-cut-pill--additional";
-                          badgeLabel = `Adicional (+${cut.destinedQuantity} ${cut.purchaseFormat})`;
-                        }
-
-                        return (
-                          <tr key={cut.productId}>
-                            <td>
-                              <span style={{ color: "#64748b", fontFamily: "monospace", fontSize: "11px", marginRight: "4px" }}>
-                                [{cut.erpCode}]
-                              </span>
-                              <strong style={{ fontSize: "13px" }}>{cut.productName}</strong>
-                            </td>
-                            <td style={{ textAlign: "right", fontFamily: "monospace", fontSize: "13px" }}>
-                              {cut.orderedQuantity} {cut.purchaseFormat}
-                            </td>
-                            <td style={{ textAlign: "right", fontFamily: "monospace", fontSize: "13px", fontWeight: "700" }}>
-                              {cut.destinedQuantity} {cut.purchaseFormat}
-                            </td>
-                            <td style={{ textAlign: "center" }}>
-                              <span className={`alloc-cut-pill ${badgeClass}`}>
-                                {badgeLabel}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={4} style={{ textAlign: "center", padding: "20px", color: "#64748b" }}>
-                          Nenhum produto pedido ou destinado para esta loja neste ciclo.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {storeCloseError ? (
-                <div style={{ color: "#dc2626", fontSize: "13px", marginTop: "12px", fontWeight: "600" }}>
-                  ⚠️ {storeCloseError}
-                </div>
-              ) : null}
-            </div>
-
-            <footer className="alloc-modal__footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                {targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale && !isClosed ? (
-                  <button
-                    type="button"
-                    className="btn btn--secondary"
-                    style={{ color: "#b91c1c" }}
-                    onClick={() => {
-                      setShowStoreClosureModal(false);
-                      setShowReopenStoreModal(true);
-                    }}
-                  >
-                    🔓 Reabrir Conferência desta Loja
-                  </button>
-                ) : null}
-              </div>
-              <div style={{ display: "flex", gap: "8px" }}>
+        <div className="alloc-modal-backdrop dst-fullscreen-backdrop" role="dialog" aria-modal="true" aria-labelledby="store-closure-title">
+          <div className="alloc-modal dst-fullscreen">
+            <header className="dst-head dst-fullscreen__head">
+              <div className="dst-head__row">
                 <button
                   type="button"
-                  className="btn btn--secondary"
+                  className="dst-icon-btn"
+                  aria-label="Voltar para produtos"
                   onClick={() => {
                     setShowStoreClosureModal(false);
                     setStoreCloseError(null);
                   }}
                 >
-                  Fechar
+                  <IconChevronLeft />
                 </button>
-                {!isClosed ? (
+                <div className="dst-head__titles">
+                  <span className="dst-eyebrow">
+                    {shortStoreName(targetStore.name)} · Compra {cycleLabel}
+                  </span>
+                  <h2 id="store-closure-title" className="dst-title">Conferir cortes</h2>
+                </div>
+              </div>
+            </header>
+
+            <div className="dst-fullscreen__body">
+              {targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale ? (
+                <div className="dst-callout dst-callout--ok" role="status">
+                  <IconCheck />
+                  <span>
+                    Loja finalizada em{" "}
+                    {targetStoreClosure.closedAt ? new Date(targetStoreClosure.closedAt).toLocaleString("pt-BR") : ""} por{" "}
+                    {targetStoreClosure.closedByName ?? "Comprador"}
+                  </span>
+                </div>
+              ) : targetStoreClosure?.status === "CLOSED" && targetStoreClosure.isStale ? (
+                <div className="dst-callout dst-callout--warn" role="status">
+                  <IconAlert />
+                  <span>
+                    Conferência desatualizada: {targetStoreClosure.staleReason ?? "houve alterações posteriores"}. Confirme de novo.
+                  </span>
+                </div>
+              ) : null}
+
+              <div className="dst-kpis">
+                <div className="dst-kpi">
+                  <span>Pedidos</span>
+                  <strong>{targetStoreClosure?.totalOrderedItems ?? 0}</strong>
+                </div>
+                <div className="dst-kpi dst-kpi--ok">
+                  <span>Atendidos</span>
+                  <strong>{closureItems.fulfilled.length}</strong>
+                </div>
+                <div className={`dst-kpi ${(targetStoreClosure?.totalCutItems ?? 0) > 0 ? "dst-kpi--danger" : ""}`}>
+                  <span>Cortes</span>
+                  <strong>{targetStoreClosure?.totalCutItems ?? 0}</strong>
+                </div>
+              </div>
+
+              <p className="dst-subtle">
+                Confira os cortes antes de finalizar. A soma inclui todos os fornecedores e a loja verá estas quantidades na
+                conferência. Se pedidos ou destinações mudarem depois, será preciso confirmar de novo.
+              </p>
+
+              {closureItems.attention.length > 0 ? (
+                <ul className="dst-cut-list" aria-label="Cortes e adicionais">
+                  {closureItems.attention.map((cut) => {
+                    const tag = closureItemTag(cut);
+                    return (
+                      <li key={cut.productId} className="dst-cut-row">
+                        <span className="dst-cut-row__text">
+                          <strong>{cut.productName}</strong>
+                          <span>{tag.detail}</span>
+                        </span>
+                        <span className={`status-tag status-tag--${tag.tone}`}>{tag.label}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (targetStoreClosure?.cuts ?? []).length === 0 ? (
+                <div className="dst-empty">
+                  <strong>Nenhum produto pedido ou destinado para esta loja neste ciclo.</strong>
+                </div>
+              ) : (
+                <div className="dst-callout dst-callout--ok">
+                  <IconCheck />
+                  <span>Nenhum corte: todos os pedidos foram atendidos.</span>
+                </div>
+              )}
+
+              {closureItems.fulfilled.length > 0 ? (
+                <>
                   <button
                     type="button"
-                    className="btn btn--success"
-                    disabled={closingStore}
-                    onClick={handleConfirmCloseStore}
+                    className="dst-link dst-link--button"
+                    aria-expanded={showFulfilledCuts}
+                    onClick={() => setShowFulfilledCuts((open) => !open)}
                   >
-                    {closingStore
-                      ? "Finalizando..."
-                      : targetStoreClosure?.status === "CLOSED" && targetStoreClosure.isStale
-                      ? "Reconfirmar Cortes e Finalizar Loja"
-                      : "Confirmar Cortes e Finalizar Loja"}
+                    {showFulfilledCuts
+                      ? "Ocultar itens atendidos"
+                      : `Ver os ${closureItems.fulfilled.length} itens atendidos`}
                   </button>
-                ) : null}
-              </div>
+                  {showFulfilledCuts ? (
+                    <ul className="dst-cut-list" aria-label="Itens atendidos">
+                      {closureItems.fulfilled.map((cut) => {
+                        const tag = closureItemTag(cut);
+                        return (
+                          <li key={cut.productId} className="dst-cut-row">
+                            <span className="dst-cut-row__text">
+                              <strong>{cut.productName}</strong>
+                              <span>{tag.detail}</span>
+                            </span>
+                            <span className={`status-tag status-tag--${tag.tone}`}>{tag.label}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
+                </>
+              ) : null}
+
+              {storeCloseError ? (
+                <div className="dst-callout dst-callout--danger" role="alert">
+                  <IconAlert />
+                  <span>{storeCloseError}</span>
+                </div>
+              ) : null}
+
+              {targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale && !isClosed ? (
+                <button
+                  type="button"
+                  className="dst-link dst-link--danger dst-link--button"
+                  onClick={() => {
+                    setShowStoreClosureModal(false);
+                    setShowReopenStoreModal(true);
+                  }}
+                >
+                  Reabrir conferência desta loja
+                </button>
+              ) : null}
+            </div>
+
+            <footer className="dst-footer dst-footer--stack">
+              {!isClosed && !(targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale) ? (
+                <button
+                  type="button"
+                  className="dst-btn dst-btn--primary dst-btn--lg"
+                  disabled={closingStore}
+                  onClick={handleConfirmCloseStore}
+                >
+                  <IconCheck />
+                  {closingStore
+                    ? "Finalizando..."
+                    : targetStoreClosure?.status === "CLOSED" && targetStoreClosure.isStale
+                      ? "Reconfirmar cortes e finalizar loja"
+                      : "Confirmar cortes e finalizar loja"}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="dst-btn dst-btn--ghost"
+                onClick={() => {
+                  setShowStoreClosureModal(false);
+                  setStoreCloseError(null);
+                }}
+              >
+                {!isClosed && !(targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale)
+                  ? "Finalizar depois"
+                  : "Fechar"}
+              </button>
             </footer>
           </div>
         </div>
@@ -3057,117 +3192,6 @@ export function BuyerAllocationWorkspace({
                 {reopeningStore ? "Reabrindo..." : "Confirmar Reabertura da Loja"}
               </button>
             </footer>
-          </div>
-        </div>
-      ) : null}
-
-      {/* MODAL: SELEÇÃO DA LOJA (ENTRADA OU TROCA DE LOJA) */}
-      {showStoreSelectModal ? (
-        <div className="alloc-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="store-select-modal-title">
-          <div className="alloc-modal" style={{ maxWidth: "680px" }}>
-            <header className="alloc-modal__header">
-              <div>
-                <h2 id="store-select-modal-title">🏪 Selecione a Loja para Destinação</h2>
-                <p style={{ margin: "4px 0 0 0", fontSize: "12px", color: "#64748b" }}>
-                  Ciclo {cycleDate} • Escolha a loja para conferir e destinar as compras
-                </p>
-              </div>
-              {activeStore ? (
-                <button
-                  type="button"
-                  className="btn btn--secondary"
-                  style={{ minHeight: "32px", padding: "4px 8px" }}
-                  onClick={() => setShowStoreSelectModal(false)}
-                  aria-label="Fechar"
-                >
-                  ✕
-                </button>
-              ) : null}
-            </header>
-            <div className="alloc-modal__body">
-              <div className="alloc-store-picker-grid">
-                {stores.map((store) => {
-                  const summary = storeSummary[store.id];
-                  const cleanName = store.name.replace("MultiShow ", "");
-                  const isStoreClosed = summary?.closureStatus === "CLOSED";
-                  const isStoreStale = summary?.isStale;
-                  const isCurrentActive = store.id === activeStoreId;
-
-                  return (
-                    <button
-                      key={store.id}
-                      type="button"
-                      className={`alloc-store-picker-card ${isCurrentActive ? "alloc-store-picker-card--active" : ""}`}
-                      onClick={() => {
-                        setShowStoreSelectModal(false);
-                        handleSelectStore(store.id, true);
-                      }}
-                    >
-                      <div className="alloc-store-picker-card__header">
-                        <span className="alloc-store-picker-card__icon">🏪</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <h3 className="alloc-store-picker-card__name">{cleanName}</h3>
-                          <span className="alloc-store-picker-card__sub">MultiShow</span>
-                        </div>
-                        {isStoreClosed && !isStoreStale ? (
-                          <span className="alloc-status-pill alloc-status-pill--closed">
-                            ✓ Finalizada
-                          </span>
-                        ) : isStoreClosed && isStoreStale ? (
-                          <span className="alloc-status-pill alloc-status-pill--stale" title={summary?.staleReason ?? "Reconferir"}>
-                            ⚠️ Reconferir
-                          </span>
-                        ) : (
-                          <span className="alloc-status-pill alloc-status-pill--open">
-                            ⏳ Aberta
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="alloc-store-picker-card__metrics">
-                        <div className="alloc-store-picker-card__metric">
-                          <span className="label">Itens Pedidos:</span>
-                          <span className="val">{summary?.totalOrderedProducts ?? 0}</span>
-                        </div>
-                        <div className="alloc-store-picker-card__metric">
-                          <span className="label">Total Destinado:</span>
-                          <span className="val">{summary ? `${summary.totalDestinedQuantity} CX` : "0.00 CX"}</span>
-                        </div>
-                        <div className="alloc-store-picker-card__metric">
-                          <span className="label">Pendências:</span>
-                          <span
-                            className="val"
-                            style={{
-                              color: summary?.totalPendingProducts ? "#c2410c" : "#15803d",
-                              fontWeight: "700",
-                            }}
-                          >
-                            {summary?.totalPendingProducts ?? 0}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="alloc-store-picker-card__footer">
-                        <span className="alloc-store-picker-card__action">
-                          {isCurrentActive ? "Loja Selecionada ✓" : "Conferir esta Loja →"}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            {activeStore ? (
-              <footer className="alloc-modal__footer" style={{ justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  className="btn btn--secondary"
-                  onClick={() => setShowStoreSelectModal(false)}
-                >
-                  Continuar em {activeStore.name.replace("MultiShow ", "")}
-                </button>
-              </footer>
-            ) : null}
           </div>
         </div>
       ) : null}

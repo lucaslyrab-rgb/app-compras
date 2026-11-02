@@ -132,10 +132,8 @@ describe("BuyerAllocationWorkspace — contexto Loja → Fornecedor → Produtos
       root.render(React.createElement(BuyerAllocationWorkspace, { data: workspaceData() }));
     });
 
-    const changeStoreButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Trocar Loja"),
-    );
-    expect(changeStoreButton).toBeDefined();
+    const changeStoreButton = container.querySelector<HTMLButtonElement>('button[aria-label="Trocar loja"]');
+    expect(changeStoreButton).not.toBeNull();
     await act(async () => changeStoreButton!.click());
 
     const balnearioButton = Array.from(container.querySelectorAll("button")).find((button) =>
@@ -147,12 +145,19 @@ describe("BuyerAllocationWorkspace — contexto Loja → Fornecedor → Produtos
       balnearioButton!.click();
     });
 
-    const supplierSelect = container.querySelector<HTMLSelectElement>("#supplier-selector");
-    expect(supplierSelect).not.toBeNull();
-    await act(async () => {
-      supplierSelect!.value = "supplier-outro";
-      supplierSelect!.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    const openSupplierPicker = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Trocar"),
+    );
+    expect(openSupplierPicker).toBeDefined();
+    await act(async () => openSupplierPicker!.click());
+
+    const picker = container.querySelector('[role="dialog"][aria-labelledby="supplier-picker-title"]');
+    expect(picker).not.toBeNull();
+    const otherSupplier = Array.from(picker!.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Outro Fornecedor"),
+    );
+    expect(otherSupplier).toBeDefined();
+    await act(async () => otherSupplier!.click());
 
     expect(routerPush).toHaveBeenNthCalledWith(
       1,
@@ -192,11 +197,11 @@ describe("BuyerAllocationWorkspace — contexto Loja → Fornecedor → Produtos
     expect(addButton).toBeDefined();
     await act(async () => addButton!.click());
 
-    expect(container.textContent).toContain("Pedido da loja: 5.00 CX");
+    expect(container.textContent).toContain("Pedido da loja: 5 CX");
     const quantityInput = container.querySelector<HTMLInputElement>(".alloc-stepper-input");
     expect(quantityInput?.value).toBe("5.00");
-    const saveButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Salvar Destinações desta Loja"),
+    const saveButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Salvar",
     );
     expect(saveButton?.disabled).toBe(false);
 
