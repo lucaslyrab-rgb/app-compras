@@ -1263,7 +1263,8 @@ export function BuyerAllocationWorkspace({
     });
   const closureGapsBlocking = targetStoreClosure?.purchasedWithoutDestination ?? [];
   const closureGapsToConfirm = targetStoreClosure?.purchasedZeroForStore ?? [];
-  const closureGapIds = new Set(closureGapsToConfirm.map((g) => g.productId));
+  // Itens já mostrados nos quadros de trava/confirmação não se repetem na lista de cortes.
+  const closureGapIds = new Set([...closureGapsToConfirm, ...closureGapsBlocking].map((g) => g.productId));
   const closureItems = splitClosureItems(
     (targetStoreClosure?.cuts ?? []).filter((cut) => !closureGapIds.has(cut.productId)),
   );
@@ -3011,7 +3012,7 @@ export function BuyerAllocationWorkspace({
                 <div className="dst-callout dst-callout--warn" role="status">
                   <IconAlert />
                   <span>
-                    Conferência desatualizada: {targetStoreClosure.staleReason ?? "houve alterações posteriores"}. Confirme de novo.
+                    Conferência desatualizada: {(targetStoreClosure.staleReason ?? "houve alterações posteriores").replace(/\.$/, "")}. Confirme de novo.
                   </span>
                 </div>
               ) : null}
