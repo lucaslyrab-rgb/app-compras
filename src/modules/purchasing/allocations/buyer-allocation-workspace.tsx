@@ -34,6 +34,7 @@ import {
   type StoreAllocationData,
 } from "./domain";
 import {
+  suggestionLabel,
   closureItemTag,
   filterSuppliers,
   formatQty,
@@ -179,6 +180,8 @@ export function BuyerAllocationWorkspace({
   const [supplierQuery, setSupplierQuery] = useState("");
   const [expandedProductIds, setExpandedProductIds] = useState<Set<string>>(() => new Set());
   const [showFulfilledCuts, setShowFulfilledCuts] = useState(false);
+  // Confirmação explícita: comprados que não foram para a loja são corte.
+  const [confirmZeroCuts, setConfirmZeroCuts] = useState(false);
   // Texto digitado no campo de quantidade enquanto ele está em foco (fora do foco mostra "5" em vez de "5.00").
   const [qtyDraft, setQtyDraft] = useState<{ productId: string; text: string } | null>(null);
 
@@ -568,7 +571,7 @@ export function BuyerAllocationWorkspace({
     const storeAlloc = prod.stores[activeStoreId];
     if (!storeAlloc) return;
 
-    handleQuantityChange(productId, storeAlloc.orderedQuantity);
+    handleQuantityChange(productId, storeAlloc.suggestedQuantity ?? storeAlloc.orderedQuantity);
   };
 
   // Salva destinações exclusivamente para a loja ativa e fornecedor atual
@@ -723,11 +726,8 @@ export function BuyerAllocationWorkspace({
       const orderQty = roundToTwoDecimals(item.orderedQuantities?.[store.id] ?? "0.00");
       const orderNum = parseQuantity(orderQty);
 
-      // Sugestão inicial da quantidade do pedido para a loja ativa
-      const destinedQty =
-        store.id === activeStoreId && orderNum > 0
-          ? roundToTwoDecimals(orderNum)
-          : "0.00";
+      // Começa em zero: o comprador informa a quantidade (ou usa o atalho).
+      const destinedQty = "0.00";
       const diff = calculateDifference(destinedQty, orderQty);
       const isAdditional = orderNum === 0;
 
@@ -740,6 +740,8 @@ export function BuyerAllocationWorkspace({
         persistedDestinedQuantity: null,
         difference: diff,
         isAdditionalPurchase: isAdditional,
+        suggestedQuantity: item.purchasedInCosts === false ? "0.00" : roundToTwoDecimals(orderNum),
+        destinedInOtherSuppliers: "0.00",
       };
 
       orderedQtyList.push(orderQty);
@@ -908,23 +910,8 @@ export function BuyerAllocationWorkspace({
   };
 
   // Handlers para ações Store-First e Decisões de Fornecedor
-  const handleSetNotPurchased = (productId: string) => {
-    if (isClosed || !selectedSupplierId) return;
-    const prod = products.find((p) => p.productId === productId);
-    if (!prod) return;
-    const storeData = prod.stores[activeStoreId];
-    const persistedQty = storeData?.persistedDestinedQuantity;
-    if (persistedQty && parseQuantity(persistedQty) > 0) {
-      setProductToReject({
-        productId,
-        productName: prod.productName,
-        destinedQty: persistedQty,
-      });
-      return;
-    }
-    void executeSetNotPurchased(productId, false);
-  };
-
+  // O botão "Não comprei deste fornecedor" saiu (04/11/2026): zero = não comprou.
+  // A confirmação abaixo continua para decisões antigas exibidas na tela.
   const executeSetNotPurchased = async (productId: string, confirmRemoveDestined: boolean) => {
     if (!selectedSupplierId) return;
     setRejectingProduct(true);
@@ -1076,6 +1063,7 @@ export function BuyerAllocationWorkspace({
     const sId = storeId ?? activeStoreId;
     setTargetStoreForClosure(sId);
     setStoreCloseError(null);
+    setConfirmZeroCuts(false);
     setShowStoreClosureModal(true);
   };
 
@@ -1093,6 +1081,7 @@ export function BuyerAllocationWorkspace({
         expectedOrderRevision: targetClosure?.previewOrderRevision ?? targetClosure?.orderRevision ?? null,
         expectedAllocationsHash: targetClosure?.previewAllocationsHash ?? targetClosure?.allocationsHash ?? "",
         expectedCostsHash: targetClosure?.previewCostsHash ?? targetClosure?.costsHash ?? "",
+        confirmPurchasedZeroCuts: confirmZeroCuts,
       });
 
       if (result.status === "success") {
@@ -1210,12 +1199,12 @@ export function BuyerAllocationWorkspace({
     const status = productStoreStatus({
       store: storeData,
       unit: prod.purchaseFormat,
-      notPurchased,
       blockedByCosts: isUnpurchasedWithOrders,
+      destinedInOtherSuppliers: storeData.destinedInOtherSuppliers,
     });
     const pending = isProductPending({
       store: storeData,
-      notPurchased,
+      destinedInOtherSuppliers: storeData.destinedInOtherSuppliers,
       blockedByCosts: isUnpurchasedWithOrders,
       hasDestinedInStore: hasDestinedInActiveStore,
     });
@@ -1224,7 +1213,7 @@ export function BuyerAllocationWorkspace({
     const isSettled =
       !hasUnsavedChange &&
       !isUnpurchasedWithOrders &&
-      ((status.kind === "integral" && storeData.persistedDestinedQuantity !== null) || notPurchased);
+      ((status.kind === "integral" && storeData.persistedDestinedQuantity !== null) || status.kind === "elsewhere");
     return {
       prod,
       storeData,
@@ -1272,7 +1261,14 @@ export function BuyerAllocationWorkspace({
       else next.add(productId);
       return next;
     });
-  const closureItems = splitClosureItems(targetStoreClosure?.cuts ?? []);
+  const closureGapsBlocking = targetStoreClosure?.purchasedWithoutDestination ?? [];
+  const closureGapsToConfirm = targetStoreClosure?.purchasedZeroForStore ?? [];
+  const closureGapIds = new Set(closureGapsToConfirm.map((g) => g.productId));
+  const closureItems = splitClosureItems(
+    (targetStoreClosure?.cuts ?? []).filter((cut) => !closureGapIds.has(cut.productId)),
+  );
+  const closureBlocked =
+    closureGapsBlocking.length > 0 || (closureGapsToConfirm.length > 0 && !confirmZeroCuts);
 
   return (
     <div className="alloc-workspace dst">
@@ -1663,8 +1659,15 @@ export function BuyerAllocationWorkspace({
                     <section className="dst-product-list" aria-label="Produtos para destinação da loja ativa">
                       {visibleProductViews.map((view) => {
                         const { prod, storeData, hasOrder, isUnpurchasedWithOrders, hasDestinedInActiveStore, status } = view;
-                        const isDifferentFromOrder =
-                          hasOrder && storeData.destinedQuantity !== storeData.orderedQuantity;
+                        const shortcutLabel = suggestionLabel({
+                          orderedQuantity: storeData.orderedQuantity,
+                          suggestedQuantity: storeData.suggestedQuantity,
+                        });
+                        const showShortcut =
+                          Boolean(shortcutLabel) &&
+                          hasOrder &&
+                          parseQuantity(storeData.destinedQuantity) !== parseQuantity(storeData.suggestedQuantity);
+                        const otherSuppliersQty = parseQuantity(storeData.destinedInOtherSuppliers);
                         const otherStoresDestined = sumQuantities(
                           stores
                             .filter((s) => s.id !== activeStoreId)
@@ -1678,8 +1681,10 @@ export function BuyerAllocationWorkspace({
                               <div className="dst-card__info">
                                 <strong className="dst-card__name">{prod.productName}</strong>
                                 <span className="dst-card__line">
-                                  {view.notPurchased ? (
-                                    "Não comprado deste fornecedor nesta loja"
+                                  {status.kind === "elsewhere" ? (
+                                    <>
+                                      Pedido {formatQty(storeData.orderedQuantity)} · comprado de outro fornecedor
+                                    </>
                                   ) : (
                                     <>
                                       Pedido {formatQty(storeData.orderedQuantity)} · destinado{" "}
@@ -1718,7 +1723,16 @@ export function BuyerAllocationWorkspace({
                                   <span className="dst-card__line">
                                     Pedido da loja: <strong>{formatQty(storeData.orderedQuantity)} {prod.purchaseFormat}</strong>
                                   </span>
-                                ) : (
+                                ) : null}
+                                {hasOrder && otherSuppliersQty > 0 ? (
+                                  <span className="dst-card__other">
+                                    Já em outro fornecedor: {formatQty(storeData.destinedInOtherSuppliers)}
+                                    {parseQuantity(storeData.suggestedQuantity) > 0
+                                      ? ` · falta ${formatQty(storeData.suggestedQuantity)}`
+                                      : ""}
+                                  </span>
+                                ) : null}
+                                {hasOrder ? null : (
                                   <span className="dst-card__line">Sem pedido desta loja</span>
                                 )}
                               </div>
@@ -1847,14 +1861,14 @@ export function BuyerAllocationWorkspace({
                                 </button>
                               </div>
 
-                              {isDifferentFromOrder && !isClosed && !isUnpurchasedWithOrders ? (
+                              {showShortcut && !isClosed && !isUnpurchasedWithOrders ? (
                                 <button
                                   type="button"
                                   className="dst-use-order"
-                                  title="Igualar destinação ao pedido da loja"
+                                  title="Preencher com o que falta destinar para esta loja"
                                   onClick={() => handleSuggestOrder(prod.productId)}
                                 >
-                                  Usar pedido · {formatQty(storeData.orderedQuantity)}
+                                  {shortcutLabel}
                                 </button>
                               ) : (
                                 <span className="dst-card__totals">
@@ -1874,18 +1888,7 @@ export function BuyerAllocationWorkspace({
                             ) : null}
 
                             <div className="dst-card__foot">
-                              {!view.notPurchased && !isClosed ? (
-                                <button
-                                  type="button"
-                                  className="dst-link dst-link--danger dst-link--button"
-                                  title="Registrar decisão de não comprar deste fornecedor para esta loja"
-                                  onClick={() => handleSetNotPurchased(prod.productId)}
-                                >
-                                  Não comprei deste fornecedor
-                                </button>
-                              ) : (
-                                <span />
-                              )}
+                              <span className="dst-card__zero-hint">0 = não comprou deste fornecedor</span>
                               {expandedProductIds.has(prod.productId) ? (
                                 <button
                                   type="button"
@@ -3033,6 +3036,59 @@ export function BuyerAllocationWorkspace({
                 conferência. Se pedidos ou destinações mudarem depois, será preciso confirmar de novo.
               </p>
 
+              {closureGapsBlocking.length > 0 ? (
+                <section className="dst-gap dst-gap--block" aria-label="Comprados sem destino">
+                  <header>
+                    <IconAlert />
+                    <strong>Comprado sem destino · impede finalizar</strong>
+                  </header>
+                  <ul>
+                    {closureGapsBlocking.map((gap) => (
+                      <li key={gap.productId}>
+                        <span>
+                          <strong>{gap.productName}</strong>
+                          <small>
+                            Pedido {formatQty(gap.orderedQuantity)} {gap.purchaseFormat} · marcado como comprado, 0 em todos os fornecedores
+                          </small>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p>Informe de quem comprou e quanto. Se não comprou, desmarque nos custos.</p>
+                </section>
+              ) : null}
+
+              {closureGapsToConfirm.length > 0 ? (
+                <section className="dst-gap dst-gap--confirm" aria-label="Comprados que não foram para esta loja">
+                  <header>
+                    <strong>Comprado, mas nada para esta loja</strong>
+                  </header>
+                  <ul>
+                    {closureGapsToConfirm.map((gap) => (
+                      <li key={gap.productId}>
+                        <span>
+                          <strong>{gap.productName}</strong>
+                          <small>
+                            Pedido {formatQty(gap.orderedQuantity)} {gap.purchaseFormat} · foi para outras lojas
+                          </small>
+                        </span>
+                        <span className="status-tag status-tag--total">Corte total</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {!isClosed ? (
+                    <label className="dst-gap__confirm">
+                      <input
+                        type="checkbox"
+                        checked={confirmZeroCuts}
+                        onChange={(e) => setConfirmZeroCuts(e.target.checked)}
+                      />
+                      Confirmo que estes produtos não vão para {shortStoreName(targetStore.name)}
+                    </label>
+                  ) : null}
+                </section>
+              ) : null}
+
               {closureItems.attention.length > 0 ? (
                 <ul className="dst-cut-list" aria-label="Cortes e adicionais">
                   {closureItems.attention.map((cut) => {
@@ -3116,13 +3172,17 @@ export function BuyerAllocationWorkspace({
                 <button
                   type="button"
                   className="dst-btn dst-btn--primary dst-btn--lg"
-                  disabled={closingStore}
+                  disabled={closingStore || closureBlocked}
                   onClick={handleConfirmCloseStore}
                 >
                   <IconCheck />
                   {closingStore
                     ? "Finalizando..."
-                    : targetStoreClosure?.status === "CLOSED" && targetStoreClosure.isStale
+                    : closureGapsBlocking.length > 0
+                      ? `Destine ${closureGapsBlocking.length} ${closureGapsBlocking.length === 1 ? "produto" : "produtos"} para finalizar`
+                      : closureGapsToConfirm.length > 0 && !confirmZeroCuts
+                        ? "Confirme os cortes acima para finalizar"
+                        : targetStoreClosure?.status === "CLOSED" && targetStoreClosure.isStale
                       ? "Reconfirmar cortes e finalizar loja"
                       : "Confirmar cortes e finalizar loja"}
                 </button>

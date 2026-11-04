@@ -172,7 +172,7 @@ describe("BuyerAllocationWorkspace — contexto Loja → Fornecedor → Produtos
     container.remove();
   });
 
-  it("exibe e sugere imediatamente o pedido canônico da loja ativa ao adicionar a Uva Vitória", async () => {
+  it("ao adicionar a Uva Vitória mostra o pedido da loja e começa em zero até o comprador informar", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -198,8 +198,20 @@ describe("BuyerAllocationWorkspace — contexto Loja → Fornecedor → Produtos
     await act(async () => addButton!.click());
 
     expect(container.textContent).toContain("Pedido da loja: 5 CX");
+    // Regra de 04/11/2026: a quantidade começa em zero; o atalho é um toque explícito.
     const quantityInput = container.querySelector<HTMLInputElement>(".alloc-stepper-input");
-    expect(quantityInput?.value).toBe("5");
+    expect(quantityInput?.value).toBe("0");
+    const zeroSave = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Salvar",
+    );
+    expect(zeroSave?.disabled).toBe(true);
+
+    const useOrder = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Usar pedido · 5",
+    );
+    expect(useOrder).toBeDefined();
+    await act(async () => useOrder!.click());
+    expect(container.querySelector<HTMLInputElement>(".alloc-stepper-input")?.value).toBe("5");
     const saveButton = Array.from(container.querySelectorAll("button")).find(
       (button) => button.textContent?.trim() === "Salvar",
     );

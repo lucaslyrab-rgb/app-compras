@@ -103,6 +103,9 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
       expectedOrderRevision: override?.expectedOrderRevision !== undefined ? override.expectedOrderRevision : sc.previewOrderRevision,
       expectedAllocationsHash: override?.expectedAllocationsHash !== undefined ? override.expectedAllocationsHash : sc.previewAllocationsHash,
       expectedCostsHash: override?.expectedCostsHash !== undefined ? override.expectedCostsHash : sc.previewCostsHash,
+      // Cenários antigos confirmam os cortes de produtos comprados que foram só para
+      // outras lojas; a regra de 04/11/2026 tem teste próprio abaixo.
+      confirmPurchasedZeroCuts: override?.confirmPurchasedZeroCuts ?? true,
     });
   }
 
@@ -3466,5 +3469,77 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
         AND l.classid IN (888888, ${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE})
     `;
     expect(finalLocks.count).toBe(0);
+  });
+
+  it("Regra de 04/11/2026: comprado sem destino trava; comprado só para outra loja exige confirmação", async () => {
+    const cycleDate = "2026-12-04";
+    const stores = await db<{ id: string; slug: string }[]>`SELECT id, slug FROM stores`;
+    const storePonta = stores.find((s) => s.slug === "ponta-da-fruta")!;
+    const storeBalneario = stores.find((s) => s.slug === "balneario")!;
+
+    const [aipim] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9714, 'AIPIM REGRA', 'CX', 'KG', 30.00, true) RETURNING id
+    `;
+    const [maca] = await db<{ id: string }[]>`
+      INSERT INTO products (erp_code, name, purchase_format, unit, markup, active)
+      VALUES (9715, 'MACA FUJI REGRA', 'CX', 'KG', 30.00, true) RETURNING id
+    `;
+    const [supplier] = await db<{ id: string }[]>`
+      INSERT INTO suppliers (corporate_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES ('Fornecedor Regra 0411', '33333333000199', 'CNPJ', 'STANDARD', true) RETURNING id
+    `;
+
+    for (const store of [storePonta, storeBalneario]) {
+      const [order] = await db<{ id: string }[]>`
+        INSERT INTO orders (order_date, purchase_cycle_date, cutoff_at, store_id, revision, submitted_at, submitted_by)
+        VALUES (${cycleDate}::date, ${cycleDate}::date, now(), ${store.id}::uuid, 1, now(), ${buyerPrincipal.userId}::uuid)
+        RETURNING id
+      `;
+      await db`
+        INSERT INTO order_items (order_id, product_id, stock, quantity, snapshot_erp_code, snapshot_name, snapshot_unit)
+        VALUES (${order.id}::uuid, ${aipim.id}::uuid, 0, 2, 9714, 'AIPIM REGRA', 'CX'),
+               (${order.id}::uuid, ${maca.id}::uuid, 0, 3, 9715, 'MACA FUJI REGRA', 'CX')
+      `;
+    }
+    await db`
+      INSERT INTO purchase_cycle_product_costs (purchase_cycle_date, product_id, cost, purchased, purchased_at, updated_by)
+      VALUES (${cycleDate}::date, ${aipim.id}::uuid, 40.00, true, now(), ${buyerPrincipal.userId}::uuid),
+             (${cycleDate}::date, ${maca.id}::uuid, 90.00, true, now(), ${buyerPrincipal.userId}::uuid)
+    `;
+    // Maçã comprada só para a Ponta da Fruta; Aipim marcado como comprado sem destino.
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplier.id,
+      allocations: [{ productId: maca.id, stores: [{ storeId: storePonta.id, destinedQuantity: "3.00" }] }],
+    });
+
+    // A tela mostra o Aipim como pendente e a Maçã para confirmar no Balneário.
+    const ws = await readBuyerAllocationWorkspace(buyerPrincipal, cycleDate, null, storeBalneario.id);
+    expect(ws.unassignedPurchasedProducts.map((p) => p.id)).toEqual([aipim.id]);
+    expect(ws.storeClosures[storeBalneario.id]?.purchasedWithoutDestination?.map((g) => g.productId)).toEqual([aipim.id]);
+    expect(ws.storeClosures[storeBalneario.id]?.purchasedZeroForStore?.map((g) => g.productId)).toEqual([maca.id]);
+
+    // Trava: Aipim comprado sem destino, mesmo confirmando os cortes.
+    await expect(closeStoreWithPreview(buyerPrincipal, cycleDate, storeBalneario.id)).rejects.toThrow(
+      /sem destinação em nenhum fornecedor/,
+    );
+
+    // Comprador informa o Aipim (comprado só para a Ponta da Fruta).
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: supplier.id,
+      allocations: [{ productId: aipim.id, stores: [{ storeId: storePonta.id, destinedQuantity: "2.00" }] }],
+    });
+
+    // Sem confirmação explícita, o Balneário não finaliza.
+    await expect(
+      closeStoreWithPreview(buyerPrincipal, cycleDate, storeBalneario.id, { confirmPurchasedZeroCuts: false }),
+    ).rejects.toThrow(/Confirme o corte/);
+
+    // Com confirmação, finaliza com os dois cortes totais.
+    const closed = await closeStoreWithPreview(buyerPrincipal, cycleDate, storeBalneario.id, { confirmPurchasedZeroCuts: true });
+    expect(closed.success).toBe(true);
+    expect(closed.cuts.filter((c) => c.status === "TOTAL_CUT")).toHaveLength(2);
   });
 });

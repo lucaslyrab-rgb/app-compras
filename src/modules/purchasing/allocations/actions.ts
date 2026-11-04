@@ -75,6 +75,7 @@ const closeStoreCycleSchema = z.object({
   expectedOrderRevision: z.number().int().min(1).nullable(),
   expectedAllocationsHash: z.string().min(1, "Hash de alocações da prévia é obrigatório."),
   expectedCostsHash: z.string().min(1, "Hash de custos da prévia é obrigatório."),
+  confirmPurchasedZeroCuts: z.boolean().optional(),
 });
 
 const reopenStoreCycleSchema = z.object({

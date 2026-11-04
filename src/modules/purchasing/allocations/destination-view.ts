@@ -31,7 +31,7 @@ export type ProductStatusKind =
   | "total"
   | "additional"
   | "pending"
-  | "not-purchased"
+  | "elsewhere"
   | "blocked"
   | "no-order";
 
@@ -44,31 +44,36 @@ export type ProductStatus = {
 
 /**
  * Situação do produto na loja ativa, considerando a quantidade digitada (ainda que
- * não salva), a decisão "não comprei deste fornecedor" e o bloqueio de custos.
+ * não salva), o que já foi destinado em outros fornecedores e o bloqueio de custos.
+ * Regra de 04/11/2026: zero neste fornecedor = não comprou dele.
  */
 export function productStoreStatus(params: {
   store: Pick<StoreAllocationData, "orderedQuantity" | "destinedQuantity"> | undefined;
   unit: string;
-  notPurchased: boolean;
   blockedByCosts: boolean;
+  /** Já destinado para esta loja em outros fornecedores. */
+  destinedInOtherSuppliers?: string | null;
 }): ProductStatus {
   const ordered = toNumber(params.store?.orderedQuantity);
   const destined = toNumber(params.store?.destinedQuantity);
+  const other = toNumber(params.destinedInOtherSuppliers);
 
   if (params.blockedByCosts) {
     return { kind: "blocked", label: "Não comprado nos custos", tone: "total" };
-  }
-  if (params.notPurchased && destined === 0) {
-    return { kind: "not-purchased", label: "Não comprei", tone: "total" };
   }
   if (ordered === 0) {
     return destined > 0
       ? { kind: "additional", label: "Adicional", tone: "additional" }
       : { kind: "no-order", label: "Sem pedido", tone: "pending" };
   }
-  if (destined === 0) return { kind: "pending", label: "Pendente", tone: "pending" };
+  if (destined === 0) {
+    if (other <= 0) return { kind: "pending", label: "A destinar", tone: "pending" };
+    const missing = Math.round((ordered - other) * 100) / 100;
+    if (missing <= 0) return { kind: "elsewhere", label: "Em outro fornecedor", tone: "integral" };
+    return { kind: "pending", label: `Falta ${formatQty(String(missing))} ${params.unit}`, tone: "partial" };
+  }
 
-  const diff = Math.round((destined - ordered) * 100) / 100;
+  const diff = Math.round((destined + other - ordered) * 100) / 100;
   if (diff === 0) return { kind: "integral", label: "Integral", tone: "integral" };
   if (diff > 0) {
     return { kind: "additional", label: `+${formatQty(String(diff))} ${params.unit}`, tone: "additional" };
@@ -77,20 +82,27 @@ export function productStoreStatus(params: {
 }
 
 /**
- * Produto ainda sem decisão nesta loja e fornecedor: a loja pediu, nada foi
- * gravado e não houve "não comprei". Usa o valor GRAVADO para que o cartão não
- * suma da lista enquanto o comprador ainda está digitando.
+ * Produto ainda sem nenhuma destinação GRAVADA para a loja (somando todos os
+ * fornecedores). Usa o valor gravado para que o cartão não suma da lista
+ * enquanto o comprador digita. "Não comprado" antigo não resolve pendência.
  */
 export function isProductPending(params: {
   store: Pick<StoreAllocationData, "orderedQuantity" | "persistedDestinedQuantity"> | undefined;
-  notPurchased: boolean;
+  destinedInOtherSuppliers?: string | null;
   blockedByCosts: boolean;
   hasDestinedInStore: boolean;
 }): boolean {
   if (params.blockedByCosts) return params.hasDestinedInStore;
-  if (params.notPurchased) return false;
   if (toNumber(params.store?.orderedQuantity) <= 0) return false;
-  return toNumber(params.store?.persistedDestinedQuantity) <= 0;
+  return toNumber(params.store?.persistedDestinedQuantity) + toNumber(params.destinedInOtherSuppliers) <= 0;
+}
+
+/** Rótulo do atalho: "Usar pedido" quando o saldo é o pedido inteiro, senão "Usar saldo". */
+export function suggestionLabel(params: { orderedQuantity: string; suggestedQuantity?: string | null }): string | null {
+  const suggested = toNumber(params.suggestedQuantity);
+  if (suggested <= 0) return null;
+  const ordered = toNumber(params.orderedQuantity);
+  return `${suggested >= ordered ? "Usar pedido" : "Usar saldo"} · ${formatQty(String(suggested))}`;
 }
 
 /** Iniciais para o avatar do fornecedor ("Levi Scardua" → "LS", "Ademar" → "AD"). */

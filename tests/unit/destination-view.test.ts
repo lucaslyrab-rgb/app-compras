@@ -8,6 +8,7 @@ import {
   sortSuppliersForPicker,
   splitClosureItems,
   storeProgress,
+  suggestionLabel,
   supplierInitials,
 } from "@/modules/purchasing/allocations/destination-view";
 import type {
@@ -74,10 +75,13 @@ describe("formatQty", () => {
 });
 
 describe("productStoreStatus", () => {
-  const base = { unit: "CX", notPurchased: false, blockedByCosts: false };
+  const base = { unit: "CX", blockedByCosts: false };
 
-  it("classifica pendente, integral, corte parcial e excedente", () => {
-    expect(productStoreStatus({ ...base, store: { orderedQuantity: "8.00", destinedQuantity: "0.00" } }).kind).toBe("pending");
+  it("classifica a destinar, integral, corte parcial e excedente", () => {
+    expect(productStoreStatus({ ...base, store: { orderedQuantity: "8.00", destinedQuantity: "0.00" } })).toMatchObject({
+      kind: "pending",
+      label: "A destinar",
+    });
     expect(productStoreStatus({ ...base, store: { orderedQuantity: "8.00", destinedQuantity: "8.00" } }).kind).toBe("integral");
     const partial = productStoreStatus({ ...base, store: { orderedQuantity: "3.00", destinedQuantity: "2.00" } });
     expect(partial).toMatchObject({ kind: "partial", label: "−1 CX", tone: "partial" });
@@ -85,39 +89,59 @@ describe("productStoreStatus", () => {
     expect(surplus).toMatchObject({ kind: "additional", label: "+1 CX" });
   });
 
+  it("considera o que já foi destinado em outros fornecedores", () => {
+    const store = { orderedQuantity: "6.00", destinedQuantity: "0.00" };
+    expect(productStoreStatus({ ...base, store, destinedInOtherSuppliers: "4.00" })).toMatchObject({
+      kind: "pending",
+      label: "Falta 2 CX",
+    });
+    expect(productStoreStatus({ ...base, store, destinedInOtherSuppliers: "6.00" }).kind).toBe("elsewhere");
+    expect(
+      productStoreStatus({ ...base, store: { orderedQuantity: "6.00", destinedQuantity: "2.00" }, destinedInOtherSuppliers: "4.00" })
+        .kind,
+    ).toBe("integral");
+  });
+
   it("trata produto sem pedido como adicional quando destinado", () => {
     expect(productStoreStatus({ ...base, store: { orderedQuantity: "0.00", destinedQuantity: "1.00" } }).label).toBe("Adicional");
     expect(productStoreStatus({ ...base, store: undefined }).kind).toBe("no-order");
   });
 
-  it("prioriza o bloqueio de custos e a decisão de não comprado", () => {
+  it("prioriza o bloqueio de custos", () => {
     expect(
       productStoreStatus({ ...base, blockedByCosts: true, store: { orderedQuantity: "2.00", destinedQuantity: "0.00" } }).kind,
     ).toBe("blocked");
-    expect(
-      productStoreStatus({ ...base, notPurchased: true, store: { orderedQuantity: "2.00", destinedQuantity: "0.00" } }).kind,
-    ).toBe("not-purchased");
   });
 });
 
 describe("isProductPending", () => {
-  const base = { notPurchased: false, blockedByCosts: false, hasDestinedInStore: false };
+  const base = { blockedByCosts: false, hasDestinedInStore: false };
 
-  it("considera pendente o item pedido sem destinação gravada, mesmo enquanto digita", () => {
+  it("é pendente enquanto nada foi gravado para a loja em nenhum fornecedor", () => {
     expect(isProductPending({ ...base, store: { orderedQuantity: "2.00", persistedDestinedQuantity: null } })).toBe(true);
     expect(isProductPending({ ...base, store: { orderedQuantity: "2.00", persistedDestinedQuantity: "0.00" } })).toBe(true);
     expect(isProductPending({ ...base, store: { orderedQuantity: "2.00", persistedDestinedQuantity: "2.00" } })).toBe(false);
+    expect(
+      isProductPending({ ...base, store: { orderedQuantity: "2.00", persistedDestinedQuantity: null }, destinedInOtherSuppliers: "1.00" }),
+    ).toBe(false);
   });
 
-  it("não marca pendente o que não foi pedido ou já foi decidido como não comprado", () => {
+  it("não marca pendente o que não foi pedido", () => {
     expect(isProductPending({ ...base, store: { orderedQuantity: "0.00", persistedDestinedQuantity: null } })).toBe(false);
-    expect(isProductPending({ ...base, notPurchased: true, store: { orderedQuantity: "2.00", persistedDestinedQuantity: null } })).toBe(false);
   });
 
   it("produto bloqueado nos custos só fica pendente se houver destinação indevida a zerar", () => {
     const store = { orderedQuantity: "2.00", persistedDestinedQuantity: null };
     expect(isProductPending({ ...base, blockedByCosts: true, store })).toBe(false);
     expect(isProductPending({ ...base, blockedByCosts: true, hasDestinedInStore: true, store })).toBe(true);
+  });
+});
+
+describe("suggestionLabel", () => {
+  it("usa 'Usar pedido' para o pedido inteiro e 'Usar saldo' quando parte já foi destinada", () => {
+    expect(suggestionLabel({ orderedQuantity: "8.00", suggestedQuantity: "8.00" })).toBe("Usar pedido · 8");
+    expect(suggestionLabel({ orderedQuantity: "6.00", suggestedQuantity: "2.00" })).toBe("Usar saldo · 2");
+    expect(suggestionLabel({ orderedQuantity: "6.00", suggestedQuantity: "0.00" })).toBeNull();
   });
 });
 
