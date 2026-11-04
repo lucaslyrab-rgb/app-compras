@@ -10,6 +10,7 @@ import {
   calculateDifference,
   calculateStoreCutSummary,
   calculateSuggestedDestinedQuantity,
+  classifyStorePurchasedGaps,
   canSupplierProvideProduct,
   computeStoreAllocationsHash,
   computeStoreCostsHash,
@@ -32,6 +33,7 @@ import {
   type SetProductSupplierDecisionInput,
   type StoreAllocationData,
   type StoreClosureSummary,
+  type StorePurchasedGap,
   type StoreCutItem,
   type StoreInfo,
   type StoreSummaryData,
@@ -914,6 +916,35 @@ export async function readBuyerAllocationWorkspace(
   const storeSummary: Record<string, StoreSummaryData> = {};
   const storeClosures: Record<string, StoreClosureSummary> = {};
 
+  // Base da regra de fechamento: total destinado por produto (todas as lojas)
+  // e por loja, somando todos os fornecedores.
+  const purchasedIdSet = new Set(purchasedProductIds);
+  const destinedTotalByProduct = new Map<string, number>();
+  const destinedByStoreAndProduct = new Map<string, Map<string, number>>();
+  for (const a of allocationRows) {
+    const qty = parseQuantity(a.destined_quantity);
+    if (qty <= 0) continue;
+    destinedTotalByProduct.set(a.product_id, (destinedTotalByProduct.get(a.product_id) ?? 0) + qty);
+    let byProduct = destinedByStoreAndProduct.get(a.store_id);
+    if (!byProduct) {
+      byProduct = new Map<string, number>();
+      destinedByStoreAndProduct.set(a.store_id, byProduct);
+    }
+    byProduct.set(a.product_id, (byProduct.get(a.product_id) ?? 0) + qty);
+  }
+  const toGap = (productId: string, orderedQuantity: string): StorePurchasedGap | null => {
+    const prod = catalogMap.get(productId);
+    return prod
+      ? {
+          productId,
+          erpCode: prod.erp_code,
+          productName: prod.name,
+          purchaseFormat: prod.purchase_format,
+          orderedQuantity: roundToTwoDecimals(orderedQuantity),
+        }
+      : null;
+  };
+
   for (const store of stores) {
     const activeOrder = latestOrdersByStore.get(store.id);
     const storeAllocations = allocationRows.filter((a) => a.store_id === store.id && parseQuantity(a.destined_quantity) > 0);
@@ -973,6 +1004,33 @@ export async function readBuyerAllocationWorkspace(
         isStale = true;
         staleReason = "Custos ou status de compra de produtos da loja foram alterados após a conferência.";
       }
+    }
+
+    // Regra de fechamento: comprados sem destino (trava) e comprados que não
+    // foram para esta loja (confirmação).
+    const storeOrderedItems = orderItemRows
+      .filter((oi) => oi.store_id === store.id && parseQuantity(oi.quantity) > 0)
+      .map((oi) => ({ productId: oi.product_id, orderedQuantity: oi.quantity }));
+    const orderedQtyByProduct = new Map(storeOrderedItems.map((i) => [i.productId, i.orderedQuantity]));
+    const gaps = classifyStorePurchasedGaps({
+      orderedByStore: storeOrderedItems,
+      purchasedProductIds: purchasedIdSet,
+      destinedTotalByProduct,
+      destinedToStoreByProduct: destinedByStoreAndProduct.get(store.id) ?? new Map<string, number>(),
+    });
+    const byGapName = (a: StorePurchasedGap, b: StorePurchasedGap) => a.productName.localeCompare(b.productName, "pt-BR");
+    const purchasedWithoutDestination = gaps.withoutDestination
+      .map((pid) => toGap(pid, orderedQtyByProduct.get(pid) ?? "0"))
+      .filter((g): g is StorePurchasedGap => g !== null)
+      .sort(byGapName);
+    const purchasedZeroForStore = gaps.zeroForStore
+      .map((pid) => toGap(pid, orderedQtyByProduct.get(pid) ?? "0"))
+      .filter((g): g is StorePurchasedGap => g !== null)
+      .sort(byGapName);
+
+    if (scRaw && scRaw.status === "CLOSED" && !isStale && purchasedWithoutDestination.length > 0) {
+      isStale = true;
+      staleReason = `${purchasedWithoutDestination.length} produto(s) comprado(s) sem destinação. Destine antes de finalizar.`;
     }
 
     const closureStatus = scRaw?.status === "CLOSED" ? "CLOSED" : "OPEN";
@@ -1095,6 +1153,8 @@ export async function readBuyerAllocationWorkspace(
       previewOrderRevision,
       previewAllocationsHash,
       previewCostsHash,
+      purchasedWithoutDestination,
+      purchasedZeroForStore,
     };
 
     storeSummary[store.id] = {
@@ -1117,9 +1177,7 @@ export async function readBuyerAllocationWorkspace(
   }
 
   // 8. Produtos comprados sem destinação, calculados POR LOJA (loja selecionada):
-  // pedidos pela loja, marcados como comprados, sem destinação positiva para ela e
-  // sem decisão "Não comprado" para ela. Antes o cálculo era global e um produto
-  // destinado a qualquer loja deixava de aparecer como pendente nas demais.
+  // pedidos pela loja, marcados como comprados e sem nenhuma quantidade destinada.
   type UnassignedProduct = { id: string; erpCode: number; name: string; purchaseFormat: string };
   const toUnassigned = (pid: string): UnassignedProduct | null => {
     const prod = catalogMap.get(pid);
@@ -1133,18 +1191,11 @@ export async function readBuyerAllocationWorkspace(
         .filter((oi) => oi.store_id === currentSelectedStoreId && parseQuantity(oi.quantity) > 0)
         .map((oi) => oi.product_id),
     );
-    const destinedToStore = new Set(
-      allocationRows
-        .filter((a) => a.store_id === currentSelectedStoreId && parseQuantity(a.destined_quantity) > 0)
-        .map((a) => a.product_id),
-    );
-    const notPurchasedForStore = new Set(
-      decisionRows
-        .filter((d) => d.store_id === currentSelectedStoreId && d.decision === "NOT_PURCHASED")
-        .map((d) => d.product_id),
-    );
+    // Regra de 04/11/2026: pendente é o comprado sem destino em nenhuma loja.
+    // Comprados destinados a outras lojas (e zerados nesta) são confirmados na
+    // tela de cortes; decisões antigas de "Não comprado" não resolvem pendência.
     for (const pid of orderedByStore) {
-      if (!purchasedSet.has(pid) || destinedToStore.has(pid) || notPurchasedForStore.has(pid)) continue;
+      if (!purchasedSet.has(pid) || globallyAllocatedProductIds.has(pid)) continue;
       const item = toUnassigned(pid);
       if (item) unassignedPurchasedProducts.push(item);
     }
@@ -1222,33 +1273,35 @@ export async function readBuyerAllocationWorkspace(
           let destinedQty: string;
           let isAdditional = false;
 
+          // Quanto já foi destinado para esta loja em OUTROS fornecedores.
+          const alreadyDestinedOther = allocationRows
+            .filter(
+              (a) =>
+                a.product_id === pid &&
+                a.store_id === store.id &&
+                a.supplier_id !== resolvedSupplierId &&
+                parseQuantity(a.destined_quantity) > 0,
+            )
+            .reduce((sum, a) => sum + parseQuantity(a.destined_quantity), 0);
+          // Saldo usado apenas pelo atalho "Usar pedido/Usar saldo".
+          const suggestedQuantity = calculateSuggestedDestinedQuantity({
+            orderedQuantity: orderQty,
+            alreadyDestinedOtherSuppliers: alreadyDestinedOther,
+            isPurchasedInCosts: purchasedInCosts,
+          });
+
           if (alloc) {
             destinedQty = alloc.destined_quantity;
             isAdditional = alloc.is_additional_purchase;
             if (alloc.version > itemVersion) itemVersion = alloc.version;
             if (alloc.notes) itemNotes = alloc.notes;
-          } else if (isNotPurchased) {
+          } else {
+            // Regra de 04/11/2026: a quantidade começa em ZERO. O comprador informa
+            // quanto comprou deste fornecedor (0 = não comprou dele). Antes o
+            // sistema pré-preenchia o saldo e um "Salvar" sem revisar gravava a
+            // compra no fornecedor errado.
             destinedQty = "0.00";
             isAdditional = false;
-          } else {
-            // Se não há alocação salva ainda para esta loja neste fornecedor:
-            // Calcula o quanto já foi destinado para esta loja em OUTROS fornecedores
-            const alreadyDestinedOther = allocationRows
-              .filter(
-                (a) =>
-                  a.product_id === pid &&
-                  a.store_id === store.id &&
-                  a.supplier_id !== resolvedSupplierId &&
-                  parseQuantity(a.destined_quantity) > 0,
-              )
-              .reduce((sum, a) => sum + parseQuantity(a.destined_quantity), 0);
-
-            destinedQty = calculateSuggestedDestinedQuantity({
-              orderedQuantity: orderQty,
-              alreadyDestinedOtherSuppliers: alreadyDestinedOther,
-              isPurchasedInCosts: purchasedInCosts,
-            });
-            isAdditional = parseQuantity(orderQty) === 0 && parseQuantity(destinedQty) > 0;
           }
 
           const diff = calculateDifference(destinedQty, orderQty);
@@ -1267,6 +1320,8 @@ export async function readBuyerAllocationWorkspace(
             difference: diff,
             isAdditionalPurchase: isAdditional,
             notes: alloc?.notes ?? null,
+            suggestedQuantity,
+            destinedInOtherSuppliers: roundToTwoDecimals(alreadyDestinedOther),
           };
 
           orderedQtyList.push(orderQty);
@@ -2996,6 +3051,52 @@ export async function closeStoreCycle(
       throw new AllocationDestinationConflictError(
         "Os custos ou status de compra de produtos da loja foram alterados concorrentemente após a abertura da conferência. Por favor, confira o novo resumo de cortes antes de finalizar a loja.",
       );
+    }
+
+    // 6.1 Regra de fechamento (04/11/2026): nenhum produto comprado sem destino;
+    // corte de produto comprado que foi só para outras lojas exige confirmação.
+    const orderedProductIds = orderItems.map((oi) => oi.product_id);
+    if (orderedProductIds.length > 0) {
+      const purchasedOrdered = await tx<{ product_id: string }[]>`
+        SELECT product_id
+        FROM purchase_cycle_product_costs
+        WHERE purchase_cycle_date = ${input.cycleDate}::date
+          AND purchased = true
+          AND product_id IN ${tx(orderedProductIds)}
+      `;
+      const totals = await tx<{ product_id: string; total: string }[]>`
+        SELECT product_id, sum(destined_quantity)::text AS total
+        FROM purchase_cycle_product_allocations
+        WHERE purchase_cycle_date = ${input.cycleDate}::date
+          AND destined_quantity > 0
+          AND product_id IN ${tx(orderedProductIds)}
+        GROUP BY product_id
+      `;
+      const gaps = classifyStorePurchasedGaps({
+        orderedByStore: orderItems.map((oi) => ({ productId: oi.product_id, orderedQuantity: oi.quantity })),
+        purchasedProductIds: new Set(purchasedOrdered.map((r) => r.product_id)),
+        destinedTotalByProduct: new Map(totals.map((t) => [t.product_id, parseQuantity(t.total)])),
+        destinedToStoreByProduct: new Map(
+          [...storeAllocationsByProduct.entries()].map(([pid, qty]) => [pid, parseQuantity(qty)]),
+        ),
+      });
+      const nameOf = (pid: string) => {
+        const item = orderItems.find((oi) => oi.product_id === pid);
+        return item ? `[${item.erp_code}] ${item.name}` : pid;
+      };
+      if (gaps.withoutDestination.length > 0) {
+        const list = gaps.withoutDestination.map(nameOf).slice(0, 5).join(", ");
+        const extra = gaps.withoutDestination.length > 5 ? ` e mais ${gaps.withoutDestination.length - 5}` : "";
+        throw new AllocationValidationError(
+          `Não é possível finalizar a loja: ${gaps.withoutDestination.length} produto(s) marcado(s) como comprado(s) sem destinação em nenhum fornecedor: ${list}${extra}. Informe de quem comprou e quanto, ou desmarque nos custos se não comprou.`,
+        );
+      }
+      if (gaps.zeroForStore.length > 0 && input.confirmPurchasedZeroCuts !== true) {
+        const list = gaps.zeroForStore.map(nameOf).slice(0, 5).join(", ");
+        throw new AllocationValidationError(
+          `Confirme o corte dos produtos comprados que não foram destinados para esta loja: ${list}.`,
+        );
+      }
     }
 
     const orderHash = activeOrder ? `${activeOrder.id}:r${activeOrder.revision}` : null;

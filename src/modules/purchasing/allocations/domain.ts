@@ -130,6 +130,13 @@ export type StoreAllocationData = {
   difference: string;
   isAdditionalPurchase: boolean;
   notes?: string | null;
+  /**
+   * Saldo do pedido da loja ainda não destinado em OUTROS fornecedores
+   * (base do atalho "Usar pedido/Usar saldo"; nunca preenchido sozinho).
+   */
+  suggestedQuantity?: string;
+  /** Quanto já foi destinado para esta loja em outros fornecedores. */
+  destinedInOtherSuppliers?: string;
 };
 
 export type ProductAllocationItem = {
@@ -296,6 +303,44 @@ export type StoreCutItem = {
   status: StoreCutItemStatus;
 };
 
+/** Produto comprado que exige atenção antes de finalizar a loja. */
+export type StorePurchasedGap = {
+  productId: string;
+  erpCode: number;
+  productName: string;
+  purchaseFormat: string;
+  orderedQuantity: string;
+};
+
+/**
+ * Regra de fechamento (04/11/2026):
+ * - withoutDestination (TRAVA): a loja pediu, o produto está marcado como
+ *   comprado nos custos e não há quantidade destinada em NENHUM fornecedor para
+ *   NENHUMA loja. Se não comprou, o certo é desmarcar nos custos.
+ * - zeroForStore (CONFIRMAÇÃO): a loja pediu, o produto foi comprado e destinado
+ *   a outras lojas, mas nada para esta. Exige confirmação explícita do corte.
+ * Zero em um fornecedor significa "não comprei deste fornecedor"; decisões
+ * antigas de "Não comprado" não resolvem pendências.
+ */
+export function classifyStorePurchasedGaps(params: {
+  orderedByStore: Array<{ productId: string; orderedQuantity: string | number }>;
+  purchasedProductIds: ReadonlySet<string>;
+  destinedTotalByProduct: ReadonlyMap<string, number>;
+  destinedToStoreByProduct: ReadonlyMap<string, number>;
+}): { withoutDestination: string[]; zeroForStore: string[] } {
+  const withoutDestination: string[] = [];
+  const zeroForStore: string[] = [];
+  for (const item of params.orderedByStore) {
+    if (parseQuantity(item.orderedQuantity) <= 0) continue;
+    if (!params.purchasedProductIds.has(item.productId)) continue;
+    const total = params.destinedTotalByProduct.get(item.productId) ?? 0;
+    const toStore = params.destinedToStoreByProduct.get(item.productId) ?? 0;
+    if (total <= 0) withoutDestination.push(item.productId);
+    else if (toStore <= 0) zeroForStore.push(item.productId);
+  }
+  return { withoutDestination, zeroForStore };
+}
+
 export type StoreClosureSummary = {
   cycleDate: string;
   storeId: string;
@@ -323,6 +368,10 @@ export type StoreClosureSummary = {
   previewOrderRevision: number | null;
   previewAllocationsHash: string;
   previewCostsHash: string;
+  /** Comprados sem nenhuma destinação: impedem finalizar a loja. */
+  purchasedWithoutDestination?: StorePurchasedGap[];
+  /** Comprados que não foram para esta loja: exigem confirmação do corte. */
+  purchasedZeroForStore?: StorePurchasedGap[];
 };
 
 export type SupplierStoreReviewStatus = "REVIEWED" | "PENDING";
@@ -428,6 +477,8 @@ export type CloseStoreCycleInput = {
   expectedOrderRevision: number | null;
   expectedAllocationsHash: string;
   expectedCostsHash: string;
+  /** Comprador confirmou que os produtos comprados sem destino para esta loja são corte. */
+  confirmPurchasedZeroCuts?: boolean;
 };
 
 export type ReopenStoreCycleInput = {
