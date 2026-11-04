@@ -46,6 +46,7 @@ import {
   supplierInitials,
 } from "./destination-view";
 import { shortStoreName, storeColor } from "@/modules/purchasing/domain";
+import { compressImageForUpload } from "@/lib/compress-image";
 import "./styles.css";
 import "./destination-mobile.css";
 
@@ -283,6 +284,7 @@ export function BuyerAllocationWorkspace({
   const [selectedInvoiceProductIds, setSelectedInvoiceProductIds] = useState<string[]>([]);
   const [registeringInvoice, setRegisteringInvoice] = useState(false);
   const [registerInvoiceError, setRegisterInvoiceError] = useState<string | null>(null);
+  const [preparingInvoicePhoto, setPreparingInvoicePhoto] = useState(false);
 
   // Exclusão de nota fiscal
   const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
@@ -303,9 +305,14 @@ export function BuyerAllocationWorkspace({
     setShowRegisterInvoiceModal(true);
   };
 
-  const handleInvoiceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleInvoiceFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const original = e.target.files?.[0];
+    if (!original) return;
+    setRegisterInvoiceError(null);
+    // Reduz a foto no celular antes do envio (era o que deixava salvar lento).
+    setPreparingInvoicePhoto(true);
+    const file = await compressImageForUpload(original);
+    setPreparingInvoicePhoto(false);
     if (file.size > 10 * 1024 * 1024) {
       setRegisterInvoiceError("O tamanho da imagem excede o limite permitido de 10 MB.");
       return;
@@ -313,7 +320,6 @@ export function BuyerAllocationWorkspace({
     if (invoicePreviewUrl) URL.revokeObjectURL(invoicePreviewUrl);
     setInvoiceFile(file);
     setInvoicePreviewUrl(URL.createObjectURL(file));
-    setRegisterInvoiceError(null);
   };
 
   const handleRemoveInvoiceFile = () => {
@@ -3513,13 +3519,14 @@ export function BuyerAllocationWorkspace({
                   className="btn btn--primary"
                   disabled={
                     registeringInvoice ||
+                    preparingInvoicePhoto ||
                     !invoiceNumberInput.trim() ||
                     !invoiceFile ||
                     destinedProductsForSupplierAndStore.length === 0 ||
                     selectedInvoiceProductIds.length === 0
                   }
                 >
-                  {registeringInvoice ? "Salvando Nota..." : "Salvar Nota Fiscal"}
+                  {preparingInvoicePhoto ? "Preparando foto..." : registeringInvoice ? "Salvando Nota..." : "Salvar Nota Fiscal"}
                 </button>
               </footer>
             </form>
