@@ -1165,10 +1165,12 @@ integration("Fase 3: Testes de Integração de Alocações, Faturamento e Fecham
     const catalogItem = before.catalogSearchList.find((item) => item.id === product.id);
     expect(before.cycleStoreOrders[product.id]?.[store.id]).toBe("5.00");
     expect(catalogItem?.orderedQuantities).toBe(before.cycleStoreOrders[product.id]);
+    // Regra de 04/11/2026: começa em zero; o saldo do pedido fica disponível para o atalho.
     expect(suggestion?.stores[store.id]).toMatchObject({
       orderedQuantity: "5.00",
-      destinedQuantity: "5.00",
+      destinedQuantity: "0.00",
       persistedDestinedQuantity: null,
+      suggestedQuantity: "5.00",
     });
 
     const saved = await saveSupplierAllocations(buyerPrincipal, {

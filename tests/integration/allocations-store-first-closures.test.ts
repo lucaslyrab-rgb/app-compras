@@ -1459,7 +1459,9 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
   });
 
   it("22. CRÍTICA H1: Lojas com atividade posterior não são ignoradas e impedem fechamento geral", async () => {
-    const cycleDate = "2026-11-02";
+    // Data futura: a participação inicial considera lojas criadas até a data do
+    // ciclo, e o banco de teste cria as lojas no dia da execução.
+    const cycleDate = "2027-01-12";
     const stores = await db<{ id: string; slug: string; name: string }[]>`
       SELECT id, slug, name FROM stores WHERE active = true ORDER BY slug
     `;
@@ -2092,6 +2094,18 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
       INSERT INTO purchase_cycle_product_costs (purchase_cycle_date, product_id, cost, cost_is_unit, purchased, purchased_at, updated_by, version)
       VALUES (${cycleDate}::date, ${prod.id}::uuid, 50.00, false, true, now(), ${buyerPrincipal.userId}::uuid, 1)
     `;
+
+    // Produto comprado precisa ter destinação (regra de 04/11/2026).
+    const [suppAsterix] = await db<{ id: string }[]>`
+      INSERT INTO suppliers (corporate_name, tax_id, tax_id_type, tax_invoice_rule, active)
+      VALUES ('Batatas H6', '44444444000107', 'CNPJ', 'STANDARD', true)
+      RETURNING id
+    `;
+    await saveSupplierAllocations(buyerPrincipal, {
+      cycleDate,
+      supplierId: suppAsterix.id,
+      allocations: [{ productId: prod.id, stores: [{ storeId: store.id, destinedQuantity: "10.00" }] }],
+    });
 
     // Fecha a loja
     await closeStoreWithPreview(buyerPrincipal, cycleDate, store.id);

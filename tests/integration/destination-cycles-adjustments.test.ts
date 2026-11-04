@@ -109,12 +109,16 @@ integration("Destinação e ciclos: fornecedores inativos, sem fornecedor por lo
     });
   });
 
-  it("calcula 'sem fornecedor' por loja: Batata pendente no Balneário mesmo destinada à Ponta da Fruta", async () => {
+  it("Batata destinada só à Ponta da Fruta: no Balneário vira corte a confirmar, não 'sem fornecedor'", async () => {
     const wsPonta = await readBuyerAllocationWorkspace(buyer, cycleDate, null, ponta);
     expect(wsPonta.unassignedPurchasedProducts).toEqual([]);
 
+    // Regra de 04/11/2026: "sem fornecedor" é o comprado sem destino em nenhuma loja;
+    // destinado a outra loja e zerado nesta exige confirmação na tela de cortes.
     const wsBalneario = await readBuyerAllocationWorkspace(buyer, cycleDate, null, balneario);
-    expect(wsBalneario.unassignedPurchasedProducts.map((p) => p.id)).toEqual([batata]);
+    expect(wsBalneario.unassignedPurchasedProducts).toEqual([]);
+    expect(wsBalneario.storeClosures[balneario]?.purchasedZeroForStore?.map((g) => g.productId)).toEqual([batata]);
+    expect(wsBalneario.storeClosures[balneario]?.purchasedWithoutDestination).toEqual([]);
   });
 
   it("não oferece fornecedor inativo e mostra o nome fantasia", async () => {
