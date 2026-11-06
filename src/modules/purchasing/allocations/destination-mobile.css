@@ -1048,3 +1048,11 @@
 }
 
 .dst-footer__confirm strong { color: var(--ink-900); }
+
+/*
+ * O corpo da tela de cortes é uma coluna flex com rolagem. Como os quadros de
+ * trava/confirmação têm overflow: hidden, o navegador podia encolhê-los até a
+ * altura zero (sobrava só a borda laranja/vermelha). Nenhum filho encolhe.
+ */
+.dst-fullscreen__body > * { flex-shrink: 0; }
+.dst-gap { flex-shrink: 0; }
