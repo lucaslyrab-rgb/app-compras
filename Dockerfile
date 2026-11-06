@@ -17,6 +17,9 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0
+# Aplica as correções de segurança publicadas para os pacotes do Alpine
+# (ex.: musl e zlib em 06/11/2026) sem esperar uma nova imagem do Node.
+RUN apk upgrade --no-cache
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
