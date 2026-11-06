@@ -60,6 +60,12 @@ integration("Fase 3: Testes de Integração — Experiência Operacional Store-F
     db = postgres(testDatabaseUrl, { max: 5 });
     process.env.DATABASE_URL = testDatabaseUrl;
 
+    // As lojas são criadas pela migration no dia em que o teste roda, e a
+    // participação no ciclo considera lojas criadas até a data do ciclo. Sem
+    // isto, cenários com datas fixas passavam a falhar quando o calendário
+    // ultrapassava a data do cenário.
+    await db`UPDATE stores SET created_at = '2024-12-01T10:00:00Z'::timestamptz`;
+
     // Usuário comprador para constraints de auditoria
     await db`
       INSERT INTO users (id, name, email, password_hash, role, active, permissions)

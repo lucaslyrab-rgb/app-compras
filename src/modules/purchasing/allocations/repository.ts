@@ -1030,7 +1030,7 @@ export async function readBuyerAllocationWorkspace(
 
     if (scRaw && scRaw.status === "CLOSED" && !isStale && purchasedWithoutDestination.length > 0) {
       isStale = true;
-      staleReason = `${purchasedWithoutDestination.length} produto(s) comprado(s) sem destinação. Destine antes de finalizar.`;
+      staleReason = `${purchasedWithoutDestination.length} produto(s) comprado(s) sem destinação`;
     }
 
     const closureStatus = scRaw?.status === "CLOSED" ? "CLOSED" : "OPEN";

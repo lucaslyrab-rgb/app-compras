@@ -46,6 +46,7 @@ import {
   supplierInitials,
 } from "./destination-view";
 import { shortStoreName, storeColor } from "@/modules/purchasing/domain";
+import { compressImageForUpload } from "@/lib/compress-image";
 import "./styles.css";
 import "./destination-mobile.css";
 
@@ -283,6 +284,7 @@ export function BuyerAllocationWorkspace({
   const [selectedInvoiceProductIds, setSelectedInvoiceProductIds] = useState<string[]>([]);
   const [registeringInvoice, setRegisteringInvoice] = useState(false);
   const [registerInvoiceError, setRegisterInvoiceError] = useState<string | null>(null);
+  const [preparingInvoicePhoto, setPreparingInvoicePhoto] = useState(false);
 
   // Exclusão de nota fiscal
   const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
@@ -303,9 +305,14 @@ export function BuyerAllocationWorkspace({
     setShowRegisterInvoiceModal(true);
   };
 
-  const handleInvoiceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleInvoiceFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const original = e.target.files?.[0];
+    if (!original) return;
+    setRegisterInvoiceError(null);
+    // Reduz a foto no celular antes do envio (era o que deixava salvar lento).
+    setPreparingInvoicePhoto(true);
+    const file = await compressImageForUpload(original);
+    setPreparingInvoicePhoto(false);
     if (file.size > 10 * 1024 * 1024) {
       setRegisterInvoiceError("O tamanho da imagem excede o limite permitido de 10 MB.");
       return;
@@ -313,7 +320,6 @@ export function BuyerAllocationWorkspace({
     if (invoicePreviewUrl) URL.revokeObjectURL(invoicePreviewUrl);
     setInvoiceFile(file);
     setInvoicePreviewUrl(URL.createObjectURL(file));
-    setRegisterInvoiceError(null);
   };
 
   const handleRemoveInvoiceFile = () => {
@@ -1263,7 +1269,8 @@ export function BuyerAllocationWorkspace({
     });
   const closureGapsBlocking = targetStoreClosure?.purchasedWithoutDestination ?? [];
   const closureGapsToConfirm = targetStoreClosure?.purchasedZeroForStore ?? [];
-  const closureGapIds = new Set(closureGapsToConfirm.map((g) => g.productId));
+  // Itens já mostrados nos quadros de trava/confirmação não se repetem na lista de cortes.
+  const closureGapIds = new Set([...closureGapsToConfirm, ...closureGapsBlocking].map((g) => g.productId));
   const closureItems = splitClosureItems(
     (targetStoreClosure?.cuts ?? []).filter((cut) => !closureGapIds.has(cut.productId)),
   );
@@ -3011,7 +3018,7 @@ export function BuyerAllocationWorkspace({
                 <div className="dst-callout dst-callout--warn" role="status">
                   <IconAlert />
                   <span>
-                    Conferência desatualizada: {targetStoreClosure.staleReason ?? "houve alterações posteriores"}. Confirme de novo.
+                    Conferência desatualizada: {(targetStoreClosure.staleReason ?? "houve alterações posteriores").replace(/\.$/, "")}. Confirme de novo.
                   </span>
                 </div>
               ) : null}
@@ -3059,9 +3066,15 @@ export function BuyerAllocationWorkspace({
               ) : null}
 
               {closureGapsToConfirm.length > 0 ? (
-                <section className="dst-gap dst-gap--confirm" aria-label="Comprados que não foram para esta loja">
+                <section
+                  id="closure-confirm-cuts"
+                  className="dst-gap dst-gap--confirm"
+                  aria-label="Comprados que não foram para esta loja"
+                >
                   <header>
-                    <strong>Comprado, mas nada para esta loja</strong>
+                    <strong>
+                      Comprado, mas sem quantidade para {shortStoreName(targetStore.name)} ({closureGapsToConfirm.length})
+                    </strong>
                   </header>
                   <ul>
                     {closureGapsToConfirm.map((gap) => (
@@ -3168,6 +3181,28 @@ export function BuyerAllocationWorkspace({
             </div>
 
             <footer className="dst-footer dst-footer--stack">
+              {/* A confirmação fica também junto do botão: com a lista rolada, o
+                  quadro laranja some da tela e o comprador não via o que faltava. */}
+              {!isClosed &&
+              closureGapsBlocking.length === 0 &&
+              closureGapsToConfirm.length > 0 &&
+              !(targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale) ? (
+                <div className="dst-footer__confirm">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={confirmZeroCuts}
+                      onChange={(e) => setConfirmZeroCuts(e.target.checked)}
+                    />
+                    <span>
+                      Confirmo o corte de {closureGapsToConfirm.length}{" "}
+                      {closureGapsToConfirm.length === 1 ? "produto comprado" : "produtos comprados"} sem quantidade
+                      para {shortStoreName(targetStore.name)}:{" "}
+                      <strong>{closureGapsToConfirm.map((g) => g.productName).join(", ")}</strong>
+                    </span>
+                  </label>
+                </div>
+              ) : null}
               {!isClosed && !(targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale) ? (
                 <button
                   type="button"
@@ -3181,7 +3216,7 @@ export function BuyerAllocationWorkspace({
                     : closureGapsBlocking.length > 0
                       ? `Destine ${closureGapsBlocking.length} ${closureGapsBlocking.length === 1 ? "produto" : "produtos"} para finalizar`
                       : closureGapsToConfirm.length > 0 && !confirmZeroCuts
-                        ? "Confirme os cortes acima para finalizar"
+                        ? "Marque a confirmação para finalizar"
                         : targetStoreClosure?.status === "CLOSED" && targetStoreClosure.isStale
                       ? "Reconfirmar cortes e finalizar loja"
                       : "Confirmar cortes e finalizar loja"}
@@ -3512,13 +3547,14 @@ export function BuyerAllocationWorkspace({
                   className="btn btn--primary"
                   disabled={
                     registeringInvoice ||
+                    preparingInvoicePhoto ||
                     !invoiceNumberInput.trim() ||
                     !invoiceFile ||
                     destinedProductsForSupplierAndStore.length === 0 ||
                     selectedInvoiceProductIds.length === 0
                   }
                 >
-                  {registeringInvoice ? "Salvando Nota..." : "Salvar Nota Fiscal"}
+                  {preparingInvoicePhoto ? "Preparando foto..." : registeringInvoice ? "Salvando Nota..." : "Salvar Nota Fiscal"}
                 </button>
               </footer>
             </form>

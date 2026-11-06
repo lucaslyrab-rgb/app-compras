@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requirePrincipal } from "@/modules/identity/session";
 import { assertPermission } from "@/modules/identity";
@@ -82,7 +81,9 @@ export async function registerInvoiceAction(formData: FormData) {
       productIds: parsed.data.productIds,
     });
 
-    revalidatePath("/comprador/destinacao");
+    // Sem revalidatePath: a tela já chama router.refresh() depois de fechar o
+    // modal. Revalidar aqui fazia a resposta esperar a Destinação inteira ser
+    // recalculada antes de confirmar o salvamento.
     return { status: "success" as const, invoice };
   } catch (err: unknown) {
     if (err instanceof InvoiceValidationError || err instanceof CycleClosedError) {
@@ -120,7 +121,6 @@ export async function deleteInvoiceAction(invoiceId: string) {
       return { status: "error" as const, message: "Nota fiscal não encontrada para remoção." };
     }
 
-    revalidatePath("/comprador/destinacao");
     return { status: "success" as const };
   } catch (err: unknown) {
     if (err instanceof CycleClosedError || err instanceof InvoiceValidationError) {
