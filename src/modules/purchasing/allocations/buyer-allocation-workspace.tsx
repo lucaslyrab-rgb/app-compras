@@ -3066,9 +3066,15 @@ export function BuyerAllocationWorkspace({
               ) : null}
 
               {closureGapsToConfirm.length > 0 ? (
-                <section className="dst-gap dst-gap--confirm" aria-label="Comprados que não foram para esta loja">
+                <section
+                  id="closure-confirm-cuts"
+                  className="dst-gap dst-gap--confirm"
+                  aria-label="Comprados que não foram para esta loja"
+                >
                   <header>
-                    <strong>Comprado, mas nada para esta loja</strong>
+                    <strong>
+                      Comprado, mas sem quantidade para {shortStoreName(targetStore.name)} ({closureGapsToConfirm.length})
+                    </strong>
                   </header>
                   <ul>
                     {closureGapsToConfirm.map((gap) => (
@@ -3175,6 +3181,28 @@ export function BuyerAllocationWorkspace({
             </div>
 
             <footer className="dst-footer dst-footer--stack">
+              {/* A confirmação fica também junto do botão: com a lista rolada, o
+                  quadro laranja some da tela e o comprador não via o que faltava. */}
+              {!isClosed &&
+              closureGapsBlocking.length === 0 &&
+              closureGapsToConfirm.length > 0 &&
+              !(targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale) ? (
+                <div className="dst-footer__confirm">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={confirmZeroCuts}
+                      onChange={(e) => setConfirmZeroCuts(e.target.checked)}
+                    />
+                    <span>
+                      Confirmo o corte de {closureGapsToConfirm.length}{" "}
+                      {closureGapsToConfirm.length === 1 ? "produto comprado" : "produtos comprados"} sem quantidade
+                      para {shortStoreName(targetStore.name)}:{" "}
+                      <strong>{closureGapsToConfirm.map((g) => g.productName).join(", ")}</strong>
+                    </span>
+                  </label>
+                </div>
+              ) : null}
               {!isClosed && !(targetStoreClosure?.status === "CLOSED" && !targetStoreClosure.isStale) ? (
                 <button
                   type="button"
@@ -3188,7 +3216,7 @@ export function BuyerAllocationWorkspace({
                     : closureGapsBlocking.length > 0
                       ? `Destine ${closureGapsBlocking.length} ${closureGapsBlocking.length === 1 ? "produto" : "produtos"} para finalizar`
                       : closureGapsToConfirm.length > 0 && !confirmZeroCuts
-                        ? "Confirme os cortes acima para finalizar"
+                        ? "Marque a confirmação para finalizar"
                         : targetStoreClosure?.status === "CLOSED" && targetStoreClosure.isStale
                       ? "Reconfirmar cortes e finalizar loja"
                       : "Confirmar cortes e finalizar loja"}

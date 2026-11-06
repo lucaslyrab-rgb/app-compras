@@ -1023,3 +1023,28 @@
   margin: 0;
   accent-color: var(--brand-700);
 }
+
+.dst-footer__confirm label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid var(--status-partial-dot);
+  border-radius: 12px;
+  background: var(--status-partial-bg);
+  color: var(--status-partial-fg);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.dst-footer__confirm input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--brand-700);
+}
+
+.dst-footer__confirm strong { color: var(--ink-900); }
