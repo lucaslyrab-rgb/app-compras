@@ -10,6 +10,8 @@ import {
   localStorageRoot,
   putLocalObject,
 } from "@/lib/local-object-storage";
+import { pathToFileURL } from "node:url";
+import { isMainModule } from "../../scripts/is-main";
 
 describe("trava do ambiente local", () => {
   it("aceita só banco no próprio computador", () => {
@@ -56,5 +58,14 @@ describe("armazenamento local de fotos e notas", () => {
     await deleteLocalObject(root, "compras-img", "products/p1/f.webp");
     await expect(getLocalObject(root, "compras-img", "products/p1/f.webp")).rejects.toMatchObject({ name: "NoSuchKey" });
     await expect(deleteLocalObject(root, "compras-img", "products/p1/f.webp")).resolves.toBeUndefined();
+  });
+});
+
+describe("scripts chamados pelo terminal", () => {
+  it("reconhecem o arquivo principal também com caminho do Windows", () => {
+    const file = path.resolve("scripts", "import-products.ts");
+    expect(isMainModule(pathToFileURL(file).href, file)).toBe(true);
+    expect(isMainModule(pathToFileURL(file).href, path.resolve("scripts", "outro.ts"))).toBe(false);
+    expect(isMainModule(pathToFileURL(file).href, undefined)).toBe(false);
   });
 });

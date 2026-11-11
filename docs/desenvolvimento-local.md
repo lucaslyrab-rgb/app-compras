@@ -58,6 +58,19 @@ No fim aparece a lista de logins, todos com a senha `DEV_PASSWORD`:
 
 `npm run dev:setup` pode ser repetido quando quiser; ele não duplica nada.
 
+### Pedidos de teste
+
+```powershell
+npm run dev:pedidos
+```
+
+Cria um pedido de cada loja no ciclo de compra atual (15 a 25 produtos, com
+produtos em comum entre as lojas) e 5 fornecedores fictícios marcados "(teste)".
+Depois é só entrar como `comprador@local.test` e seguir Consolidado → Custos →
+Destinação, e como loja para a Conferência. Loja que já tem pedido no ciclo é
+pulada; para um ciclo novo, rode no dia seguinte ou recomece o banco (ver
+"Problemas comuns").
+
 ## 3. Rodar o sistema
 
 ```powershell

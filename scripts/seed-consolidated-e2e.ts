@@ -2,6 +2,7 @@
 import postgres from "postgres";
 import { hashPassword } from "../src/modules/identity/domain";
 import { operationalLocalDate } from "../src/modules/ordering/calendar/domain";
+import { isMainModule } from "./is-main";
 
 export async function seedConsolidatedE2e(
   url: string,
@@ -217,7 +218,7 @@ export async function seedConsolidatedE2e(
   }
 }
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   const url = process.env.DATABASE_URL;
   const password = process.env.CONSOLIDATED_E2E_PASSWORD;
   if (!url || !password)
