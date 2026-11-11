@@ -28,11 +28,14 @@ Sistema web/PWA para o fluxo de FLV das três lojas MultiShow: pedidos, consolid
 - [TRD](docs/trd.md)
 - [ADRs](docs/adrs/)
 - [Viabilidade e termo de abertura](docs/viabilidade-e-termo-de-abertura.md)
+- [Ambiente local de desenvolvimento e testes](docs/desenvolvimento-local.md)
 - [Deploy, GHCR, Portainer e GitHub Actions](docs/operacao/deploy-ghcr-portainer.md)
 
 ## Fluxo de desenvolvimento
 
 Cada mudança é feita em uma branch, passa pelo CI (lint, tipos, testes unitários e de integração, build e auditoria) e só entra na `main` com aprovação do responsável (Lucas). O deploy é automático ao entrar na `main` (GHCR → Portainer). Ajustes pequenos podem ser acumulados em um único PR e publicados juntos.
+
+Antes de aprovar, cada mudança pode ser testada no **ambiente local** (computador do Lucas e celulares na mesma rede), com banco próprio e sem afetar as lojas: ver [Ambiente local](docs/desenvolvimento-local.md). Resumo: `npm run dev:db` → `npm run dev:setup` → `npm run dev`.
 
 O repositório preserva a baseline Wittemberg em `.harness/` e os artefatos OpenSpec. Para detalhes técnicos, consultar os documentos operacionais e o código vigente.
 

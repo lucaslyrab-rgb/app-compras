@@ -1,0 +1,30 @@
+# Banco do ambiente LOCAL de desenvolvimento (docs/desenvolvimento-local.md).
+# Não é usado em produção (lá a stack é infra/stack.yml no Portainer).
+#
+#   docker compose -f docker-compose.dev.yml up -d     (ou: npm run dev:db)
+#
+# A porta 5433 evita conflito com algum PostgreSQL já instalado no Windows e só
+# aceita conexões do próprio computador.
+name: app-compras-dev
+
+services:
+  db:
+    image: postgres:18.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev-local
+      POSTGRES_DB: app_compras
+      TZ: America/Sao_Paulo
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - app-compras-dev-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app_compras"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  app-compras-dev-db:
