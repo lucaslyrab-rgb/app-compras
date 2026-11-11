@@ -19,7 +19,11 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:import-products": "tsx scripts/import-products.ts",
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
-    "test:e2e:seed": "tsx scripts/seed-e2e.ts"
+    "test:e2e:seed": "tsx scripts/seed-e2e.ts",
+    "dev:db": "docker compose -f docker-compose.dev.yml up -d --wait",
+    "dev:db:stop": "docker compose -f docker-compose.dev.yml stop",
+    "dev:setup": "tsx scripts/dev-setup.ts",
+    "dev:restore": "tsx scripts/dev-restore.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1143.0",

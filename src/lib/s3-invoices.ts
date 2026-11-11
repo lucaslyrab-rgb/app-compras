@@ -7,6 +7,7 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import sharp, { type Metadata } from "sharp";
+import { deleteLocalObject, getLocalObject, localStorageRoot, putLocalObject } from "./local-object-storage";
 import { InvoiceValidationError } from "@/modules/purchasing/invoices/domain";
 
 export { InvoiceValidationError };
@@ -193,6 +194,8 @@ export function generateInvoiceKey(
 }
 
 export async function uploadInvoiceToS3(key: string, buffer: Buffer): Promise<void> {
+  const localRoot = localStorageRoot();
+  if (localRoot) return putLocalObject(localRoot, getS3InvoicesBucket(), key, buffer);
   const client = getS3InvoicesClient();
   const bucket = getS3InvoicesBucket();
 
@@ -208,6 +211,8 @@ export async function uploadInvoiceToS3(key: string, buffer: Buffer): Promise<vo
 }
 
 export async function deleteInvoiceFromS3(key: string): Promise<void> {
+  const localRoot = localStorageRoot();
+  if (localRoot) return deleteLocalObject(localRoot, getS3InvoicesBucket(), key);
   const client = getS3InvoicesClient();
   const bucket = getS3InvoicesBucket();
 
@@ -220,6 +225,8 @@ export async function deleteInvoiceFromS3(key: string): Promise<void> {
 }
 
 export async function getInvoiceFromS3(key: string) {
+  const localRoot = localStorageRoot();
+  if (localRoot) return getLocalObject(localRoot, getS3InvoicesBucket(), key);
   const client = getS3InvoicesClient();
   const bucket = getS3InvoicesBucket();
 

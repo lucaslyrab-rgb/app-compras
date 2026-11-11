@@ -15,3 +15,6 @@ base_produtos_atual.xlsx
 *.log
 .env*
 !.env.example
+.local-storage
+docker-compose.dev.yml
+*.dump

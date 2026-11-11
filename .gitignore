@@ -27,3 +27,7 @@ __pycache__/
 *.dump
 *.sql.gz
 backups/
+
+# Ambiente local (docs/desenvolvimento-local.md)
+!.env.development.example
+.local-storage/
