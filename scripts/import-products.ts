@@ -4,6 +4,7 @@ import { unzipSync, strFromU8 } from "fflate";
 import postgres from "postgres";
 import { normalizeProduct, type ProductInput } from "../src/modules/catalog/domain";
 import { databaseUrlFromEnv } from "./database-url";
+import { isMainModule } from "./is-main";
 
 export type InitialPricingParameters = {
   saleUnit: "KG" | "UND";
@@ -112,7 +113,7 @@ export async function importProducts(file = "base_produtos_atual.xlsx", mode: Pr
   return result;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   const args = process.argv.slice(2);
   const bootstrapSync = args.includes("--bootstrap-sync");
   const file = args.find((arg) => !arg.startsWith("--")) ?? "base_produtos_atual.xlsx";

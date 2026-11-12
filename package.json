@@ -1,6 +1,6 @@
 {
   "name": "app-compras",
-  "version": "0.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -23,7 +23,9 @@
     "dev:db": "docker compose -f docker-compose.dev.yml up -d --wait",
     "dev:db:stop": "docker compose -f docker-compose.dev.yml stop",
     "dev:setup": "tsx scripts/dev-setup.ts",
-    "dev:restore": "tsx scripts/dev-restore.ts"
+    "dev:restore": "tsx scripts/dev-restore.ts",
+    "dev:pedidos": "tsx scripts/dev-orders.ts",
+    "dev:ciclo": "tsx scripts/dev-cycle.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1143.0",

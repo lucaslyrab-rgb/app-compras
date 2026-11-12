@@ -1,6 +1,7 @@
 import "dotenv/config";
 import postgres from "postgres";
 import { databaseUrlFromEnv } from "./database-url";
+import { isMainModule } from "./is-main";
 
 export type ExclusiveProductSummary = {
   productId: string;
@@ -255,7 +256,7 @@ async function main() {
   printSummary(result, apply ? "APPLIED" : "DRY_RUN");
 }
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main().catch((err) => {
     console.error("Erro na execução da associação JEB:", err);
     process.exit(1);

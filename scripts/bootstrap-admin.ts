@@ -2,6 +2,7 @@ import "dotenv/config";
 import postgres from "postgres";
 import { hashPassword } from "../src/modules/identity/domain";
 import { databaseUrlFromEnv } from "./database-url";
+import { isMainModule } from "./is-main";
 
 const url = process.env.DATABASE_URL || process.env.DATABASE_URL_FILE ? databaseUrlFromEnv() : undefined;
 const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
@@ -18,7 +19,7 @@ export async function bootstrapAdmin(databaseUrl: string, adminEmail: string, ad
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   if (!url || !email || !password) throw new Error("DATABASE_URL, BOOTSTRAP_ADMIN_EMAIL e BOOTSTRAP_ADMIN_PASSWORD são obrigatórios");
   await bootstrapAdmin(url, email, password);
   console.log("Gestor inicial criado; remova o secret de bootstrap.");

@@ -5,6 +5,8 @@ import type {
   SourceAllocation,
   SourceConference,
   SourceConferenceItem,
+  SourceCost,
+  SourceInvoice,
   SourceLoss,
   SourceNotPurchased,
   SourceOrderItem,
@@ -178,8 +180,11 @@ async function loadConferences(
     store_id: string;
     status: SourceConference["status"];
     order_revision: number | null;
+    total_items: number;
+    verified_items: number;
   }[]>`
-    SELECT c.id, c.purchase_cycle_date::text AS cycle_date, c.store_id, c.status, c.order_revision
+    SELECT c.id, c.purchase_cycle_date::text AS cycle_date, c.store_id, c.status, c.order_revision,
+           c.total_items, c.verified_items
     FROM store_delivery_conferences c
     WHERE c.purchase_cycle_date BETWEEN ${q.startDate}::date AND ${q.endDate}::date
       ${storeCondition}
@@ -209,6 +214,8 @@ async function loadConferences(
       storeId: h.store_id,
       status: h.status,
       orderRevision: h.order_revision === null ? null : Number(h.order_revision),
+      totalItems: Number(h.total_items),
+      verifiedItems: Number(h.verified_items),
     })),
     items: rows.map((r) => {
       const header = byId.get(r.conference_id)!;
@@ -248,6 +255,62 @@ async function loadLosses(sql: Sql, q: ReconciliationQuery): Promise<SourceLoss[
   }));
 }
 
+/** Custos lançados pelo comprador no período (valem para todas as lojas). */
+async function loadCosts(sql: Sql, q: ReconciliationQuery): Promise<SourceCost[]> {
+  const rows = await sql<{
+    cycle_date: string;
+    product_id: string;
+    cost: string | null;
+    purchased: boolean;
+    updated_by_name: string | null;
+  }[]>`
+    SELECT pc.purchase_cycle_date::text AS cycle_date, pc.product_id, pc.cost::text AS cost, pc.purchased,
+           u.name AS updated_by_name
+    FROM purchase_cycle_product_costs pc
+    LEFT JOIN users u ON u.id = pc.updated_by
+    WHERE pc.purchase_cycle_date BETWEEN ${q.startDate}::date AND ${q.endDate}::date
+  `;
+  return rows.map((r) => ({
+    cycleDate: r.cycle_date,
+    productId: r.product_id,
+    cost: numOrNull(r.cost),
+    purchased: r.purchased,
+    updatedByName: r.updated_by_name,
+  }));
+}
+
+async function loadInvoices(sql: Sql, q: ReconciliationQuery): Promise<SourceInvoice[]> {
+  const storeCondition = q.storeId ? sql`AND i.store_id = ${q.storeId}::uuid` : sql``;
+  const rows = await sql<{ cycle_date: string; store_id: string; supplier_id: string; invoice_number: string }[]>`
+    SELECT i.purchase_cycle_date::text AS cycle_date, i.store_id, i.supplier_id, i.invoice_number
+    FROM purchase_cycle_invoices i
+    WHERE i.purchase_cycle_date BETWEEN ${q.startDate}::date AND ${q.endDate}::date
+      ${storeCondition}
+    ORDER BY i.created_at
+  `;
+  return rows.map((r) => ({
+    cycleDate: r.cycle_date,
+    storeId: r.store_id,
+    supplierId: r.supplier_id,
+    invoiceNumber: r.invoice_number,
+  }));
+}
+
+/** Ciclos com pedido ou destinação, do mais recente para o mais antigo. */
+export async function listClosingCycles(limit = 120): Promise<string[]> {
+  const { sql } = database();
+  const rows = await sql<{ cycle_date: string }[]>`
+    SELECT cycle_date FROM (
+      SELECT o.purchase_cycle_date::text AS cycle_date FROM orders o WHERE o.cancelled_at IS NULL
+      UNION
+      SELECT a.purchase_cycle_date::text FROM purchase_cycle_product_allocations a
+    ) cycles
+    ORDER BY cycle_date DESC
+    LIMIT ${limit}
+  `;
+  return rows.map((r) => r.cycle_date);
+}
+
 async function loadProducts(sql: Sql, productIds: string[]): Promise<SourceProduct[]> {
   if (productIds.length === 0) return [];
   const rows = await sql<{
@@ -278,13 +341,15 @@ async function loadProducts(sql: Sql, productIds: string[]): Promise<SourceProdu
 export async function loadReconciliationSources(q: ReconciliationQuery): Promise<ReconciliationSources> {
   const { sql } = database();
 
-  const [stores, referenceOrders, allocations, notPurchased, conf, losses] = await Promise.all([
+  const [stores, referenceOrders, allocations, notPurchased, conf, losses, costs, invoices] = await Promise.all([
     loadStores(sql),
     loadReferenceOrders(sql, q),
     loadAllocations(sql, q),
     loadNotPurchased(sql, q),
     loadConferences(sql, q),
     loadLosses(sql, q),
+    loadCosts(sql, q),
+    loadInvoices(sql, q),
   ]);
   const orderItems = await loadOrderItems(sql, referenceOrders);
 
@@ -293,6 +358,7 @@ export async function loadReconciliationSources(q: ReconciliationQuery): Promise
       ...orderItems.map((i) => i.productId),
       ...allocations.map((a) => a.productId),
       ...conf.items.map((i) => i.productId),
+      ...costs.filter((c) => c.purchased).map((c) => c.productId),
     ]),
   ];
   const products = await loadProducts(sql, productIds);
@@ -307,5 +373,7 @@ export async function loadReconciliationSources(q: ReconciliationQuery): Promise
     conferences: conf.conferences,
     conferenceItems: conf.items,
     losses,
+    costs,
+    invoices,
   };
 }

@@ -2,15 +2,15 @@ import { redirect } from "next/navigation";
 import { hasPermission } from "@/modules/identity/domain";
 import { listActiveStores } from "@/modules/identity/repository";
 import { requirePrincipal } from "@/modules/identity/session";
-import { ReconciliationWorkspace } from "@/modules/purchasing/reconciliation/reconciliation-workspace";
-import { getReconciliation, type ReconciliationSearchParams } from "@/modules/purchasing/reconciliation/service";
+import { ClosingWorkspace } from "@/modules/purchasing/reconciliation/closing-workspace";
+import { getClosingOverview, type ClosingSearchParams } from "@/modules/purchasing/reconciliation/closing-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReconciliationPage({
   searchParams,
 }: {
-  searchParams: Promise<ReconciliationSearchParams>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   // A autorização é verificada no servidor também aqui, além do layout.
   const principal = await requirePrincipal();
@@ -21,35 +21,8 @@ export default async function ReconciliationPage({
   const raw = await searchParams;
   const params = Object.fromEntries(
     Object.entries(raw).map(([key, value]) => [key, Array.isArray(value) ? value[value.length - 1] : value]),
-  ) as ReconciliationSearchParams;
+  ) as ClosingSearchParams;
 
-  const [stores, result] = await Promise.all([listActiveStores(), getReconciliation(params)]);
-  const storeOptions = stores.map((s) => ({ id: s.id, name: s.name }));
-
-  if (!result.ok) {
-    return (
-      <ReconciliationWorkspace
-        stores={storeOptions}
-        suppliers={[]}
-        filters={result.filters}
-        kpis={null}
-        lines={[]}
-        totalMatching={0}
-        pageSize={0}
-        error={result.error}
-      />
-    );
-  }
-
-  return (
-    <ReconciliationWorkspace
-      stores={storeOptions}
-      suppliers={result.suppliers}
-      filters={result.filters}
-      kpis={result.kpis}
-      lines={result.lines}
-      totalMatching={result.totalMatching}
-      pageSize={result.pageSize}
-    />
-  );
+  const [stores, overview] = await Promise.all([listActiveStores(), getClosingOverview(params)]);
+  return <ClosingWorkspace overview={overview} stores={stores.map((s) => ({ id: s.id, name: s.name }))} />;
 }
