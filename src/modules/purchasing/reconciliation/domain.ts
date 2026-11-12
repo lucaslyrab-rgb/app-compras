@@ -115,6 +115,9 @@ export type SourceConference = {
   storeId: string;
   status: "IN_PROGRESS" | "FINALIZED" | "CANCELLED";
   orderRevision: number | null;
+  /** Itens da conferência e quantos já foram conferidos (progresso da loja). */
+  totalItems?: number;
+  verifiedItems?: number;
 };
 
 export type SourceConferenceItem = {
@@ -129,6 +132,18 @@ export type SourceConferenceItem = {
   addedByName?: string | null;
 };
 
+/** Custo lançado pelo comprador no ciclo (por formato de compra, ex.: R$/CX). */
+export type SourceCost = {
+  cycleDate: string;
+  productId: string;
+  cost: number | null;
+  purchased: boolean;
+  updatedByName: string | null;
+};
+
+/** Nota fiscal registrada na Destinação para loja × fornecedor. */
+export type SourceInvoice = { cycleDate: string; storeId: string; supplierId: string; invoiceNumber: string };
+
 /** Perda não cancelada, com a data local (São Paulo) do lançamento. */
 export type SourceLoss = { storeId: string; productId: string; date: string; quantity: number; unit: string };
 
@@ -142,6 +157,8 @@ export type ReconciliationSources = {
   conferences: SourceConference[];
   conferenceItems: SourceConferenceItem[];
   losses?: SourceLoss[];
+  costs?: SourceCost[];
+  invoices?: SourceInvoice[];
 };
 
 // ---------------------------------------------------------------------------
