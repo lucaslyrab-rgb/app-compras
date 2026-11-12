@@ -28,7 +28,7 @@ Cabeçalho único em todas as telas da loja: “‹ Início” para voltar, nome
 
 ### Gestor e CPD
 
-- **Fechamento integrado** (`/fechamento`): confronto pedido (CX) × destinação (CX) × conferência (KG), usando a conversão cadastrada de cada produto; mostra quem destinou e as perdas dos dias seguintes. Somente informativo, sem bloqueio.
+- **Fechamento integrado** (`/fechamento`): desde a 1.2, um ciclo por vez em duas abas — **Caminho dos produtos** (pedido → compra → destinação → conferência e o desfecho de cada produto) e **Valor por loja** (comprado, recebido pela conferência e diferença, por fornecedor e nota). Usa a conversão cadastrada de cada produto e as perdas dos dias seguintes. Somente informativo, sem bloqueio.
 - **Perdas:** o Gestor pode excluir um lançamento errado (com registro de quem excluiu).
 - **Configurações:** calendário de compras e **encerrar ciclo** antigo (fecha Destinação e conferências do ciclo de uma vez).
 - Cadastros de **fornecedores** (nome fantasia obrigatório; inativos não aparecem na Destinação), **produtos**, **precificação** e **usuários/permissões**.
@@ -48,6 +48,9 @@ Cabeçalho único em todas as telas da loja: “‹ Início” para voltar, nome
 | 02/11 | Pedido, Conferência e Custos mantêm a estrutura já usada pelas lojas e pelo comprador; mudam só as cores. |
 | 02/11 | Perdas começam sem produto selecionado (antes vinha o primeiro da lista), para evitar lançamento no produto errado. |
 | 02/11 | O Início mostra primeiro a conferência ainda em andamento (a mais antiga) e ignora ciclos encerrados. |
+| 04/11 | Destinação começa em zero; zero = não comprou daquele fornecedor. Comprado sem destino trava a finalização da loja; zerado só para a loja pede confirmação do corte. |
+| 11/11 | Cada versão é testada no ambiente local do Lucas (PC e celular) antes de ir para produção; sem homologação no servidor. |
+| 12/11 | Fechamento integrado por ciclo, com o caminho de cada produto e o valor por loja. Valor comprado = destinado × custo do ciclo; valor recebido = valor comprado ajustado pelo peso da conferência finalizada (não recebido conta zero; sem pesagem conta o comprado). |
 
 ## Histórico de entregas (PRs)
 
@@ -66,6 +69,9 @@ Cabeçalho único em todas as telas da loja: “‹ Início” para voltar, nome
 | #14, #15 | 02/11 | Destinação redesenhada para o celular |
 | #16 | 02/11 | Custos compacto, Início da loja, Perdas com fotos, cores novas em Pedido e Conferência |
 | #18 | 02/11 | Cabeçalho único da loja e conferência pendente no Início |
+| #20, #21 | 04–05/11 | **1.1** — Destinação começa em zero, travas de fechamento, notas mais rápidas |
+| #22, #23, #24 | 06–11/11 | **1.1** — Lista de fornecedores fixa, imagem do servidor atualizada, ambiente local |
+| #25 | 12/11 | **1.2** — Fechamento integrado novo (caminho dos produtos e valor por loja), pedidos e ciclo de teste |
 
 ## Como seguimos
 
@@ -75,6 +81,6 @@ Cabeçalho único em todas as telas da loja: “‹ Início” para voltar, nome
 
 ### Pendências e ideias anotadas
 
-- Encerrar ciclos antigos ainda abertos (ex.: conferência de 23/10 no Balneário), para os avisos do Início mostrarem só o que é atual.
+- Cadastro de lojas pelo Gestor (incluir, inativar), antes da loja nova de dezembro e do fechamento do Balneário.
 - Destinação mais compacta (mesmo critério de Custos), se o comprador sentir falta no uso.
 - Relatórios gerenciais: especificar depois de observar a operação.
