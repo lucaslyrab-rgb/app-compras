@@ -71,6 +71,20 @@ Destinação, e como loja para a Conferência. Loja que já tem pedido no ciclo 
 pulada; para um ciclo novo, rode no dia seguinte ou recomece o banco (ver
 "Problemas comuns").
 
+### Ciclo completo para testar o Fechamento integrado
+
+```powershell
+npm run dev:ciclo
+```
+
+Faz tudo de uma vez, pelos mesmos caminhos das telas: pedidos das lojas, custos
+(2 produtos não comprados e 1 comprado sem destinação), destinação com corte
+parcial, corte total e adicionais, uma nota fiscal por loja × fornecedor (imagem
+em branco, só com `LOCAL_STORAGE_DIR`), e conferência com duas lojas finalizadas
+(uma pesagem 12% abaixo e um item não recebido) e a terceira em andamento.
+Depois entre como `gestor@local.test` → Fechamento integrado. Se o ciclo atual
+já tiver destinação, o comando não mexe em nada.
+
 ## 3. Rodar o sistema
 
 ```powershell

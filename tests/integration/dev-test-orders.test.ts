@@ -3,7 +3,11 @@ import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { database } from "../../src/db/client";
 import { runMigrations } from "../../scripts/migration-runner.mjs";
+import fs from "node:fs";
+import os from "node:os";
 import { createTestOrders, TEST_SUPPLIERS } from "../../scripts/dev-orders";
+import { createTestCycle } from "../../scripts/dev-cycle";
+import { getClosingOverview } from "../../src/modules/purchasing/reconciliation/closing-service";
 
 const integration = process.env.DATABASE_URL ? describe : describe.skip;
 
@@ -30,6 +34,11 @@ integration("Ambiente local: npm run dev:pedidos", () => {
         VALUES (${9500 + i}, ${`PRODUTO DEV ${i}`}, 'CX', 'KG', 25, true)
       `;
     }
+    await db`
+      INSERT INTO users (name, email, password_hash, role, permissions, active)
+      VALUES ('Comprador (local)', 'comprador@local.test', '$scrypt$x', 'COMPRADOR',
+        ARRAY['compras:consolidado','compras:custos','compras:destinacao','compras:fornecedores','perdas:consultar']::text[], true)
+    `;
     const stores = await db<{ id: string; slug: string }[]>`SELECT id, slug FROM stores WHERE active`;
     for (const store of stores) {
       await db`
@@ -77,5 +86,31 @@ integration("Ambiente local: npm run dev:pedidos", () => {
     expect(orders).toBe(3);
     const [{ suppliers }] = await db<{ suppliers: number }[]>`SELECT count(*)::int AS suppliers FROM suppliers`;
     expect(suppliers).toBe(TEST_SUPPLIERS.length);
+  });
+
+  it("dev:ciclo monta o ciclo completo que aparece no Fechamento integrado", async () => {
+    const storageDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-cycle-"));
+    process.env.LOCAL_STORAGE_DIR = storageDir;
+    try {
+      const result = await createTestCycle(testDatabaseUrl, new Date(), () => {});
+      expect(result).toMatchObject({ skipped: false, notPurchased: 2, purchasedNotDestined: 1, finalizedStores: 2, inProgressStores: 1 });
+      expect(result.destinedProducts).toBeGreaterThan(5);
+      expect(result.invoices).toBeGreaterThan(0);
+
+      const overview = await getClosingOverview({ ciclo: result.cycleDate });
+      expect(overview.summary?.counts.NOT_PURCHASED).toBe(2);
+      expect(overview.summary?.counts.PURCHASED_NOT_DESTINED).toBe(1);
+      expect(overview.summary?.counts.CUT).toBeGreaterThanOrEqual(1);
+      expect(overview.summary?.counts.CONFERENCE_DIFFERENCE).toBeGreaterThanOrEqual(1);
+      expect(overview.values?.totals.storesFinalized).toBe(2);
+      expect(overview.values?.totals.purchasedValue).toBeGreaterThan(0);
+      expect(overview.values?.stores.some((s) => s.suppliers.some((sup) => sup.invoices.length > 0))).toBe(true);
+
+      const again = await createTestCycle(testDatabaseUrl, new Date(), () => {});
+      expect(again.skipped).toBe(true);
+    } finally {
+      delete process.env.LOCAL_STORAGE_DIR;
+      fs.rmSync(storageDir, { recursive: true, force: true });
+    }
   });
 });
