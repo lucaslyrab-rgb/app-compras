@@ -140,18 +140,27 @@ export async function createTestCycle(
     // 3. Destinação (plano por loja × produto)
     const plan = new Map<string, number>(); // `${store}|${product}` → quantidade destinada
     const destinedIds = productIds.slice(3);
-    for (const [index, productId] of destinedIds.entries()) {
-      const rows = ordered.filter((r) => r.product_id === productId);
+    const rowsOf = (productId: string) => ordered.filter((r) => r.product_id === productId);
+    // Situações escolhidas de forma determinística (os pedidos de teste são aleatórios).
+    const partialCut = destinedIds.find((id) => rowsOf(id).some((r) => Number(r.quantity) > 1));
+    const totalCut = destinedIds.find((id) => id !== partialCut && rowsOf(id).length > 1);
+    const surplus = destinedIds.find((id) => id !== partialCut && id !== totalCut);
+    const extraStore = destinedIds.find(
+      (id) => ![partialCut, totalCut, surplus].includes(id) && storeIds.some((s) => !rowsOf(id).some((r) => r.store_id === s)),
+    );
+    for (const productId of destinedIds) {
+      const rows = rowsOf(productId);
+      const cutRow = productId === partialCut ? rows.find((r) => Number(r.quantity) > 1) : undefined;
       for (const [storeIndex, row] of rows.entries()) {
         let qty = Math.round(Number(row.quantity));
-        if (index === 0 && storeIndex === 0 && qty > 1) qty -= 1; // corte parcial
-        if (index === 1 && storeIndex === 0 && rows.length > 1) qty = 0; // corte total em uma loja
-        if (index === 2 && storeIndex === 0) qty += 1; // adicional sobre o pedido
+        if (row === cutRow) qty -= 1; // corte parcial
+        if (productId === totalCut && storeIndex === 0) qty = 0; // corte total em uma loja
+        if (productId === surplus && storeIndex === 0) qty += 1; // adicional sobre o pedido
         if (qty > 0) plan.set(`${row.store_id}|${productId}`, qty);
       }
-      if (index === 3) {
-        const extra = storeIds.find((s) => !rows.some((r) => r.store_id === s));
-        if (extra) plan.set(`${extra}|${productId}`, 1); // adicional sem pedido da loja
+      if (productId === extraStore) {
+        const store = storeIds.find((s) => !rows.some((r) => r.store_id === s))!;
+        plan.set(`${store}|${productId}`, 1); // adicional sem pedido da loja
       }
     }
     const bySupplier = new Map<string, Map<string, { storeId: string; destinedQuantity: string }[]>>();
