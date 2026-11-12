@@ -74,6 +74,8 @@ export type ProductJourney = {
   productId: string;
   erpCode: number;
   productName: string;
+  /** Formato de compra do cadastro (unidade do custo), ex.: CX. */
+  unit: string;
   order: { groups: QuantityGroup[]; stores: number } | null;
   purchase: { purchased: boolean; cost: number | null; by: string | null };
   destination: { groups: QuantityGroup[]; stores: number; suppliers: JourneySupplier[] } | null;
@@ -234,6 +236,7 @@ export function buildProductJourneys(
       productId,
       erpCode: product.erpCode,
       productName: product.name,
+      unit: normalizeUnit(product.purchaseFormat ?? ""),
       order,
       purchase,
       destination,

@@ -218,7 +218,7 @@ function JourneyRow({ journey }: { journey: ProductJourney }) {
         <Step
           label="Compra"
           main={p.purchased ? "Comprado" : "Não comprado"}
-          note={p.cost !== null ? `${money(p.cost)} / un. de compra` : "sem custo no ciclo"}
+          note={p.cost !== null ? `${money(p.cost)}${journey.unit ? ` / ${journey.unit}` : ""}` : "sem custo no ciclo"}
           tone={p.purchased ? "ok" : "bad"}
         />
         <Step

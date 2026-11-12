@@ -116,6 +116,7 @@ describe("caminho dos produtos no ciclo", () => {
   it("soma pedido, destino, corte e pesagem de todas as lojas", () => {
     const laranja = byId.get("laranja")!;
     expect(laranja.order).toEqual({ groups: [{ unit: "CX", quantity: 10 }], stores: 2 });
+    expect(laranja.unit).toBe("CX");
     expect(laranja.purchase).toEqual({ purchased: true, cost: 62, by: "Christian" });
     expect(laranja.destination?.groups).toEqual([{ unit: "CX", quantity: 9 }]);
     expect(laranja.destination?.suppliers).toEqual([
