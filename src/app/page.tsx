@@ -20,6 +20,7 @@ export default async function HomePage() {
       name: product.name,
       unit: product.unit,
       purchaseFormat: product.purchaseFormat,
+      isPackaged: product.isPackaged,
       photoKey: product.photoKey,
       photoUpdatedAt: toIsoDateString(product.photoUpdatedAt),
     }));

@@ -163,3 +163,6 @@ span.cl-icon-btn { color: #A9B6C3; }
 .cl-row--entered[open] > .cl-row__summary,
 .cl-row--entered > .cl-detail { background: #EAF7EF; }
 .cl-row--entered > .cl-row__summary:hover { background: #DFF3E7; }
+
+/* Título da seção Embalados dentro da lista do Fechamento. */
+.cl-section { margin: 0; padding: 12px 12px 6px 34px; background: #F4F6F8; border-top: 2px solid #C3CFD9; }

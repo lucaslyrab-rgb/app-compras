@@ -1,4 +1,5 @@
 import { hasPermission, type Principal } from "@/modules/identity";
+import { compareForOperationalLists } from "@/modules/catalog/sections";
 
 export type OrderSummary = {
   id: string;
@@ -18,6 +19,8 @@ export type CatalogProduct = {
   name: string;
   purchaseFormat: string;
   active: boolean;
+  /** Seção "Embalados": vem depois dos demais produtos. */
+  isPackaged?: boolean;
   photoKey?: string | null;
   photoUpdatedAt?: string | null;
   imageUrl?: string | null;
@@ -86,11 +89,7 @@ export function buildConsolidatedProducts(
         ),
       };
     })
-    .sort(
-      (a, b) =>
-        a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }) ||
-        a.erpCode - b.erpCode,
-    );
+    .sort(compareForOperationalLists);
 }
 
 export function filterConsolidatedProducts(

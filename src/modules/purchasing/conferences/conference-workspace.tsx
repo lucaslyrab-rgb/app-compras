@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useState, type MouseEvent } from "react";
+import { Fragment, useActionState, useMemo, useState, type MouseEvent } from "react";
+import { PACKAGED_SECTION_LABEL, sortForOperationalLists, startsPackagedSection } from "@/modules/catalog/sections";
 import { ProductPhoto } from "@/components/product-photo";
 import { StoreNavigation } from "@/components/store-navigation";
 import { ConferenceCycleSelector } from "./conference-cycle-selector";
@@ -274,7 +275,7 @@ export function ConferenceWorkspace({
   // Filtro e busca
   const visibleItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return items.filter((item) => {
+    return sortForOperationalLists(items.map((item) => ({ ...item, name: item.productName }))).filter((item) => {
       const matchQuery =
         !q ||
         item.productName.toLowerCase().includes(q) ||
@@ -662,13 +663,14 @@ export function ConferenceWorkspace({
               Nenhum item corresponde ao filtro ou busca selecionada.
             </div>
           ) : (
-            visibleItems.map((item) => {
+            visibleItems.map((item, index) => {
               const status = getItemStatus(item);
               const isChecked = status === "RECEIVED" || status === "UNRECEIVED";
 
               return (
+                <Fragment key={item.productId}>
+                {startsPackagedSection(visibleItems, index) ? <h3 className="packaged-heading">{PACKAGED_SECTION_LABEL}</h3> : null}
                 <div
-                  key={item.productId}
                   style={{
                     background: "#ffffff",
                     borderRadius: 10,
@@ -814,6 +816,7 @@ export function ConferenceWorkspace({
                     </div>
                   </div>
                 </div>
+                </Fragment>
               );
             })
           )}

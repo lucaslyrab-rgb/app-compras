@@ -1,6 +1,7 @@
 import type postgres from "postgres";
 import { database } from "@/db/client";
 import { assertPermission, type Principal } from "@/modules/identity";
+import { compareForOperationalLists } from "@/modules/catalog/sections";
 import {
   AllocationDestinationConflictError,
   AllocationValidationError,
@@ -867,6 +868,7 @@ export async function readBuyerAllocationWorkspace(
       name: string;
       purchase_format: string;
       active: boolean;
+      is_packaged: boolean;
       legacy_exclusive: boolean;
       conversion_quantity: string | null;
       conversion_origin: string | null;
@@ -880,6 +882,7 @@ export async function readBuyerAllocationWorkspace(
       p.name,
       p.purchase_format,
       p.active,
+      p.is_packaged,
       p.exclusive_supplier AS legacy_exclusive,
       ppp.conversion_quantity::text,
       ppp.conversion_origin,
@@ -924,6 +927,7 @@ export async function readBuyerAllocationWorkspace(
         erpCode: prod.erp_code,
         name: prod.name,
         purchaseFormat: prod.purchase_format,
+        isPackaged: prod.is_packaged,
         isExclusive,
         exclusiveSupplierId,
         exclusiveSupplierName,
@@ -934,7 +938,7 @@ export async function readBuyerAllocationWorkspace(
     }
   }
 
-  catalogSearchList.sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
+  catalogSearchList.sort(compareForOperationalLists);
 
   const storeSummary: Record<string, StoreSummaryData> = {};
   const storeClosures: Record<string, StoreClosureSummary> = {};
@@ -1380,6 +1384,7 @@ export async function readBuyerAllocationWorkspace(
           erpCode: prod.erp_code,
           productName: prod.name,
           purchaseFormat: prod.purchase_format,
+          isPackaged: prod.is_packaged,
           isExclusive,
           exclusiveSupplierId,
           exclusiveSupplierName,
@@ -1400,7 +1405,12 @@ export async function readBuyerAllocationWorkspace(
         });
       }
 
-      products.sort((a, b) => a.productName.localeCompare(b.productName, "pt-BR", { sensitivity: "base" }));
+      products.sort((a, b) =>
+        compareForOperationalLists(
+          { name: a.productName, isPackaged: a.isPackaged, erpCode: a.erpCode },
+          { name: b.productName, isPackaged: b.isPackaged, erpCode: b.erpCode },
+        ),
+      );
 
       destinationData = {
         supplierId: supplierRow.id,

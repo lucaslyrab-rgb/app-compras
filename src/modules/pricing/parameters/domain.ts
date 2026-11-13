@@ -21,6 +21,8 @@ export type PricingProduct = {
   catalogUnit: string;
   purchaseFormat: string;
   exclusiveSupplier: boolean;
+  /** Seção "Embalados" nas listas operacionais. */
+  isPackaged?: boolean;
   active: boolean;
   productVersion: number;
   photoKey: string | null;

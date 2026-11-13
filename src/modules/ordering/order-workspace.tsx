@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { saveDraftAction, submitOrderAction, type State } from "./actions";
 import { formatDateTime, parseQuantityInput, validateOrderQuantity } from "./domain";
 import Link from "next/link";
 import { ProductPhoto } from "@/components/product-photo";
+import { PACKAGED_SECTION_LABEL, sortForOperationalLists, startsPackagedSection } from "@/modules/catalog/sections";
 import { StoreNavigation } from "@/components/store-navigation";
 
 type Product = {
@@ -13,6 +14,7 @@ type Product = {
   name: string;
   unit: string;
   purchaseFormat?: string | null;
+  isPackaged?: boolean;
   photoKey?: string | null;
   photoUpdatedAt?: string | null;
   imageUrl?: string | null;
@@ -48,7 +50,7 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
   const hasErrors = Object.keys(quantityErrors).length > 0;
   const activeValidationBanner = hasErrors ? validationBanner : null;
 
-  const visibleProducts = useMemo(() => products.filter((product) => {
+  const visibleProducts = useMemo(() => sortForOperationalLists(products).filter((product) => {
     const value = values[product.id];
     const parsedQty = parseQuantityInput(value?.quantity) ?? 0;
     const filled = parsedQty > 0;
@@ -174,12 +176,14 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
           <section className="product-list" aria-live="polite">
             <div className="product-list__header" aria-hidden="true"><span>Produto</span><span>Estoque atual</span><span>Pedido</span></div>
             {visibleProducts.length === 0 ? <p className="muted empty-list">Nenhum produto encontrado para a busca/filtro atual.</p> : null}
-            {visibleProducts.map((product) => {
+            {visibleProducts.map((product, index) => {
               const value = values[product.id] ?? { stock: "", quantity: "" };
               const productError = quantityErrors[product.id];
               const isInvalid = Boolean(productError);
               const isFilled = (parseQuantityInput(value.quantity) ?? 0) > 0;
-              return <article className="product-card" data-filled={isFilled} key={product.id}>
+              return <Fragment key={product.id}>
+                {startsPackagedSection(visibleProducts, index) ? <h3 className="packaged-heading">{PACKAGED_SECTION_LABEL}</h3> : null}
+                <article className="product-card" data-filled={isFilled}>
                 <div className="product-name">
                   <ProductPhoto
                     productId={product.id}
@@ -198,7 +202,8 @@ export function OrderWorkspace({ products, storeId, storeName, initialDraft, dat
                   <label className="field"><span aria-hidden="true">Pedido</span><input ref={(element) => { inputRefs.current[`${product.id}:quantity`] = element; }} aria-label={`Pedido de ${product.name}`} aria-invalid={isInvalid} aria-errormessage={isInvalid ? `error-${product.id}` : undefined} className={isInvalid ? "is-invalid" : undefined} name="quantity" inputMode="decimal" type="text" value={value.quantity} onFocus={(event) => event.currentTarget.select()} onKeyDown={handleEnter(`${product.id}:quantity`)} onChange={(event) => setValues((current) => ({ ...current, [product.id]: { ...value, quantity: event.target.value } }))} /></label>
                 </div>
                 {productError ? <div className="product-card__error" id={`error-${product.id}`} role="alert">{productError}</div> : null}
-              </article>;
+              </article>
+              </Fragment>;
             })}
           </section>
         </main>

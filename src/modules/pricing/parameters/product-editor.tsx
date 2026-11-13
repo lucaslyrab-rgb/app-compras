@@ -24,6 +24,7 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
   const [catalogUnit, setCatalogUnit] = useState(product?.catalogUnit ?? "KG");
   const [purchaseFormat, setPurchaseFormat] = useState(product?.purchaseFormat ?? "CX");
   const [exclusiveSupplier, setExclusiveSupplier] = useState(product?.exclusiveSupplier ?? false);
+  const [isPackaged, setIsPackaged] = useState(product?.isPackaged ?? false);
   const [saleUnit, setSaleUnit] = useState(product?.saleUnit ?? "KG");
   const [conversion, setConversion] = useState(product ? formatPricingNumber(product.conversionQuantity) : "1");
   const [loss, setLoss] = useState(product ? formatPricingNumber(product.beneficiationLossPercent) : "0");
@@ -48,6 +49,7 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
     setCatalogUnit(current.catalogUnit);
     setPurchaseFormat(current.purchaseFormat);
     setExclusiveSupplier(current.exclusiveSupplier);
+    setIsPackaged(current.isPackaged ?? false);
     setSaleUnit(current.saleUnit);
     setConversion(formatPricingNumber(current.conversionQuantity));
     setLoss(formatPricingNumber(current.beneficiationLossPercent));
@@ -182,6 +184,7 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
         catalogUnit: catalogUnit.trim(),
         purchaseFormat: purchaseFormat.trim(),
         exclusiveSupplier,
+        isPackaged,
         saleUnit: saleUnit.trim(),
         conversionQuantity: conversion,
         beneficiationLossPercent: loss,
@@ -311,6 +314,19 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
             onChange={(event) => setExclusiveSupplier(event.target.checked)}
           />
           Fornecedor exclusivo
+        </label>
+        <label className="manager-check" htmlFor="product-packaged">
+          <input
+            id="product-packaged"
+            name="isPackaged"
+            type="checkbox"
+            checked={isPackaged}
+            onChange={(event) => setIsPackaged(event.target.checked)}
+          />
+          <span>
+            Embalado (seção Embalados)
+            <small className="manager-check__hint">Aparece no fim das listas de Pedido, Consolidado, Custos, Destinação, Conferência, Perdas e Fechamento.</small>
+          </span>
         </label>
       </fieldset>
       {product ? (

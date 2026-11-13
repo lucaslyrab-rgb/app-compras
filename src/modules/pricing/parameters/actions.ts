@@ -14,6 +14,7 @@ const productFields = {
   catalogUnit: z.string().trim().min(1).max(16),
   purchaseFormat: z.string().trim().min(1).max(16),
   exclusiveSupplier: z.boolean(),
+  isPackaged: z.boolean().optional(),
   saleUnit: z.string().max(16),
   conversionQuantity: z.string().max(32),
   beneficiationLossPercent: z.string().max(32),

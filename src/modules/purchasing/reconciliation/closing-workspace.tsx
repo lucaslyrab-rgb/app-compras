@@ -11,6 +11,7 @@ import {
 } from "./closing";
 import type { ClosingOverview } from "./closing-service";
 import { ClosingFilterBar, InvoiceCell } from "./closing-client";
+import { PACKAGED_SECTION_LABEL, startsPackagedSection } from "@/modules/catalog/sections";
 import "./closing.css";
 
 const BASE_PATH = "/fechamento";
@@ -298,8 +299,11 @@ function ProductsTab({ overview }: { overview: ClosingOverview }) {
           <div className="cl-list__head cl-grid--journey" aria-hidden="true">
             <span>Produto</span><span>1 · Pedido</span><span>2 · Compra</span><span>3 · Destinação</span><span>4 · Conferência</span><span>Desfecho</span>
           </div>
-          {overview.journeys.map((journey) => (
-            <div role="listitem" key={journey.productId}><JourneyRow journey={journey} cycleDate={f.cycleDate!} /></div>
+          {overview.journeys.map((journey, index) => (
+            <div role="listitem" key={journey.productId}>
+              {startsPackagedSection(overview.journeys, index) ? <h3 className="packaged-heading cl-section">{PACKAGED_SECTION_LABEL}</h3> : null}
+              <JourneyRow journey={journey} cycleDate={f.cycleDate!} />
+            </div>
           ))}
         </div>
       )}

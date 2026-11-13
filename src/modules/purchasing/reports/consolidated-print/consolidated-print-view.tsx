@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { ConsolidatedPrintModel, PrintRow } from "./domain";
 import { PrintButton } from "./print-button";
 import "./styles.css";
+import { Fragment } from "react";
+import { PACKAGED_SECTION_LABEL, startsPackagedSection } from "@/modules/catalog/sections";
 
 const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
 const printedAt = new Intl.DateTimeFormat("pt-BR", {
@@ -30,8 +32,12 @@ function Column({ rows, model }: { rows: PrintRow[]; model: ConsolidatedPrintMod
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
-          <tr key={row.id} className={row.total > 0 ? "has-order" : undefined}>
+        {rows.map((row, index) => (
+          <Fragment key={row.id}>
+          {startsPackagedSection(rows, index) ? (
+            <tr className="packaged-heading-row"><td colSpan={model.stores.length + 2}>{PACKAGED_SECTION_LABEL}</td></tr>
+          ) : null}
+          <tr className={row.total > 0 ? "has-order" : undefined}>
             <th scope="row" className="cprint-name">{row.name}</th>
             {row.quantities.map((q, index) => (
               <td key={model.stores[index].id} className={q === null ? "is-empty" : undefined}>
@@ -42,6 +48,7 @@ function Column({ rows, model }: { rows: PrintRow[]; model: ConsolidatedPrintMod
               {row.total > 0 ? `${number.format(row.total)} ${row.unit}` : "–"}
             </td>
           </tr>
+          </Fragment>
         ))}
       </tbody>
     </table>

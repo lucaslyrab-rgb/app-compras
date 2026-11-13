@@ -82,6 +82,7 @@ export async function getStoreConference(
         p.name AS product_name,
         p.photo_key,
         p.photo_updated_at::text AS photo_updated_at,
+        p.is_packaged,
         ci.ordered_quantity::float AS ordered_quantity,
         ci.ordered_unit,
         ci.received_weight_kg::float AS received_weight_kg,
@@ -98,7 +99,7 @@ export async function getStoreConference(
       LEFT JOIN users ua ON ua.id = ci.added_by
       WHERE ci.conference_id = ${existing.id}::uuid
         AND ci.removed_from_order = false
-      ORDER BY p.name ASC
+      ORDER BY p.is_packaged ASC, p.name ASC
     `;
 
     return {
@@ -131,6 +132,7 @@ export async function getStoreConference(
         productName: it.product_name,
         photoKey: it.photo_key,
         photoUpdatedAt: it.photo_updated_at,
+        isPackaged: Boolean(it.is_packaged),
         orderedQuantity: it.ordered_quantity,
         orderedUnit: it.ordered_unit,
         receivedWeightKg: it.received_weight_kg,
@@ -175,12 +177,13 @@ export async function getStoreConference(
       p.name AS product_name,
       p.purchase_format,
       p.photo_key,
-      p.photo_updated_at::text AS photo_updated_at
+      p.photo_updated_at::text AS photo_updated_at,
+      p.is_packaged
     FROM order_items oi
     INNER JOIN products p ON p.id = oi.product_id
     WHERE oi.order_id = ${order.id}::uuid
       AND oi.quantity > 0
-    ORDER BY p.name ASC
+    ORDER BY p.is_packaged ASC, p.name ASC
   `;
 
   if (orderItems.length === 0) {
@@ -264,6 +267,7 @@ export async function getStoreConference(
         productName: item.product_name,
         photoKey: item.photo_key,
         photoUpdatedAt: item.photo_updated_at,
+        isPackaged: Boolean(item.is_packaged),
         orderedQuantity: ci.ordered_quantity,
         orderedUnit: ci.ordered_unit,
         receivedWeightKg: ci.received_weight_kg,

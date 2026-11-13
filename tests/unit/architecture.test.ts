@@ -22,10 +22,10 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0024", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0025", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 24 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 25 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
   });
 

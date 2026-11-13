@@ -7,6 +7,8 @@ export type ConferenceItem = {
   erpCode: number;
   productName: string;
   photoKey: string | null;
+  /** Seção "Embalados" (vem depois dos demais produtos). */
+  isPackaged?: boolean;
   photoUpdatedAt: string | null;
   orderedQuantity: number;
   orderedUnit: string;

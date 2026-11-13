@@ -144,6 +144,8 @@ export type ProductAllocationItem = {
   erpCode: number;
   productName: string;
   purchaseFormat: string;
+  /** Seção "Embalados" (vem depois dos demais produtos). */
+  isPackaged?: boolean;
   isExclusive: boolean;
   exclusiveSupplierId: string | null;
   exclusiveSupplierName: string | null;
@@ -210,6 +212,7 @@ export type CatalogSearchItem = {
   erpCode: number;
   name: string;
   purchaseFormat: string;
+  isPackaged?: boolean;
   isExclusive: boolean;
   exclusiveSupplierId: string | null;
   exclusiveSupplierName: string | null;

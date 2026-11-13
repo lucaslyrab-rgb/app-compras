@@ -997,3 +997,22 @@
   background-color: #fef2f2 !important;
   border-color: #fca5a5 !important;
 }
+
+/* v1.4 — Painel do produto cabe na largura da tela (sem rolagem lateral). */
+.product-columns { grid-template-columns: minmax(0, 1.65fr) minmax(320px, .95fr); }
+.product-columns > .manager-list-area { min-width: 0; }
+.product-columns .manager-table-wrap { overflow-x: auto; }
+.product-columns > .manager-editor { min-width: 0; overflow-x: hidden; }
+.product-columns .manager-editor * { max-width: 100%; box-sizing: border-box; }
+.manager-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: .78rem; font-weight: 600; color: var(--ink-700, #3a4856); }
+.manager-field select {
+  width: 100%; min-width: 0; min-height: 40px; padding: 0 10px; border: 1px solid var(--border, #c3cfd9);
+  border-radius: 8px; background: #ffffff; color: var(--ink-900, #0f1f2e); font: inherit; font-size: .82rem; font-weight: 400;
+  text-overflow: ellipsis;
+}
+.product-columns .manager-check { align-items: flex-start; font-size: .8rem; line-height: 1.35; overflow-wrap: anywhere; }
+.product-columns .manager-check input { margin-top: 1px; accent-color: var(--brand-700, #006b4f); }
+.manager-check__hint { display: block; margin-top: 2px; font-size: .72rem; font-weight: 400; color: var(--ink-600, #4b5b6b); }
+.product-columns .product-supplier-card__name,
+.product-columns .product-supplier-card__trade,
+.product-columns .product-supplier-meta-item { overflow-wrap: anywhere; }
