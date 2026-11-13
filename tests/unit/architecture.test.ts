@@ -22,10 +22,10 @@ describe("arquitetura e isolamento de módulos", () => {
     }
   });
 
-  it("descobre e ordena automaticamente as migrations 0001–0023", async () => {
+  it("descobre e ordena automaticamente as migrations 0001–0024", async () => {
     const migrations = await discoverMigrations(path.resolve("migrations"));
     expect(migrations.map((filename) => filename.slice(0, 4))).toEqual(
-      Array.from({ length: 23 }, (_, index) => String(index + 1).padStart(4, "0")),
+      Array.from({ length: 24 }, (_, index) => String(index + 1).padStart(4, "0")),
     );
   });
 
@@ -61,6 +61,15 @@ describe("arquitetura e isolamento de módulos", () => {
   it("mantém o repository do Fechamento integrado somente leitura", async () => {
     const source = await readFile("src/modules/purchasing/reconciliation/repository.ts", "utf8");
     expect(source).not.toMatch(/\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM)\b/i);
+  });
+
+  it("notas no Fechamento: ações exigem a permissão do Fechamento e a 0024 não altera notas nem usuários", async () => {
+    const actions = await readFile("src/modules/purchasing/reconciliation/closing-actions.ts", "utf8");
+    expect(actions.match(/hasPermission\(principal, "fechamento:consultar"\)/g)).toHaveLength(1);
+    expect(actions.match(/await authorize\(\)/g)).toHaveLength(3);
+    const migration = await readFile("migrations/0024_invoice_entries.sql", "utf8");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_invoice_entries");
+    expect(migration).not.toMatch(/\b(ALTER\s+TABLE|UPDATE|DELETE\s+FROM)\b/i);
   });
 
   it("mantém a 0020 aditiva com cancelamento auditado de conferência sem pedido substituto", async () => {

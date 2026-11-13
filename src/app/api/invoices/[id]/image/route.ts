@@ -29,7 +29,8 @@ export async function GET(
 
   // Política de autorização explícita:
   // - Usuários LOJA: devem pertencer à loja da nota E possuir permissão de histórico/pedidos
-  // - Usuários COMPRADOR/GESTOR: devem possuir permissão explícita de destinação ou fornecedores
+  // - Usuários COMPRADOR/GESTOR: devem possuir permissão explícita de destinação ou fornecedores,
+  //   ou do Fechamento integrado (Gestor e CPD conferem a nota antes de dar entrada)
   let isAuthorized = false;
   if (principal.role === "LOJA") {
     isAuthorized =
@@ -40,6 +41,7 @@ export async function GET(
       "compras:destinacao",
       "compras:fornecedores",
       "gestor:fornecedores",
+      "fechamento:consultar",
     ]);
   }
 

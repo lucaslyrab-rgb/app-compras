@@ -141,8 +141,22 @@ export type SourceCost = {
   updatedByName: string | null;
 };
 
-/** Nota fiscal registrada na Destinação para loja × fornecedor. */
-export type SourceInvoice = { cycleDate: string; storeId: string; supplierId: string; invoiceNumber: string };
+/**
+ * Nota de loja × fornecedor no ciclo: anexada na Destinação (com foto) ou só com o
+ * número informado no Fechamento; com a marcação de "entrada dada", quando houver.
+ */
+export type SourceInvoice = {
+  cycleDate: string;
+  storeId: string;
+  supplierId: string;
+  invoiceNumber: string;
+  /** Nota com foto (purchase_cycle_invoices); null quando só o número foi informado. */
+  invoiceId?: string | null;
+  informed?: boolean;
+  /** Quando a entrada foi marcada, já formatado para a tela ("13/11 às 10:42"). */
+  entryConfirmedAt?: string | null;
+  entryConfirmedByName?: string | null;
+};
 
 /** Perda não cancelada, com a data local (São Paulo) do lançamento. */
 export type SourceLoss = { storeId: string; productId: string; date: string; quantity: number; unit: string };

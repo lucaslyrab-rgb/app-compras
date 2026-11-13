@@ -729,6 +729,29 @@ export async function readBuyerAllocationWorkspace(
     });
   }
 
+  // 6.2.1 Números de nota informados no Fechamento (sem foto), para o comprador anexar a foto.
+  const informedInvoiceNumbersByStoreSupplier: Record<string, Record<string, string[]>> = {};
+  try {
+    const informedRows = await sql<{ store_id: string; supplier_id: string; invoice_number: string }[]>`
+      SELECT e.store_id, e.supplier_id, e.invoice_number
+      FROM purchase_cycle_invoice_entries e
+      WHERE e.purchase_cycle_date = ${cycleDate}::date
+        AND e.informed_at IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM purchase_cycle_invoices i
+          WHERE i.purchase_cycle_date = e.purchase_cycle_date AND i.store_id = e.store_id
+            AND i.supplier_id = e.supplier_id AND i.invoice_number = e.invoice_number
+        )
+      ORDER BY e.informed_at
+    `;
+    for (const row of informedRows) {
+      const bySupplier = (informedInvoiceNumbersByStoreSupplier[row.store_id] ??= {});
+      (bySupplier[row.supplier_id] ??= []).push(row.invoice_number);
+    }
+  } catch {
+    // Tabela da 0024 ainda não aplicada: segue sem sugestões.
+  }
+
   // 6.3 Conferência conjunta dos cortes e finalizações de loja (apenas versões correntes)
   const storeClosureRows = await sql<
     {
@@ -1485,6 +1508,7 @@ export async function readBuyerAllocationWorkspace(
     storeClosures,
     supplierStoreReviews,
     invoicesByStoreSupplier,
+    informedInvoiceNumbersByStoreSupplier,
     loadedAt: new Date().toISOString(),
   };
 }

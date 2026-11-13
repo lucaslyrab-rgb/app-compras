@@ -4,6 +4,21 @@ Cada versão vai para produção quando o Lucas aprova, depois de testada no
 ambiente local ([docs/desenvolvimento-local.md](docs/desenvolvimento-local.md)).
 Detalhes da primeira versão completa: [docs/versao-1.md](docs/versao-1.md).
 
+## 1.3.0 — 13/11/2026
+
+**Notas no Fechamento integrado (Gestor e CPD)**
+- Coluna **Nota** no detalhe de cada produto (por loja) e na aba Valor por loja:
+  o número abre a foto anexada na Destinação.
+- Caixa **Entrada dada** por nota, com quem marcou e quando; vale para a nota
+  inteira (todos os produtos e as duas abas).
+- Loja sem nota: Gestor/CPD informa **só o número**, sem foto. Na Destinação o
+  comprador vê "Usar NF …"; ao anexar a foto com o mesmo número, vira a mesma
+  nota e a marcação de entrada continua.
+- Contador e filtro **Notas sem entrada N de M**.
+- Produto fica em **verde claro** quando todas as notas das lojas dele têm entrada.
+- Seletor de ciclo e de loja trocam a tela ao escolher e acompanham as setas
+  (sai o botão "Ver").
+
 ## 1.2.0 — 12/11/2026
 
 **Fechamento integrado novo (Gestor e CPD)**

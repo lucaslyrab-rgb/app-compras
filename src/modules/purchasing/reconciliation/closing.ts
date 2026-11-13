@@ -47,6 +47,7 @@ export const JOURNEY_FILTERS = [
   "CONFERENCE_DIFFERENCE",
   "CONFERENCE_PENDING",
   "OK",
+  "INVOICE_PENDING",
 ] as const;
 export type JourneyFilter = (typeof JOURNEY_FILTERS)[number];
 
@@ -57,7 +58,60 @@ export const JOURNEY_FILTER_LABELS: Record<JourneyFilter, string> = {
   CONFERENCE_DIFFERENCE: "Diferença na conferência",
   CONFERENCE_PENDING: "Conferência pendente",
   OK: "Tudo certo",
+  INVOICE_PENDING: "Notas sem entrada",
 };
+
+/** Filtros de desfecho mostrados como etiquetas (o de notas tem contador próprio). */
+export const OUTCOME_FILTERS = JOURNEY_FILTERS.filter((f) => f !== "INVOICE_PENDING");
+
+/** Nota de loja × fornecedor como aparece no Fechamento. */
+export type InvoiceRef = {
+  storeId: string;
+  supplierId: string;
+  number: string;
+  /** Nota anexada na Destinação (abre a foto); null = só o número informado no Fechamento. */
+  invoiceId: string | null;
+  entryConfirmedAt: string | null;
+  entryConfirmedBy: string | null;
+};
+
+export type StoreSupplierInvoices = { supplierId: string; supplierName: string; invoices: InvoiceRef[] };
+
+/** Notas do ciclo por `loja|fornecedor`, na ordem em que foram registradas. */
+export function indexInvoices(sources: ReconciliationSources, cycleDate: string): Map<string, InvoiceRef[]> {
+  const map = new Map<string, InvoiceRef[]>();
+  for (const inv of sources.invoices ?? []) {
+    if (inv.cycleDate !== cycleDate) continue;
+    const key = `${inv.storeId}|${inv.supplierId}`;
+    const list = map.get(key) ?? [];
+    if (!list.some((r) => r.number === inv.invoiceNumber)) {
+      list.push({
+        storeId: inv.storeId,
+        supplierId: inv.supplierId,
+        number: inv.invoiceNumber,
+        invoiceId: inv.invoiceId ?? null,
+        entryConfirmedAt: inv.entryConfirmedAt ?? null,
+        entryConfirmedBy: inv.entryConfirmedByName ?? null,
+      });
+    }
+    map.set(key, list);
+  }
+  return map;
+}
+
+/** Quantas notas o ciclo tem e quantas ainda sem entrada (opcionalmente de uma loja). */
+export function countInvoices(sources: ReconciliationSources, cycleDate: string, storeId?: string) {
+  let total = 0;
+  let pending = 0;
+  for (const refs of indexInvoices(sources, cycleDate).values()) {
+    for (const ref of refs) {
+      if (storeId && ref.storeId !== storeId) continue;
+      total += 1;
+      if (!ref.entryConfirmedAt) pending += 1;
+    }
+  }
+  return { total, pending };
+}
 
 export type QuantityGroup = { unit: string; quantity: number };
 
@@ -67,7 +121,7 @@ export type JourneySupplier = {
   unit: string;
   quantity: number;
   stores: { storeId: string; storeName: string; quantity: number }[];
-  invoices: string[];
+  invoices: InvoiceRef[];
 };
 
 export type ProductJourney = {
@@ -93,6 +147,12 @@ export type ProductJourney = {
   additional: { difference: number | null; unit: string | null; stores: number } | null;
   issues: JourneyIssue[];
   lines: ReconciliationLine[];
+  /** Por loja: fornecedores deste produto e as notas de cada um (vazio = sem nota). */
+  storeInvoices: Record<string, StoreSupplierInvoices[]>;
+  /** Alguma nota dos fornecedores deste produto ainda sem entrada dada. */
+  hasPendingInvoice: boolean;
+  /** Todas as lojas com destinação têm nota e todas as notas estão com entrada dada. */
+  allInvoicesEntered: boolean;
 };
 
 function sumGroups(entries: { unit: string; quantity: number }[]): QuantityGroup[] {
@@ -135,14 +195,7 @@ export function buildProductJourneys(
 
   const destinedAnywhere = new Set(cycleLines.filter((l) => l.destinedPositive).map((l) => l.productId));
 
-  const invoicesByPair = new Map<string, string[]>();
-  for (const inv of sources.invoices ?? []) {
-    if (inv.cycleDate !== cycleDate) continue;
-    const key = `${inv.storeId}|${inv.supplierId}`;
-    const list = invoicesByPair.get(key) ?? [];
-    if (!list.includes(inv.invoiceNumber)) list.push(inv.invoiceNumber);
-    invoicesByPair.set(key, list);
-  }
+  const invoicesByPair = indexInvoices(sources, cycleDate);
 
   const linesByProduct = new Map<string, ReconciliationLine[]>();
   for (const line of cycleLines) {
@@ -177,6 +230,7 @@ export function buildProductJourneys(
 
     const destinedLines = productLines.filter((l) => l.destinedPositive);
     const supplierMap = new Map<string, JourneySupplier>();
+    const storeInvoices: Record<string, StoreSupplierInvoices[]> = {};
     for (const alloc of sources.allocations) {
       if (alloc.cycleDate !== cycleDate || alloc.productId !== productId || !(alloc.destinedQuantity > 0)) continue;
       if (!storeIds.has(alloc.storeId)) continue;
@@ -190,9 +244,18 @@ export function buildProductJourneys(
       };
       entry.quantity = round2(entry.quantity + alloc.destinedQuantity);
       entry.stores.push({ storeId: alloc.storeId, storeName: stores.get(alloc.storeId) ?? "Loja", quantity: alloc.destinedQuantity });
-      for (const number of invoicesByPair.get(`${alloc.storeId}|${alloc.supplierId}`) ?? []) {
-        if (!entry.invoices.includes(number)) entry.invoices.push(number);
+      for (const ref of invoicesByPair.get(`${alloc.storeId}|${alloc.supplierId}`) ?? []) {
+        if (!entry.invoices.some((r) => r.storeId === ref.storeId && r.number === ref.number)) entry.invoices.push(ref);
       }
+      const perStore = storeInvoices[alloc.storeId] ?? [];
+      if (!perStore.some((p) => p.supplierId === alloc.supplierId)) {
+        perStore.push({
+          supplierId: alloc.supplierId,
+          supplierName: alloc.supplierName,
+          invoices: invoicesByPair.get(`${alloc.storeId}|${alloc.supplierId}`) ?? [],
+        });
+      }
+      storeInvoices[alloc.storeId] = perStore;
       supplierMap.set(alloc.supplierId, entry);
     }
     const suppliers = [...supplierMap.values()].sort((a, b) => b.quantity - a.quantity || a.supplierName.localeCompare(b.supplierName, "pt-BR"));
@@ -245,6 +308,14 @@ export function buildProductJourneys(
       additional: additionalLines.length ? sumDifferences(additionalLines) : null,
       issues: JOURNEY_ISSUE_ORDER.filter((i) => issues.has(i)),
       lines: productLines,
+      storeInvoices,
+      hasPendingInvoice: Object.values(storeInvoices).some((list) =>
+        list.some((s) => s.invoices.some((ref) => !ref.entryConfirmedAt)),
+      ),
+      allInvoicesEntered: (() => {
+        const pairs = Object.values(storeInvoices).flat();
+        return pairs.length > 0 && pairs.every((p) => p.invoices.length > 0 && p.invoices.every((ref) => ref.entryConfirmedAt));
+      })(),
     });
   }
 
@@ -255,6 +326,7 @@ export function buildProductJourneys(
 export function journeyMatches(journey: ProductJourney, filter: JourneyFilter | undefined): boolean {
   if (!filter) return true;
   if (filter === "OK") return journey.issues.length === 0;
+  if (filter === "INVOICE_PENDING") return journey.hasPendingInvoice;
   return journey.issues.includes(filter);
 }
 
@@ -281,9 +353,14 @@ export type JourneySummary = {
   conference: { storesWithDestination: number; storesFinalized: number; withDifference: number; pending: number };
   counts: Record<JourneyFilter, number>;
   total: number;
+  /** Notas do ciclo (todas as lojas ou a loja filtrada) e quantas sem entrada dada. */
+  invoices: { total: number; pending: number };
 };
 
-export function summarizeJourneys(journeys: readonly ProductJourney[]): JourneySummary {
+export function summarizeJourneys(
+  journeys: readonly ProductJourney[],
+  invoices: { total: number; pending: number } = { total: 0, pending: 0 },
+): JourneySummary {
   const counts = Object.fromEntries(JOURNEY_FILTERS.map((f) => [f, 0])) as Record<JourneyFilter, number>;
   for (const j of journeys) for (const f of JOURNEY_FILTERS) if (journeyMatches(j, f)) counts[f] += 1;
 
@@ -315,6 +392,7 @@ export function summarizeJourneys(journeys: readonly ProductJourney[]): JourneyS
     },
     counts,
     total: journeys.length,
+    invoices,
   };
 }
 
@@ -325,7 +403,7 @@ export function summarizeJourneys(journeys: readonly ProductJourney[]): JourneyS
 export type SupplierValue = {
   supplierId: string;
   supplierName: string;
-  invoices: string[];
+  invoices: InvoiceRef[];
   products: number;
   purchasedValue: number;
   receivedValue: number | null;
@@ -388,14 +466,7 @@ export function buildStoreValues(
   const conferences = new Map(
     sources.conferences.filter((c) => c.cycleDate === cycleDate).map((c) => [c.storeId, c]),
   );
-  const invoices = new Map<string, string[]>();
-  for (const inv of sources.invoices ?? []) {
-    if (inv.cycleDate !== cycleDate) continue;
-    const key = `${inv.storeId}|${inv.supplierId}`;
-    const list = invoices.get(key) ?? [];
-    if (!list.includes(inv.invoiceNumber)) list.push(inv.invoiceNumber);
-    invoices.set(key, list);
-  }
+  const invoices = indexInvoices(sources, cycleDate);
 
   type Acc = StoreValue & { productIds: Set<string>; supplierMap: Map<string, SupplierValue & { productIds: Set<string> }> };
   const byStore = new Map<string, Acc>();

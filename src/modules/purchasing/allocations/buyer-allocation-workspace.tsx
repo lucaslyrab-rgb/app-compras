@@ -127,6 +127,7 @@ export function BuyerAllocationWorkspace({
     storeClosures = {},
     supplierStoreReviews = {},
     invoicesByStoreSupplier = {},
+    informedInvoiceNumbersByStoreSupplier = {},
   } = data;
 
   const isClosed = closure.status === "CLOSED";
@@ -242,6 +243,9 @@ export function BuyerAllocationWorkspace({
   const activeSupplierReview = selectedSupplierId ? supplierStoreReviews[selectedSupplierId]?.[activeStoreId] : null;
 
   // Notas Fiscais do fornecedor selecionado para a loja ativa (Fase 4)
+  const informedNumbersForCurrent: string[] =
+    (selectedSupplierId && informedInvoiceNumbersByStoreSupplier[activeStoreId]?.[selectedSupplierId]) || [];
+
   const currentSupplierInvoices: InvoiceRecord[] = useMemo(() => {
     if (!selectedSupplierId || !invoicesByStoreSupplier[activeStoreId]) return [];
     return invoicesByStoreSupplier[activeStoreId][selectedSupplierId] || [];
@@ -3353,6 +3357,16 @@ export function BuyerAllocationWorkspace({
                     className="alloc-qty-input"
                     style={{ width: "100%", padding: "8px 12px", fontSize: "14px", borderRadius: "6px", border: "1px solid #cbd5e1", boxSizing: "border-box" }}
                   />
+                  {informedNumbersForCurrent.length > 0 ? (
+                    <div className="dst-informed" role="group" aria-label="Números informados no Fechamento">
+                      <span>Informado no Fechamento, falta a foto:</span>
+                      {informedNumbersForCurrent.map((number) => (
+                        <button key={number} type="button" className="dst-informed__chip" onClick={() => setInvoiceNumberInput(number)}>
+                          Usar NF {number}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* VINCULAÇÃO EXPLÍCITA AOS PRODUTOS DESTINADOS (FASE 4) */}

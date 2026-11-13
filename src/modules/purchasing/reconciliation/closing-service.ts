@@ -1,6 +1,7 @@
 import {
   buildProductJourneys,
   buildStoreValues,
+  countInvoices,
   filterJourneys,
   neighborCycles,
   resolveClosingFilters,
@@ -49,7 +50,7 @@ export async function getClosingOverview(
     cycles,
     previousCycle,
     nextCycle,
-    summary: summarizeJourneys(all),
+    summary: summarizeJourneys(all, countInvoices(sources, filters.cycleDate, filters.storeId)),
     journeys: filterJourneys(all, { filter: filters.filter, search: filters.search }),
     values: buildStoreValues(sources, lines, filters.cycleDate),
   };

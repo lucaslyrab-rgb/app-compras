@@ -28,7 +28,7 @@ Cabeçalho único em todas as telas da loja: “‹ Início” para voltar, nome
 
 ### Gestor e CPD
 
-- **Fechamento integrado** (`/fechamento`): desde a 1.2, um ciclo por vez em duas abas — **Caminho dos produtos** (pedido → compra → destinação → conferência e o desfecho de cada produto) e **Valor por loja** (comprado, recebido pela conferência e diferença, por fornecedor e nota). Usa a conversão cadastrada de cada produto e as perdas dos dias seguintes. Somente informativo, sem bloqueio.
+- **Fechamento integrado** (`/fechamento`): desde a 1.2, um ciclo por vez em duas abas — **Caminho dos produtos** (pedido → compra → destinação → conferência e o desfecho de cada produto) e **Valor por loja** (comprado, recebido pela conferência e diferença, por fornecedor e nota). Usa a conversão cadastrada de cada produto e as perdas dos dias seguintes. Desde a 1.3, mostra as notas de cada loja (foto, **entrada dada** e número informado sem foto) e destaca em verde o produto com todas as notas lançadas. Não bloqueia nada.
 - **Perdas:** o Gestor pode excluir um lançamento errado (com registro de quem excluiu).
 - **Configurações:** calendário de compras e **encerrar ciclo** antigo (fecha Destinação e conferências do ciclo de uma vez).
 - Cadastros de **fornecedores** (nome fantasia obrigatório; inativos não aparecem na Destinação), **produtos**, **precificação** e **usuários/permissões**.
@@ -50,6 +50,7 @@ Cabeçalho único em todas as telas da loja: “‹ Início” para voltar, nome
 | 02/11 | O Início mostra primeiro a conferência ainda em andamento (a mais antiga) e ignora ciclos encerrados. |
 | 04/11 | Destinação começa em zero; zero = não comprou daquele fornecedor. Comprado sem destino trava a finalização da loja; zerado só para a loja pede confirmação do corte. |
 | 11/11 | Cada versão é testada no ambiente local do Lucas (PC e celular) antes de ir para produção; sem homologação no servidor. |
+| 13/11 | "Entrada dada" é marcada por nota (ciclo × loja × fornecedor × número) por Gestor e CPD (`fechamento:consultar`). No Fechamento só se informa o número; a foto é anexada apenas na Destinação, e o mesmo número junta as duas. |
 | 12/11 | Fechamento integrado por ciclo, com o caminho de cada produto e o valor por loja. Valor comprado = destinado × custo do ciclo; valor recebido = valor comprado ajustado pelo peso da conferência finalizada (não recebido conta zero; sem pesagem conta o comprado). |
 
 ## Histórico de entregas (PRs)
@@ -71,7 +72,8 @@ Cabeçalho único em todas as telas da loja: “‹ Início” para voltar, nome
 | #18 | 02/11 | Cabeçalho único da loja e conferência pendente no Início |
 | #20, #21 | 04–05/11 | **1.1** — Destinação começa em zero, travas de fechamento, notas mais rápidas |
 | #22, #23, #24 | 06–11/11 | **1.1** — Lista de fornecedores fixa, imagem do servidor atualizada, ambiente local |
-| #25 | 12/11 | **1.2** — Fechamento integrado novo (caminho dos produtos e valor por loja), pedidos e ciclo de teste |
+| #25, #26 | 12/11 | **1.2** — Fechamento integrado novo (caminho dos produtos e valor por loja), pedidos e ciclo de teste |
+| #27 | 13/11 | **1.3** — Notas no Fechamento: foto, entrada dada, número sem foto, contador e linha verde; seletor de ciclo |
 
 ## Como seguimos
 
