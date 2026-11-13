@@ -151,6 +151,8 @@ export type ProductJourney = {
   storeInvoices: Record<string, StoreSupplierInvoices[]>;
   /** Alguma nota dos fornecedores deste produto ainda sem entrada dada. */
   hasPendingInvoice: boolean;
+  /** Todas as lojas com destinação têm nota e todas as notas estão com entrada dada. */
+  allInvoicesEntered: boolean;
 };
 
 function sumGroups(entries: { unit: string; quantity: number }[]): QuantityGroup[] {
@@ -310,6 +312,10 @@ export function buildProductJourneys(
       hasPendingInvoice: Object.values(storeInvoices).some((list) =>
         list.some((s) => s.invoices.some((ref) => !ref.entryConfirmedAt)),
       ),
+      allInvoicesEntered: (() => {
+        const pairs = Object.values(storeInvoices).flat();
+        return pairs.length > 0 && pairs.every((p) => p.invoices.length > 0 && p.invoices.every((ref) => ref.entryConfirmedAt));
+      })(),
     });
   }
 

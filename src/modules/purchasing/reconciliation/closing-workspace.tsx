@@ -209,7 +209,7 @@ function StoreLines({ journey, cycleDate }: { journey: ProductJourney; cycleDate
 function JourneyRow({ journey, cycleDate }: { journey: ProductJourney; cycleDate: string }) {
   const p = journey.purchase;
   return (
-    <details className="cl-row">
+    <details className={`cl-row${journey.allInvoicesEntered ? " cl-row--entered" : ""}`}>
       <summary className="cl-row__summary cl-grid--journey">
         <span className="cl-product">
           <strong>{journey.productName}</strong>

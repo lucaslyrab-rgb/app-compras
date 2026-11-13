@@ -186,10 +186,27 @@ describe("notas no caminho dos produtos", () => {
     expect(byId.get("laranja")!.hasPendingInvoice).toBe(true); // NF 77 sem entrada
     expect(byId.get("mamao")!.hasPendingInvoice).toBe(true); // NF 889 sem entrada
     expect(byId.get("couve")!.hasPendingInvoice).toBe(false); // sem nota nenhuma
+    expect(byId.get("couve")!.allInvoicesEntered).toBe(false); // loja sem nota não fica verde
+    expect(byId.get("laranja")!.allInvoicesEntered).toBe(false); // NF 77 ainda sem entrada
     expect(filterJourneys(journeys, { filter: "INVOICE_PENDING" }).map((j) => j.productId)).toEqual(["uva", "laranja", "abacaxi", "mamao"]);
     expect(countInvoices(src, C)).toEqual({ total: 3, pending: 2 });
     expect(countInvoices(src, C, "s1")).toEqual({ total: 2, pending: 1 });
     expect(summarizeJourneys(journeys, countInvoices(src, C)).invoices).toEqual({ total: 3, pending: 2 });
+  });
+});
+
+describe("linha verde quando todas as notas do produto têm entrada", () => {
+  it("fica verde só com todas as lojas com nota e entrada dada", () => {
+    const src = sources();
+    src.invoices = [
+      { cycleDate: C, storeId: S1, supplierId: "supA", invoiceNumber: "4521", invoiceId: "inv1", entryConfirmedAt: "13/11 às 10:42", entryConfirmedByName: "CPD" },
+      { cycleDate: C, storeId: S2, supplierId: "supA", invoiceNumber: "77", invoiceId: null, informed: true, entryConfirmedAt: "13/11 às 11:00", entryConfirmedByName: "CPD" },
+    ];
+    const lines = buildReconciliationLines(src);
+    const byId = new Map(buildProductJourneys(src, lines, { cycleDate: C }).map((j) => [j.productId, j]));
+    expect(byId.get("laranja")!.allInvoicesEntered).toBe(true);
+    expect(byId.get("uva")!.allInvoicesEntered).toBe(true);
+    expect(byId.get("mamao")!.allInvoicesEntered).toBe(false); // Bom Preço sem nota
   });
 });
 

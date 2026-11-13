@@ -157,3 +157,9 @@ span.cl-icon-btn { color: #A9B6C3; }
   .cl-inform input { height: 40px; width: 140px; font-size: 14px; }
   .cl-inform .btn { min-height: 40px; }
 }
+
+/* Produto com todas as notas com entrada dada: linha em verde claro. */
+.cl-row--entered > .cl-row__summary,
+.cl-row--entered[open] > .cl-row__summary,
+.cl-row--entered > .cl-detail { background: #EAF7EF; }
+.cl-row--entered > .cl-row__summary:hover { background: #DFF3E7; }
