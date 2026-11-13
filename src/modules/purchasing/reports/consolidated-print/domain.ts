@@ -1,4 +1,5 @@
 import { shortStoreName, type ConsolidatedData } from "../../domain";
+import { compareForOperationalLists } from "@/lib/product-sections";
 
 export type PrintRow = {
   id: string;
@@ -7,6 +8,7 @@ export type PrintRow = {
   quantities: (number | null)[];
   total: number;
   unit: string;
+  isPackaged?: boolean;
 };
 
 export type PrintStoreColumn = { id: string; initials: string; name: string; sent: boolean };
@@ -34,12 +36,12 @@ export const COMPACT_ROWS_PER_COLUMN = 40;
 
 /**
  * Monta o relatório A4 do Consolidado: TODOS os produtos (como a folha de compra
- * em papel), em ordem alfabética, divididos em duas colunas. Quantidade zero ou
+ * em papel), em ordem alfabética com os embalados no fim, divididos em duas colunas. Quantidade zero ou
  * produto não informado vira "–", deixando espaço para anotar oportunidades.
  */
 export function buildConsolidatedPrintModel(data: ConsolidatedData): ConsolidatedPrintModel {
   const rows: PrintRow[] = [...data.products]
-    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+    .sort(compareForOperationalLists)
     .map((product) => {
       const quantities = data.stores.map((store) => {
         const value = product.stores[store.id];
@@ -52,6 +54,7 @@ export function buildConsolidatedPrintModel(data: ConsolidatedData): Consolidate
         quantities,
         total: Number(product.total),
         unit: product.purchaseFormat,
+        isPackaged: Boolean(product.isPackaged),
       };
     });
 

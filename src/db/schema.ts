@@ -47,6 +47,8 @@ export const products = pgTable("products", {
   purchaseFormat: text("purchase_format").notNull(),
   markup: numeric("markup", { precision: 8, scale: 2 }).notNull(),
   exclusiveSupplier: boolean("exclusive_supplier").notNull().default(false),
+  /** Seção "Embalados": aparece depois dos demais produtos nas listas operacionais. */
+  isPackaged: boolean("is_packaged").notNull().default(false),
   active: boolean("active").notNull().default(true),
   version: integer("version").notNull().default(1),
   photoKey: text("photo_key"),

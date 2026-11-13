@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type CSSProperties } from "react";
+import { Fragment, useEffect, useMemo, useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductPhoto } from "@/components/product-photo";
+import { PACKAGED_SECTION_LABEL, startsPackagedSection } from "@/lib/product-sections";
 import {
   filterConsolidatedProducts,
   shortStoreName,
@@ -366,8 +367,12 @@ export function ConsolidatedWorkspace({ data }: { data: ConsolidatedData }) {
               </tr>
             </thead>
             <tbody>
-              {visible.map((product) => (
-                <tr key={product.id}>
+              {visible.map((product, index) => (
+                <Fragment key={product.id}>
+                {startsPackagedSection(visible, index) ? (
+                  <tr className="packaged-heading-row"><td colSpan={3 + data.stores.length * 2}>{PACKAGED_SECTION_LABEL}</td></tr>
+                ) : null}
+                <tr>
                   <td>{product.erpCode}</td>
                   <th scope="row">
                     <span className="buyer-product-name">
@@ -399,6 +404,7 @@ export function ConsolidatedWorkspace({ data }: { data: ConsolidatedData }) {
                     {quantity(product.total)} {product.purchaseFormat}
                   </td>
                 </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -425,8 +431,12 @@ export function ConsolidatedWorkspace({ data }: { data: ConsolidatedData }) {
               ))}
               <span role="columnheader" className="buyer-mobile-total">Total</span>
             </div>
-            {visible.map((product) => (
-              <div className="buyer-mobile-row" role="row" key={product.id} aria-label={product.name}>
+            {visible.map((product, index) => (
+              <Fragment key={product.id}>
+              {startsPackagedSection(visible, index) ? (
+                <div className="packaged-heading" role="row"><span role="cell">{PACKAGED_SECTION_LABEL}</span></div>
+              ) : null}
+              <div className="buyer-mobile-row" role="row" aria-label={product.name}>
                 <span className="buyer-mobile-name" role="rowheader">
                   <strong>{product.name}</strong>
                   <small>
@@ -453,6 +463,7 @@ export function ConsolidatedWorkspace({ data }: { data: ConsolidatedData }) {
                   {quantity(product.total)}
                 </strong>
               </div>
+              </Fragment>
             ))}
           </div>
         </>

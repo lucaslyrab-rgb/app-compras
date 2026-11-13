@@ -54,10 +54,17 @@ export async function createTestOrders(databaseUrl: string, now = new Date(), lo
       `;
     }
 
-    const products = await sql<{ id: string }[]>`SELECT id FROM products WHERE active ORDER BY erp_code`;
+    const products = await sql<{ id: string; is_packaged: boolean }[]>`
+      SELECT id, is_packaged FROM products WHERE active ORDER BY erp_code
+    `;
     if (products.length === 0) throw new Error("Sem produtos. Rode antes: npm run dev:setup");
     // Um grupo comum para as lojas pedirem produtos em comum, como no dia a dia.
-    const pool = pick(products, Math.min(35, products.length));
+    // Sempre alguns embalados, para a seção "Embalados" aparecer nas telas.
+    const packaged = products.filter((p) => p.is_packaged);
+    const pool = [
+      ...pick(products.filter((p) => !p.is_packaged), Math.min(32, products.length - packaged.length)),
+      ...pick(packaged, Math.min(3, packaged.length)),
+    ];
 
     const stores = await sql<{ id: string; name: string; user_id: string | null }[]>`
       SELECT s.id, s.name,

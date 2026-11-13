@@ -84,7 +84,7 @@ export async function readConsolidated(
       const productIds = [...new Set(items.map((item) => item.productId))];
       const catalog = await sql<CatalogProduct[]>`
       SELECT id, erp_code AS "erpCode", name, purchase_format AS "purchaseFormat", active,
-             photo_key AS "photoKey", photo_updated_at AS "photoUpdatedAt"
+             photo_key AS "photoKey", photo_updated_at AS "photoUpdatedAt", is_packaged AS "isPackaged"
       FROM products WHERE active ${productIds.length ? sql`OR id IN ${sql(productIds)}` : sql``}
     `;
       return {

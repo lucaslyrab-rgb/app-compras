@@ -18,7 +18,8 @@ test("Gestor administra produtos e configurações em layout responsivo", async 
   await page.goto("/produtos");
   await expect(page).toHaveURL(/\/gestor\/produtos/);
   await expect(page.getByRole("heading", { name: "Cadastro de Produtos - FLV" })).toBeVisible();
-  await expect(page.getByText("Configurações gerais da precificação (FLV)")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Embalados \(\d+\)$/ })).toBeVisible();
+  await expect(page.getByText("Configurações gerais da precificação (FLV)")).toHaveCount(0);
   await expect(page.getByText(/1–20 de \d+/)).toBeVisible();
   if (testInfo.project.name === "mobile") {
     await expect(page.locator(".manager-mobile-card").first()).toBeVisible();
@@ -30,7 +31,7 @@ test("Gestor administra produtos e configurações em layout responsivo", async 
     expect(editHref).toBeTruthy();
     await page.goto(editHref!);
     await expect(page.locator(".manager-editor")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Salvar alterações" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Salvar", exact: true })).toBeVisible();
     await page.goto("/gestor/produtos");
   } else {
     await expect(page.locator(".manager-product-table")).toBeVisible();
@@ -52,15 +53,17 @@ test("Gestor administra produtos e configurações em layout responsivo", async 
   if (testInfo.project.name === "mobile") await expect(page).toHaveURL(/\/gestor\/produtos\/[0-9a-f-]+/);
   else await expect(page.locator(".manager-editor h2")).toHaveText(`PRODUTO E2E ${testInfo.project.name.toUpperCase()}`);
   await page.goto("/gestor/produtos");
-  await page.getByLabel("Status").selectOption("all");
   await page.getByPlaceholder("Buscar por produto, ERP ou formato...").fill(managedErp);
   const managedContainer = testInfo.project.name === "mobile"
     ? page.locator(".manager-mobile-card").filter({ hasText: managedErp })
     : page.locator(".manager-product-table tbody tr").filter({ hasText: managedErp });
   await expect(managedContainer).toContainText(`PRODUTO E2E ${testInfo.project.name.toUpperCase()}`);
   await managedContainer.getByRole("button", { name: "Inativar" }).click();
+  await expect(page.getByText(/inativado\. Para ver ou reativar, use o filtro Inativos/)).toBeVisible();
+  await page.getByRole("button", { name: /^Inativos \(\d+\)$/ }).click();
   await expect(managedContainer.getByText("Inativo", { exact: true })).toBeVisible();
   await managedContainer.getByRole("button", { name: "Reativar" }).click();
+  await page.getByRole("button", { name: /^Todos \(\d+\)$/ }).click();
   await expect(managedContainer.getByText("Configurado", { exact: true })).toBeVisible();
   await page.getByPlaceholder("Buscar por produto, ERP ou formato...").fill("BANANA TESTE");
   const searchedProduct = testInfo.project.name === "mobile"
@@ -292,7 +295,6 @@ test("Gestor digita e persiste nome na criação e edição com recarregamento e
   }
 
   await page.goto("/gestor/produtos");
-  await page.getByLabel("Status").selectOption("all");
   await page.getByPlaceholder("Buscar por produto, ERP ou formato...").fill(erpCode);
   const createdContainer = testInfo.project.name === "mobile"
     ? page.locator(".manager-mobile-card").filter({ hasText: erpCode })
@@ -311,7 +313,7 @@ test("Gestor digita e persiste nome na criação e edição com recarregamento e
   await editNameInput.pressSequentially(editedName);
   await expect(editNameInput).toHaveValue(editedName);
 
-  await page.getByRole("button", { name: "Salvar alterações" }).click();
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
   await expect(page.getByText("Alterações salvas.")).toBeVisible();
 
   await page.reload();

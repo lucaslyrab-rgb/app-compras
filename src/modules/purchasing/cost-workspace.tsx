@@ -2,7 +2,8 @@
 
 import { ProductPhoto } from "@/components/product-photo";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
+import { PACKAGED_SECTION_LABEL, startsPackagedSection } from "@/lib/product-sections";
 import { useRouter } from "next/navigation";
 import { savePurchaseCostAction } from "./costs/actions";
 import {
@@ -544,8 +545,12 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
               </tr>
             </thead>
             <tbody>
-              {visible.map((product) => (
-                <tr key={product.id}>
+              {visible.map((product, index) => (
+                <Fragment key={product.id}>
+                {startsPackagedSection(visible, index) ? (
+                  <tr className="packaged-heading-row"><td colSpan={7 + data.stores.length}>{PACKAGED_SECTION_LABEL}</td></tr>
+                ) : null}
+                <tr>
                   <td>{product.erpCode}</td>
                   <th scope="row">
                     <span className="cost-product-name">
@@ -581,15 +586,17 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
                     {renderPurchaseToggle(product)}
                   </td>
                 </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>
 
           <div className="cost-mobile-list">
-            {visible.map((product) => (
+            {visible.map((product, index) => (
+              <Fragment key={product.id}>
+              {startsPackagedSection(visible, index) ? <h3 className="packaged-heading">{PACKAGED_SECTION_LABEL}</h3> : null}
               <article
                 className={`cost-card ${rows[product.id].purchased ? "cost-card--purchased" : "cost-card--pending"}`}
-                key={product.id}
               >
                 <div className="cost-card-summary">
                   <Thumbnail product={product} size={46} />
@@ -642,6 +649,7 @@ export function PurchaseCostsWorkspace({ data }: { data: PurchaseCostsData }) {
                   </div>
                 </div>
               </article>
+              </Fragment>
             ))}
           </div>
         </>

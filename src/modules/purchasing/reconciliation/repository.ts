@@ -355,8 +355,9 @@ async function loadProducts(sql: Sql, productIds: string[]): Promise<SourceProdu
     purchase_format: string | null;
     sale_unit: string | null;
     conversion_quantity: string | null;
+    is_packaged: boolean;
   }[]>`
-    SELECT p.id, p.erp_code, p.name, p.purchase_format,
+    SELECT p.id, p.erp_code, p.name, p.purchase_format, p.is_packaged,
            pp.sale_unit, pp.conversion_quantity::text AS conversion_quantity
     FROM products p
     LEFT JOIN product_pricing_parameters pp ON pp.product_id = p.id
@@ -369,6 +370,7 @@ async function loadProducts(sql: Sql, productIds: string[]): Promise<SourceProdu
     purchaseFormat: r.purchase_format,
     saleUnit: r.sale_unit,
     conversionQuantity: numOrNull(r.conversion_quantity),
+    isPackaged: r.is_packaged,
   }));
 }
 

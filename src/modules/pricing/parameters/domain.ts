@@ -4,7 +4,7 @@ import { add, compare, decimal, PricingValidationError, toDecimal } from "../fin
 
 export const conversionOrigins = ["PROVISIONAL", "UNIT", "MANUAL"] as const;
 export type ConversionOrigin = (typeof conversionOrigins)[number];
-export type ProductPricingFilter = "all" | "provisional" | "unit" | "configured";
+export type ProductPricingFilter = "all" | "provisional" | "unit" | "configured" | "packaged";
 export type ProductStatusFilter = "active" | "inactive" | "all";
 
 export type PricingSettings = {
@@ -21,6 +21,8 @@ export type PricingProduct = {
   catalogUnit: string;
   purchaseFormat: string;
   exclusiveSupplier: boolean;
+  /** Seção "Embalados" nas listas operacionais. */
+  isPackaged?: boolean;
   active: boolean;
   productVersion: number;
   photoKey: string | null;
@@ -143,7 +145,7 @@ export function filterPricingProducts(
     (!term || product.name.toLocaleLowerCase("pt-BR").includes(term) ||
       String(product.erpCode).includes(term) ||
       product.purchaseFormat.toLocaleLowerCase("pt-BR").includes(term)) &&
-    (filter === "all" || pricingProductStatus(product) === filter) &&
+    (filter === "all" || (filter === "packaged" ? Boolean(product.isPackaged) : pricingProductStatus(product) === filter)) &&
     (status === "all" || product.active === (status === "active")));
 }
 

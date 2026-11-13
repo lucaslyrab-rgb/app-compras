@@ -25,6 +25,7 @@ export default async function StoreLossPage() {
     name: p.name,
     unit: p.unit,
     purchaseFormat: p.purchaseFormat,
+    isPackaged: p.isPackaged,
     photoKey: p.photoKey,
     photoUpdatedAt: toIsoDateString(p.photoUpdatedAt),
   }));

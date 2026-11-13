@@ -13,7 +13,7 @@ import {
 export { listPricingProducts, readPricingProduct, readPricingSettings };
 
 export async function createProduct(principal: Principal, input: {
-  erpCode: number; name: string; catalogUnit: string; purchaseFormat: string; exclusiveSupplier: boolean;
+  erpCode: number; name: string; catalogUnit: string; purchaseFormat: string; exclusiveSupplier: boolean; isPackaged?: boolean;
   saleUnit: string; conversionQuantity: string; beneficiationLossPercent: string; specificMarginPercent: string | null;
 }) {
   const master = normalizeManagedProduct({
@@ -35,6 +35,7 @@ export async function saveProductPricing(
     catalogUnit: string;
     purchaseFormat: string;
     exclusiveSupplier: boolean;
+    isPackaged?: boolean;
     saleUnit: string;
     conversionQuantity: string;
     beneficiationLossPercent: string;

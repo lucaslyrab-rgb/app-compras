@@ -9,6 +9,8 @@ import { ProductPhoto } from "@/components/product-photo";
 import { ProductSuppliersSection } from "./product-suppliers-section";
 import type { PricingProduct, PricingSettings } from "./domain";
 
+type EditorTab = "dados" | "fornecedores" | "precificacao" | "foto";
+
 type Props = {
   product?: PricingProduct;
   settings: PricingSettings;
@@ -24,6 +26,7 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
   const [catalogUnit, setCatalogUnit] = useState(product?.catalogUnit ?? "KG");
   const [purchaseFormat, setPurchaseFormat] = useState(product?.purchaseFormat ?? "CX");
   const [exclusiveSupplier, setExclusiveSupplier] = useState(product?.exclusiveSupplier ?? false);
+  const [isPackaged, setIsPackaged] = useState(product?.isPackaged ?? false);
   const [saleUnit, setSaleUnit] = useState(product?.saleUnit ?? "KG");
   const [conversion, setConversion] = useState(product ? formatPricingNumber(product.conversionQuantity) : "1");
   const [loss, setLoss] = useState(product ? formatPricingNumber(product.beneficiationLossPercent) : "0");
@@ -40,6 +43,8 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
   const [confirmedFormatConversion, setConfirmedFormatConversion] = useState(false);
   const [feedback, setFeedback] = useState<{ error: boolean; message: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [tab, setTab] = useState<EditorTab>("dados");
+  const [supplierCount, setSupplierCount] = useState<number | null>(null);
   const formatChanged = Boolean(product && purchaseFormat.trim().toLocaleUpperCase("pt-BR") !== product.purchaseFormat);
 
   function load(current: PricingProduct) {
@@ -48,6 +53,7 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
     setCatalogUnit(current.catalogUnit);
     setPurchaseFormat(current.purchaseFormat);
     setExclusiveSupplier(current.exclusiveSupplier);
+    setIsPackaged(current.isPackaged ?? false);
     setSaleUnit(current.saleUnit);
     setConversion(formatPricingNumber(current.conversionQuantity));
     setLoss(formatPricingNumber(current.beneficiationLossPercent));
@@ -182,6 +188,7 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
         catalogUnit: catalogUnit.trim(),
         purchaseFormat: purchaseFormat.trim(),
         exclusiveSupplier,
+        isPackaged,
         saleUnit: saleUnit.trim(),
         conversionQuantity: conversion,
         beneficiationLossPercent: loss,
@@ -211,6 +218,39 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
     });
   }
 
+  const dirty = product
+    ? erpCode !== String(product.erpCode) ||
+      name !== product.name ||
+      catalogUnit !== product.catalogUnit ||
+      purchaseFormat !== product.purchaseFormat ||
+      isPackaged !== (product.isPackaged ?? false) ||
+      saleUnit !== product.saleUnit ||
+      conversion !== formatPricingNumber(product.conversionQuantity) ||
+      loss !== formatPricingNumber(product.beneficiationLossPercent) ||
+      specific !== (product.specificMarginPercent !== null) ||
+      (specific && margin !== formatPricingNumber(product.specificMarginPercent ?? settings.defaultMarginPercent))
+    : true;
+
+  function undo() {
+    if (!product) return;
+    load(product);
+    setFeedback(null);
+  }
+
+  /** Campo obrigatório vazio numa aba escondida: abre a aba dele. */
+  function revealInvalid(event: React.FormEvent<HTMLFormElement>) {
+    const panel = (event.target as HTMLElement).closest<HTMLElement>("[data-editor-tab]");
+    const target = panel?.dataset.editorTab as EditorTab | undefined;
+    if (target && target !== tab) setTab(target);
+  }
+
+  const tabs: { id: EditorTab; label: string; disabled?: boolean }[] = [
+    { id: "dados", label: "Dados" },
+    { id: "fornecedores", label: supplierCount === null ? "Fornecedores" : `Fornecedores (${supplierCount})`, disabled: !product },
+    { id: "precificacao", label: "Precificação" },
+    { id: "foto", label: "Foto", disabled: !product },
+  ];
+
   const status = product?.conversionOrigin === "PROVISIONAL" ? "Conversão padrão" : product?.conversionOrigin === "UNIT" ? "Unitário" : "Configurado";
   const displayTitle = product ? product.name : (name.trim() || "Novo produto");
   const displayErp = product ? `ERP: ${erpCode || product.erpCode}` : erpCode ? `ERP: ${erpCode}` : "Cadastro mestre e precificação inicial";
@@ -236,9 +276,27 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
       </div>
       {product ? <span className={`manager-badge manager-badge--${product.conversionOrigin.toLowerCase()}`}>{status}</span> : null}
     </header>
-    <form className="manager-form" onSubmit={submit}>
-      <fieldset className="manager-form-section">
-        <legend>Dados do produto</legend>
+    <div className="manager-editor__tabs" role="tablist" aria-label="Partes do cadastro">
+      {tabs.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          role="tab"
+          id={`editor-tab-${item.id}`}
+          aria-selected={tab === item.id}
+          aria-controls={`editor-panel-${item.id}`}
+          disabled={item.disabled}
+          title={item.disabled ? "Cadastre o produto primeiro" : undefined}
+          onClick={() => setTab(item.id)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+    <form className="manager-form manager-editor__form" onSubmit={submit} onInvalidCapture={revealInvalid}>
+      <div className="manager-editor__body">
+      <fieldset className="manager-form-section" data-editor-tab="dados" id="editor-panel-dados" role="tabpanel" aria-labelledby="editor-tab-dados" hidden={tab !== "dados"}>
+        <legend className="visually-hidden">Dados do produto</legend>
         <div className="manager-form-grid">
           <label htmlFor="product-erp-code">
             <span>Código ERP</span>
@@ -302,27 +360,34 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
             />
           </label>
         </div>
-        <label className="manager-check" htmlFor="product-exclusive-supplier">
+        <label className="manager-check" htmlFor="product-packaged">
           <input
-            id="product-exclusive-supplier"
-            name="exclusiveSupplier"
+            id="product-packaged"
+            name="isPackaged"
             type="checkbox"
-            checked={exclusiveSupplier}
-            onChange={(event) => setExclusiveSupplier(event.target.checked)}
+            checked={isPackaged}
+            onChange={(event) => setIsPackaged(event.target.checked)}
           />
-          Fornecedor exclusivo
+          <span>
+            Embalado (seção Embalados)
+            <small className="manager-check__hint">Aparece no fim das listas de Pedido, Consolidado, Custos, Destinação, Conferência, Perdas e Fechamento.</small>
+          </span>
         </label>
+        {product ? <p className="manager-editor__note">Fornecedor exclusivo é marcado na aba <strong>Fornecedores</strong>.</p> : null}
       </fieldset>
       {product ? (
-        <ProductSuppliersSection
-          productId={product.id}
-          erpCode={product.erpCode}
-          productName={product.name}
-          onExclusiveChanged={(isExclusive) => setExclusiveSupplier(isExclusive)}
-        />
+        <div data-editor-tab="fornecedores" id="editor-panel-fornecedores" role="tabpanel" aria-labelledby="editor-tab-fornecedores" hidden={tab !== "fornecedores"}>
+          <ProductSuppliersSection
+            productId={product.id}
+            erpCode={product.erpCode}
+            productName={product.name}
+            onExclusiveChanged={setExclusiveSupplier}
+            onCountChanged={setSupplierCount}
+          />
+        </div>
       ) : null}
-      <fieldset className="manager-form-section manager-photo-section">
-        <legend>Foto do produto</legend>
+      <fieldset className="manager-form-section manager-photo-section" data-editor-tab="foto" id="editor-panel-foto" role="tabpanel" aria-labelledby="editor-tab-foto" hidden={tab !== "foto"}>
+        <legend className="visually-hidden">Foto do produto</legend>
         {product ? (
           <div className="manager-photo-manager">
             <div className="manager-photo-preview-wrap">
@@ -409,8 +474,8 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
           </div>
         )}
       </fieldset>
-      <fieldset className="manager-form-section">
-        <legend>Parâmetros de precificação</legend>
+      <fieldset className="manager-form-section" data-editor-tab="precificacao" id="editor-panel-precificacao" role="tabpanel" aria-labelledby="editor-tab-precificacao" hidden={tab !== "precificacao"}>
+        <legend className="visually-hidden">Parâmetros de precificação</legend>
         <div className="manager-form-grid">
           <label htmlFor="product-sale-unit">
             <span>Unidade de venda</span>
@@ -489,11 +554,21 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
           </label>
         </fieldset>
       </fieldset>
-      {feedback ? <p role="status" className={feedback.error ? "manager-feedback manager-feedback--error" : "manager-feedback manager-feedback--success"}>{feedback.message}</p> : null}
-      <div className="manager-form-actions">
-        {onCancel ? <button type="button" className="manager-secondary" onClick={onCancel}>Cancelar</button> : null}
-        <button className="manager-primary" disabled={pending}>{pending ? "Salvando…" : product ? "Salvar alterações" : "Cadastrar produto"}</button>
       </div>
+      <footer className="manager-editor__footer">
+        <div className="manager-editor__status">
+          {feedback && (feedback.error || !(product && dirty)) ? (
+            <p role="status" className={feedback.error ? "manager-feedback manager-feedback--error" : "manager-feedback manager-feedback--success"}>{feedback.message}</p>
+          ) : product && dirty ? (
+            <span className="manager-editor__dirty" role="status">● Alterações não salvas</span>
+          ) : null}
+        </div>
+        <div className="manager-editor__actions">
+          {onCancel ? <button type="button" className="manager-secondary" onClick={onCancel}>Cancelar</button> : null}
+          {product ? <button type="button" className="manager-secondary" disabled={!dirty || pending} onClick={undo}>Desfazer</button> : null}
+          <button className="manager-primary" disabled={pending || (Boolean(product) && !dirty)}>{pending ? "Salvando…" : product ? "Salvar" : "Cadastrar produto"}</button>
+        </div>
+      </footer>
     </form>
   </section>;
 }

@@ -130,6 +130,8 @@ export type ProductJourney = {
   productName: string;
   /** Formato de compra do cadastro (unidade do custo), ex.: CX. */
   unit: string;
+  /** Seção "Embalados": vem depois dos demais produtos. */
+  isPackaged: boolean;
   order: { groups: QuantityGroup[]; stores: number } | null;
   purchase: { purchased: boolean; cost: number | null; by: string | null };
   destination: { groups: QuantityGroup[]; stores: number; suppliers: JourneySupplier[] } | null;
@@ -300,6 +302,7 @@ export function buildProductJourneys(
       erpCode: product.erpCode,
       productName: product.name,
       unit: normalizeUnit(product.purchaseFormat ?? ""),
+      isPackaged: Boolean(product.isPackaged),
       order,
       purchase,
       destination,
@@ -320,7 +323,12 @@ export function buildProductJourneys(
   }
 
   const rank = (j: ProductJourney) => (j.issues.length ? JOURNEY_ISSUE_ORDER.indexOf(j.issues[0]) : JOURNEY_ISSUE_ORDER.length);
-  return journeys.sort((a, b) => rank(a) - rank(b) || a.productName.localeCompare(b.productName, "pt-BR"));
+  return journeys.sort(
+    (a, b) =>
+      Number(a.isPackaged) - Number(b.isPackaged) ||
+      rank(a) - rank(b) ||
+      a.productName.localeCompare(b.productName, "pt-BR"),
+  );
 }
 
 export function journeyMatches(journey: ProductJourney, filter: JourneyFilter | undefined): boolean {

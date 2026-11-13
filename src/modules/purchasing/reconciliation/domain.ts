@@ -81,6 +81,8 @@ export type SourceProduct = {
   purchaseFormat: string | null;
   saleUnit: string | null;
   conversionQuantity: number | null;
+  /** Seção "Embalados": no Fechamento, vem depois dos demais produtos. */
+  isPackaged?: boolean;
 };
 
 export type SourceReferenceOrder = {

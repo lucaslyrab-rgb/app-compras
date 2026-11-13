@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useMemo, useRef, useState, useTransition } from "react";
+import { PACKAGED_SECTION_LABEL } from "@/lib/product-sections";
 import { formatTaxId } from "@/modules/suppliers/domain";
 import {
   closeBuyerCycleAction,
@@ -1668,8 +1669,12 @@ export function BuyerAllocationWorkspace({
                 {filteredProducts.length > 0 ? (
                   visibleProductViews.length > 0 ? (
                     <section className="dst-product-list" aria-label="Produtos para destinação da loja ativa">
-                      {visibleProductViews.map((view) => {
+                      {visibleProductViews.map((view, viewIndex) => {
                         const { prod, storeData, hasOrder, isUnpurchasedWithOrders, hasDestinedInActiveStore, status } = view;
+                        const sectionHeading =
+                          prod.isPackaged && !visibleProductViews[viewIndex - 1]?.prod.isPackaged ? (
+                            <h3 className="packaged-heading">{PACKAGED_SECTION_LABEL}</h3>
+                          ) : null;
                         const shortcutLabel = suggestionLabel({
                           orderedQuantity: storeData.orderedQuantity,
                           suggestedQuantity: storeData.suggestedQuantity,
@@ -1688,7 +1693,9 @@ export function BuyerAllocationWorkspace({
 
                         if (showCompact) {
                           return (
-                            <article key={prod.productId} className="alloc-product-card dst-card dst-card--compact">
+                            <Fragment key={prod.productId}>
+                            {sectionHeading}
+                            <article className="alloc-product-card dst-card dst-card--compact">
                               <div className="dst-card__info">
                                 <strong className="dst-card__name">{prod.productName}</strong>
                                 <span className="dst-card__line">
@@ -1718,12 +1725,14 @@ export function BuyerAllocationWorkspace({
                                 </button>
                               ) : null}
                             </article>
+                            </Fragment>
                           );
                         }
 
                         return (
+                          <Fragment key={prod.productId}>
+                          {sectionHeading}
                           <article
-                            key={prod.productId}
                             className={`alloc-product-card dst-card${view.hasUnsavedChange ? " dst-card--dirty" : ""}`}
                           >
                             <header className="dst-card__head">
@@ -1911,6 +1920,7 @@ export function BuyerAllocationWorkspace({
                               ) : null}
                             </div>
                           </article>
+                          </Fragment>
                         );
                       })}
                     </section>

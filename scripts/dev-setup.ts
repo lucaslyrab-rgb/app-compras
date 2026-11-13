@@ -23,6 +23,15 @@ await importProducts("base_produtos_atual.xlsx");
 
 const sql = postgres(databaseUrl, { max: 1 });
 try {
+  // Seção "Embalados": na produção a marcação inicial veio do vínculo exclusivo com o
+  // WG Embalados; aqui, sem fornecedores reais, marca pelos nomes "… WG …".
+  const packaged = await sql`
+    UPDATE products SET is_packaged = true
+    WHERE NOT is_packaged AND upper(name) LIKE '% WG %'
+    RETURNING id
+  `;
+  if (packaged.length) console.log(`${packaged.length} produto(s) marcados como Embalados.`);
+
   const passwordHash = await hashPassword(password);
   const stores = await sql<{ id: string; slug: string; name: string }[]>`
     SELECT id, slug, name FROM stores WHERE active ORDER BY name

@@ -25,7 +25,7 @@ export async function listPricingProducts(principal: Principal) {
   authorizePricingProductRead(principal);
   const rows = await database().sql<PricingProductRow[]>`
     SELECT p.id, p.erp_code AS "erpCode", p.name, p.unit AS "catalogUnit",
-      p.purchase_format AS "purchaseFormat", p.exclusive_supplier AS "exclusiveSupplier",
+      p.purchase_format AS "purchaseFormat", p.exclusive_supplier AS "exclusiveSupplier", p.is_packaged AS "isPackaged",
       p.active, p.version AS "productVersion", p.photo_key AS "photoKey", p.photo_updated_at AS "photoUpdatedAt",
       pp.sale_unit AS "saleUnit", pp.conversion_quantity::text AS "conversionQuantity",
       pp.conversion_origin AS "conversionOrigin", pp.beneficiation_loss_percent::text AS "beneficiationLossPercent",
@@ -40,7 +40,7 @@ export async function readPricingProduct(principal: Principal, productId: string
   authorizePricingProductRead(principal);
   const [row] = await database().sql<PricingProductRow[]>`
     SELECT p.id, p.erp_code AS "erpCode", p.name, p.unit AS "catalogUnit",
-      p.purchase_format AS "purchaseFormat", p.exclusive_supplier AS "exclusiveSupplier",
+      p.purchase_format AS "purchaseFormat", p.exclusive_supplier AS "exclusiveSupplier", p.is_packaged AS "isPackaged",
       p.active, p.version AS "productVersion", p.photo_key AS "photoKey", p.photo_updated_at AS "photoUpdatedAt",
       pp.sale_unit AS "saleUnit", pp.conversion_quantity::text AS "conversionQuantity",
       pp.conversion_origin AS "conversionOrigin", pp.beneficiation_loss_percent::text AS "beneficiationLossPercent",
@@ -51,15 +51,15 @@ export async function readPricingProduct(principal: Principal, productId: string
 }
 
 export async function createPricingProduct(principal: Principal, input: {
-  erpCode: number; name: string; catalogUnit: string; purchaseFormat: string; exclusiveSupplier: boolean;
+  erpCode: number; name: string; catalogUnit: string; purchaseFormat: string; exclusiveSupplier: boolean; isPackaged?: boolean;
   saleUnit: string; conversionQuantity: string; beneficiationLossPercent: string; specificMarginPercent: string | null;
 }) {
   authorizeProductManagement(principal);
   try {
     const row = await database().sql.begin(async (tx) => {
       const [product] = await tx<{ id: string }[]>`
-        INSERT INTO products (erp_code, name, unit, purchase_format, markup, exclusive_supplier, active)
-        VALUES (${input.erpCode}, ${input.name}, ${input.catalogUnit}, ${input.purchaseFormat}, 0, ${input.exclusiveSupplier}, true)
+        INSERT INTO products (erp_code, name, unit, purchase_format, markup, exclusive_supplier, is_packaged, active)
+        VALUES (${input.erpCode}, ${input.name}, ${input.catalogUnit}, ${input.purchaseFormat}, 0, ${input.exclusiveSupplier}, ${input.isPackaged ?? false}, true)
         RETURNING id
       `;
       await tx`INSERT INTO product_pricing_parameters (
@@ -67,7 +67,7 @@ export async function createPricingProduct(principal: Principal, input: {
       ) VALUES (${product.id}, ${input.saleUnit}, ${input.conversionQuantity}, 'MANUAL', ${input.beneficiationLossPercent}, ${input.specificMarginPercent})`;
       const [created] = await tx<PricingProductRow[]>`
         SELECT p.id, p.erp_code AS "erpCode", p.name, p.unit AS "catalogUnit", p.purchase_format AS "purchaseFormat",
-          p.exclusive_supplier AS "exclusiveSupplier", p.active, p.version AS "productVersion", p.photo_key AS "photoKey",
+          p.exclusive_supplier AS "exclusiveSupplier", p.is_packaged AS "isPackaged", p.active, p.version AS "productVersion", p.photo_key AS "photoKey",
           p.photo_updated_at AS "photoUpdatedAt", pp.sale_unit AS "saleUnit", pp.conversion_quantity::text AS "conversionQuantity",
           pp.conversion_origin AS "conversionOrigin", pp.beneficiation_loss_percent::text AS "beneficiationLossPercent",
           pp.specific_margin_percent::text AS "specificMarginPercent", pp.version, pp.updated_at AS "updatedAt"
@@ -82,7 +82,7 @@ export async function createPricingProduct(principal: Principal, input: {
 }
 
 export async function updatePricingProduct(principal: Principal, input: {
-  productId: string; erpCode: number; name: string; catalogUnit: string; purchaseFormat: string; exclusiveSupplier: boolean;
+  productId: string; erpCode: number; name: string; catalogUnit: string; purchaseFormat: string; exclusiveSupplier: boolean; isPackaged?: boolean;
   saleUnit: string; conversionQuantity: string; beneficiationLossPercent: string; specificMarginPercent: string | null;
   expectedProductVersion: number; expectedVersion: number; confirmedFormatConversion: boolean;
 }) {
@@ -91,7 +91,7 @@ export async function updatePricingProduct(principal: Principal, input: {
     const row = await database().sql.begin(async (tx) => {
       const [current] = await tx<PricingProductRow[]>`
         SELECT p.id, p.erp_code AS "erpCode", p.name, p.unit AS "catalogUnit", p.purchase_format AS "purchaseFormat",
-          p.exclusive_supplier AS "exclusiveSupplier", p.active, p.version AS "productVersion", p.photo_key AS "photoKey",
+          p.exclusive_supplier AS "exclusiveSupplier", p.is_packaged AS "isPackaged", p.active, p.version AS "productVersion", p.photo_key AS "photoKey",
           p.photo_updated_at AS "photoUpdatedAt", pp.sale_unit AS "saleUnit", pp.conversion_quantity::text AS "conversionQuantity",
           pp.conversion_origin AS "conversionOrigin", pp.beneficiation_loss_percent::text AS "beneficiationLossPercent",
           pp.specific_margin_percent::text AS "specificMarginPercent", pp.version, pp.updated_at AS "updatedAt"
@@ -105,6 +105,7 @@ export async function updatePricingProduct(principal: Principal, input: {
         throw new PricingValidationError("Confirme a revisão da conversão ao alterar o formato de compra.");
       await tx`UPDATE products SET erp_code = ${input.erpCode}, name = ${input.name}, unit = ${input.catalogUnit},
         purchase_format = ${input.purchaseFormat}, exclusive_supplier = ${input.exclusiveSupplier},
+        is_packaged = COALESCE(${input.isPackaged ?? null}::boolean, is_packaged),
         version = version + 1, updated_at = now()
         WHERE id = ${input.productId} AND version = ${input.expectedProductVersion}`;
       await tx`UPDATE product_pricing_parameters SET sale_unit = ${input.saleUnit}, conversion_quantity = ${input.conversionQuantity},
@@ -115,7 +116,7 @@ export async function updatePricingProduct(principal: Principal, input: {
         WHERE product_id = ${input.productId} AND version = ${input.expectedVersion}`;
       const [updated] = await tx<PricingProductRow[]>`
         SELECT p.id, p.erp_code AS "erpCode", p.name, p.unit AS "catalogUnit", p.purchase_format AS "purchaseFormat",
-          p.exclusive_supplier AS "exclusiveSupplier", p.active, p.version AS "productVersion", p.photo_key AS "photoKey",
+          p.exclusive_supplier AS "exclusiveSupplier", p.is_packaged AS "isPackaged", p.active, p.version AS "productVersion", p.photo_key AS "photoKey",
           p.photo_updated_at AS "photoUpdatedAt", pp.sale_unit AS "saleUnit", pp.conversion_quantity::text AS "conversionQuantity",
           pp.conversion_origin AS "conversionOrigin", pp.beneficiation_loss_percent::text AS "beneficiationLossPercent",
           pp.specific_margin_percent::text AS "specificMarginPercent", pp.version, pp.updated_at AS "updatedAt"

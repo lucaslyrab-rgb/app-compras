@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ProductPhoto } from "@/components/product-photo";
+import { PACKAGED_SECTION_LABEL, sortForOperationalLists, startsPackagedSection } from "@/lib/product-sections";
 
 export type LossPickerProduct = {
   id: string;
@@ -9,6 +10,7 @@ export type LossPickerProduct = {
   name: string;
   unit: string;
   purchaseFormat?: string | null;
+  isPackaged?: boolean;
   photoKey?: string | null;
   photoUpdatedAt?: string | null;
 };
@@ -17,10 +19,10 @@ function normalize(text: string) {
   return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
-/** Filtra por nome (sem acentos) ou código ERP e ordena de A a Z. */
+/** Filtra por nome (sem acentos) ou código ERP e ordena de A a Z, com os embalados no fim. */
 export function filterLossProducts(products: LossPickerProduct[], query: string): LossPickerProduct[] {
   const q = normalize(query.trim());
-  const sorted = [...products].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  const sorted = sortForOperationalLists(products);
   if (!q) return sorted;
   return sorted.filter((p) => normalize(p.name).includes(q) || String(p.erpCode).includes(q));
 }
@@ -174,8 +176,10 @@ export function LossProductPicker({
               <h3>{query.trim() ? `Resultado (${filtered.length})` : "Todos os produtos · A–Z"}</h3>
               {filtered.length > 0 ? (
                 <ul className="loss-picker-list">
-                  {filtered.map((product) => (
-                    <li key={product.id}>
+                  {filtered.map((product, index) => (
+                    <Fragment key={product.id}>
+                    {startsPackagedSection(filtered, index) ? <li className="packaged-heading">{PACKAGED_SECTION_LABEL}</li> : null}
+                    <li>
                       <button
                         type="button"
                         className={product.id === selectedProduct?.id ? "loss-picker-row loss-picker-row--selected" : "loss-picker-row"}
@@ -194,6 +198,7 @@ export function LossProductPicker({
                         </span>
                       </button>
                     </li>
+                    </Fragment>
                   ))}
                 </ul>
               ) : (
