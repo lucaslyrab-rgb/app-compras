@@ -1016,3 +1016,68 @@
 .product-columns .product-supplier-card__name,
 .product-columns .product-supplier-card__trade,
 .product-columns .product-supplier-meta-item { overflow-wrap: anywhere; }
+
+/* v1.4 — Painel do produto em abas (Dados · Fornecedores · Precificação · Foto). */
+.manager-editor [hidden] { display: none !important; }
+.manager-badge--packaged { margin-left: 6px; background: #ece6ff; color: #4b2e9c; font-size: .66rem; vertical-align: middle; }
+.manager-editor__tabs { display: flex; gap: 2px; margin: 8px 0 0; border-bottom: 1px solid var(--border, #c3cfd9); overflow-x: auto; scrollbar-width: none; }
+.manager-editor__tabs button {
+  flex: 0 0 auto; min-height: 38px; padding: 6px 11px; border: 0; border-bottom: 3px solid transparent;
+  background: none; color: var(--ink-600, #4b5b6b); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer;
+}
+.manager-editor__tabs button[aria-selected="true"] { border-bottom-color: var(--brand-700, #006b4f); color: var(--brand-700, #006b4f); }
+.manager-editor__tabs button:disabled { color: #a3afbb; cursor: not-allowed; }
+.manager-editor__tabs button:focus-visible { outline: 2px solid var(--brand-700, #006b4f); outline-offset: -2px; }
+.manager-editor__form { display: flex; flex-direction: column; gap: 0; }
+.manager-editor__body { display: grid; gap: 12px; padding: 12px 0; }
+.manager-editor__note { margin: 4px 0 0; padding: 8px 10px; border-radius: 8px; background: #f3f6f8; color: var(--ink-600, #4b5b6b); font-size: .74rem; }
+.manager-editor__footer {
+  position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+  margin: 0 -10px -8px; padding: 9px 10px; border-top: 1px solid var(--border, #c3cfd9); background: #ffffff;
+  box-shadow: 0 -6px 12px -10px rgba(15, 31, 46, .35);
+}
+.manager-editor__status { flex: 1 1 140px; min-width: 0; font-size: .76rem; }
+.manager-editor__status .manager-feedback { margin: 0; padding: 6px 9px; font-size: .76rem; }
+.manager-editor__dirty { color: #8a5a00; font-weight: 700; }
+.manager-editor__actions { display: flex; gap: 6px; margin-left: auto; }
+.manager-editor__actions button { min-height: 38px; }
+
+/* Aba Fornecedores: uma linha por fornecedor, ações no menu ⋯. */
+.product-suppliers { display: grid; gap: 10px; }
+.product-suppliers__list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.product-suppliers__row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px;
+  padding: 9px 10px; border: 1px solid var(--border, #c3cfd9); border-radius: 9px; background: #ffffff;
+}
+.product-suppliers__identity { min-width: 0; }
+.product-suppliers__identity strong { display: block; font-size: .82rem; overflow-wrap: anywhere; }
+.product-suppliers__identity small { display: block; margin-top: 2px; color: var(--ink-600, #4b5b6b); font-size: .7rem; overflow-wrap: anywhere; }
+.product-suppliers__badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.product-suppliers__badges .manager-badge { font-size: .66rem; }
+.product-suppliers__menu { position: relative; }
+.product-suppliers__menu .manager-icon-button { min-width: 34px; min-height: 34px; font-size: 1rem; line-height: 1; }
+.product-suppliers__menu-list {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 5; display: grid; min-width: 210px; padding: 4px;
+  border: 1px solid var(--border, #c3cfd9); border-radius: 9px; background: #ffffff; box-shadow: 0 10px 24px rgba(15, 31, 46, .18);
+}
+.product-columns .product-suppliers__menu-list { max-width: none; }
+.product-suppliers__menu-list button {
+  min-height: 36px; padding: 6px 10px; border: 0; border-radius: 6px; background: none; color: var(--ink-900, #0f1f2e);
+  font: inherit; font-size: .78rem; text-align: left; cursor: pointer;
+}
+.product-suppliers__menu-list button:hover, .product-suppliers__menu-list button:focus-visible { background: #f1f5f8; outline: none; }
+.product-suppliers__menu-list .product-suppliers__danger { color: #b42318; }
+.product-suppliers__menu-list .product-suppliers__danger:hover { background: #fef2f2; }
+.product-suppliers__add {
+  width: 100%; min-height: 40px; border: 1px dashed #9fb0bf; border-radius: 9px; background: #f8fafb;
+  color: var(--brand-700, #006b4f); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer;
+}
+.product-suppliers__add:hover:not(:disabled) { background: #eef6f2; border-color: var(--brand-700, #006b4f); }
+.product-suppliers__link-form { display: grid; gap: 9px; padding: 10px; border: 1px solid var(--border, #c3cfd9); border-radius: 9px; background: #f8fafb; }
+.product-suppliers__link-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.product-suppliers__hint { margin: 0; color: var(--ink-600, #4b5b6b); font-size: .74rem; }
+@media (max-width: 520px) {
+  .product-suppliers__row { grid-template-columns: minmax(0, 1fr) auto; }
+  .product-suppliers__badges { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
+  .product-suppliers__menu { grid-column: 2; grid-row: 1; }
+}

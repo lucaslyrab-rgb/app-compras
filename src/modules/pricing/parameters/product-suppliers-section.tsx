@@ -18,11 +18,14 @@ export function ProductSuppliersSection({
   erpCode,
   productName,
   onExclusiveChanged,
+  onCountChanged,
 }: {
   productId: string;
   erpCode: number;
   productName: string;
   onExclusiveChanged?: (isExclusive: boolean) => void;
+  /** Quantidade de fornecedores vinculados (para o título da aba). */
+  onCountChanged?: (count: number) => void;
 }) {
   const [links, setLinks] = useState<ProductSupplierLink[]>([]);
   const [availableSuppliers, setAvailableSuppliers] = useState<Supplier[]>([]);
@@ -33,6 +36,19 @@ export function ProductSuppliersSection({
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [showLinkForm, setShowLinkForm] = useState(false);
+
+  useEffect(() => {
+    if (!loading) onCountChanged?.(links.length);
+  }, [links.length, loading, onCountChanged]);
+
+  // A exclusividade do produto segue os vínculos (a caixa antiga saiu do painel).
+  // Sem nenhum vínculo, mantém a marcação que veio do cadastro.
+  const hasExclusiveLink = links.some((link) => link.active && link.isExclusive);
+  useEffect(() => {
+    if (!loading && links.length > 0) onExclusiveChanged?.(hasExclusiveLink);
+  }, [hasExclusiveLink, links.length, loading, onExclusiveChanged]);
 
   async function loadData() {
     setLoading(true);
@@ -98,6 +114,7 @@ export function ProductSuppliersSection({
         setIsPrimary(false);
         setIsExclusive(false);
         setNotes("");
+        setShowLinkForm(false);
         await loadData();
         if (isExclusive && onExclusiveChanged) {
           onExclusiveChanged(true);
@@ -109,14 +126,17 @@ export function ProductSuppliersSection({
   }
 
   function handleUnlink(supplierId: string, supplierName: string) {
+    setOpenMenu(null);
     if (!window.confirm(`Deseja desvincular o fornecedor '${supplierName}' deste produto?`)) {
       return;
     }
 
     setFeedback(null);
     startTransition(async () => {
+      const wasExclusive = links.some((link) => link.supplierId === supplierId && link.isExclusive);
       const res = await unlinkSupplierAction({ productId, supplierId });
       if (res.status === "success") {
+        if (wasExclusive) onExclusiveChanged?.(false);
         setFeedback({ type: "success", message: "Fornecedor desvinculado com sucesso." });
         await loadData();
       } else {
@@ -126,6 +146,7 @@ export function ProductSuppliersSection({
   }
 
   function handleSetPrimary(supplierId: string) {
+    setOpenMenu(null);
     setFeedback(null);
     startTransition(async () => {
       const res = await setPrimarySupplierAction({
@@ -143,6 +164,7 @@ export function ProductSuppliersSection({
   }
 
   function handleToggleExclusivity(supplierId: string, currentlyExclusive: boolean) {
+    setOpenMenu(null);
     const nextExclusive = !currentlyExclusive;
     setFeedback(null);
     startTransition(async () => {
@@ -174,188 +196,136 @@ export function ProductSuppliersSection({
   );
 
   return (
-    <fieldset className="manager-form-section">
-      <legend>Fornecedores vinculados — {productName} (ERP {erpCode})</legend>
+    <fieldset className="manager-form-section product-suppliers">
+      <legend className="visually-hidden">Fornecedores vinculados — {productName} (ERP {erpCode})</legend>
 
       {feedback ? (
         <p
           role="status"
-          className={`manager-feedback ${
-            feedback.type === "success"
-              ? "manager-feedback--success"
-              : "manager-feedback--error"
-          }`}
-          style={{ marginBottom: 16 }}
+          className={`manager-feedback ${feedback.type === "success" ? "manager-feedback--success" : "manager-feedback--error"}`}
         >
           {feedback.message}
         </p>
       ) : null}
 
-      {/* Lista de Vínculos Existentes em Cards Responsivos (Bug 02 — Sem Overflow Horizontal) */}
       {loading ? (
-        <p style={{ fontSize: "0.85rem", color: "#64748b" }}>Carregando fornecedores vinculados...</p>
+        <p className="product-suppliers__hint">Carregando fornecedores vinculados…</p>
       ) : links.length > 0 ? (
-        <div className="product-suppliers-list" style={{ marginBottom: 16 }}>
-          {links.map((link) => (
-            <article key={link.id} className="product-supplier-card">
-              <div className="product-supplier-card__header">
-                <div className="product-supplier-card__identity">
-                  <strong className="product-supplier-card__name">{link.corporateName}</strong>
-                  {link.tradeName ? (
-                    <span className="product-supplier-card__trade">
-                      Fantasia: {link.tradeName}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="product-supplier-card__badges">
-                  {link.isExclusive ? (
-                    <span
-                      className="manager-badge manager-badge--info"
-                      title="Somente este fornecedor pode atender novas compras deste produto"
-                    >
-                      EXCLUSIVO
-                    </span>
-                  ) : link.isPrimary ? (
-                    <span
-                      className="manager-badge manager-badge--configured"
-                      title="Fornecedor padrão sugerido para compras"
-                    >
-                      PRINCIPAL
-                    </span>
-                  ) : (
-                    <span className="manager-badge manager-badge--neutral">
-                      Alternativo
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="product-supplier-card__meta">
-                <span className="product-supplier-meta-item">
-                  <strong>Doc:</strong> {link.taxId ? formatTaxId(link.taxId) : "—"}
+        <ul className="product-suppliers__list" aria-label="Fornecedores vinculados">
+          {links.map((link) => {
+            const menuOpen = openMenu === link.id;
+            return (
+              <li key={link.id} className="product-suppliers__row">
+                <span className="product-suppliers__identity">
+                  <strong>{link.tradeName || link.corporateName}</strong>
+                  <small>
+                    {link.tradeName ? `${link.corporateName} · ` : ""}
+                    {link.taxId ? formatTaxId(link.taxId) : "sem documento"}
+                  </small>
                 </span>
-                <span className="product-supplier-meta-item">
-                  <strong>Regra NF:</strong>{" "}
-                  {link.taxInvoiceRule === "STANDARD"
-                    ? "Normal"
-                    : link.taxInvoiceRule === "AFTER_WEIGHING"
-                    ? "Após pesagem"
-                    : "Reg. especial"}
+                <span className="product-suppliers__badges">
+                  {link.isPrimary || link.isExclusive ? <span className="manager-badge manager-badge--configured">Principal</span> : null}
+                  {link.isExclusive ? <span className="manager-badge manager-badge--warning">Exclusivo</span> : null}
+                  {!link.isPrimary && !link.isExclusive ? <span className="manager-badge manager-badge--neutral">Alternativo</span> : null}
                 </span>
-              </div>
-
-              <div className="product-supplier-card__actions">
-                {!link.isPrimary && !link.isExclusive ? (
+                <span className="product-suppliers__menu">
                   <button
                     type="button"
-                    className="manager-secondary"
+                    className="manager-icon-button"
+                    aria-label={`Ações do fornecedor ${link.tradeName || link.corporateName}`}
+                    aria-expanded={menuOpen}
                     disabled={pending}
-                    onClick={() => handleSetPrimary(link.supplierId)}
+                    onClick={() => setOpenMenu(menuOpen ? null : link.id)}
                   >
-                    Definir principal
+                    ⋯
                   </button>
-                ) : null}
-
-                <button
-                  type="button"
-                  className="manager-secondary"
-                  disabled={pending}
-                  onClick={() => handleToggleExclusivity(link.supplierId, link.isExclusive)}
-                >
-                  {link.isExclusive ? "Desativar exclusividade" : "Tornar exclusivo"}
-                </button>
-
-                <button
-                  type="button"
-                  className="manager-secondary manager-secondary--danger"
-                  disabled={pending}
-                  onClick={() => handleUnlink(link.supplierId, link.corporateName)}
-                >
-                  Desvincular
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
+                  {menuOpen ? (
+                    <span className="product-suppliers__menu-list" role="menu">
+                      {!link.isPrimary && !link.isExclusive ? (
+                        <button type="button" role="menuitem" onClick={() => handleSetPrimary(link.supplierId)}>
+                          Definir como principal
+                        </button>
+                      ) : null}
+                      <button type="button" role="menuitem" onClick={() => handleToggleExclusivity(link.supplierId, link.isExclusive)}>
+                        {link.isExclusive ? "Desativar exclusividade" : "Tornar exclusivo"}
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="product-suppliers__danger"
+                        onClick={() => handleUnlink(link.supplierId, link.corporateName)}
+                      >
+                        Desvincular fornecedor
+                      </button>
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       ) : (
-        <p style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: 16 }}>
-          Nenhum fornecedor vinculado a este produto ainda. O comprador poderá selecionar qualquer fornecedor no ato da compra.
+        <p className="product-suppliers__hint">
+          Nenhum fornecedor vinculado. O comprador pode escolher qualquer fornecedor na compra.
         </p>
       )}
 
-      {/* Formulário para Vincular Novo Fornecedor */}
       {unlinkedSuppliers.length > 0 ? (
-        <div
-          style={{
-            padding: 12,
-            backgroundColor: "#f8fafc",
-            borderRadius: 6,
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <strong style={{ display: "block", fontSize: "0.82rem", marginBottom: 8 }}>
-            + Vincular novo fornecedor
-          </strong>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        showLinkForm ? (
+          <div className="product-suppliers__link-form">
             <label className="manager-field">
-              <span>Selecione o fornecedor</span>
-              <select
-                value={selectedSupplierId}
-                onChange={(e) => setSelectedSupplierId(e.target.value)}
-                disabled={pending}
-              >
-                <option value="">Selecione na lista de fornecedores ativos...</option>
+              <span>Fornecedor</span>
+              <select value={selectedSupplierId} onChange={(e) => setSelectedSupplierId(e.target.value)} disabled={pending}>
+                <option value="">Selecione na lista de fornecedores ativos…</option>
                 {unlinkedSuppliers.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.corporateName} {s.tradeName ? `(${s.tradeName})` : ""} {s.taxId ? `— ${formatTaxId(s.taxId)}` : ""}
+                    {s.tradeName || s.corporateName}
+                    {s.taxId ? ` — ${formatTaxId(s.taxId)}` : ""}
                   </option>
                 ))}
               </select>
             </label>
-
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-              <label className="manager-check">
-                <input
-                  type="checkbox"
-                  checked={isPrimary || isExclusive}
-                  disabled={isExclusive || pending}
-                  onChange={(e) => setIsPrimary(e.target.checked)}
-                />
-                Fornecedor principal
-              </label>
-
-              <label className="manager-check">
-                <input
-                  type="checkbox"
-                  checked={isExclusive}
-                  disabled={pending}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setIsExclusive(checked);
-                    if (checked) setIsPrimary(true);
-                  }}
-                />
-                Fornecedor exclusivo (bloqueia compras de outros fornecedores)
-              </label>
-            </div>
-
-            <div>
-              <button
-                type="button"
-                className="manager-primary"
-                disabled={!selectedSupplierId || pending}
-                onClick={handleLink}
-                style={{ fontSize: "0.82rem", padding: "6px 14px" }}
-              >
-                {pending ? "Vinculando..." : "Vincular ao produto"}
+            <label className="manager-check">
+              <input
+                type="checkbox"
+                checked={isPrimary || isExclusive}
+                disabled={isExclusive || pending}
+                onChange={(e) => setIsPrimary(e.target.checked)}
+              />
+              Fornecedor principal
+            </label>
+            <label className="manager-check">
+              <input
+                type="checkbox"
+                checked={isExclusive}
+                disabled={pending}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setIsExclusive(checked);
+                  if (checked) setIsPrimary(true);
+                }}
+              />
+              <span>
+                Fornecedor exclusivo
+                <small className="manager-check__hint">Bloqueia compras deste produto de outros fornecedores.</small>
+              </span>
+            </label>
+            <div className="product-suppliers__link-actions">
+              <button type="button" className="manager-secondary" disabled={pending} onClick={() => setShowLinkForm(false)}>
+                Cancelar
+              </button>
+              <button type="button" className="manager-primary" disabled={!selectedSupplierId || pending} onClick={handleLink}>
+                {pending ? "Vinculando…" : "Vincular"}
               </button>
             </div>
           </div>
-        </div>
+        ) : (
+          <button type="button" className="product-suppliers__add" disabled={pending} onClick={() => setShowLinkForm(true)}>
+            + Vincular fornecedor
+          </button>
+        )
       ) : availableSuppliers.length > 0 ? (
-        <p style={{ fontSize: "0.8rem", color: "#64748b" }}>
-          Todos os fornecedores ativos cadastrados já estão vinculados a este produto.
-        </p>
+        <p className="product-suppliers__hint">Todos os fornecedores ativos já estão vinculados a este produto.</p>
       ) : null}
     </fieldset>
   );

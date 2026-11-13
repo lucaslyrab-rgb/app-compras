@@ -46,6 +46,13 @@ describe("parâmetros de precificação", () => {
     expect(pricingProductMetrics(products)).toEqual({ total: 3, active: 2, inactive: 1, provisional: 1, unit: 1, configured: 1 });
   });
 
+  it("filtra os embalados (chip Embalados) sem mudar a origem da conversão", () => {
+    const withPackaged = products.map((p) => (p.id === "3" ? { ...p, isPackaged: true } : p));
+    expect(filterPricingProducts(withPackaged, "", "packaged", "active").map((p) => p.id)).toEqual(["3"]);
+    expect(filterPricingProducts(withPackaged, "", "packaged", "inactive")).toEqual([]);
+    expect(filterPricingProducts(withPackaged, "", "configured", "active").map((p) => p.id)).toEqual(["3"]);
+  });
+
   it("pagina somente depois da busca e dos filtros", () => {
     const catalog = Array.from({ length: 45 }, (_, index) => ({ ...products[0], id: String(index), erpCode: 2000 + index, name: `PRODUTO ${index}` }));
     const page = paginatePricingProducts(filterPricingProducts(catalog, "produto", "all", "active"), 2);
