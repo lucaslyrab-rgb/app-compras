@@ -1,5 +1,5 @@
 import { shortStoreName, type ConsolidatedData } from "../../domain";
-import { compareForOperationalLists } from "@/modules/catalog/sections";
+import { compareForOperationalLists } from "@/lib/product-sections";
 
 export type PrintRow = {
   id: string;

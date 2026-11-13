@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Fragment, useMemo, useRef, useState, useTransition } from "react";
-import { PACKAGED_SECTION_LABEL } from "@/modules/catalog/sections";
+import { PACKAGED_SECTION_LABEL } from "@/lib/product-sections";
 import { formatTaxId } from "@/modules/suppliers/domain";
 import {
   closeBuyerCycleAction,

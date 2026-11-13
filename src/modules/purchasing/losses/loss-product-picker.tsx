@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ProductPhoto } from "@/components/product-photo";
-import { PACKAGED_SECTION_LABEL, sortForOperationalLists, startsPackagedSection } from "@/modules/catalog/sections";
+import { PACKAGED_SECTION_LABEL, sortForOperationalLists, startsPackagedSection } from "@/lib/product-sections";
 
 export type LossPickerProduct = {
   id: string;

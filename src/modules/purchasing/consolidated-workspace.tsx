@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState, useTransition, type CSSProperti
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductPhoto } from "@/components/product-photo";
-import { PACKAGED_SECTION_LABEL, startsPackagedSection } from "@/modules/catalog/sections";
+import { PACKAGED_SECTION_LABEL, startsPackagedSection } from "@/lib/product-sections";
 import {
   filterConsolidatedProducts,
   shortStoreName,

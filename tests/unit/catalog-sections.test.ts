@@ -6,7 +6,7 @@ import {
   compareForOperationalLists,
   sortForOperationalLists,
   startsPackagedSection,
-} from "@/modules/catalog/sections";
+} from "@/lib/product-sections";
 
 describe("seção Embalados", () => {
   const items = [

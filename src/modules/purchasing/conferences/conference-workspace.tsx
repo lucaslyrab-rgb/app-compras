@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useActionState, useMemo, useState, type MouseEvent } from "react";
-import { PACKAGED_SECTION_LABEL, sortForOperationalLists, startsPackagedSection } from "@/modules/catalog/sections";
+import { PACKAGED_SECTION_LABEL, sortForOperationalLists, startsPackagedSection } from "@/lib/product-sections";
 import { ProductPhoto } from "@/components/product-photo";
 import { StoreNavigation } from "@/components/store-navigation";
 import { ConferenceCycleSelector } from "./conference-cycle-selector";

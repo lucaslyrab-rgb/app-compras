@@ -1,7 +1,7 @@
 import type postgres from "postgres";
 import { database } from "@/db/client";
 import { assertPermission, type Principal } from "@/modules/identity";
-import { compareForOperationalLists } from "@/modules/catalog/sections";
+import { compareForOperationalLists } from "@/lib/product-sections";
 import {
   AllocationDestinationConflictError,
   AllocationValidationError,

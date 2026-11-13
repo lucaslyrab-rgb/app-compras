@@ -3,7 +3,7 @@ import type { ConsolidatedPrintModel, PrintRow } from "./domain";
 import { PrintButton } from "./print-button";
 import "./styles.css";
 import { Fragment } from "react";
-import { PACKAGED_SECTION_LABEL, startsPackagedSection } from "@/modules/catalog/sections";
+import { PACKAGED_SECTION_LABEL, startsPackagedSection } from "@/lib/product-sections";
 
 const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
 const printedAt = new Intl.DateTimeFormat("pt-BR", {

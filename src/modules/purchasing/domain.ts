@@ -1,5 +1,5 @@
 import { hasPermission, type Principal } from "@/modules/identity";
-import { compareForOperationalLists } from "@/modules/catalog/sections";
+import { compareForOperationalLists } from "@/lib/product-sections";
 
 export type OrderSummary = {
   id: string;

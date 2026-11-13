@@ -3,7 +3,7 @@
 import { ProductPhoto } from "@/components/product-photo";
 import Link from "next/link";
 import { Fragment, useMemo, useRef, useState } from "react";
-import { PACKAGED_SECTION_LABEL, startsPackagedSection } from "@/modules/catalog/sections";
+import { PACKAGED_SECTION_LABEL, startsPackagedSection } from "@/lib/product-sections";
 import { useRouter } from "next/navigation";
 import { savePurchaseCostAction } from "./costs/actions";
 import {

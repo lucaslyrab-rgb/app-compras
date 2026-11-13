@@ -5,7 +5,7 @@ import { saveDraftAction, submitOrderAction, type State } from "./actions";
 import { formatDateTime, parseQuantityInput, validateOrderQuantity } from "./domain";
 import Link from "next/link";
 import { ProductPhoto } from "@/components/product-photo";
-import { PACKAGED_SECTION_LABEL, sortForOperationalLists, startsPackagedSection } from "@/modules/catalog/sections";
+import { PACKAGED_SECTION_LABEL, sortForOperationalLists, startsPackagedSection } from "@/lib/product-sections";
 import { StoreNavigation } from "@/components/store-navigation";
 
 type Product = {
