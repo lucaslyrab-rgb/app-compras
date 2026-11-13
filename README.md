@@ -2,7 +2,7 @@
 
 Sistema web/PWA para o fluxo de FLV das três lojas MultiShow: pedidos, consolidação, custos, destinação, documentação fiscal, conferência e registro de perdas.
 
-> **Versão 1.3 em produção (13/11/2026).** O que mudou em cada versão: [CHANGELOG.md](CHANGELOG.md). Resumo do que está no ar e das decisões tomadas: [docs/versao-1.md](docs/versao-1.md). As regras de negócio de referência continuam no [Planejamento v2.0](docs/PLANEJAMENTO.md).
+> **Versão 1.4 em produção (13/11/2026).** O que mudou em cada versão: [CHANGELOG.md](CHANGELOG.md). Resumo do que está no ar e das decisões tomadas: [docs/versao-1.md](docs/versao-1.md). As regras de negócio de referência continuam no [Planejamento v2.0](docs/PLANEJAMENTO.md).
 
 ## Situação das fases
 

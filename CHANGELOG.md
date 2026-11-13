@@ -4,6 +4,29 @@ Cada versão vai para produção quando o Lucas aprova, depois de testada no
 ambiente local ([docs/desenvolvimento-local.md](docs/desenvolvimento-local.md)).
 Detalhes da primeira versão completa: [docs/versao-1.md](docs/versao-1.md).
 
+## 1.4.0 — 13/11/2026
+
+**Seção Embalados**
+- Produtos embandejados (comprados do WG Embalados) ficam depois de todos os
+  outros, sob o título **Embalados**, em Pedido, Consolidado (tela e A4),
+  Custos, Destinação, Conferência, Perdas e Fechamento integrado. Cadastro de
+  Produtos e Precificação seguem em ordem alfabética.
+- Marcação no cadastro do produto: caixa **Embalado (seção Embalados)**. De
+  início, ficam marcados os produtos com vínculo exclusivo com o WG Embalados.
+
+**Cadastro de produtos (Gestor)**
+- Lista mais limpa: sem o quadro de configurações (continua em Precificação) e
+  sem os cartões de números; filtros **Todos, Conversão padrão, Unitários,
+  Configurados, Embalados e Inativos**, com contagem; selo **Embalado**.
+- Painel lateral sem rolagem para os lados, em abas **Dados · Fornecedores ·
+  Precificação · Foto**, com rodapé fixo: **Alterações não salvas**, Desfazer e
+  Salvar.
+- Aba Fornecedores: uma linha por fornecedor (Principal, Exclusivo,
+  Alternativo), ações no menu ⋯ e "+ Vincular fornecedor".
+- Sai a caixa duplicada **Fornecedor exclusivo**: a exclusividade é marcada só
+  na aba Fornecedores. Produtos que eram exclusivos só pela caixa antiga
+  ganharam o vínculo Principal + Exclusivo com a JEB Distribuidora.
+
 ## 1.3.0 — 13/11/2026
 
 **Notas no Fechamento integrado (Gestor e CPD)**
