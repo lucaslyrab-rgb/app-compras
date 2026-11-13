@@ -1060,3 +1060,7 @@
  */
 .dst-fullscreen__body > * { flex-shrink: 0; }
 .dst-gap { flex-shrink: 0; }
+
+/* Número de nota informado no Fechamento, sem foto (v1.3) */
+.dst-informed { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: #4B5B6B; }
+.dst-informed__chip { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid #006B4F; background: #E6F4EE; color: #004737; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }

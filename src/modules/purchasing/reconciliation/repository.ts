@@ -280,19 +280,54 @@ async function loadCosts(sql: Sql, q: ReconciliationQuery): Promise<SourceCost[]
 }
 
 async function loadInvoices(sql: Sql, q: ReconciliationQuery): Promise<SourceInvoice[]> {
-  const storeCondition = q.storeId ? sql`AND i.store_id = ${q.storeId}::uuid` : sql``;
-  const rows = await sql<{ cycle_date: string; store_id: string; supplier_id: string; invoice_number: string }[]>`
-    SELECT i.purchase_cycle_date::text AS cycle_date, i.store_id, i.supplier_id, i.invoice_number
-    FROM purchase_cycle_invoices i
-    WHERE i.purchase_cycle_date BETWEEN ${q.startDate}::date AND ${q.endDate}::date
-      ${storeCondition}
-    ORDER BY i.created_at
+  const storeCondition = q.storeId ? sql`AND k.store_id = ${q.storeId}::uuid` : sql``;
+  const rows = await sql<{
+    cycle_date: string;
+    store_id: string;
+    supplier_id: string;
+    invoice_number: string;
+    invoice_id: string | null;
+    informed: boolean;
+    entry_confirmed_at: string | null;
+    entry_confirmed_by_name: string | null;
+  }[]>`
+    WITH keys AS (
+      SELECT purchase_cycle_date, store_id, supplier_id, invoice_number, created_at
+      FROM purchase_cycle_invoices
+      WHERE purchase_cycle_date BETWEEN ${q.startDate}::date AND ${q.endDate}::date
+      UNION ALL
+      SELECT purchase_cycle_date, store_id, supplier_id, invoice_number, created_at
+      FROM purchase_cycle_invoice_entries
+      WHERE purchase_cycle_date BETWEEN ${q.startDate}::date AND ${q.endDate}::date
+    ), k AS (
+      SELECT purchase_cycle_date, store_id, supplier_id, invoice_number, min(created_at) AS first_at
+      FROM keys GROUP BY purchase_cycle_date, store_id, supplier_id, invoice_number
+    )
+    SELECT k.purchase_cycle_date::text AS cycle_date, k.store_id, k.supplier_id, k.invoice_number,
+           i.id AS invoice_id,
+           (e.informed_at IS NOT NULL) AS informed,
+           to_char(e.entry_confirmed_at AT TIME ZONE 'America/Sao_Paulo', 'DD/MM "às" HH24:MI') AS entry_confirmed_at,
+           u.name AS entry_confirmed_by_name
+    FROM k
+    LEFT JOIN purchase_cycle_invoices i
+      ON i.purchase_cycle_date = k.purchase_cycle_date AND i.store_id = k.store_id
+     AND i.supplier_id = k.supplier_id AND i.invoice_number = k.invoice_number
+    LEFT JOIN purchase_cycle_invoice_entries e
+      ON e.purchase_cycle_date = k.purchase_cycle_date AND e.store_id = k.store_id
+     AND e.supplier_id = k.supplier_id AND e.invoice_number = k.invoice_number
+    LEFT JOIN users u ON u.id = e.entry_confirmed_by
+    WHERE true ${storeCondition}
+    ORDER BY k.first_at
   `;
   return rows.map((r) => ({
     cycleDate: r.cycle_date,
     storeId: r.store_id,
     supplierId: r.supplier_id,
     invoiceNumber: r.invoice_number,
+    invoiceId: r.invoice_id,
+    informed: r.informed,
+    entryConfirmedAt: r.entry_confirmed_at,
+    entryConfirmedByName: r.entry_confirmed_by_name,
   }));
 }
 

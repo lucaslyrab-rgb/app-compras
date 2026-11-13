@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildProductJourneys,
   buildStoreValues,
+  countInvoices,
   filterJourneys,
   neighborCycles,
   receivedRatio,
@@ -12,6 +13,9 @@ import {
 import { buildReconciliationLines, type ReconciliationSources, type SourceAllocation } from "@/modules/purchasing/reconciliation/domain";
 
 const C = "2026-11-04";
+const NF4521 = { storeId: "s1", supplierId: "supA", number: "4521", invoiceId: "inv1", entryConfirmedAt: "13/11 às 10:42", entryConfirmedBy: "CPD" };
+const NF889 = { storeId: "s1", supplierId: "supB", number: "889", invoiceId: "inv2", entryConfirmedAt: null, entryConfirmedBy: null };
+const NF77 = { storeId: "s2", supplierId: "supA", number: "77", invoiceId: null, entryConfirmedAt: null, entryConfirmedBy: null };
 const S1 = "s1";
 const S2 = "s2";
 
@@ -88,8 +92,9 @@ function sources(): ReconciliationSources {
       { cycleDate: C, productId: "tomate", cost: null, purchased: false, updatedByName: null },
     ],
     invoices: [
-      { cycleDate: C, storeId: S1, supplierId: "supA", invoiceNumber: "4521" },
-      { cycleDate: C, storeId: S1, supplierId: "supB", invoiceNumber: "889" },
+      { cycleDate: C, storeId: S1, supplierId: "supA", invoiceNumber: "4521", invoiceId: "inv1", entryConfirmedAt: "13/11 às 10:42", entryConfirmedByName: "CPD" },
+      { cycleDate: C, storeId: S1, supplierId: "supB", invoiceNumber: "889", invoiceId: "inv2" },
+      { cycleDate: C, storeId: S2, supplierId: "supA", invoiceNumber: "77", invoiceId: null, informed: true },
     ],
   };
 }
@@ -120,7 +125,7 @@ describe("caminho dos produtos no ciclo", () => {
     expect(laranja.purchase).toEqual({ purchased: true, cost: 62, by: "Christian" });
     expect(laranja.destination?.groups).toEqual([{ unit: "CX", quantity: 9 }]);
     expect(laranja.destination?.suppliers).toEqual([
-      expect.objectContaining({ supplierName: "Frutas do Vale", quantity: 9, invoices: ["4521"], stores: [
+      expect.objectContaining({ supplierName: "Frutas do Vale", quantity: 9, invoices: [NF4521, NF77], stores: [
         { storeId: S2, storeName: "Balneário", quantity: 3 },
         { storeId: S1, storeName: "Ponta da Fruta", quantity: 6 },
       ] }),
@@ -143,7 +148,7 @@ describe("caminho dos produtos no ciclo", () => {
     const summary = summarizeJourneys(journeys);
     expect(summary.total).toBe(8);
     expect(summary.counts).toEqual({
-      NOT_PURCHASED: 1, PURCHASED_NOT_DESTINED: 2, CUT: 1, CONFERENCE_DIFFERENCE: 2, CONFERENCE_PENDING: 3, OK: 2,
+      NOT_PURCHASED: 1, PURCHASED_NOT_DESTINED: 2, CUT: 1, CONFERENCE_DIFFERENCE: 2, CONFERENCE_PENDING: 3, OK: 2, INVOICE_PENDING: 4,
     });
     expect(summary.ordered).toMatchObject({ products: 5, stores: 2 });
     expect(summary.purchased).toEqual({ products: 6, notPurchased: 1 });
@@ -159,6 +164,32 @@ describe("caminho dos produtos no ciclo", () => {
     const ponta = buildProductJourneys(src, lines, { cycleDate: C, storeId: S1 });
     expect(ponta.map((j) => j.productId)).toEqual(["tomate", "abacaxi", "laranja", "mamao"]);
     expect(ponta.find((j) => j.productId === "laranja")!.issues).toEqual([]);
+  });
+});
+
+describe("notas no caminho dos produtos", () => {
+  const src = sources();
+  const lines = buildReconciliationLines(src);
+  const journeys = buildProductJourneys(src, lines, { cycleDate: C });
+  const byId = new Map(journeys.map((j) => [j.productId, j]));
+
+  it("mostra por loja os fornecedores do produto e suas notas, inclusive sem nota", () => {
+    expect(byId.get("laranja")!.storeInvoices).toEqual({
+      s1: [{ supplierId: "supA", supplierName: "Frutas do Vale", invoices: [NF4521] }],
+      s2: [{ supplierId: "supA", supplierName: "Frutas do Vale", invoices: [NF77] }],
+    });
+    expect(byId.get("couve")!.storeInvoices).toEqual({ s2: [{ supplierId: "supB", supplierName: "Bom Preço", invoices: [] }] });
+    expect(byId.get("tomate")!.storeInvoices).toEqual({});
+  });
+
+  it("marca o produto com nota sem entrada dada e conta as notas do ciclo", () => {
+    expect(byId.get("laranja")!.hasPendingInvoice).toBe(true); // NF 77 sem entrada
+    expect(byId.get("mamao")!.hasPendingInvoice).toBe(true); // NF 889 sem entrada
+    expect(byId.get("couve")!.hasPendingInvoice).toBe(false); // sem nota nenhuma
+    expect(filterJourneys(journeys, { filter: "INVOICE_PENDING" }).map((j) => j.productId)).toEqual(["uva", "laranja", "abacaxi", "mamao"]);
+    expect(countInvoices(src, C)).toEqual({ total: 3, pending: 2 });
+    expect(countInvoices(src, C, "s1")).toEqual({ total: 2, pending: 1 });
+    expect(summarizeJourneys(journeys, countInvoices(src, C)).invoices).toEqual({ total: 3, pending: 2 });
   });
 });
 
@@ -181,8 +212,8 @@ describe("valor por loja", () => {
       missingCost: 0,
     });
     expect(ponta.suppliers).toEqual([
-      { supplierId: "supA", supplierName: "Frutas do Vale", invoices: ["4521"], products: 1, purchasedValue: 372, receivedValue: 366.42, difference: -5.58 },
-      { supplierId: "supB", supplierName: "Bom Preço", invoices: ["889"], products: 2, purchasedValue: 315, receivedValue: 317.75, difference: 2.75 },
+      { supplierId: "supA", supplierName: "Frutas do Vale", invoices: [NF4521], products: 1, purchasedValue: 372, receivedValue: 366.42, difference: -5.58 },
+      { supplierId: "supB", supplierName: "Bom Preço", invoices: [NF889], products: 2, purchasedValue: 315, receivedValue: 317.75, difference: 2.75 },
     ]);
     expect(balneario).toMatchObject({
       storeName: "Balneário",

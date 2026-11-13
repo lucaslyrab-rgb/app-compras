@@ -4,6 +4,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { database } from "../../src/db/client";
 import { runMigrations } from "../../scripts/migration-runner.mjs";
 import { getClosingOverview } from "../../src/modules/purchasing/reconciliation/closing-service";
+import {
+  InvoiceEntryError,
+  informInvoiceNumber,
+  listInformedInvoiceNumbers,
+  removeInformedInvoiceNumber,
+  setInvoiceEntryConfirmed,
+} from "../../src/modules/purchasing/invoices/entries";
 
 const integration = process.env.DATABASE_URL ? describe : describe.skip;
 
@@ -113,7 +120,12 @@ integration("Fechamento integrado v1.2: caminho dos produtos e valor por loja", 
     const laranja = byName.get("LARANJA CL")!;
     expect(laranja.issues).toEqual([]);
     expect(laranja.purchase).toEqual({ purchased: true, cost: 62, by: "Christian" });
-    expect(laranja.destination?.suppliers[0]).toMatchObject({ supplierName: "Frutas do Vale", quantity: 6, invoices: ["4521"] });
+    expect(laranja.destination?.suppliers[0]).toMatchObject({
+      supplierName: "Frutas do Vale",
+      quantity: 6,
+      invoices: [expect.objectContaining({ number: "4521", entryConfirmedAt: null })],
+    });
+    expect(laranja.hasPendingInvoice).toBe(true);
     expect(laranja.conference).toMatchObject({ expectedKg: 120, receivedKg: 118.2, percent: -1.5, storesFinalized: 1 });
     expect(overview.summary?.counts).toMatchObject({ NOT_PURCHASED: 1, OK: 1 });
   });
@@ -130,7 +142,12 @@ integration("Fechamento integrado v1.2: caminho dos produtos e valor por loja", 
       conference: { state: "FINALIZED", totalItems: 2, verifiedItems: 2 },
     });
     expect(ponta.suppliers).toEqual([
-      expect.objectContaining({ supplierName: "Frutas do Vale", invoices: ["4521"], purchasedValue: 372, receivedValue: 366.42 }),
+      expect.objectContaining({
+        supplierName: "Frutas do Vale",
+        invoices: [expect.objectContaining({ number: "4521" })],
+        purchasedValue: 372,
+        receivedValue: 366.42,
+      }),
     ]);
   });
 
@@ -138,5 +155,69 @@ integration("Fechamento integrado v1.2: caminho dos produtos e valor por loja", 
     const overview = await getClosingOverview({ ciclo: cycleDate, desfecho: "NOT_PURCHASED" }, "2026-11-10");
     expect(overview.journeys.map((j) => j.productName)).toEqual(["TOMATE CL"]);
     expect(overview.summary?.total).toBe(2);
+  });
+
+  it("marca e desmarca a entrada da nota, com auditoria", async () => {
+    const key = { cycleDate, storeId, supplierId, invoiceNumber: "4521" };
+    await setInvoiceEntryConfirmed({ ...key, confirmed: true, actorId: ids.comprador });
+    let overview = await getClosingOverview({ ciclo: cycleDate }, "2026-11-10");
+    const ref = overview.journeys.find((j) => j.productName === "LARANJA CL")!.storeInvoices[storeId][0].invoices[0];
+    expect(ref).toMatchObject({ number: "4521", entryConfirmedBy: "Christian" });
+    expect(ref.entryConfirmedAt).toMatch(/^\d{2}\/\d{2} às \d{2}:\d{2}$/);
+    expect(overview.summary?.invoices).toEqual({ total: 1, pending: 0 });
+
+    await setInvoiceEntryConfirmed({ ...key, confirmed: false, actorId: ids.comprador });
+    overview = await getClosingOverview({ ciclo: cycleDate }, "2026-11-10");
+    expect(overview.summary?.invoices).toEqual({ total: 1, pending: 1 });
+    // Sem marcação nem número informado, não sobra registro.
+    expect(await db`SELECT 1 FROM purchase_cycle_invoice_entries`).toHaveLength(0);
+    const actions = await db<{ action: string }[]>`
+      SELECT action FROM audit_events WHERE entity_type = 'purchase_cycle_invoice_entry' ORDER BY created_at
+    `;
+    expect(actions.map((a) => a.action)).toEqual(["INVOICE_ENTRY_CONFIRMED", "INVOICE_ENTRY_UNCONFIRMED"]);
+
+    await expect(setInvoiceEntryConfirmed({ ...key, invoiceNumber: "999", confirmed: true, actorId: ids.comprador }))
+      .rejects.toBeInstanceOf(InvoiceEntryError);
+  });
+
+  it("número informado sem foto vira a mesma nota quando a foto é anexada na Destinação", async () => {
+    const key = { cycleDate, storeId, supplierId, invoiceNumber: "8800" };
+    expect(await informInvoiceNumber({ ...key, actorId: ids.comprador })).toEqual({ status: "informed" });
+    expect(await listInformedInvoiceNumbers(cycleDate)).toEqual([{ storeId, supplierId, invoiceNumber: "8800" }]);
+    await setInvoiceEntryConfirmed({ ...key, confirmed: true, actorId: ids.comprador });
+
+    let overview = await getClosingOverview({ ciclo: cycleDate }, "2026-11-10");
+    let refs = overview.journeys.find((j) => j.productName === "LARANJA CL")!.storeInvoices[storeId][0].invoices;
+    expect(refs.map((r) => [r.number, r.invoiceId === null, Boolean(r.entryConfirmedAt)])).toEqual([
+      ["4521", false, false],
+      ["8800", true, true],
+    ]);
+    await expect(removeInformedInvoiceNumber({ ...key, actorId: ids.comprador })).rejects.toThrow(/Desmarque a entrada/);
+
+    // O comprador anexa a foto com o mesmo número na Destinação.
+    await db`
+      INSERT INTO purchase_cycle_invoices (purchase_cycle_date, store_id, supplier_id, invoice_number, image_s3_key, file_size_bytes, created_by)
+      VALUES (${cycleDate}::date, ${storeId}, ${supplierId}, '8800', 'invoices/y.webp', 100, ${ids.comprador})
+    `;
+    expect(await listInformedInvoiceNumbers(cycleDate)).toEqual([]);
+    overview = await getClosingOverview({ ciclo: cycleDate }, "2026-11-10");
+    refs = overview.journeys.find((j) => j.productName === "LARANJA CL")!.storeInvoices[storeId][0].invoices;
+    expect(refs).toHaveLength(2);
+    expect(refs.find((r) => r.number === "8800")).toMatchObject({ entryConfirmedBy: "Christian" });
+    expect(refs.find((r) => r.number === "8800")!.invoiceId).not.toBeNull();
+    expect(await informInvoiceNumber({ ...key, actorId: ids.comprador })).toEqual({ status: "already-registered" });
+  });
+
+  it("só aceita número para fornecedor com destinação na loja e permite remover antes da entrada", async () => {
+    const [{ id: otherSupplier }] = await db<{ id: string }[]>`
+      INSERT INTO suppliers (corporate_name, trade_name, active) VALUES ('Outro Ltda', 'Outro', true) RETURNING id
+    `;
+    await expect(informInvoiceNumber({ cycleDate, storeId, supplierId: otherSupplier, invoiceNumber: "1", actorId: ids.comprador }))
+      .rejects.toThrow(/Não há destinação/);
+
+    const key = { cycleDate, storeId, supplierId, invoiceNumber: "123" };
+    await informInvoiceNumber({ ...key, actorId: ids.comprador });
+    await removeInformedInvoiceNumber({ ...key, actorId: ids.comprador });
+    expect(await listInformedInvoiceNumbers(cycleDate)).toEqual([]);
   });
 });

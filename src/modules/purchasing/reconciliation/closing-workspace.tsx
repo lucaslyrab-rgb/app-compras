@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { LOSS_WINDOW_DAYS, WEIGHT_RANGE_PERCENT, type ReconciliationLine } from "./domain";
 import {
-  JOURNEY_FILTERS,
   JOURNEY_FILTER_LABELS,
+  OUTCOME_FILTERS,
   type JourneyFilter,
   type JourneyIssue,
   type ProductJourney,
@@ -10,6 +10,7 @@ import {
   type StoreValue,
 } from "./closing";
 import type { ClosingOverview } from "./closing-service";
+import { ClosingFilterBar, InvoiceCell } from "./closing-client";
 import "./closing.css";
 
 const BASE_PATH = "/fechamento";
@@ -23,10 +24,6 @@ const money = (value: number) => `R$ ${num(value)}`;
 const signedMoney = (value: number) => `${value > 0 ? "+" : value < 0 ? "−" : ""}R$ ${num(Math.abs(value))}`;
 const signedPct = (value: number) => `${value > 0 ? "+" : value < 0 ? "−" : ""}${num(Math.abs(value), 1)}%`;
 const groupsText = (groups: QuantityGroup[]) => groups.map((g) => `${qty(g.quantity)} ${g.unit}`).join(" + ");
-const dateLabel = (iso: string) => {
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-};
 
 /** Mesma faixa da pesagem: até 5% acima é normal, até 5% abaixo é atenção, além disso é problema. */
 function pctTone(percent: number | null): "ok" | "warn" | "bad" | "muted" {
@@ -144,7 +141,7 @@ function StoreConference({ line }: { line: ReconciliationLine }) {
   );
 }
 
-function StoreLines({ journey }: { journey: ProductJourney }) {
+function StoreLines({ journey, cycleDate }: { journey: ProductJourney; cycleDate: string }) {
   return (
     <div className="cl-detail">
       {journey.destination?.suppliers.length ? (
@@ -152,7 +149,7 @@ function StoreLines({ journey }: { journey: ProductJourney }) {
           {journey.destination.suppliers.map((s) => (
             <li key={s.supplierId}>
               <strong>{s.supplierName} · {qty(s.quantity)} {s.unit}</strong>
-              {s.invoices.length ? <span className="cl-muted"> · NF {s.invoices.join(", ")}</span> : <span className="cl-muted"> · sem nota</span>}
+              {s.invoices.length ? <span className="cl-muted"> · NF {s.invoices.map((r) => r.number).join(", ")}</span> : <span className="cl-muted"> · sem nota</span>}
               <small className="cl-block">{s.stores.map((st) => `${st.storeName} ${qty(st.quantity)}`).join(" · ")}</small>
             </li>
           ))}
@@ -170,6 +167,7 @@ function StoreLines({ journey }: { journey: ProductJourney }) {
                 <th className="num">Esperado</th>
                 <th className="num">Conferido</th>
                 <th className="num">Perdas {LOSS_WINDOW_DAYS} dias</th>
+                <th>Nota</th>
               </tr>
             </thead>
             <tbody>
@@ -193,6 +191,9 @@ function StoreLines({ journey }: { journey: ProductJourney }) {
                       ? <span className="cl-text--bad">{[line.lossesAfter.kg > 0 ? `${num(line.lossesAfter.kg, 1)} kg` : null, line.lossesAfter.und > 0 ? `${qty(line.lossesAfter.und)} und` : null].filter(Boolean).join(" + ")}</span>
                       : <span className="cl-muted">—</span>}
                   </td>
+                  <td className="cl-invoice-col">
+                    <InvoiceCell cycleDate={cycleDate} storeId={line.storeId} suppliers={journey.storeInvoices[line.storeId] ?? []} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -205,7 +206,7 @@ function StoreLines({ journey }: { journey: ProductJourney }) {
   );
 }
 
-function JourneyRow({ journey }: { journey: ProductJourney }) {
+function JourneyRow({ journey, cycleDate }: { journey: ProductJourney; cycleDate: string }) {
   const p = journey.purchase;
   return (
     <details className="cl-row">
@@ -230,7 +231,7 @@ function JourneyRow({ journey }: { journey: ProductJourney }) {
         <ConferenceStep journey={journey} />
         <span className="cl-outcome"><OutcomeTags journey={journey} /></span>
       </summary>
-      <StoreLines journey={journey} />
+      <StoreLines journey={journey} cycleDate={cycleDate} />
     </details>
   );
 }
@@ -273,11 +274,20 @@ function ProductsTab({ overview }: { overview: ClosingOverview }) {
         </form>
         <nav className="cl-chips" aria-label="Filtrar por desfecho">
           <Link href={href(overview, { desfecho: undefined })} className="cl-chip" aria-current={!f.filter ? "true" : undefined}>Todos {s.total}</Link>
-          {JOURNEY_FILTERS.map((key: JourneyFilter) => (
+          {OUTCOME_FILTERS.map((key: JourneyFilter) => (
             <Link key={key} href={href(overview, { desfecho: key })} className={`cl-chip cl-chip--${key}`} aria-current={f.filter === key ? "true" : undefined}>
               {JOURNEY_FILTER_LABELS[key]} {s.counts[key]}
             </Link>
           ))}
+          {s.invoices.total > 0 ? (
+            <Link
+              href={href(overview, { desfecho: "INVOICE_PENDING" })}
+              className="cl-chip cl-chip--INVOICE_PENDING"
+              aria-current={f.filter === "INVOICE_PENDING" ? "true" : undefined}
+            >
+              Notas sem entrada {s.invoices.pending} de {s.invoices.total}
+            </Link>
+          ) : null}
         </nav>
       </div>
 
@@ -289,7 +299,7 @@ function ProductsTab({ overview }: { overview: ClosingOverview }) {
             <span>Produto</span><span>1 · Pedido</span><span>2 · Compra</span><span>3 · Destinação</span><span>4 · Conferência</span><span>Desfecho</span>
           </div>
           {overview.journeys.map((journey) => (
-            <div role="listitem" key={journey.productId}><JourneyRow journey={journey} /></div>
+            <div role="listitem" key={journey.productId}><JourneyRow journey={journey} cycleDate={f.cycleDate!} /></div>
           ))}
         </div>
       )}
@@ -306,7 +316,7 @@ function ConferenceBadge({ store }: { store: StoreValue }) {
   return <span className="cl-tag cl-tag--muted">Não iniciada</span>;
 }
 
-function StoreValueRow({ store }: { store: StoreValue }) {
+function StoreValueRow({ store, cycleDate }: { store: StoreValue; cycleDate: string }) {
   return (
     <details className="cl-row">
       <summary className="cl-row__summary cl-grid--values">
@@ -346,7 +356,14 @@ function StoreValueRow({ store }: { store: StoreValue }) {
                 {store.suppliers.map((s) => (
                   <tr key={s.supplierId}>
                     <td>{s.supplierName}</td>
-                    <td>{s.invoices.length ? s.invoices.map((n) => `NF ${n}`).join(", ") : <span className="cl-muted">sem nota</span>}</td>
+                    <td className="cl-invoice-col">
+                      <InvoiceCell
+                        cycleDate={cycleDate}
+                        storeId={store.storeId}
+                        suppliers={[{ supplierId: s.supplierId, supplierName: s.supplierName, invoices: s.invoices }]}
+                        allowInform={false}
+                      />
+                    </td>
                     <td className="num">{s.products}</td>
                     <td className="num">{money(s.purchasedValue)}</td>
                     <td className="num">{s.receivedValue === null ? <span className="cl-muted">aguardando</span> : money(s.receivedValue)}</td>
@@ -397,7 +414,7 @@ function ValuesTab({ overview }: { overview: ClosingOverview }) {
             <span>Loja</span><span>Valor comprado</span><span>Parte do ciclo</span><span>Conferência</span><span>Valor recebido</span><span>Diferença</span>
           </div>
           {v.stores.map((store) => (
-            <div role="listitem" key={store.storeId}><StoreValueRow store={store} /></div>
+            <div role="listitem" key={store.storeId}><StoreValueRow store={store} cycleDate={overview.filters.cycleDate!} /></div>
           ))}
           <div className="cl-list__total cl-grid--values">
             <strong>Total do ciclo</strong>
@@ -431,30 +448,20 @@ export function ClosingWorkspace({ overview, stores }: { overview: ClosingOvervi
               : "O caminho de cada produto no ciclo: pedido → compra → destinação → conferência"}
           </p>
         </div>
-        <form method="get" action={BASE_PATH} className="cl-cycle" aria-label="Ciclo e loja">
-          {f.tab === "valores" ? <input type="hidden" name="aba" value="valores" /> : null}
-          {overview.previousCycle ? (
-            <Link href={href(overview, { ciclo: overview.previousCycle })} className="cl-icon-btn" aria-label="Ciclo anterior">‹</Link>
-          ) : <span className="cl-icon-btn" aria-hidden="true">‹</span>}
-          <label className="visually-hidden" htmlFor="cl-ciclo">Ciclo de compra</label>
-          <select id="cl-ciclo" name="ciclo" defaultValue={f.cycleDate ?? ""}>
-            {f.cycleDate && !overview.cycles.includes(f.cycleDate) ? <option value={f.cycleDate}>Compra {dateLabel(f.cycleDate)}</option> : null}
-            {overview.cycles.map((c) => <option key={c} value={c}>Compra {dateLabel(c)}</option>)}
-          </select>
-          {overview.nextCycle ? (
-            <Link href={href(overview, { ciclo: overview.nextCycle })} className="cl-icon-btn" aria-label="Próximo ciclo">›</Link>
-          ) : <span className="cl-icon-btn" aria-hidden="true">›</span>}
-          {f.tab === "produtos" ? (
-            <>
-              <label className="visually-hidden" htmlFor="cl-loja">Loja</label>
-              <select id="cl-loja" name="loja" defaultValue={f.storeId ?? ""}>
-                <option value="">Todas as lojas</option>
-                {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </>
-          ) : null}
-          <button type="submit" className="btn btn--outline">Ver</button>
-        </form>
+        <ClosingFilterBar
+          basePath={BASE_PATH}
+          params={{
+            ...(f.tab === "valores" ? { aba: "valores" } : {}),
+            ...(f.storeId && f.tab === "produtos" ? { loja: f.storeId } : {}),
+          }}
+          cycleDate={f.cycleDate}
+          cycles={overview.cycles}
+          previousHref={overview.previousCycle ? href(overview, { ciclo: overview.previousCycle }) : null}
+          nextHref={overview.nextCycle ? href(overview, { ciclo: overview.nextCycle }) : null}
+          showStore={f.tab === "produtos"}
+          storeId={f.storeId ?? null}
+          stores={stores}
+        />
       </header>
 
       <nav className="cl-tabs" aria-label="Visões do fechamento">

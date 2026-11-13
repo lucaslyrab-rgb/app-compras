@@ -115,3 +115,45 @@ span.cl-icon-btn { color: #A9B6C3; }
   .cl-list__total { padding: 10px 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cl-detail { padding: 0 10px 12px; }
 }
+
+/* Notas no Fechamento (v1.3) */
+.cl-loading { font-size: 13px; color: #4B5B6B; }
+.cl-chip--INVOICE_PENDING { border-style: dashed; border-color: #1E4F8F; color: #1E4F8F; font-weight: 700; }
+.cl-invoice-col { min-width: 230px; }
+.cl-invoices { display: flex; flex-direction: column; gap: 6px; }
+.cl-invoices__supplier { display: flex; flex-direction: column; gap: 4px; }
+.cl-invoice { display: flex; flex-direction: column; gap: 2px; }
+.cl-invoice__row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cl-invoice__number { border: 0; background: none; padding: 4px 0; min-height: 32px; font: inherit; font-weight: 700; color: #006B4F; text-decoration: underline; cursor: pointer; }
+.cl-invoice__number:hover { color: #004737; }
+.cl-invoice__number--plain { color: #0F1F2E; text-decoration: none; cursor: default; display: inline-flex; align-items: center; gap: 4px; }
+.cl-invoice__number--plain small { font-weight: 500; color: #4B5B6B; }
+.cl-invoice__remove { width: 28px; height: 28px; border-radius: 8px; border: 1px solid #C3CFD9; background: #FFFFFF; color: #A30D25; font-size: 16px; line-height: 1; cursor: pointer; }
+.cl-entry { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #3A4856; min-height: 32px; flex-wrap: wrap; cursor: pointer; }
+.cl-entry input { width: 18px; height: 18px; accent-color: #006B4F; margin: 0; }
+.cl-entry--done { color: #14532D; font-weight: 600; }
+.cl-entry small { font-weight: 400; color: #4B5B6B; font-size: 11px; }
+.cl-inform { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.cl-inform input { width: 150px; height: 34px; border: 1px solid #C3CFD9; border-radius: 8px; padding: 0 8px; font: inherit; font-size: 13px; box-sizing: border-box; }
+.cl-inform .btn { min-height: 34px; padding: 0 10px; font-size: 13px; }
+.cl-error { color: #A30D25; font-size: 12px; font-weight: 600; }
+
+.cl-dialog__backdrop { position: fixed; inset: 0; background: rgba(15, 31, 46, 0.55); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 1000; }
+.cl-dialog { width: min(640px, 100%); max-height: calc(100vh - 32px); background: #FFFFFF; border-radius: 16px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; overflow: hidden; }
+.cl-dialog__head { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #DCE3EA; }
+.cl-dialog__head > div { flex: 1; }
+.cl-dialog__head h2 { margin: 0; font-size: 17px; font-weight: 800; color: #0F1F2E; }
+.cl-dialog__head span { font-size: 13px; color: #4B5B6B; }
+.cl-dialog__head .cl-icon-btn { cursor: pointer; font-family: inherit; }
+.cl-dialog__photo { flex: 1; min-height: 0; overflow: auto; background: #EEF2F5; display: flex; justify-content: center; padding: 12px; }
+.cl-dialog__photo img { max-width: 100%; height: auto; border-radius: 6px; background: #FFFFFF; }
+.cl-dialog__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-top: 1px solid #DCE3EA; flex-wrap: wrap; }
+.cl-dialog__foot a { font-size: 14px; font-weight: 700; }
+.cl-dialog .cl-error { padding: 0 14px 10px; margin: 0; }
+
+@media (max-width: 900px) {
+  .cl-invoice-col { min-width: 200px; }
+  .cl-entry, .cl-invoice__number { min-height: 40px; }
+  .cl-inform input { height: 40px; width: 140px; font-size: 14px; }
+  .cl-inform .btn { min-height: 40px; }
+}

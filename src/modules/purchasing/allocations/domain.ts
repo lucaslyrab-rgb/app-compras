@@ -421,6 +421,8 @@ export type BuyerAllocationWorkspaceData = {
   storeClosures: Record<string, StoreClosureSummary>;
   supplierStoreReviews: Record<string, Record<string, SupplierStoreReviewSummary>>;
   invoicesByStoreSupplier?: Record<string, Record<string, InvoiceRecord[]>>;
+  /** Números informados no Fechamento ainda sem foto (loja → fornecedor → números). */
+  informedInvoiceNumbersByStoreSupplier?: Record<string, Record<string, string[]>>;
   loadedAt: string;
 };
 

@@ -63,6 +63,15 @@ describe("arquitetura e isolamento de módulos", () => {
     expect(source).not.toMatch(/\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM)\b/i);
   });
 
+  it("notas no Fechamento: ações exigem a permissão do Fechamento e a 0024 não altera notas nem usuários", async () => {
+    const actions = await readFile("src/modules/purchasing/reconciliation/closing-actions.ts", "utf8");
+    expect(actions.match(/hasPermission\(principal, "fechamento:consultar"\)/g)).toHaveLength(1);
+    expect(actions.match(/await authorize\(\)/g)).toHaveLength(3);
+    const migration = await readFile("migrations/0024_invoice_entries.sql", "utf8");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS purchase_cycle_invoice_entries");
+    expect(migration).not.toMatch(/\b(ALTER\s+TABLE|UPDATE|DELETE\s+FROM)\b/i);
+  });
+
   it("mantém a 0020 aditiva com cancelamento auditado de conferência sem pedido substituto", async () => {
     const migration = await readFile("migrations/0020_store_delivery_conference_cancellation.sql", "utf8");
     expect(migration).toContain("ADD COLUMN IF NOT EXISTS cancelled_at");

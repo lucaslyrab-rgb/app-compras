@@ -5,7 +5,8 @@
  *   1. pedidos das lojas (npm run dev:pedidos);
  *   2. custos: quase tudo comprado, 2 produtos não comprados e 1 comprado sem destinação;
  *   3. destinação por fornecedor, com um corte parcial, um corte total e um adicional;
- *   4. nota fiscal de cada loja × fornecedor (imagem de teste na pasta local);
+ *   4. nota fiscal de cada loja × fornecedor (imagem de teste na pasta local),
+ *      menos uma, para testar o número informado no Fechamento;
  *   5. conferência: duas lojas finalizadas (uma pesagem 12% abaixo e um item não
  *      recebido) e a terceira em andamento.
  *
@@ -188,12 +189,18 @@ export async function createTestCycle(
     if (localStorageRoot()) {
       const image = await sharp({ create: { width: 600, height: 800, channels: 3, background: "#F4F6F8" } }).jpeg().toBuffer();
       let number = 4500;
+      let skippedOne = false;
       for (const [supplier, products] of bySupplier) {
         const stores = new Map<string, string[]>();
         for (const [productId, list] of products) {
           for (const entry of list) stores.set(entry.storeId, [...(stores.get(entry.storeId) ?? []), productId]);
         }
         for (const [storeId, ids] of stores) {
+          // A primeira loja × fornecedor fica sem nota, para testar o número informado no Fechamento.
+          if (!skippedOne) {
+            skippedOne = true;
+            continue;
+          }
           number += 17;
           await registerInvoiceService({
             cycleDate, storeId, supplierId: supplier, invoiceNumber: String(number), imageBuffer: image, createdBy: buyer.userId, productIds: ids,
@@ -201,7 +208,7 @@ export async function createTestCycle(
           result.invoices += 1;
         }
       }
-      log(`Notas fiscais: ${result.invoices} (imagem de teste em branco).`);
+      log(`Notas fiscais: ${result.invoices} (imagem de teste em branco) e 1 loja × fornecedor sem nota.`);
     } else {
       log("Notas fiscais: puladas (defina LOCAL_STORAGE_DIR no .env para criá-las).");
     }
