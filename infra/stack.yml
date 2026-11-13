@@ -3,7 +3,7 @@ version: "3.9"
 services:
   web:
     # Atualizada automaticamente pelo workflow somente após build e scans aprovados.
-    image: ghcr.io/lucaslyrab-rgb/app-compras:sha-9137dc49907700d3117b24731d48111e7e9ae8e4
+    image: ghcr.io/lucaslyrab-rgb/app-compras:sha-aaccbd27626bd242cc6e0a1f40e0983747a176ab
     networks:
       - externa
     secrets:
