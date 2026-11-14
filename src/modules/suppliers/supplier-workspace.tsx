@@ -16,6 +16,7 @@ import {
   normalizePhone,
   normalizeTaxId,
   resolveTradeName,
+  supplierMatchesSearch,
   TAX_ID_TYPE_LABELS,
   TAX_INVOICE_RULE_LABELS,
   type Supplier,
@@ -120,16 +121,8 @@ export function SupplierWorkspace({
 
   // Filtered suppliers
   const filteredSuppliers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const qDigits = q.replace(/\D/g, "");
-
     return suppliers.filter((s) => {
-      const matchSearch =
-        !q ||
-        s.corporateName.toLowerCase().includes(q) ||
-        (s.tradeName && s.tradeName.toLowerCase().includes(q)) ||
-        (s.taxId && s.taxId.includes(qDigits)) ||
-        (s.contactName && s.contactName.toLowerCase().includes(q));
+      const matchSearch = supplierMatchesSearch(s, search);
 
       const matchStatus =
         statusFilter === "ALL" ||
