@@ -185,6 +185,26 @@ export function resolveTradeName(tradeName: string | null | undefined, corporate
 }
 
 /** Nome exibido nas listas: fantasia, ou o gerado pela razão social. */
+const foldText = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+/**
+ * Busca da lista de fornecedores: nome (razão social ou fantasia) e contato sem
+ * diferenciar acento e maiúscula; CNPJ/CPF só quando a busca tem dígitos.
+ */
+export function supplierMatchesSearch(
+  supplier: { corporateName: string; tradeName: string | null; taxId: string | null; contactName?: string | null },
+  search: string,
+): boolean {
+  const query = foldText(search.trim());
+  if (!query) return true;
+  const digits = query.replace(/\D/g, "");
+  if (digits.length > 0 && supplier.taxId?.includes(digits)) return true;
+  return [supplier.corporateName, supplier.tradeName, supplier.contactName].some(
+    (field) => Boolean(field) && foldText(field as string).includes(query),
+  );
+}
+
 export function supplierDisplayName(supplier: { tradeName: string | null; corporateName: string }): string {
   return resolveTradeName(supplier.tradeName, supplier.corporateName);
 }

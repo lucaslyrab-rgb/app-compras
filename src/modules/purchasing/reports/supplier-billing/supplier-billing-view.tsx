@@ -68,11 +68,9 @@ export function SupplierBillingView({
               : "Instrução de faturamento e separação de pedidos exclusivos por loja"}
           </p>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <strong>Ciclo de Compra</strong>
-          <div style={{ fontSize: "16px", fontWeight: "700", color: "#0f172a" }}>
-            {formatCycleDatePtBr(cycleDate)}
-          </div>
+        <div className="billing-report__cycle">
+          <span>Ciclo de compra</span>
+          <strong>{formatCycleDatePtBr(cycleDate)}</strong>
         </div>
       </header>
 
@@ -109,23 +107,28 @@ export function SupplierBillingView({
       <section className="billing-section" aria-label="Resumo consolidado">
         <div className="billing-section__title">
           <span>1. Resumo Consolidado — Total a Faturar</span>
-          <span style={{ fontSize: "13px", fontWeight: "600", color: "#64748b" }}>
-            Total Geral: {formatQuantityPtBr(totalConsolidatedVolumes)} volumes
+          <span className="billing-section__total">
+            Total geral: {formatQuantityPtBr(totalConsolidatedVolumes)} volumes
           </span>
         </div>
-        <table className="billing-table">
+        <div className="billing-table-wrap">
+        <table className="billing-table billing-table--summary">
+          <colgroup>
+            <col className="billing-col-erp" />
+            <col />
+            {stores.map((s) => <col key={s.storeId} className="billing-col-store" />)}
+            <col className="billing-col-total" />
+          </colgroup>
           <thead>
             <tr>
-              <th style={{ width: "65px" }}>ERP</th>
+              <th>ERP</th>
               <th>Produto</th>
-              <th style={{ width: "55px" }} className="center">Unid.</th>
-              <th style={{ width: "55px" }} className="center">Fmt.</th>
               {stores.map((s) => (
-                <th key={s.storeId} className="num" style={{ minWidth: "100px" }}>
+                <th key={s.storeId} className="num">
                   {s.storeName.replace("MultiShow ", "")}
                 </th>
               ))}
-              <th className="num" style={{ width: "110px" }}>Total a Faturar</th>
+              <th className="num">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -139,15 +142,15 @@ export function SupplierBillingView({
                       <span className="billing-badge-additional">Sem pedido</span>
                     ) : null}
                   </td>
-                  <td className="center">{item.unit}</td>
-                  <td className="center">{item.purchaseFormat}</td>
-                  {stores.map((s) => (
-                    <td key={s.storeId} className="num">
-                      {item.storeQuantities[s.storeId] === "—"
-                        ? "—"
-                        : formatQuantityPtBr(item.storeQuantities[s.storeId])}
-                    </td>
-                  ))}
+                  {stores.map((s) => {
+                    const quantity = item.storeQuantities[s.storeId];
+                    const empty = quantity === "—" || Number(quantity) === 0;
+                    return (
+                      <td key={s.storeId} className={empty ? "num billing-zero" : "num"}>
+                        {empty ? "–" : formatQuantityPtBr(quantity)}
+                      </td>
+                    );
+                  })}
                   <td className="num">
                     <strong>{formatQuantityPtBr(item.totalQuantity)} {item.purchaseFormat}</strong>
                   </td>
@@ -155,7 +158,7 @@ export function SupplierBillingView({
               ))
             ) : (
               <tr>
-                <td colSpan={5 + stores.length} style={{ textAlign: "center", padding: "16px" }}>
+                <td colSpan={3 + stores.length} className="billing-table__empty">
                   {report.hasAllocations
                     ? "Nenhum produto destinado para este fornecedor neste ciclo."
                     : "Nenhum produto exclusivo teve solicitação de compra neste ciclo."}
@@ -166,7 +169,7 @@ export function SupplierBillingView({
           {consolidatedProducts.length > 0 ? (
             <tfoot>
               <tr>
-                <td colSpan={4}><strong>TOTAL DE VOLUMES CONSOLIDADOS</strong></td>
+                <td colSpan={2}><strong>TOTAL DE VOLUMES</strong></td>
                 {stores.map((s) => (
                   <td key={s.storeId} className="num">
                     <strong>{formatQuantityPtBr(s.totalQuantity)}</strong>
@@ -179,6 +182,7 @@ export function SupplierBillingView({
             </tfoot>
           ) : null}
         </table>
+        </div>
       </section>
 
       {/* SEÇÃO 2: SEÇÕES POR LOJA (PARA EMISSÃO DE NOTA FISCAL INDIVIDUAL) */}
@@ -186,8 +190,8 @@ export function SupplierBillingView({
         <div className="billing-section__title">
           <span>2. Faturamento por Loja (Para Emissão de Notas Fiscais Individuais)</span>
         </div>
-        <p style={{ fontSize: "12px", color: "#64748b", margin: "-4px 0 16px 0" }}>
-          Cada seção abaixo deve ser utilizada para faturar a respectiva nota fiscal individual contra a unidade compradora.
+        <p className="billing-section__hint">
+          Emitir uma nota fiscal para cada loja, com os itens e quantidades abaixo.
         </p>
 
         {stores.map((store) => (
@@ -201,25 +205,26 @@ export function SupplierBillingView({
                     : "Sem pedido válido"}
                 </span>
               </div>
-              <div>
-                {store.hasOrder ? (
-                  <span style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>
-                    Total da NF: {formatQuantityPtBr(store.totalQuantity)} volumes
-                  </span>
-                ) : null}
-              </div>
+              {store.hasOrder && store.items.length > 0 ? (
+                <span className="billing-store-card__total">
+                  Total da NF: {formatQuantityPtBr(store.totalQuantity)} volumes
+                </span>
+              ) : null}
             </header>
 
             {store.hasOrder ? (
               store.items.length > 0 ? (
-                <table className="billing-table">
+                <table className="billing-table billing-table--store">
+                  <colgroup>
+                    <col className="billing-col-erp" />
+                    <col />
+                    <col className="billing-col-qty" />
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th style={{ width: "70px" }}>ERP</th>
+                      <th>ERP</th>
                       <th>Produto</th>
-                      <th style={{ width: "65px" }} className="center">Unid.</th>
-                      <th style={{ width: "65px" }} className="center">Formato</th>
-                      <th className="num" style={{ width: "130px" }}>Qtd. a Faturar</th>
+                      <th className="num">Qtd. a faturar</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -232,8 +237,6 @@ export function SupplierBillingView({
                             <span className="billing-badge-additional">Adicional</span>
                           ) : null}
                         </td>
-                        <td className="center">{item.unit}</td>
-                        <td className="center">{item.purchaseFormat}</td>
                         <td className="num">
                           <strong>{formatQuantityPtBr(item.quantity)} {item.purchaseFormat}</strong>
                           {item.difference && item.difference !== "+0.00" ? (
@@ -253,7 +256,7 @@ export function SupplierBillingView({
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colSpan={4}><strong>TOTAL A FATURAR NESTA LOJA</strong></td>
+                      <td colSpan={2}><strong>TOTAL A FATURAR NESTA LOJA</strong></td>
                       <td className="num">
                         <strong>{formatQuantityPtBr(store.totalQuantity)} volumes</strong>
                       </td>
@@ -264,7 +267,7 @@ export function SupplierBillingView({
                 <p className="billing-store-empty">
                   {report.hasAllocations
                     ? "Nenhum produto destinado para esta loja neste fornecedor."
-                    : "Esta loja enviou pedido para o ciclo, mas nenhum dos produtos exclusivos deste fornecedor foi solicitado."}
+                    : "Sem itens deste fornecedor neste ciclo. Não emitir nota para esta loja."}
                 </p>
               )
             ) : (
@@ -278,7 +281,7 @@ export function SupplierBillingView({
 
       {/* SEÇÃO 3: PRODUTOS VINCULADOS SEM FATURAMENTO NO CICLO */}
       {productsWithoutOrders.length > 0 ? (
-        <aside className="billing-zero-demand">
+        <aside className="billing-zero-demand no-print">
           <strong>
             {report.hasAllocations
               ? `Produtos vinculados sem faturamento/destinação neste ciclo (${productsWithoutOrders.length} itens):`
