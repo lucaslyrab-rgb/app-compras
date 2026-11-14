@@ -4,6 +4,16 @@ Cada versão vai para produção quando o Lucas aprova, depois de testada no
 ambiente local ([docs/desenvolvimento-local.md](docs/desenvolvimento-local.md)).
 Detalhes da primeira versão completa: [docs/versao-1.md](docs/versao-1.md).
 
+## 1.4.1 — 14/11/2026
+
+- **Relatório de faturamento por fornecedor** (WG, JEB…) compacto para enviar
+  ao fornecedor: resumo com ERP, produto, lojas e total; por loja, ERP, produto
+  e quantidade; loja sem itens avisa "Não emitir nota". Cabe em uma folha A4
+  em pé no caso comum e não divide uma loja entre folhas; no celular, sem
+  rolagem lateral.
+- **Fornecedores:** a busca por nome volta a filtrar (ignora acento e
+  maiúscula; CNPJ/CPF quando há números).
+
 ## 1.4.0 — 13/11/2026
 
 **Seção Embalados**

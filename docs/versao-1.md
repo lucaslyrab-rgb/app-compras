@@ -77,6 +77,7 @@ Cabeçalho único em todas as telas da loja: “‹ Início” para voltar, nome
 | #25, #26 | 12/11 | **1.2** — Fechamento integrado novo (caminho dos produtos e valor por loja), pedidos e ciclo de teste |
 | #27 | 13/11 | **1.3** — Notas no Fechamento: foto, entrada dada, número sem foto, contador e linha verde; seletor de ciclo |
 | #28 | 13/11 | **1.4** — Seção Embalados; cadastro de produtos com filtros, painel em abas e exclusividade só pela aba Fornecedores |
+| #29 | 14/11 | **1.4.1** — Relatório de faturamento por fornecedor em uma folha A4; busca de fornecedores corrigida |
 
 ## Como seguimos
 
