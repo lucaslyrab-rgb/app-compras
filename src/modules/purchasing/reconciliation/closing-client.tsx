@@ -4,7 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import type { InvoiceRef, StoreSupplierInvoices } from "./closing";
+import {
+  buildChargeText,
+  chargeableItems,
+  type InvoiceRef,
+  type StoreSupplierInvoices,
+  type SupplierItemValue,
+  type SupplierValue,
+} from "./closing";
 import {
   informInvoiceNumberAction,
   removeInformedInvoiceNumberAction,
@@ -242,5 +249,195 @@ export function InvoiceCell({
         </div>
       ))}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Valor por loja: itens de cada nota (loja × fornecedor) e texto de cobrança.
+// ---------------------------------------------------------------------------
+
+const brNum = (value: number, digits = 2) =>
+  value.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+const brQty = (value: number) => value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+const brMoney = (value: number) => `R$ ${brNum(value)}`;
+const brSigned = (value: number) => `${value > 0 ? "+" : value < 0 ? "−" : ""}R$ ${brNum(Math.abs(value))}`;
+const tone = (value: number | null) => (value === null ? "muted" : value < 0 ? "bad" : "ok");
+
+function ItemStatus({ item }: { item: SupplierItemValue }) {
+  if (item.status === "UNRECEIVED") return <span className="cl-tag cl-tag--bad cl-items__tag">Não recebido</span>;
+  if (item.status === "NO_WEIGHT") return <span className="cl-tag cl-tag--muted cl-items__tag">sem pesagem</span>;
+  if (item.status === "PENDING") return <span className="cl-tag cl-tag--muted cl-items__tag">conferência pendente</span>;
+  if (item.weightPercent !== null && item.weightPercent < 0) {
+    return <span className="cl-tag cl-tag--bad cl-items__tag">−{brNum(Math.abs(item.weightPercent), 1)}%</span>;
+  }
+  return null;
+}
+
+function conferredText(item: SupplierItemValue) {
+  if (item.status === "UNRECEIVED") return "0";
+  if (item.status === "WEIGHED" && item.conferredKg !== null) return `${brNum(item.conferredKg, 1)} kg`;
+  if (item.status === "NO_WEIGHT") return "recebido";
+  return "—";
+}
+
+function SupplierItems({
+  supplier,
+  storeName,
+  cycleDate,
+}: {
+  supplier: SupplierValue;
+  storeName: string;
+  cycleDate: string;
+}) {
+  const [copied, setCopied] = useState<"ok" | "error" | null>(null);
+  const charge = buildChargeText({
+    supplierName: supplier.supplierName,
+    storeName,
+    cycleDate,
+    invoiceNumbers: supplier.invoices.map((inv) => inv.number),
+    items: supplier.items,
+  });
+  const manual = supplier.items.filter((item) => item.multipleSuppliers);
+  const chargeCount = chargeableItems(supplier.items).length;
+  const nf = supplier.invoices.length ? `NF ${supplier.invoices.map((inv) => inv.number).join(", ")}` : "sem nota";
+
+  const copy = async () => {
+    if (!charge) return;
+    try {
+      await navigator.clipboard.writeText(charge);
+      setCopied("ok");
+    } catch {
+      setCopied("error");
+    }
+  };
+
+  return (
+    <div className="cl-items">
+      <div className="cl-items__head">
+        <strong>
+          Itens de {supplier.supplierName} para {storeName} — {nf} · compra de {dateLabel(cycleDate).slice(0, 5)}
+        </strong>
+        {charge ? (
+          <button type="button" className="btn cl-items__copy" onClick={copy}>
+            {copied === "ok" ? "Cobrança copiada ✓" : `Copiar cobrança (${chargeCount})`}
+          </button>
+        ) : null}
+      </div>
+      {copied === "error" ? (
+        <p className="cl-error" role="alert">Não foi possível copiar. Selecione o texto abaixo e copie manualmente.</p>
+      ) : null}
+      {manual.length > 0 ? (
+        <p className="cl-items__warn" role="note">
+          ⚠ {manual.map((item) => item.productName).join(", ")} veio de mais de um fornecedor para esta loja. A
+          pesagem é do produto inteiro, então os valores abaixo são divididos na proporção destinada e o item fica
+          fora da cobrança. Confira manualmente.
+        </p>
+      ) : null}
+      <div className="cl-scroll">
+        <table className="cl-table cl-table--items">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th className="num">Destinado</th>
+              <th className="num">Esperado</th>
+              <th className="num">Conferido</th>
+              <th className="num">Custo</th>
+              <th className="num">Valor comprado</th>
+              <th className="num">Valor recebido</th>
+              <th className="num">Diferença</th>
+            </tr>
+          </thead>
+          <tbody>
+            {supplier.items.map((item) => (
+              <tr key={item.productId} className={item.difference !== null && item.difference < -0.004 ? "cl-items__short" : undefined}>
+                <td>
+                  <span className="cl-items__name">{item.productName}</span>
+                  <ItemStatus item={item} />
+                  {item.multipleSuppliers ? <span className="cl-tag cl-tag--warn cl-items__tag">vários fornecedores</span> : null}
+                  <small className="cl-muted cl-items__erp">ERP {item.erpCode}</small>
+                </td>
+                <td className="num">{item.destined.map((g) => `${brQty(g.quantity)} ${g.unit}`).join(" + ")}</td>
+                <td className="num">{item.expectedKg === null ? "—" : `${brNum(item.expectedKg, 1)} kg`}</td>
+                <td className="num">{conferredText(item)}</td>
+                <td className="num">{item.cost === null ? <span className="cl-muted">sem custo</span> : brMoney(item.cost)}</td>
+                <td className="num">{brMoney(item.purchasedValue)}</td>
+                <td className="num">{item.receivedValue === null ? <span className="cl-muted">aguardando</span> : brMoney(item.receivedValue)}</td>
+                <td className={`num cl-text--${tone(item.difference)}`}>{item.difference === null ? "—" : brSigned(item.difference)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={5}>Total da nota</td>
+              <td className="num">{brMoney(supplier.purchasedValue)}</td>
+              <td className="num">{supplier.receivedValue === null ? "—" : brMoney(supplier.receivedValue)}</td>
+              <td className={`num cl-text--${tone(supplier.difference)}`}>{supplier.difference === null ? "—" : brSigned(supplier.difference)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {charge ? (
+        <details className="cl-items__charge">
+          <summary>Ver texto da cobrança</summary>
+          <pre>{charge}</pre>
+          <small className="cl-muted">Lista só o que faltou; sobras não abatem.</small>
+        </details>
+      ) : supplier.receivedValue !== null ? (
+        <p className="cl-muted cl-small">Nenhuma falta para cobrar nesta nota.</p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Linha de um fornecedor no Valor por loja; o botão de itens abre a nota produto a produto. */
+export function SupplierValueRow({
+  supplier,
+  storeId,
+  storeName,
+  cycleDate,
+}: {
+  supplier: SupplierValue;
+  storeId: string;
+  storeName: string;
+  cycleDate: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const detailId = `itens-${storeId}-${supplier.supplierId}`;
+  const label = `${supplier.products} ${supplier.products === 1 ? "item" : "itens"}`;
+  return (
+    <>
+      <tr className={open ? "cl-items__open" : undefined}>
+        <td>{open ? <strong>{supplier.supplierName}</strong> : supplier.supplierName}</td>
+        <td className="cl-invoice-col">
+          <InvoiceCell
+            cycleDate={cycleDate}
+            storeId={storeId}
+            suppliers={[{ supplierId: supplier.supplierId, supplierName: supplier.supplierName, invoices: supplier.invoices }]}
+            allowInform={false}
+          />
+        </td>
+        <td className="num">
+          <button
+            type="button"
+            className="cl-items__toggle"
+            aria-expanded={open}
+            aria-controls={detailId}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {label} {open ? "▾" : "▸"}
+          </button>
+        </td>
+        <td className="num">{brMoney(supplier.purchasedValue)}</td>
+        <td className="num">{supplier.receivedValue === null ? <span className="cl-muted">aguardando</span> : brMoney(supplier.receivedValue)}</td>
+        <td className={`num cl-text--${tone(supplier.difference)}`}>{supplier.difference === null ? "—" : brSigned(supplier.difference)}</td>
+      </tr>
+      {open ? (
+        <tr className="cl-items__detail" id={detailId}>
+          <td colSpan={6}>
+            <SupplierItems supplier={supplier} storeName={storeName} cycleDate={cycleDate} />
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }

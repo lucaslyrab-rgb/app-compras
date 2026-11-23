@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildProductJourneys,
+  buildChargeText,
   buildStoreValues,
+  chargeableItems,
   countInvoices,
   filterJourneys,
   neighborCycles,
@@ -228,7 +230,7 @@ describe("valor por loja", () => {
       conference: { state: "FINALIZED", totalItems: 4, verifiedItems: 4 },
       missingCost: 0,
     });
-    expect(ponta.suppliers).toEqual([
+    expect(ponta.suppliers).toMatchObject([
       { supplierId: "supA", supplierName: "Frutas do Vale", invoices: [NF4521], products: 1, purchasedValue: 372, receivedValue: 366.42, difference: -5.58 },
       { supplierId: "supB", supplierName: "Bom Preço", invoices: [NF889], products: 2, purchasedValue: 315, receivedValue: 317.75, difference: 2.75 },
     ]);
@@ -256,6 +258,62 @@ describe("valor por loja", () => {
       differencePercent: -0.4,
       missingCost: 1,
     });
+  });
+
+  it("abre os itens de cada nota, faltas primeiro", () => {
+    expect(ponta.suppliers[0].items).toEqual([
+      {
+        productId: "laranja", erpCode: 1, productName: "LARANJA PERA", destined: [{ unit: "CX", quantity: 6 }],
+        status: "WEIGHED", expectedKg: 120, conferredKg: 118.2, weightPercent: -1.5, cost: 62,
+        purchasedValue: 372, receivedValue: 366.42, difference: -5.58, multipleSuppliers: false,
+      },
+    ]);
+    expect(ponta.suppliers[1].items.map((i) => [i.productName, i.status, i.difference])).toEqual([
+      ["ABACAXI", "NO_WEIGHT", 0],
+      ["MAMAO", "WEIGHED", 2.75],
+    ]);
+    // Conferência ainda não finalizada: itens sem valor recebido.
+    expect(balneario.suppliers.flatMap((s) => s.items).map((i) => [i.productName, i.status, i.receivedValue])).toEqual([
+      ["LARANJA PERA", "PENDING", null],
+      ["UVA", "PENDING", null],
+      ["COUVE", "PENDING", null],
+    ]);
+  });
+
+  it("produto de dois fornecedores: divide na proporção e fica fora da cobrança", () => {
+    const multi = sources();
+    multi.allocations.push(alloc(S1, "laranja", "supB", 2, "CX", 20));
+    const store = buildStoreValues(multi, buildReconciliationLines(multi), C).stores.find((s) => s.storeId === S1)!;
+    const fromA = store.suppliers.find((s) => s.supplierId === "supA")!.items[0];
+    const fromB = store.suppliers.find((s) => s.supplierId === "supB")!.items.find((i) => i.productId === "laranja")!;
+    expect(fromA).toMatchObject({ multipleSuppliers: true, expectedKg: 120, conferredKg: 88.65, destined: [{ unit: "CX", quantity: 6 }] });
+    expect(fromB).toMatchObject({ multipleSuppliers: true, expectedKg: 40, conferredKg: 29.55 });
+    expect(chargeableItems([fromA, fromB])).toEqual([]);
+  });
+
+  it("monta o texto de cobrança só com as faltas", () => {
+    const withShortage = sources();
+    withShortage.allocations.push(alloc(S1, "tomate", "supA", 2, "CX", 20));
+    withShortage.costs = withShortage.costs!.map((c) => (c.productId === "tomate" ? { ...c, cost: 50, purchased: true } : c));
+    const store = buildStoreValues(withShortage, buildReconciliationLines(withShortage), C).stores.find((s) => s.storeId === S1)!;
+    const supplier = store.suppliers.find((s) => s.supplierId === "supA")!;
+    expect(supplier.items.map((i) => [i.productName, i.status, i.difference])).toEqual([
+      ["TOMATE", "UNRECEIVED", -100],
+      ["LARANJA PERA", "WEIGHED", -5.58],
+    ]);
+    expect(
+      buildChargeText({ supplierName: supplier.supplierName, storeName: store.storeName, cycleDate: C, invoiceNumbers: ["4521"], items: supplier.items }),
+    ).toBe(
+      [
+        "Frutas do Vale — NF 4521 — compra de 04/11 — Ponta da Fruta",
+        "Faltas na conferência:",
+        "• TOMATE: 2 CX não recebido — R$ 100,00",
+        "• LARANJA PERA: esperado 120,0 kg, recebido 118,2 kg (falta 1,8 kg) — R$ 5,58",
+        "Total a acertar: R$ 105,58",
+      ].join("\n"),
+    );
+    const bomPreco = store.suppliers.find((s) => s.supplierId === "supB")!;
+    expect(buildChargeText({ supplierName: "Bom Preço", storeName: "Ponta da Fruta", cycleDate: C, invoiceNumbers: [], items: bomPreco.items })).toBeNull();
   });
 
   it("não recebido vale zero; sem pesagem vale o comprado", () => {
