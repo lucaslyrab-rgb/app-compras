@@ -28,7 +28,7 @@ Cabeçalho único em todas as telas da loja: “‹ Início” para voltar, nome
 
 ### Gestor e CPD
 
-- **Fechamento integrado** (`/fechamento`): desde a 1.2, um ciclo por vez em duas abas — **Caminho dos produtos** (pedido → compra → destinação → conferência e o desfecho de cada produto) e **Valor por loja** (comprado, recebido pela conferência e diferença, por fornecedor e nota). Usa a conversão cadastrada de cada produto e as perdas dos dias seguintes. Desde a 1.3, mostra as notas de cada loja (foto, **entrada dada** e número informado sem foto) e destaca em verde o produto com todas as notas lançadas. Não bloqueia nada.
+- **Fechamento integrado** (`/fechamento`): desde a 1.2, um ciclo por vez em duas abas — **Caminho dos produtos** (pedido → compra → destinação → conferência e o desfecho de cada produto) e **Valor por loja** (comprado, recebido pela conferência e diferença, por fornecedor e nota). Usa a conversão cadastrada de cada produto e as perdas dos dias seguintes. Desde a 1.3, mostra as notas de cada loja (foto, **entrada dada** e número informado sem foto) e destaca em verde o produto com todas as notas lançadas. Desde a 1.5, cada nota do Valor por loja abre os itens (esperado × conferido, valor e diferença) e gera o texto de **cobrança** das faltas para o fornecedor. Não bloqueia nada.
 - **Perdas:** o Gestor pode excluir um lançamento errado (com registro de quem excluiu).
 - **Configurações:** calendário de compras e **encerrar ciclo** antigo (fecha Destinação e conferências do ciclo de uma vez).
 - Cadastros de **fornecedores** (nome fantasia obrigatório; inativos não aparecem na Destinação), **produtos**, **precificação** e **usuários/permissões**. Desde a 1.4, o cadastro de produtos tem filtros (incluindo Embalados e Inativos) e o painel do produto é dividido em abas (Dados · Fornecedores · Precificação · Foto), com rodapé de salvar; a exclusividade de fornecedor é marcada só na aba Fornecedores.
@@ -53,6 +53,7 @@ Cabeçalho único em todas as telas da loja: “‹ Início” para voltar, nome
 | 13/11 | "Entrada dada" é marcada por nota (ciclo × loja × fornecedor × número) por Gestor e CPD (`fechamento:consultar`). No Fechamento só se informa o número; a foto é anexada apenas na Destinação, e o mesmo número junta as duas. |
 | 13/11 | Seção **Embalados**: produtos marcados como embalados ficam no fim das listas operacionais (Pedido, Consolidado, Custos, Destinação, Conferência, Perdas, Fechamento), em ordem alfabética; cadastro e precificação não mudam. A marcação é feita no cadastro do produto. |
 | 13/11 | Exclusividade de fornecedor só pelo vínculo na aba Fornecedores; a caixa antiga "Fornecedor exclusivo" saiu (exclusivos antigos viraram vínculo com a JEB). |
+| 23/11 | Cobrança de fornecedor pelo Fechamento: lista só as faltas (sobras não abatem). Produto destinado à mesma loja por mais de um fornecedor fica fora da cobrança e é conferido manualmente, porque a loja pesa o produto inteiro. |
 | 12/11 | Fechamento integrado por ciclo, com o caminho de cada produto e o valor por loja. Valor comprado = destinado × custo do ciclo; valor recebido = valor comprado ajustado pelo peso da conferência finalizada (não recebido conta zero; sem pesagem conta o comprado). |
 
 ## Histórico de entregas (PRs)
@@ -78,6 +79,7 @@ Cabeçalho único em todas as telas da loja: “‹ Início” para voltar, nome
 | #27 | 13/11 | **1.3** — Notas no Fechamento: foto, entrada dada, número sem foto, contador e linha verde; seletor de ciclo |
 | #28 | 13/11 | **1.4** — Seção Embalados; cadastro de produtos com filtros, painel em abas e exclusividade só pela aba Fornecedores |
 | #29 | 14/11 | **1.4.1** — Relatório de faturamento por fornecedor em uma folha A4; busca de fornecedores corrigida |
+| #30 | 23/11 | **1.5** — Itens de cada nota no Fechamento e texto de cobrança das faltas |
 
 ## Como seguimos
 
