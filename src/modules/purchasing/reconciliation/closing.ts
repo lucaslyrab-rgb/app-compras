@@ -408,6 +408,39 @@ export function summarizeJourneys(
 // Valor por loja
 // ---------------------------------------------------------------------------
 
+/**
+ * Situação de um item da nota na conferência da loja:
+ * PENDING = conferência não finalizada; UNRECEIVED = marcado "não recebido";
+ * WEIGHED = pesado e comparável com o esperado; NO_WEIGHT = sem pesagem
+ * comparável (ex.: vendido por unidade), conta como recebido.
+ */
+export type SupplierItemStatus = "PENDING" | "UNRECEIVED" | "WEIGHED" | "NO_WEIGHT";
+
+/** Um produto de uma nota (loja × fornecedor) no Valor por loja. */
+export type SupplierItemValue = {
+  productId: string;
+  erpCode: number;
+  productName: string;
+  destined: QuantityGroup[];
+  status: SupplierItemStatus;
+  /** Peso esperado e conferido (kg), na parte deste fornecedor. */
+  expectedKg: number | null;
+  conferredKg: number | null;
+  /** Diferença de peso em %, só quando WEIGHED. */
+  weightPercent: number | null;
+  /** Custo do ciclo por unidade de compra; null = sem custo lançado. */
+  cost: number | null;
+  purchasedValue: number;
+  receivedValue: number | null;
+  difference: number | null;
+  /**
+   * O mesmo produto foi destinado à loja por mais de um fornecedor. A loja pesa
+   * o produto inteiro, então os valores são divididos na proporção destinada e
+   * a cobrança deve ser conferida manualmente.
+   */
+  multipleSuppliers: boolean;
+};
+
 export type SupplierValue = {
   supplierId: string;
   supplierName: string;
@@ -416,6 +449,8 @@ export type SupplierValue = {
   purchasedValue: number;
   receivedValue: number | null;
   difference: number | null;
+  /** Produtos da nota, faltas primeiro. */
+  items: SupplierItemValue[];
 };
 
 export type StoreValue = {
@@ -476,7 +511,27 @@ export function buildStoreValues(
   );
   const invoices = indexInvoices(sources, cycleDate);
 
-  type Acc = StoreValue & { productIds: Set<string>; supplierMap: Map<string, SupplierValue & { productIds: Set<string> }> };
+  type ItemAcc = {
+    productId: string;
+    destined: Map<string, number>;
+    destinedTotal: number;
+    cost: number | null;
+    purchasedValue: number;
+    receivedValue: number;
+  };
+  type SupplierAcc = Omit<SupplierValue, "items"> & { productIds: Set<string>; itemMap: Map<string, ItemAcc> };
+  type Acc = StoreValue & { productIds: Set<string>; supplierMap: Map<string, SupplierAcc> };
+  const productById = new Map(sources.products.map((p) => [p.id, p]));
+  // Quantos fornecedores e quanto foi destinado de cada produto a cada loja.
+  const storeProduct = new Map<string, { suppliers: Set<string>; destined: number }>();
+  for (const alloc of sources.allocations) {
+    if (alloc.cycleDate !== cycleDate || !(alloc.destinedQuantity > 0)) continue;
+    const key = `${alloc.storeId}|${alloc.productId}`;
+    const entry = storeProduct.get(key) ?? { suppliers: new Set<string>(), destined: 0 };
+    entry.suppliers.add(alloc.supplierId);
+    entry.destined += alloc.destinedQuantity;
+    storeProduct.set(key, entry);
+  }
   const byStore = new Map<string, Acc>();
   const storeName = new Map(sources.stores.map((s) => [s.id, s.name]));
   const ensure = (storeId: string): Acc => {
@@ -520,7 +575,7 @@ export function buildStoreValues(
     const finalized = acc.conference.state === "FINALIZED";
     const received = finalized ? value * receivedRatio(lineByKey.get(`${alloc.storeId}|${alloc.productId}`)) : 0;
 
-    const supplier = acc.supplierMap.get(alloc.supplierId) ?? {
+    const supplier: SupplierAcc = acc.supplierMap.get(alloc.supplierId) ?? {
       supplierId: alloc.supplierId,
       supplierName: alloc.supplierName,
       invoices: invoices.get(`${alloc.storeId}|${alloc.supplierId}`) ?? [],
@@ -529,8 +584,22 @@ export function buildStoreValues(
       receivedValue: finalized ? 0 : null,
       difference: null,
       productIds: new Set<string>(),
+      itemMap: new Map(),
     };
     supplier.productIds.add(alloc.productId);
+    const item = supplier.itemMap.get(alloc.productId) ?? {
+      productId: alloc.productId,
+      destined: new Map<string, number>(),
+      destinedTotal: 0,
+      cost,
+      purchasedValue: 0,
+      receivedValue: 0,
+    };
+    item.destined.set(alloc.purchaseFormat, (item.destined.get(alloc.purchaseFormat) ?? 0) + alloc.destinedQuantity);
+    item.destinedTotal += alloc.destinedQuantity;
+    item.purchasedValue += value;
+    item.receivedValue += received;
+    supplier.itemMap.set(alloc.productId, item);
     supplier.purchasedValue += value;
     if (supplier.receivedValue !== null) supplier.receivedValue += received;
     acc.supplierMap.set(alloc.supplierId, supplier);
@@ -538,6 +607,46 @@ export function buildStoreValues(
     if (finalized) acc.receivedValue = (acc.receivedValue ?? 0) + received;
   }
   for (const key of missingCostKeys) byStore.get(key.split("|")[0])!.missingCost += 1;
+
+  function supplierItem(
+    item: { productId: string; destined: Map<string, number>; destinedTotal: number; cost: number | null; purchasedValue: number; receivedValue: number },
+    storeId: string,
+    finalized: boolean,
+  ): SupplierItemValue {
+    const key = `${storeId}|${item.productId}`;
+    const line = lineByKey.get(key);
+    const product = productById.get(item.productId);
+    const shared = storeProduct.get(key);
+    const share = shared && shared.destined > 0 ? item.destinedTotal / shared.destined : 1;
+    const conf = line?.conference.item ?? null;
+    const comparable = Boolean(line?.weight && line.expected.kg && line.expected.kg > 0 && conf?.weightKg != null);
+    const status: SupplierItemStatus = !finalized
+      ? "PENDING"
+      : conf?.isUnreceived
+        ? "UNRECEIVED"
+        : comparable
+          ? "WEIGHED"
+          : "NO_WEIGHT";
+    const expectedKg = line?.expected.kg != null && line.expected.kg > 0 ? round2(line.expected.kg * share) : null;
+    const purchasedValue = round2(item.purchasedValue);
+    const receivedValue = finalized ? round2(item.receivedValue) : null;
+    return {
+      productId: item.productId,
+      erpCode: product?.erpCode ?? line?.erpCode ?? 0,
+      productName: product?.name ?? line?.productName ?? "Produto",
+      destined: [...item.destined.entries()].map(([unit, quantity]) => ({ unit, quantity })),
+      status,
+      expectedKg,
+      conferredKg: status === "WEIGHED" ? round2(conf!.weightKg! * share) : status === "UNRECEIVED" ? 0 : null,
+      weightPercent:
+        status === "WEIGHED" ? Math.round(((conf!.weightKg! - line!.expected.kg!) / line!.expected.kg!) * 1000) / 10 : null,
+      cost: item.cost,
+      purchasedValue,
+      receivedValue,
+      difference: receivedValue === null ? null : round2(receivedValue - purchasedValue),
+      multipleSuppliers: (shared?.suppliers.size ?? 1) > 1,
+    };
+  }
 
   const totalPurchased = round2([...byStore.values()].reduce((sum, s) => sum + s.purchasedValue, 0));
   let receivedTotal = 0;
@@ -555,7 +664,7 @@ export function buildStoreValues(
       }
       const difference = receivedValue === null ? null : round2(receivedValue - purchasedValue);
       const suppliers = [...acc.supplierMap.values()]
-        .map(({ productIds, ...s }) => {
+        .map(({ productIds, itemMap, ...s }): SupplierValue => {
           const purchased = round2(s.purchasedValue);
           const received = s.receivedValue === null ? null : round2(s.receivedValue);
           return {
@@ -564,6 +673,9 @@ export function buildStoreValues(
             purchasedValue: purchased,
             receivedValue: received,
             difference: received === null ? null : round2(received - purchased),
+            items: [...itemMap.values()]
+              .map((item) => supplierItem(item, acc.storeId, finalized))
+              .sort(compareSupplierItems),
           };
         })
         .sort((a, b) => b.purchasedValue - a.purchasedValue || a.supplierName.localeCompare(b.supplierName, "pt-BR"));
@@ -599,6 +711,60 @@ export function buildStoreValues(
       missingCost: missingCostKeys.size,
     },
   };
+}
+
+/** Faltas primeiro (a maior em reais no topo); depois A–Z. */
+export function compareSupplierItems(a: SupplierItemValue, b: SupplierItemValue): number {
+  const da = a.difference ?? 0;
+  const db = b.difference ?? 0;
+  if (da !== db) return da - db;
+  return a.productName.localeCompare(b.productName, "pt-BR");
+}
+
+const ptNumber = (value: number, digits: number) =>
+  value.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+const ptKg = (value: number) => `${ptNumber(value, 1)} kg`;
+const ptMoney = (value: number) => `R$ ${ptNumber(value, 2)}`;
+
+/** Itens com falta que entram na cobrança (os de mais de um fornecedor ficam para conferência manual). */
+export function chargeableItems(items: readonly SupplierItemValue[]): SupplierItemValue[] {
+  return items.filter((item) => item.difference !== null && item.difference < -0.004 && !item.multipleSuppliers);
+}
+
+/**
+ * Texto para cobrar o fornecedor pelas faltas da conferência (WhatsApp).
+ * Só faltas; sobras não abatem. null quando não há o que cobrar.
+ */
+export function buildChargeText(input: {
+  supplierName: string;
+  storeName: string;
+  cycleDate: string;
+  invoiceNumbers: readonly string[];
+  items: readonly SupplierItemValue[];
+}): string | null {
+  const items = chargeableItems(input.items);
+  if (items.length === 0) return null;
+  const [, month, day] = input.cycleDate.split("-");
+  const nf = input.invoiceNumbers.length ? `NF ${input.invoiceNumbers.join(", ")}` : "sem nota";
+  const lines = items.map((item) => {
+    const amount = ptMoney(Math.abs(item.difference!));
+    if (item.status === "UNRECEIVED") {
+      const destined = item.destined.map((g) => `${g.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ${g.unit}`).join(" + ");
+      return `• ${item.productName}: ${destined} não recebido — ${amount}`;
+    }
+    if (item.status === "WEIGHED" && item.expectedKg !== null && item.conferredKg !== null) {
+      const missing = Math.max(0, item.expectedKg - item.conferredKg);
+      return `• ${item.productName}: esperado ${ptKg(item.expectedKg)}, recebido ${ptKg(item.conferredKg)} (falta ${ptKg(missing)}) — ${amount}`;
+    }
+    return `• ${item.productName}: diferença na conferência — ${amount}`;
+  });
+  const total = items.reduce((sum, item) => sum + Math.abs(item.difference!), 0);
+  return [
+    `${input.supplierName} — ${nf} — compra de ${day}/${month} — ${input.storeName}`,
+    "Faltas na conferência:",
+    ...lines,
+    `Total a acertar: ${ptMoney(round2(total))}`,
+  ].join("\n");
 }
 
 // ---------------------------------------------------------------------------

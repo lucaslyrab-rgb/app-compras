@@ -4,6 +4,17 @@ Cada versão vai para produção quando o Lucas aprova, depois de testada no
 ambiente local ([docs/desenvolvimento-local.md](docs/desenvolvimento-local.md)).
 Detalhes da primeira versão completa: [docs/versao-1.md](docs/versao-1.md).
 
+## 1.5.0 — 23/11/2026
+
+**Fechamento integrado — itens de cada nota**
+- Na aba Valor por loja, o botão **"N itens"** de cada fornecedor abre a nota
+  produto a produto: destinado, peso esperado, conferido, custo, valor
+  comprado, valor recebido e diferença, com as faltas primeiro.
+- **Copiar cobrança:** texto pronto para o WhatsApp do fornecedor, só com as
+  faltas (sobras não abatem).
+- Produto destinado à loja por mais de um fornecedor: aviso, valores divididos
+  na proporção destinada e item fora da cobrança, para conferir manualmente.
+
 ## 1.4.1 — 14/11/2026
 
 - **Relatório de faturamento por fornecedor** (WG, JEB…) compacto para enviar

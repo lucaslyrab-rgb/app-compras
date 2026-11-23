@@ -10,7 +10,7 @@ import {
   type StoreValue,
 } from "./closing";
 import type { ClosingOverview } from "./closing-service";
-import { ClosingFilterBar, InvoiceCell } from "./closing-client";
+import { ClosingFilterBar, InvoiceCell, SupplierValueRow } from "./closing-client";
 import { PACKAGED_SECTION_LABEL, startsPackagedSection } from "@/lib/product-sections";
 import "./closing.css";
 
@@ -358,21 +358,7 @@ function StoreValueRow({ store, cycleDate }: { store: StoreValue; cycleDate: str
               </thead>
               <tbody>
                 {store.suppliers.map((s) => (
-                  <tr key={s.supplierId}>
-                    <td>{s.supplierName}</td>
-                    <td className="cl-invoice-col">
-                      <InvoiceCell
-                        cycleDate={cycleDate}
-                        storeId={store.storeId}
-                        suppliers={[{ supplierId: s.supplierId, supplierName: s.supplierName, invoices: s.invoices }]}
-                        allowInform={false}
-                      />
-                    </td>
-                    <td className="num">{s.products}</td>
-                    <td className="num">{money(s.purchasedValue)}</td>
-                    <td className="num">{s.receivedValue === null ? <span className="cl-muted">aguardando</span> : money(s.receivedValue)}</td>
-                    <td className={`num cl-text--${moneyTone(s.difference)}`}>{s.difference === null ? "—" : signedMoney(s.difference)}</td>
-                  </tr>
+                  <SupplierValueRow key={s.supplierId} supplier={s} storeId={store.storeId} storeName={store.storeName} cycleDate={cycleDate} />
                 ))}
               </tbody>
             </table>
