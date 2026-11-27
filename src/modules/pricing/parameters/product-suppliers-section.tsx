@@ -9,6 +9,7 @@ import {
   linkSupplierAction,
   listProductSuppliersAction,
   setPrimarySupplierAction,
+  setSupplierBoxWeightAction,
   toggleExclusivityAction,
   unlinkSupplierAction,
 } from "@/modules/suppliers/product-suppliers-actions";
@@ -19,10 +20,16 @@ export function ProductSuppliersSection({
   productName,
   onExclusiveChanged,
   onCountChanged,
+  productBoxKg,
 }: {
   productId: string;
   erpCode: number;
   productName: string;
+  /**
+   * Peso da caixa pela conversão do produto (kg). undefined = o produto não é
+   * comprado em caixa e vendido em KG, e o peso padrão por fornecedor não aparece.
+   */
+  productBoxKg?: string | null;
   onExclusiveChanged?: (isExclusive: boolean) => void;
   /** Quantidade de fornecedores vinculados (para o título da aba). */
   onCountChanged?: (count: number) => void;
@@ -38,6 +45,7 @@ export function ProductSuppliersSection({
   const [pending, startTransition] = useTransition();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [showLinkForm, setShowLinkForm] = useState(false);
+  const [boxEdit, setBoxEdit] = useState<{ supplierId: string; text: string } | null>(null);
 
   useEffect(() => {
     if (!loading) onCountChanged?.(links.length);
@@ -190,6 +198,29 @@ export function ProductSuppliersSection({
     });
   }
 
+  function handleSaveBoxWeight() {
+    if (!boxEdit) return;
+    const { supplierId, text } = boxEdit;
+    setFeedback(null);
+    startTransition(async () => {
+      const res = await setSupplierBoxWeightAction({ productId, supplierId, weightKg: text });
+      if (res.status === "success") {
+        setLinks((current) => current.map((l) => (l.supplierId === supplierId ? res.link : l)));
+        setBoxEdit(null);
+        setFeedback({
+          type: "success",
+          message: res.link.boxWeightKg
+            ? `Caixa padrão de ${res.link.tradeName || res.link.corporateName}: ${res.link.boxWeightKg.replace(".", ",")} kg.`
+            : `${res.link.tradeName || res.link.corporateName} volta a usar o peso da caixa do produto.`,
+        });
+      } else {
+        setFeedback({ type: "error", message: res.message });
+      }
+    });
+  }
+
+  const kgLabel = (value: string | null | undefined) => (value ? `${value.replace(".", ",")} kg` : "não informado");
+
   // Filtra fornecedores que ainda não estão vinculados
   const unlinkedSuppliers = availableSuppliers.filter(
     (sup) => !links.some((l) => l.supplierId === sup.id)
@@ -222,6 +253,50 @@ export function ProductSuppliersSection({
                     {link.tradeName ? `${link.corporateName} · ` : ""}
                     {link.taxId ? formatTaxId(link.taxId) : "sem documento"}
                   </small>
+                  {productBoxKg !== undefined ? (
+                    boxEdit?.supplierId === link.supplierId ? (
+                      <span className="product-suppliers__box-edit">
+                        <label htmlFor={`box-${link.id}`}>Caixa padrão</label>
+                        <input
+                          id={`box-${link.id}`}
+                          type="text"
+                          inputMode="decimal"
+                          autoFocus
+                          placeholder={productBoxKg ? productBoxKg.replace(".", ",") : "kg"}
+                          value={boxEdit.text}
+                          onChange={(e) => setBoxEdit({ supplierId: link.supplierId, text: e.target.value })}
+                          onKeyDown={(e) => {
+                            // Dentro do formulário do produto: Enter salva só o peso.
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleSaveBoxWeight();
+                            } else if (e.key === "Escape") {
+                              setBoxEdit(null);
+                            }
+                          }}
+                        />
+                        <span>kg</span>
+                        <button type="button" className="manager-primary" disabled={pending} onClick={handleSaveBoxWeight}>
+                          Salvar
+                        </button>
+                        <button type="button" className="manager-secondary" disabled={pending} onClick={() => setBoxEdit(null)}>
+                          Cancelar
+                        </button>
+                        <small className="product-suppliers__box-help">Vazio = usa o peso do produto ({kgLabel(productBoxKg)}).</small>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="product-suppliers__box"
+                        disabled={pending}
+                        onClick={() => setBoxEdit({ supplierId: link.supplierId, text: link.boxWeightKg ? link.boxWeightKg.replace(".", ",") : "" })}
+                      >
+                        Caixa padrão:{" "}
+                        {link.boxWeightKg ? <strong>{kgLabel(link.boxWeightKg)}</strong> : <>usa a do produto ({kgLabel(productBoxKg)})</>}{" "}
+                        <span aria-hidden="true">✎</span>
+                      </button>
+                    )
+                  ) : null}
                 </span>
                 <span className="product-suppliers__badges">
                   {link.isPrimary || link.isExclusive ? <span className="manager-badge manager-badge--configured">Principal</span> : null}

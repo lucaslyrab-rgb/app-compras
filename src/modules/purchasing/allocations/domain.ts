@@ -139,6 +139,79 @@ export type StoreAllocationData = {
   destinedInOtherSuppliers?: string;
 };
 
+/** De onde veio o peso da caixa usado numa compra. */
+export type BoxWeightSource = "CYCLE" | "SUPPLIER" | "PRODUCT";
+
+/** Peso da caixa de um produto para o fornecedor na compra (v1.6). */
+export type BoxWeightInfo = {
+  /** Peso que vale nesta compra (kg), ou null se não há nenhuma referência. */
+  kg: string | null;
+  source: BoxWeightSource | null;
+  /** Padrão sem o ajuste da compra: do fornecedor, ou a conversão do produto. */
+  defaultKg: string | null;
+  defaultSource: "SUPPLIER" | "PRODUCT" | null;
+  /** Peso informado na compra anterior deste produto com este fornecedor. */
+  lastKg: string | null;
+  /** Há vínculo ativo produto × fornecedor (onde o padrão do fornecedor fica salvo). */
+  supplierLinked: boolean;
+};
+
+const positive = (value: string | number | null | undefined): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+const kgText = (value: number) => String(Math.round(value * 1000) / 1000);
+
+/**
+ * Peso da caixa: o informado na compra vale primeiro; depois o padrão do
+ * fornecedor; por fim a conversão do produto.
+ */
+export function resolveBoxWeight(input: {
+  cycleKg?: string | number | null;
+  supplierKg?: string | number | null;
+  productKg?: string | number | null;
+  lastKg?: string | number | null;
+  supplierLinked?: boolean;
+}): BoxWeightInfo {
+  const cycle = positive(input.cycleKg);
+  const supplier = positive(input.supplierKg);
+  const product = positive(input.productKg);
+  const last = positive(input.lastKg);
+  const defaultKg = supplier ?? product;
+  const defaultSource = supplier !== null ? "SUPPLIER" : product !== null ? "PRODUCT" : null;
+  const kg = cycle ?? defaultKg;
+  return {
+    kg: kg === null ? null : kgText(kg),
+    source: cycle !== null ? "CYCLE" : defaultSource,
+    defaultKg: defaultKg === null ? null : kgText(defaultKg),
+    defaultSource,
+    lastKg: last === null ? null : kgText(last),
+    supplierLinked: Boolean(input.supplierLinked),
+  };
+}
+
+/** O peso da caixa só faz sentido para produto comprado em caixa (não KG) e vendido em KG. */
+export function boxWeightApplies(purchaseFormat: string | null | undefined, saleUnit: string | null | undefined): boolean {
+  const format = (purchaseFormat ?? "").trim().toUpperCase();
+  const unit = (saleUnit ?? "").trim().toUpperCase();
+  return format !== "" && format !== "KG" && unit === "KG";
+}
+
+/** Lê o peso digitado ("10", "10,5", "12.25"): maior que zero, até 9.999 kg e 3 casas. */
+export function parseBoxWeightInput(text: string): number {
+  const cleaned = text.trim().replace(/\s*kg$/i, "").replace(",", ".");
+  if (!/^\d+(\.\d{1,3})?$/.test(cleaned)) {
+    throw new AllocationValidationError("Informe o peso da caixa em kg, por exemplo 18 ou 12,5.");
+  }
+  const value = Number(cleaned);
+  if (!(value > 0) || value > 9999) {
+    throw new AllocationValidationError("O peso da caixa deve ser maior que zero e até 9.999 kg.");
+  }
+  return Math.round(value * 1000) / 1000;
+}
+
 export type ProductAllocationItem = {
   productId: string;
   erpCode: number;
@@ -164,6 +237,8 @@ export type ProductAllocationItem = {
   version: number;
   supplierDecision?: "NOT_PURCHASED" | null;
   storeTotalDestinedAcrossSuppliers?: string;
+  /** Peso da caixa nesta compra; null quando não se aplica (comprado em KG ou vendido por unidade). */
+  boxWeight?: BoxWeightInfo | null;
 };
 
 export type SupplierDestinationData = {

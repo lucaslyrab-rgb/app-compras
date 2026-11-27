@@ -1081,3 +1081,15 @@
   .product-suppliers__badges { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
   .product-suppliers__menu { grid-column: 2; grid-row: 1; }
 }
+
+/* v1.6 — Caixa padrão por fornecedor (aba Fornecedores do produto). */
+.product-suppliers__box {
+  display: inline-flex; align-items: baseline; gap: 3px; margin-top: 4px; padding: 0; border: 0; background: none;
+  color: var(--brand-700, #006b4f); font: inherit; font-size: .74rem; font-weight: 600; text-align: left; cursor: pointer;
+}
+.product-suppliers__box:hover:not(:disabled) { text-decoration: underline; }
+.product-suppliers__box-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: .76rem; }
+.product-suppliers__box-edit label { font-weight: 700; }
+.product-suppliers__box-edit input { width: 70px; min-height: 32px; padding: 4px 8px; border: 1px solid var(--border, #c3cfd9); border-radius: 6px; font: inherit; }
+.product-suppliers__box-edit button { min-height: 32px; padding: 4px 10px; font-size: .74rem; }
+.product-suppliers__box-help { flex-basis: 100%; color: var(--ink-600, #4b5b6b); }

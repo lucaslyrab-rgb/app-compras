@@ -383,6 +383,13 @@ export function ProductPricingEditor({ product, settings, onSaved, onCreated, on
             productName={product.name}
             onExclusiveChanged={setExclusiveSupplier}
             onCountChanged={setSupplierCount}
+            productBoxKg={
+              product.purchaseFormat.trim().toUpperCase() !== "KG" && product.saleUnit.trim().toUpperCase() === "KG"
+                ? Number(product.conversionQuantity) > 0
+                  ? String(Number(product.conversionQuantity))
+                  : null
+                : undefined
+            }
           />
         </div>
       ) : null}

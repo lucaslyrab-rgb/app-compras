@@ -263,7 +263,7 @@ describe("valor por loja", () => {
   it("abre os itens de cada nota, faltas primeiro", () => {
     expect(ponta.suppliers[0].items).toEqual([
       {
-        productId: "laranja", erpCode: 1, productName: "LARANJA PERA", destined: [{ unit: "CX", quantity: 6 }],
+        productId: "laranja", erpCode: 1, productName: "LARANJA PERA", destined: [{ unit: "CX", quantity: 6 }], boxWeightKg: 20,
         status: "WEIGHED", expectedKg: 120, conferredKg: 118.2, weightPercent: -1.5, cost: 62,
         purchasedValue: 372, receivedValue: 366.42, difference: -5.58, multipleSuppliers: false,
       },

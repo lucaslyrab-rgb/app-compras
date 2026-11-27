@@ -48,6 +48,7 @@ import {
 } from "./destination-view";
 import { shortStoreName, storeColor } from "@/modules/purchasing/domain";
 import { compressImageForUpload } from "@/lib/compress-image";
+import { BoxWeightChip, BoxWeightSheet, type BoxWeightSaved } from "./box-weight-sheet";
 import "./styles.css";
 import "./destination-mobile.css";
 
@@ -180,6 +181,8 @@ export function BuyerAllocationWorkspace({
   const [listFilter, setListFilter] = useState<"pending" | "all" | null>(null);
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showSupplierPicker, setShowSupplierPicker] = useState(false);
+  // Peso da caixa: produto com a folha aberta (v1.6)
+  const [boxWeightProductId, setBoxWeightProductId] = useState<string | null>(null);
   const [supplierQuery, setSupplierQuery] = useState("");
   const [expandedProductIds, setExpandedProductIds] = useState<Set<string>>(() => new Set());
   const [showFulfilledCuts, setShowFulfilledCuts] = useState(false);
@@ -1780,6 +1783,14 @@ export function BuyerAllocationWorkspace({
                               </div>
                             ) : null}
 
+                            {prod.boxWeight ? (
+                              <BoxWeightChip
+                                info={prod.boxWeight}
+                                disabled={isClosed}
+                                onOpen={() => setBoxWeightProductId(prod.productId)}
+                              />
+                            ) : null}
+
                             {/* ALERTA: PRODUTO COM PEDIDO NÃO COMPRADO NOS CUSTOS (BUG 03) */}
                             {isUnpurchasedWithOrders ? (
                               <div className="dst-alert" role="alert">
@@ -2072,6 +2083,52 @@ export function BuyerAllocationWorkspace({
           ) : null}
         </section>
       )}
+
+      {/* FOLHA: PESO DA CAIXA DESTA COMPRA */}
+      {(() => {
+        const prod = boxWeightProductId ? products.find((p) => p.productId === boxWeightProductId) : null;
+        if (!prod?.boxWeight || !selectedSupplierId || !destinationData) return null;
+        const supplierName = destinationData.tradeName || destinationData.corporateName;
+        const storesWithQty = stores
+          .map((store) => ({ store, data: prod.stores[store.id] }))
+          .filter(({ data }) => data && parseQuantity(data.destinedQuantity) > 0)
+          .map(({ store, data }) => ({ name: store.name.replace("MultiShow ", ""), quantity: formatQty(data!.destinedQuantity) }));
+        return (
+          <BoxWeightSheet
+            cycleDate={cycleDate}
+            supplierId={selectedSupplierId}
+            supplierName={supplierName}
+            productId={prod.productId}
+            productName={prod.productName}
+            purchaseFormat={prod.purchaseFormat}
+            info={prod.boxWeight}
+            stores={storesWithQty}
+            onClose={() => setBoxWeightProductId(null)}
+            onSaved={(saved: BoxWeightSaved) => {
+              setProducts((prev) =>
+                prev.map((p) =>
+                  p.productId === prod.productId && p.boxWeight
+                    ? {
+                        ...p,
+                        boxWeight: {
+                          ...p.boxWeight,
+                          kg: saved.weightKg,
+                          source: "CYCLE",
+                          ...(saved.savedAsDefault ? { defaultKg: saved.weightKg, defaultSource: "SUPPLIER" as const } : {}),
+                        },
+                      }
+                    : p,
+                ),
+              );
+              setBoxWeightProductId(null);
+              setSaveMessage(
+                `Caixa de ${prod.productName}: ${saved.weightKg.replace(".", ",")} kg nesta compra` +
+                  (saved.savedAsDefault ? " (também como padrão do fornecedor)." : "."),
+              );
+            }}
+          />
+        );
+      })()}
 
       {/* FOLHA: ESCOLHER FORNECEDOR */}
       {showSupplierPicker ? (

@@ -9,6 +9,7 @@ import {
   canViewProductSuppliers,
   linkSupplierInputSchema,
   setPrimarySupplierInputSchema,
+  setSupplierBoxWeightInputSchema,
   toggleExclusivityInputSchema,
   unlinkSupplierInputSchema,
   ProductSupplierConflictError,
@@ -20,6 +21,7 @@ import {
   listProductsBySupplier,
   listSuppliersByProduct,
   setPrimarySupplier,
+  setSupplierBoxWeight,
   toggleExclusivity,
   unlinkSupplierFromProduct,
 } from "./product-suppliers-repository";
@@ -306,5 +308,35 @@ export async function toggleExclusivityAction(raw: unknown) {
       status: "error" as const,
       message: "Não foi possível alterar a exclusividade. Tente novamente.",
     };
+  }
+}
+
+export async function setSupplierBoxWeightAction(raw: unknown) {
+  const principal = await currentPrincipal();
+  if (!principal || !canManageProductSuppliers(principal)) {
+    return { status: "error" as const, message: "Acesso negado: permissão insuficiente para alterar o peso da caixa." };
+  }
+  const parsed = setSupplierBoxWeightInputSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { status: "error" as const, message: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  try {
+    const link = await setSupplierBoxWeight({ ...parsed.data, actorId: principal.userId });
+    await recordAudit({
+      actorId: principal.userId,
+      action: "PRODUCT_SUPPLIER_BOX_WEIGHT_SET",
+      entityType: "product_supplier",
+      entityId: link.id,
+      metadata: { productId: link.productId, supplierId: link.supplierId, boxWeightKg: link.boxWeightKg },
+    });
+    revalidatePath("/gestor/produtos");
+    revalidatePath("/comprador/destinacao");
+    return { status: "success" as const, link };
+  } catch (error) {
+    if (error instanceof ProductSupplierNotFoundError || error instanceof ProductSupplierValidationError) {
+      return { status: "error" as const, message: error.message };
+    }
+    log("error", "Falha ao salvar peso padrão da caixa", { error: error instanceof Error ? error.message : "unknown" });
+    return { status: "error" as const, message: "Não foi possível salvar o peso da caixa. Tente novamente." };
   }
 }

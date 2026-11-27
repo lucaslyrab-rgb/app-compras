@@ -19,6 +19,7 @@ import {
   reopenStoreCycle,
   revertProductSupplierDecision,
   saveSupplierAllocations,
+  setCycleBoxWeight,
   setProductSupplierDecision,
 } from "./repository";
 
@@ -427,5 +428,41 @@ export async function reopenStoreCycleAction(
       status: "error",
       message: error instanceof Error ? error.message : "Erro ao reabrir conferência da loja.",
     };
+  }
+}
+
+const setBoxWeightSchema = z.object({
+  cycleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  supplierId: z.string().uuid(),
+  productId: z.string().uuid(),
+  weightKg: z.string().min(1).max(20),
+  makeSupplierDefault: z.boolean().optional(),
+});
+
+/** Peso da caixa nesta compra (todas as lojas do fornecedor). */
+export async function setCycleBoxWeightAction(
+  rawInput: unknown,
+): Promise<ActionResponse<{ weightKg: string; updatedAllocations: number; savedAsDefault: boolean }>> {
+  try {
+    const principal = await requirePrincipal();
+    const parsed = setBoxWeightSchema.safeParse(rawInput);
+    if (!parsed.success) return { status: "error", message: "Dados inválidos para o peso da caixa." };
+
+    const result = await setCycleBoxWeight(principal, parsed.data);
+    revalidatePath("/comprador/destinacao");
+    revalidatePath("/fechamento");
+    return {
+      status: "success",
+      data: result,
+      message: result.savedAsDefault
+        ? `Peso da caixa salvo: ${result.weightKg.replace(".", ",")} kg, também como padrão do fornecedor.`
+        : `Peso da caixa salvo: ${result.weightKg.replace(".", ",")} kg nesta compra.`,
+    };
+  } catch (error) {
+    if (error instanceof AllocationValidationError || error instanceof CycleClosedError) {
+      return { status: "error", message: error.message };
+    }
+    log("error", "Falha ao salvar peso da caixa", { error: error instanceof Error ? error.message : "unknown" });
+    return { status: "error", message: "Não foi possível salvar o peso da caixa." };
   }
 }

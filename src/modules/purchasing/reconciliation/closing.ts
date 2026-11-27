@@ -422,6 +422,8 @@ export type SupplierItemValue = {
   erpCode: number;
   productName: string;
   destined: QuantityGroup[];
+  /** Peso da caixa usado nesta compra (kg), quando o produto é comprado em caixa. */
+  boxWeightKg: number | null;
   status: SupplierItemStatus;
   /** Peso esperado e conferido (kg), na parte deste fornecedor. */
   expectedKg: number | null;
@@ -515,6 +517,7 @@ export function buildStoreValues(
     productId: string;
     destined: Map<string, number>;
     destinedTotal: number;
+    boxWeightKg: number | null;
     cost: number | null;
     purchasedValue: number;
     receivedValue: number;
@@ -591,10 +594,14 @@ export function buildStoreValues(
       productId: alloc.productId,
       destined: new Map<string, number>(),
       destinedTotal: 0,
+      boxWeightKg: null as number | null,
       cost,
       purchasedValue: 0,
       receivedValue: 0,
     };
+    if (normalizeUnit(alloc.purchaseFormat) !== "KG" && alloc.conversionFactorKg !== null && alloc.conversionFactorKg > 0) {
+      item.boxWeightKg = alloc.conversionFactorKg;
+    }
     item.destined.set(alloc.purchaseFormat, (item.destined.get(alloc.purchaseFormat) ?? 0) + alloc.destinedQuantity);
     item.destinedTotal += alloc.destinedQuantity;
     item.purchasedValue += value;
@@ -609,7 +616,7 @@ export function buildStoreValues(
   for (const key of missingCostKeys) byStore.get(key.split("|")[0])!.missingCost += 1;
 
   function supplierItem(
-    item: { productId: string; destined: Map<string, number>; destinedTotal: number; cost: number | null; purchasedValue: number; receivedValue: number },
+    item: { productId: string; destined: Map<string, number>; destinedTotal: number; boxWeightKg: number | null; cost: number | null; purchasedValue: number; receivedValue: number },
     storeId: string,
     finalized: boolean,
   ): SupplierItemValue {
@@ -635,6 +642,7 @@ export function buildStoreValues(
       erpCode: product?.erpCode ?? line?.erpCode ?? 0,
       productName: product?.name ?? line?.productName ?? "Produto",
       destined: [...item.destined.entries()].map(([unit, quantity]) => ({ unit, quantity })),
+      boxWeightKg: item.boxWeightKg,
       status,
       expectedKg,
       conferredKg: status === "WEIGHED" ? round2(conf!.weightKg! * share) : status === "UNRECEIVED" ? 0 : null,

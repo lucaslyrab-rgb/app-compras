@@ -354,7 +354,10 @@ function SupplierItems({
                   <span className="cl-items__name">{item.productName}</span>
                   <ItemStatus item={item} />
                   {item.multipleSuppliers ? <span className="cl-tag cl-tag--warn cl-items__tag">vários fornecedores</span> : null}
-                  <small className="cl-muted cl-items__erp">ERP {item.erpCode}</small>
+                  <small className="cl-muted cl-items__erp">
+                    ERP {item.erpCode}
+                    {item.boxWeightKg !== null ? ` · caixa de ${brNum(item.boxWeightKg, item.boxWeightKg % 1 === 0 ? 0 : 1)} kg` : ""}
+                  </small>
                 </td>
                 <td className="num">{item.destined.map((g) => `${brQty(g.quantity)} ${g.unit}`).join(" + ")}</td>
                 <td className="num">{item.expectedKg === null ? "—" : `${brNum(item.expectedKg, 1)} kg`}</td>

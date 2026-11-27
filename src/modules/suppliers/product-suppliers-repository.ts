@@ -32,6 +32,7 @@ type RawProductSupplierRow = {
   taxIdType: string;
   taxInvoiceRule: string;
   supplierActive: boolean;
+  boxWeightKg: string | null;
 };
 
 type RawSupplierProductRow = {
@@ -73,7 +74,8 @@ export async function listSuppliersByProduct(
       s.tax_id AS "taxId",
       s.tax_id_type AS "taxIdType",
       s.tax_invoice_rule AS "taxInvoiceRule",
-      s.active AS "supplierActive"
+      s.active AS "supplierActive",
+      ps.box_weight_kg::float8::text AS "boxWeightKg"
     FROM product_suppliers ps
     JOIN suppliers s ON s.id = ps.supplier_id
     WHERE ps.product_id = ${productId}::uuid
@@ -359,6 +361,26 @@ export async function toggleExclusivity(
     const link = (await listSuppliersByProduct(input.productId, tx)).find(
       (l) => l.supplierId === input.supplierId
     );
+    if (!link) throw new ProductSupplierNotFoundError("Erro ao recuperar vínculo atualizado.");
+    return link;
+  });
+}
+
+/** Peso padrão da caixa do fornecedor para o produto (null volta à conversão do produto). */
+export async function setSupplierBoxWeight(
+  input: { productId: string; supplierId: string; weightKg: number | null; actorId: string },
+): Promise<ProductSupplierLink> {
+  const sql = database().sql;
+  return await sql.begin(async (tx) => {
+    const updated = await tx`
+      UPDATE product_suppliers
+      SET box_weight_kg = ${input.weightKg === null ? null : input.weightKg.toFixed(3)}::numeric,
+        updated_by = ${input.actorId}::uuid, updated_at = now()
+      WHERE product_id = ${input.productId}::uuid AND supplier_id = ${input.supplierId}::uuid
+      RETURNING id
+    `;
+    if (updated.length === 0) throw new ProductSupplierNotFoundError("Fornecedor não está vinculado a este produto.");
+    const link = (await listSuppliersByProduct(input.productId, tx)).find((l) => l.supplierId === input.supplierId);
     if (!link) throw new ProductSupplierNotFoundError("Erro ao recuperar vínculo atualizado.");
     return link;
   });
