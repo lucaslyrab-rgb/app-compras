@@ -165,11 +165,23 @@ integration("Peso da caixa por compra (0027)", () => {
 
     const link2 = await setSupplierBoxWeight({ productId: maca, supplierId: bomPreco, weightKg: 20, actorId: buyer.userId });
     expect(link2.boxWeightKg).toBe("20");
-    await saveSupplierAllocations(buyer, {
-      cycleDate,
-      supplierId: bomPreco,
-      allocations: [{ productId: maca, stores: [{ storeId: ponta, destinedQuantity: "1.00" }] }],
-    });
+    // A Ponta da Fruta já recebe maçã da Frutas do Vale: confirma a compra dividida, como na tela.
+    const split = (fingerprint?: string) =>
+      saveSupplierAllocations(buyer, {
+        cycleDate,
+        supplierId: bomPreco,
+        allocations: [{
+          productId: maca,
+          stores: [{
+            storeId: ponta,
+            destinedQuantity: "1.00",
+            ...(fingerprint ? { conflictResolution: "SPLIT_CONFIRMED" as const, conflictFingerprint: fingerprint } : {}),
+          }],
+        }],
+      });
+    const conflict = await split().then(() => null, (error: { conflicts?: { fingerprint: string }[] }) => error);
+    expect(conflict?.conflicts?.[0]?.fingerprint).toBeTruthy();
+    await split(conflict!.conflicts![0].fingerprint);
     expect((await factors(maca, bomPreco)).map((r) => [r.factor, r.origin])).toEqual([["20", "SUPPLIER_BOX_WEIGHT"]]);
 
   });
