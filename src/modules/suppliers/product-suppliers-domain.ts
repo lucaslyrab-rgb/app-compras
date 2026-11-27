@@ -21,6 +21,8 @@ export type ProductSupplierLink = {
   taxIdType: string;
   taxInvoiceRule: string;
   supplierActive: boolean;
+  /** Peso padrão da caixa deste fornecedor (kg, texto); null = usa a conversão do produto. */
+  boxWeightKg: string | null;
 };
 
 export type SupplierProductLink = {
@@ -115,3 +117,20 @@ export const toggleExclusivityInputSchema = z.object({
 });
 
 export type ToggleExclusivityInput = z.infer<typeof toggleExclusivityInputSchema>;
+
+/** Peso padrão da caixa do fornecedor: "18", "12,5" ou vazio para voltar à conversão do produto. */
+export const setSupplierBoxWeightInputSchema = z.object({
+  productId: z.string().uuid("ID de produto inválido"),
+  supplierId: z.string().uuid("ID de fornecedor inválido"),
+  weightKg: z
+    .string()
+    .trim()
+    .max(12)
+    .transform((value) => value.replace(/\s*kg$/i, "").replace(",", "."))
+    .refine((value) => value === "" || (/^\d+(\.\d{1,3})?$/.test(value) && Number(value) > 0 && Number(value) <= 9999), {
+      message: "Informe o peso da caixa em kg (ex.: 18 ou 12,5), ou deixe vazio para usar o do produto.",
+    })
+    .transform((value) => (value === "" ? null : Number(value))),
+});
+
+export type SetSupplierBoxWeightInput = z.infer<typeof setSupplierBoxWeightInputSchema>;

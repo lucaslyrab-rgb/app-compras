@@ -15,8 +15,11 @@ import {
   canSupplierProvideProduct,
   computeStoreAllocationsHash,
   computeStoreCostsHash,
+  boxWeightApplies,
   isCycleDate,
+  parseBoxWeightInput,
   parseQuantity,
+  resolveBoxWeight,
   roundToTwoDecimals,
   sumQuantities,
   validateAllocationPurchasedStatus,
@@ -872,6 +875,7 @@ export async function readBuyerAllocationWorkspace(
       legacy_exclusive: boolean;
       conversion_quantity: string | null;
       conversion_origin: string | null;
+      sale_unit: string | null;
       exclusive_supplier_id: string | null;
       exclusive_supplier_name: string | null;
     }[]
@@ -883,6 +887,7 @@ export async function readBuyerAllocationWorkspace(
       p.purchase_format,
       p.active,
       p.is_packaged,
+      ppp.sale_unit,
       p.exclusive_supplier AS legacy_exclusive,
       ppp.conversion_quantity::text,
       ppp.conversion_origin,
@@ -1266,6 +1271,27 @@ export async function readBuyerAllocationWorkspace(
         storeId: currentSelectedStoreId ?? undefined,
       });
 
+      // Peso da caixa: o da compra, o padrão do fornecedor e o da compra anterior (v1.6)
+      const boxWeightRows = await sql<{ product_id: string; cycle_kg: string | null; supplier_kg: string | null; linked: boolean; last_kg: string | null }[]>`
+        SELECT p.id AS product_id,
+          cw.box_weight_kg::text AS cycle_kg,
+          ps.box_weight_kg::text AS supplier_kg,
+          (ps.id IS NOT NULL) AS linked,
+          lw.box_weight_kg::text AS last_kg
+        FROM unnest(${[...targetProductIds]}::uuid[]) AS p(id)
+        LEFT JOIN purchase_cycle_box_weights cw
+          ON cw.purchase_cycle_date = ${cycleDate}::date AND cw.product_id = p.id AND cw.supplier_id = ${resolvedSupplierId}::uuid
+        LEFT JOIN product_suppliers ps
+          ON ps.product_id = p.id AND ps.supplier_id = ${resolvedSupplierId}::uuid AND ps.active
+        LEFT JOIN LATERAL (
+          SELECT w.box_weight_kg FROM purchase_cycle_box_weights w
+          WHERE w.product_id = p.id AND w.supplier_id = ${resolvedSupplierId}::uuid
+            AND w.purchase_cycle_date < ${cycleDate}::date
+          ORDER BY w.purchase_cycle_date DESC LIMIT 1
+        ) lw ON true
+      `;
+      const boxWeightByProduct = new Map(boxWeightRows.map((r) => [r.product_id, r]));
+
       // Monta a lista de itens de destinação por produto
       const products: ProductAllocationItem[] = [];
 
@@ -1402,6 +1428,15 @@ export async function readBuyerAllocationWorkspace(
           version: itemVersion,
           supplierDecision,
           storeTotalDestinedAcrossSuppliers,
+          boxWeight: boxWeightApplies(prod.purchase_format, prod.sale_unit)
+            ? resolveBoxWeight({
+                cycleKg: boxWeightByProduct.get(prod.id)?.cycle_kg,
+                supplierKg: boxWeightByProduct.get(prod.id)?.supplier_kg,
+                productKg: prod.conversion_quantity,
+                lastKg: boxWeightByProduct.get(prod.id)?.last_kg,
+                supplierLinked: boxWeightByProduct.get(prod.id)?.linked ?? false,
+              })
+            : null,
         });
       }
 
@@ -2148,8 +2183,23 @@ export async function saveSupplierAllocations(
               ${destinedNum.toFixed(2)}::numeric,
               ${prodRow.purchase_format},
               ${isAdditional},
-              ${prodRow.conversion_quantity ? Number(prodRow.conversion_quantity).toFixed(3) : null}::numeric,
-              ${prodRow.conversion_origin ?? null},
+              COALESCE(
+                (SELECT cw.box_weight_kg FROM purchase_cycle_box_weights cw
+                  WHERE cw.purchase_cycle_date = ${input.cycleDate}::date
+                    AND cw.product_id = ${prodRow.id}::uuid AND cw.supplier_id = ${input.supplierId}::uuid),
+                (SELECT ps.box_weight_kg FROM product_suppliers ps
+                  WHERE ps.product_id = ${prodRow.id}::uuid AND ps.supplier_id = ${input.supplierId}::uuid AND ps.active),
+                ${prodRow.conversion_quantity ? Number(prodRow.conversion_quantity).toFixed(3) : null}::numeric
+              ),
+              CASE
+                WHEN EXISTS (SELECT 1 FROM purchase_cycle_box_weights cw
+                  WHERE cw.purchase_cycle_date = ${input.cycleDate}::date
+                    AND cw.product_id = ${prodRow.id}::uuid AND cw.supplier_id = ${input.supplierId}::uuid) THEN 'CYCLE_BOX_WEIGHT'
+                WHEN EXISTS (SELECT 1 FROM product_suppliers ps
+                  WHERE ps.product_id = ${prodRow.id}::uuid AND ps.supplier_id = ${input.supplierId}::uuid
+                    AND ps.active AND ps.box_weight_kg IS NOT NULL) THEN 'SUPPLIER_BOX_WEIGHT'
+                ELSE ${prodRow.conversion_origin ?? null}
+              END,
               ${nextNotes},
               ${principal.userId}::uuid,
               ${principal.userId}::uuid,
@@ -3382,5 +3432,102 @@ export async function reopenStoreCycle(
       success: true,
       reopenedAt,
     };
+  });
+}
+
+export type SetCycleBoxWeightInput = {
+  cycleDate: string;
+  supplierId: string;
+  productId: string;
+  /** Peso digitado (kg), ex.: "10" ou "12,5". */
+  weightKg: string;
+  /** Também salva como padrão do fornecedor (vínculo produto × fornecedor). */
+  makeSupplierDefault?: boolean;
+};
+
+/**
+ * Peso da caixa de uma compra (ciclo × produto × fornecedor), para todas as
+ * lojas. Atualiza o peso guardado nas destinações já feitas, para o Fechamento
+ * usar o peso real; o que as lojas lançaram não muda.
+ */
+export async function setCycleBoxWeight(
+  principal: Principal,
+  input: SetCycleBoxWeightInput,
+): Promise<{ weightKg: string; updatedAllocations: number; savedAsDefault: boolean }> {
+  assertPermission(principal, "compras:destinacao");
+  if (!isCycleDate(input.cycleDate)) throw new AllocationValidationError("Data de compra inválida.");
+  const weight = parseBoxWeightInput(input.weightKg);
+  const weightText = weight.toFixed(3);
+  const sql = database().sql;
+
+  return await sql.begin(async (tx) => {
+    await tx`SELECT pg_advisory_xact_lock(${BUYER_CYCLE_ADVISORY_LOCK_NAMESPACE}, hashtext(${input.cycleDate}::text))`;
+    const [closure] = await tx<{ status: string }[]>`
+      SELECT status FROM purchase_cycle_buyer_closures WHERE purchase_cycle_date = ${input.cycleDate}::date
+    `;
+    if (closure?.status === "CLOSED") {
+      throw new CycleClosedError("O ciclo de compras está fechado. Reabra o ciclo operacional para alterar o peso da caixa.");
+    }
+
+    const [product] = await tx<{ id: string; name: string; purchase_format: string; sale_unit: string | null }[]>`
+      SELECT p.id, p.name, p.purchase_format, ppp.sale_unit
+      FROM products p LEFT JOIN product_pricing_parameters ppp ON ppp.product_id = p.id
+      WHERE p.id = ${input.productId}::uuid
+    `;
+    if (!product) throw new AllocationValidationError("Produto não encontrado.");
+    if (!boxWeightApplies(product.purchase_format, product.sale_unit)) {
+      throw new AllocationValidationError(`${product.name} não é comprado em caixa e vendido em KG; não há peso de caixa para informar.`);
+    }
+    const [supplier] = await tx<{ id: string }[]>`SELECT id FROM suppliers WHERE id = ${input.supplierId}::uuid`;
+    if (!supplier) throw new AllocationValidationError("Fornecedor não encontrado.");
+
+    const [previous] = await tx<{ box_weight_kg: string }[]>`
+      SELECT box_weight_kg::text FROM purchase_cycle_box_weights
+      WHERE purchase_cycle_date = ${input.cycleDate}::date AND product_id = ${input.productId}::uuid AND supplier_id = ${input.supplierId}::uuid
+    `;
+
+    await tx`
+      INSERT INTO purchase_cycle_box_weights (purchase_cycle_date, product_id, supplier_id, box_weight_kg, updated_by, updated_at)
+      VALUES (${input.cycleDate}::date, ${input.productId}::uuid, ${input.supplierId}::uuid, ${weightText}::numeric, ${principal.userId}::uuid, now())
+      ON CONFLICT (purchase_cycle_date, product_id, supplier_id) DO UPDATE
+        SET box_weight_kg = EXCLUDED.box_weight_kg, updated_by = EXCLUDED.updated_by, updated_at = now()
+    `;
+
+    const updated = await tx`
+      UPDATE purchase_cycle_product_allocations
+      SET conversion_factor_kg = ${weightText}::numeric, conversion_origin = 'CYCLE_BOX_WEIGHT', updated_at = now()
+      WHERE purchase_cycle_date = ${input.cycleDate}::date
+        AND product_id = ${input.productId}::uuid
+        AND supplier_id = ${input.supplierId}::uuid
+      RETURNING id
+    `;
+
+    let savedAsDefault = false;
+    if (input.makeSupplierDefault) {
+      const links = await tx`
+        UPDATE product_suppliers
+        SET box_weight_kg = ${weightText}::numeric, updated_by = ${principal.userId}::uuid, updated_at = now()
+        WHERE product_id = ${input.productId}::uuid AND supplier_id = ${input.supplierId}::uuid AND active
+        RETURNING id
+      `;
+      savedAsDefault = links.length > 0;
+    }
+
+    await tx`
+      INSERT INTO audit_events (actor_id, action, entity_type, entity_id, metadata)
+      VALUES (${principal.userId}::uuid, 'BOX_WEIGHT_SET', 'purchase_cycle_box_weight',
+        ${`${input.cycleDate}:${input.productId}:${input.supplierId}`},
+        ${JSON.stringify({
+          cycleDate: input.cycleDate,
+          productId: input.productId,
+          supplierId: input.supplierId,
+          previousKg: previous?.box_weight_kg ?? null,
+          weightKg: weightText,
+          updatedAllocations: updated.length,
+          savedAsDefault,
+        })}::jsonb)
+    `;
+
+    return { weightKg: String(weight), updatedAllocations: updated.length, savedAsDefault };
   });
 }

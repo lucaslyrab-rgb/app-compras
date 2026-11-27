@@ -276,6 +276,8 @@ export const productSuppliers = pgTable("product_suppliers", {
   isExclusive: boolean("is_exclusive").notNull().default(false),
   active: boolean("active").notNull().default(true),
   notes: text("notes"),
+  /** Peso padrão da caixa deste fornecedor (kg); null = usa a conversão do produto. */
+  boxWeightKg: numeric("box_weight_kg", { precision: 12, scale: 3 }),
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -295,6 +297,19 @@ export const productSuppliersRelations = relations(productSuppliers, ({ one }) =
   creator: one(users, { fields: [productSuppliers.createdBy], references: [users.id] }),
   updater: one(users, { fields: [productSuppliers.updatedBy], references: [users.id] })
 }));
+
+/** Peso da caixa informado na Destinação para uma compra (ciclo × produto × fornecedor), para todas as lojas. */
+export const purchaseCycleBoxWeights = pgTable("purchase_cycle_box_weights", {
+  purchaseCycleDate: date("purchase_cycle_date").notNull(),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  supplierId: uuid("supplier_id").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
+  boxWeightKg: numeric("box_weight_kg", { precision: 12, scale: 3 }).notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.purchaseCycleDate, table.productId, table.supplierId] }),
+  index("purchase_cycle_box_weights_product_supplier_idx").on(table.productId, table.supplierId),
+]);
 
 export const purchaseCycleProductAllocations = pgTable("purchase_cycle_product_allocations", {
   id: uuid("id").primaryKey().defaultRandom(),
